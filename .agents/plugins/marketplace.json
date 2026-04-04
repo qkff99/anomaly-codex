@@ -1,0 +1,20 @@
+{
+  "name": "anomaly-codex-workspace",
+  "interface": {
+    "displayName": "Anomaly Codex Workspace"
+  },
+  "plugins": [
+    {
+      "name": "stalker-modding-workbench",
+      "source": {
+        "source": "local",
+        "path": "./plugins/stalker-modding-workbench"
+      },
+      "policy": {
+        "installation": "INSTALLED_BY_DEFAULT",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

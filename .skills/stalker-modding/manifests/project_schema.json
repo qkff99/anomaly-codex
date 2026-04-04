@@ -1,0 +1,123 @@
+{
+  "type": "object",
+  "required": [
+    "project_name",
+    "display_name",
+    "baseline",
+    "mod_root",
+    "artifact_defaults",
+    "languages",
+    "templates"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "project_name": {
+      "type": "string"
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "baseline": {
+      "type": "string"
+    },
+    "mod_root": {
+      "type": "string",
+      "const": "gamedata"
+    },
+    "artifact_defaults": {
+      "type": "object",
+      "required": [
+        "loose",
+        "zip"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "loose": {
+          "type": "boolean"
+        },
+        "zip": {
+          "type": "boolean"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "mode",
+        "kind",
+        "origin_path"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "const": "imported_copy"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "mod_root",
+            "gamedata_root"
+          ]
+        },
+        "origin_path": {
+          "type": "string"
+        }
+      }
+    },
+    "languages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "templates": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  },
+  "templateKinds": {
+    "lua_feature": {
+      "required": [
+        "kind",
+        "script"
+      ],
+      "additionalProperties": false
+    },
+    "lua_mcm": {
+      "required": [
+        "kind",
+        "runtime_script",
+        "mcm_script",
+        "option_root",
+        "localization"
+      ],
+      "additionalProperties": false
+    },
+    "localization_pack": {
+      "required": [
+        "kind",
+        "files"
+      ],
+      "additionalProperties": false
+    },
+    "dltx_patch": {
+      "required": [
+        "kind",
+        "target_root",
+        "file"
+      ],
+      "additionalProperties": false
+    },
+    "dxml_patch": {
+      "required": [
+        "kind",
+        "target_xml",
+        "script"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,494 @@
+{
+  "aliases": {
+    "animation-reference": "assets-animations",
+    "asset-reference": "assets-animations",
+    "addon-search": "reference-discovery",
+    "crash": "log-triage",
+    "dltx": "dxml-dltx",
+    "dxml": "dxml-dltx",
+    "distribution": "distribution-packaging",
+    "fomod": "distribution-packaging",
+    "gamma": "reference-discovery",
+    "github-ref": "reference-discovery",
+    "log": "log-triage",
+    "mcm": "ui-mcm",
+    "mcm-menu": "ui-mcm",
+    "mo2": "distribution-packaging",
+    "mod-organizer": "distribution-packaging",
+    "mod-organizer-2": "distribution-packaging",
+    "modpack-ref": "reference-discovery",
+    "runtime-error": "log-triage",
+    "stacktrace": "log-triage",
+    "syntax-error": "log-triage",
+    "xml-localization": "localization",
+    "review": "code-review",
+    "ui-hud": "ui-mcm"
+  },
+  "task_types": {
+    "assets-animations": {
+      "bash_commands": [
+        "./.skills/stalker-modding/scripts/find_references.sh --task assets-animations \"animation|skeleton|omf|dds|ogf|blend\"",
+        "python3 ./.skills/stalker-modding/scripts/map_subsystems.py ."
+      ],
+      "powershell_commands": [
+        ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task assets-animations -Pattern 'animation|skeleton|omf|dds|ogf|blend'",
+        ".\\.skills\\stalker-modding\\scripts\\map_subsystems.ps1 ."
+      ],
+      "reference_roots": ["workspace", "book"],
+      "gitmcp_queries": [
+        "anomaly-modding-book: animation, texture, or model topic name"
+      ],
+      "deepwiki_questions": [
+        "Which config files and assets have to stay aligned for this feature?"
+      ],
+      "references": [
+        "references/assets-and-animations.md"
+      ]
+    },
+    "bugfix": {
+      "bash_commands": [
+        "python3 ./.skills/stalker-modding/scripts/log_triage.py summarize path/to/log-or-dir",
+        "./.skills/stalker-modding/scripts/find_entrypoints.sh .",
+        "./.skills/stalker-modding/scripts/find_references.sh --task bugfix \"RegisterScriptCallback|bind_object|function\"",
+        "python3 ./.skills/stalker-modding/scripts/luac_tool.py check path/to/touched.script"
+      ],
+      "powershell_commands": [
+        "py -3 .\\.skills\\stalker-modding\\scripts\\log_triage.py summarize path\\to\\log-or-dir",
+        ".\\.skills\\stalker-modding\\scripts\\find_entrypoints.ps1 .",
+        ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task bugfix -Pattern 'RegisterScriptCallback|bind_object|function'",
+        "py -3 .\\.skills\\stalker-modding\\scripts\\luac_tool.py check path\\to\\touched.script"
+      ],
+      "reference_roots": ["workspace", "vanilla", "lua_api", "engine"],
+      "gitmcp_queries": [
+        "xray-monolith: callback or helper name"
+      ],
+      "deepwiki_questions": [
+        "Which files implement this subsystem and what is the execution flow?"
+      ],
+      "references": [
+        "references/log-triage.md",
+        "references/existing-mod-workflow.md",
+        "references/runtime-model.md",
+        "references/callbacks-and-binders.md"
+      ]
+    },
+    "code-review": {
+      "bash_commands": [
+        "python3 ./.skills/stalker-modding/scripts/map_subsystems.py .",
+        "./.skills/stalker-modding/scripts/find_references.sh --task code-review \"save|load|update|RegisterScriptCallback\"",
+        "python3 ./.skills/stalker-modding/scripts/luac_tool.py check path/to/touched.script"
+      ],
+      "powershell_commands": [
+        ".\\.skills\\stalker-modding\\scripts\\map_subsystems.ps1 .",
+        ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task code-review -Pattern 'save|load|update|RegisterScriptCallback'",
+        "py -3 .\\.skills\\stalker-modding\\scripts\\luac_tool.py check path\\to\\touched.script"
+      ],
+      "reference_roots": ["workspace", "vanilla", "lua_api"],
+      "gitmcp_queries": [
+        "xray-monolith: relevant callback or engine helper"
+      ],
+      "deepwiki_questions": [
+        "What invariants does this subsystem rely on?"
+      ],
+      "references": [
+        "references/save-safety.md",
+        "references/performance-hotpaths.md"
+      ]
+    },
+    "config-tweak": {
+      "bash_commands": [
+        "./.skills/stalker-modding/scripts/find_references.sh --task config-tweak \"section|id|ui_|mcm|ltx|xml\""
+      ],
+      "powershell_commands": [
+        ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task config-tweak -Pattern 'section|id|ui_|mcm|ltx|xml'"
+      ],
+      "reference_roots": ["workspace", "vanilla", "book"],
+      "gitmcp_queries": [
+        "anomaly-modding-book: config or UI topic name"
+      ],
+      "deepwiki_questions": [
+        "Which config files or UI definitions participate in this tweak?"
+      ],
+      "references": [
+        "references/dxml-and-dltx.md",
+        "references/modding-book-practices.md",
+        "references/ui-xml-mcm.md",
+        "references/source-priority.md"
+      ]
+    },
+    "dxml-dltx": {
+      "bash_commands": [
+        "./.skills/stalker-modding/scripts/find_references.sh --task dxml-dltx \"dxml|dltx|modxml_|on_xml_read|character_desc_general|!\\[|!!\\[|@\\[|>field|<field|!field\""
+      ],
+      "powershell_commands": [
+        ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task dxml-dltx -Pattern 'dxml|dltx|modxml_|on_xml_read|character_desc_general|!\\[|!!\\[|@\\[|>field|<field|!field'"
+      ],
+      "reference_roots": ["workspace", "vanilla", "book"],
+      "gitmcp_queries": [
+        "anomaly-modding-book: dxml, dltx, or differential patching topic name"
+      ],
+      "deepwiki_questions": [
+        "Which XML or LTX surface is safer to patch differentially instead of overriding directly?"
+      ],
+      "references": [
+        "references/dxml-and-dltx.md",
+        "references/modding-book-practices.md",
+        "references/source-priority.md"
+      ]
+    },
+    "distribution-packaging": {
+      "bash_commands": [
+        "python3 ./.skills/stalker-modding/scripts/package_project.py --project <name>",
+        "python3 ./.skills/stalker-modding/scripts/fomod_tool.py --project <name>",
+        "./.skills/stalker-modding/scripts/find_references.sh --task distribution-packaging \"fomod|moduleconfig|info.xml|mod organizer|overwrite|profiles|downloads|mods/\""
+      ],
+      "powershell_commands": [
+        "py -3 .\\.skills\\stalker-modding\\scripts\\package_project.py --project <name>",
+        "py -3 .\\.skills\\stalker-modding\\scripts\\fomod_tool.py --project <name>",
+        ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task distribution-packaging -Pattern 'fomod|moduleconfig|info.xml|mod organizer|overwrite|profiles|downloads|mods/'"
+      ],
+      "reference_roots": ["workspace", "book"],
+      "gitmcp_queries": [
+        "modorganizer2: mods path, profiles, overwrite, downloads, portable or instance layout",
+        "modorganizer2: VFS or installation pipeline behavior that affects packaged mods"
+      ],
+      "deepwiki_questions": [
+        "Which MO2 directories matter to packaging and what assumptions should external tools avoid?"
+      ],
+      "references": [
+        "references/existing-mod-workflow.md",
+        "references/project-toolchain.md",
+        "references/mod-organizer2-and-fomod.md",
+        "references/source-priority.md"
+      ]
+    },
+    "engine-capability": {
+      "bash_commands": [
+        "./.skills/stalker-modding/scripts/find_references.sh --task engine-capability \"lua_help|callback|console|helper\""
+      ],
+      "powershell_commands": [
+        ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task engine-capability -Pattern 'lua_help|callback|console|helper'"
+      ],
+      "reference_roots": ["engine", "lua_api", "book"],
+      "gitmcp_queries": [
+        "xray-monolith: symbol, callback, helper, or console command name"
+      ],
+      "deepwiki_questions": [
+        "Where is this feature parsed, stored, and consumed?"
+      ],
+      "references": [
+        "references/repos/xray-monolith.md",
+        "references/engine-quirks.md"
+      ]
+    },
+    "feature": {
+      "bash_commands": [
+        "./.skills/stalker-modding/scripts/scan_workspace.sh .",
+        "python3 ./.skills/stalker-modding/scripts/map_subsystems.py .",
+        "./.skills/stalker-modding/scripts/find_references.sh --task feature \"symbol|config|callback|section\"",
+        "python3 ./.skills/stalker-modding/scripts/luac_tool.py detect"
+      ],
+      "powershell_commands": [
+        ".\\.skills\\stalker-modding\\scripts\\scan_workspace.ps1 .",
+        ".\\.skills\\stalker-modding\\scripts\\map_subsystems.ps1 .",
+        ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task feature -Pattern 'symbol|config|callback|section'",
+        "py -3 .\\.skills\\stalker-modding\\scripts\\luac_tool.py detect"
+      ],
+      "reference_roots": ["workspace", "vanilla", "book", "lua_api"],
+      "gitmcp_queries": [
+        "xray-monolith: relevant callback or helper",
+        "anomaly-modding-book: relevant workflow or file format"
+      ],
+      "deepwiki_questions": [
+        "What are the safest extension points for this subsystem?"
+      ],
+      "references": [
+        "references/existing-mod-workflow.md",
+        "references/modding-book-practices.md",
+        "references/dxml-and-dltx.md",
+        "references/runtime-model.md",
+        "references/save-safety.md"
+      ]
+    },
+    "log-triage": {
+      "bash_commands": [
+        "python3 ./.skills/stalker-modding/scripts/log_triage.py summarize path/to/log-or-dir",
+        "python3 ./.skills/stalker-modding/scripts/log_triage.py extract path/to/log-or-dir --kind all",
+        "./.skills/stalker-modding/scripts/find_references.sh --task log-triage \"SCRIPT RUNTIME ERROR|SCRIPT SYNTAX ERROR|FATAL ERROR|stack traceback|stack trace|RegisterScriptCallback|bind_object\""
+      ],
+      "powershell_commands": [
+        "py -3 .\\.skills\\stalker-modding\\scripts\\log_triage.py summarize path\\to\\log-or-dir",
+        "py -3 .\\.skills\\stalker-modding\\scripts\\log_triage.py extract path\\to\\log-or-dir --kind all",
+        ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task log-triage -Pattern 'SCRIPT RUNTIME ERROR|SCRIPT SYNTAX ERROR|FATAL ERROR|stack traceback|stack trace|RegisterScriptCallback|bind_object'"
+      ],
+      "reference_roots": ["workspace", "vanilla", "lua_api", "engine"],
+      "gitmcp_queries": [
+        "xray-monolith: fatal error field, callback, or helper name from the stack"
+      ],
+      "deepwiki_questions": [
+        "Which subsystem owns the failing script, callback, or helper from this crash summary?"
+      ],
+      "references": [
+        "references/log-triage.md",
+        "references/runtime-model.md",
+        "references/callbacks-and-binders.md"
+      ]
+    },
+    "localization": {
+      "bash_commands": [
+        "./.skills/stalker-modding/scripts/find_references.sh --task localization \"string_table|on_localization_change|inv_name|inv_name_short|hint|text|localization\"",
+        "python3 ./.skills/stalker-modding/scripts/xml_localization_tool.py inspect path/to/file.xml"
+      ],
+      "powershell_commands": [
+        ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task localization -Pattern 'string_table|on_localization_change|inv_name|inv_name_short|hint|text|localization'",
+        "py -3 .\\.skills\\stalker-modding\\scripts\\xml_localization_tool.py inspect path\\to\\file.xml"
+      ],
+      "reference_roots": ["workspace", "vanilla", "engine", "book"],
+      "gitmcp_queries": [
+        "xray-monolith: string table, localization, or XML parsing symbol"
+      ],
+      "deepwiki_questions": [
+        "Which files define, load, and consume this localization key or XML surface?"
+      ],
+      "references": [
+        "references/dxml-and-dltx.md",
+        "references/localization-and-encodings.md",
+        "references/ui-xml-mcm.md"
+      ]
+    },
+    "mapping-sdk": {
+      "bash_commands": [
+        "./.skills/stalker-modding/scripts/find_references.sh --task mapping-sdk \"sdk|level|spawn|cform|rawdata\""
+      ],
+      "powershell_commands": [
+        ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task mapping-sdk -Pattern 'sdk|level|spawn|cform|rawdata'"
+      ],
+      "reference_roots": ["workspace", "book"],
+      "gitmcp_queries": [
+        "anomaly-modding-book: sdk or level topic name"
+      ],
+      "deepwiki_questions": [
+        "Which generated files and source assets need to stay paired?"
+      ],
+      "references": [
+        "references/mapping-and-sdk.md"
+      ]
+    },
+    "merge-conflict-analysis": {
+      "bash_commands": [
+        "rg -n \"<<<<<<<|=======|>>>>>>>\" .",
+        "python3 ./.skills/stalker-modding/scripts/map_subsystems.py ."
+      ],
+      "powershell_commands": [
+        "rg -n \"<<<<<<<|=======|>>>>>>>\" .",
+        ".\\.skills\\stalker-modding\\scripts\\map_subsystems.ps1 ."
+      ],
+      "reference_roots": ["workspace", "vanilla"],
+      "gitmcp_queries": [],
+      "deepwiki_questions": [
+        "Which invariants would this merge most likely violate?"
+      ],
+      "references": [
+        "references/source-priority.md",
+        "references/runtime-model.md"
+      ]
+    },
+    "refactor": {
+      "bash_commands": [
+        "python3 ./.skills/stalker-modding/scripts/map_subsystems.py .",
+        "./.skills/stalker-modding/scripts/find_entrypoints.sh .",
+        "./.skills/stalker-modding/scripts/find_references.sh --task refactor \"save|load|update|callback\"",
+        "python3 ./.skills/stalker-modding/scripts/luac_tool.py check path/to/touched.script"
+      ],
+      "powershell_commands": [
+        ".\\.skills\\stalker-modding\\scripts\\map_subsystems.ps1 .",
+        ".\\.skills\\stalker-modding\\scripts\\find_entrypoints.ps1 .",
+        ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task refactor -Pattern 'save|load|update|callback'",
+        "py -3 .\\.skills\\stalker-modding\\scripts\\luac_tool.py check path\\to\\touched.script"
+      ],
+      "reference_roots": ["workspace", "vanilla", "lua_api"],
+      "gitmcp_queries": [
+        "xray-monolith: helper or callback affected by this refactor"
+      ],
+      "deepwiki_questions": [
+        "Which runtime and persistence boundaries must stay intact?"
+      ],
+      "references": [
+        "references/existing-mod-workflow.md",
+        "references/modding-book-practices.md",
+        "references/runtime-model.md",
+        "references/performance-hotpaths.md",
+        "references/save-safety.md"
+      ]
+    },
+    "reference-discovery": {
+      "bash_commands": [
+        "python3 ./.skills/stalker-modding/scripts/discover_github_refs.py search --query \"anomaly addon topic\"",
+        "./.skills/stalker-modding/scripts/find_references.sh --task reference-discovery \"addon|modpack|github|install|lua|script|gamedata\""
+      ],
+      "powershell_commands": [
+        "py -3 .\\.skills\\stalker-modding\\scripts\\discover_github_refs.py search --query \"anomaly addon topic\"",
+        ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task reference-discovery -Pattern 'addon|modpack|github|install|lua|script|gamedata'"
+      ],
+      "reference_roots": ["workspace", "vanilla", "book"],
+      "gitmcp_queries": [
+        "stalker-gamma: addon list, install notes, custom script, or pack-specific override",
+        "anomaly-modding-book: workflow or addon topic name"
+      ],
+      "deepwiki_questions": [
+        "Which known refs or addon surfaces are likely relevant to this requested feature or bug?"
+      ],
+      "references": [
+        "references/github-reference-discovery.md",
+        "references/existing-mod-workflow.md",
+        "references/mod-organizer2-and-fomod.md",
+        "references/source-priority.md",
+        "references/repos/stalker-gamma.md"
+      ]
+    },
+    "reverse-engineering": {
+      "bash_commands": [
+        "./.skills/stalker-modding/scripts/find_references.sh --task reverse-engineering \"symbol|helper|section|callback\""
+      ],
+      "powershell_commands": [
+        ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task reverse-engineering -Pattern 'symbol|helper|section|callback'"
+      ],
+      "reference_roots": ["workspace", "vanilla", "engine", "lua_api"],
+      "gitmcp_queries": [
+        "xray-monolith: symbol, helper, callback, or command name"
+      ],
+      "deepwiki_questions": [
+        "Which files most likely expose or consume this behavior?"
+      ],
+      "references": [
+        "references/source-priority.md",
+        "references/repos/xray-monolith.md"
+      ]
+    },
+    "save-load": {
+      "bash_commands": [
+        "./.skills/stalker-modding/scripts/find_references.sh --task save-load \"save|load|save_state|load_state|version\"",
+        "python3 ./.skills/stalker-modding/scripts/luac_tool.py check path/to/touched.script"
+      ],
+      "powershell_commands": [
+        ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task save-load -Pattern 'save|load|save_state|load_state|version'",
+        "py -3 .\\.skills\\stalker-modding\\scripts\\luac_tool.py check path\\to\\touched.script"
+      ],
+      "reference_roots": ["workspace", "vanilla", "lua_api", "engine"],
+      "gitmcp_queries": [
+        "xray-monolith: save or load related helper"
+      ],
+      "deepwiki_questions": [
+        "Where is save state built and restored?"
+      ],
+      "references": [
+        "references/save-safety.md",
+        "references/manual-qa.md"
+      ]
+    },
+    "tasks-story-alife": {
+      "bash_commands": [
+        "./.skills/stalker-modding/scripts/find_references.sh --task tasks-story-alife \"task|story|smart_terrain|alife|squad\""
+      ],
+      "powershell_commands": [
+        ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task tasks-story-alife -Pattern 'task|story|smart_terrain|alife|squad'"
+      ],
+      "reference_roots": ["workspace", "vanilla", "book", "lua_api"],
+      "gitmcp_queries": [
+        "xray-monolith: task, story, or A-Life helper",
+        "anomaly-modding-book: quests or npc topic name"
+      ],
+      "deepwiki_questions": [
+        "Which files own online or offline transitions for this subsystem?"
+      ],
+      "references": [
+        "references/tasks-story-alife.md",
+        "references/save-safety.md"
+      ]
+    },
+    "tutorial": {
+      "bash_commands": [
+        "./.skills/stalker-modding/scripts/scan_workspace.sh .",
+        "./.skills/stalker-modding/scripts/find_references.sh --task tutorial \"topic|keyword\""
+      ],
+      "powershell_commands": [
+        ".\\.skills\\stalker-modding\\scripts\\scan_workspace.ps1 .",
+        ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task tutorial -Pattern 'topic|keyword'"
+      ],
+      "reference_roots": ["book", "vanilla", "workspace"],
+      "gitmcp_queries": [
+        "anomaly-modding-book: topic name"
+      ],
+      "deepwiki_questions": [],
+      "references": [
+        "references/github-reference-discovery.md",
+        "references/modding-book-practices.md",
+        "references/dxml-and-dltx.md",
+        "references/repos/anomaly-modding-book.md",
+        "references/assets-and-animations.md"
+      ]
+    },
+    "ui-mcm": {
+      "bash_commands": [
+        "./.skills/stalker-modding/scripts/find_references.sh --task ui-mcm \"on_mcm_load|ui_mcm|get_config|key_bind|ui_hook_functor|on_selection_functor|mcm_option_change|mcm_key_localization|ui_mm_menu_mcm|ui_|mcm|options|attach\""
+      ],
+      "powershell_commands": [
+        ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task ui-mcm -Pattern 'on_mcm_load|ui_mcm|get_config|key_bind|ui_hook_functor|on_selection_functor|mcm_option_change|mcm_key_localization|ui_mm_menu_mcm|ui_|mcm|options|attach'"
+      ],
+      "reference_roots": ["workspace", "vanilla", "mcm_repo", "book"],
+      "gitmcp_queries": [
+        "anomaly-modding-book: mcm or UI topic name"
+      ],
+      "deepwiki_questions": [
+        "Which MCM script, XML ids, localization strings, and apply callbacks must stay aligned?"
+      ],
+      "references": [
+        "references/dxml-and-dltx.md",
+        "references/mcm-menu.md",
+        "references/ui-xml-mcm.md",
+        "references/callbacks-and-binders.md"
+      ]
+    },
+    "visible-body-legs": {
+      "bash_commands": [
+        "./.skills/stalker-modding/scripts/find_references.sh --task visible-body-legs \"legs|visible_body|freelook|ladder\""
+      ],
+      "powershell_commands": [
+        ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task visible-body-legs -Pattern 'legs|visible_body|freelook|ladder'"
+      ],
+      "reference_roots": ["workspace", "vanilla", "engine", "lua_api", "book"],
+      "gitmcp_queries": [
+        "xray-monolith: legs, visible body, freelook, or ladder helper"
+      ],
+      "deepwiki_questions": [
+        "Which files mediate conflicts between body visuals, items, and movement states?"
+      ],
+      "references": [
+        "references/visible-body-and-legs.md",
+        "references/performance-hotpaths.md"
+      ]
+    },
+    "weapons-hud": {
+      "bash_commands": [
+        "./.skills/stalker-modding/scripts/find_entrypoints.sh .",
+        "./.skills/stalker-modding/scripts/find_references.sh --task weapons-hud \"zoom|fire|reload|hud|animation\""
+      ],
+      "powershell_commands": [
+        ".\\.skills\\stalker-modding\\scripts\\find_entrypoints.ps1 .",
+        ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task weapons-hud -Pattern 'zoom|fire|reload|hud|animation'"
+      ],
+      "reference_roots": ["workspace", "vanilla", "engine", "lua_api", "book"],
+      "gitmcp_queries": [
+        "xray-monolith: HUD callback or helper",
+        "anomaly-modding-book: HUD animations"
+      ],
+      "deepwiki_questions": [
+        "Which files handle weapon HUD state transitions?"
+      ],
+      "references": [
+        "references/weapons-and-hud.md",
+        "references/ui-xml-mcm.md"
+      ]
+    }
+  }
+}

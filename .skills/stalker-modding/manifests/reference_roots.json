@@ -1,0 +1,55 @@
+{
+  "roots": {
+    "workspace": {
+      "path": ".",
+      "description": "Current repository files and active workbench assets."
+    },
+    "vanilla": {
+      "path": "ai_workspace/vanilla scripts",
+      "description": "Local vanilla scripts and configs for baseline comparison."
+    },
+    "engine": {
+      "path": "ai_workspace/src",
+      "description": "Local engine source for capability lookup and C++ tracing."
+    },
+    "lua_api": {
+      "path": "ai_workspace/lua_help.script.txt",
+      "description": "Exported Lua API surface for symbol checks."
+    },
+    "book": {
+      "path": "ai_workspace/anomaly-modding-book-main",
+      "description": "Local anomaly-modding-book copy for tutorials and file formats."
+    },
+    "mcm_repo": {
+      "path": "ai_workspace/Anomaly-Mod-Configuration-Menu-main",
+      "description": "Local Anomaly MCM repository for menu API, option-tree rules, UI XML, and integration behavior."
+    },
+    "user_references": {
+      "path": "ai_workspace/user references",
+      "description": "User-managed extra references; anything added here should become searchable without manifest edits."
+    }
+  },
+  "task_roots": {
+    "assets-animations": ["workspace", "book"],
+    "bugfix": ["workspace", "vanilla", "lua_api", "engine"],
+    "code-review": ["workspace", "vanilla", "lua_api"],
+    "config-tweak": ["workspace", "vanilla", "book"],
+    "distribution-packaging": ["workspace", "book"],
+    "dxml-dltx": ["workspace", "vanilla", "book"],
+    "engine-capability": ["engine", "lua_api", "book"],
+    "feature": ["workspace", "vanilla", "book", "lua_api"],
+    "log-triage": ["workspace", "vanilla", "lua_api", "engine"],
+    "localization": ["workspace", "vanilla", "engine", "book"],
+    "mapping-sdk": ["workspace", "book"],
+    "merge-conflict-analysis": ["workspace", "vanilla"],
+    "reference-discovery": ["workspace", "vanilla", "book"],
+    "refactor": ["workspace", "vanilla", "lua_api"],
+    "reverse-engineering": ["workspace", "vanilla", "engine", "lua_api"],
+    "save-load": ["workspace", "vanilla", "lua_api", "engine"],
+    "tasks-story-alife": ["workspace", "vanilla", "book", "lua_api"],
+    "tutorial": ["book", "vanilla", "workspace"],
+    "ui-mcm": ["workspace", "vanilla", "mcm_repo", "book"],
+    "visible-body-legs": ["workspace", "vanilla", "engine", "lua_api", "book"],
+    "weapons-hud": ["workspace", "vanilla", "engine", "lua_api", "book"]
+  }
+}

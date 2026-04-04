@@ -1,0 +1,33 @@
+interface:
+  display_name: "STALKER Modding"
+  short_description: "Anomaly-first XRay modding, crash triage, and maintenance workflow"
+  default_prompt: "Use $stalker-modding to analyze this STALKER/XRay modding, crash-log, or existing-addon maintenance task, choose the right reference tier, and produce a safe, context-aware solution."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "deepwiki"
+      description: "DeepWiki MCP for indexed repository mapping and Q&A"
+      transport: "streamable_http"
+      url: "https://mcp.deepwiki.com/mcp"
+    - type: "mcp"
+      value: "xray-monolith"
+      description: "GitMCP endpoint for themrdemonized/xray-monolith"
+      transport: "streamable_http"
+      url: "https://gitmcp.io/themrdemonized/xray-monolith"
+    - type: "mcp"
+      value: "anomaly-modding-book"
+      description: "GitMCP endpoint for TheParaziT/anomaly-modding-book"
+      transport: "streamable_http"
+      url: "https://gitmcp.io/TheParaziT/anomaly-modding-book"
+    - type: "mcp"
+      value: "modorganizer2"
+      description: "GitMCP endpoint for ModOrganizer2/modorganizer"
+      transport: "streamable_http"
+      url: "https://gitmcp.io/ModOrganizer2/modorganizer"
+    - type: "mcp"
+      value: "stalker-gamma"
+      description: "GitMCP endpoint for Grokitach/Stalker_GAMMA"
+      transport: "streamable_http"
+      url: "https://gitmcp.io/Grokitach/Stalker_GAMMA"
+policy:
+  allow_implicit_invocation: true

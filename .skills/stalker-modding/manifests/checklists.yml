@@ -1,0 +1,36 @@
+checklists:
+  save_load:
+    - version serialized state
+    - store only serializable values
+    - rebuild transient caches after load
+    - verify immediate save/load manually
+  hot_path:
+    - bound per-frame work
+    - avoid full scans every tick
+    - avoid repeated config reads in update
+    - cache repeated expensive checks
+  weapons_hud:
+    - verify show/hide flow
+    - verify aim and fire flow
+    - verify sprint and lowered state
+    - verify body or legs conflicts
+  visible_body:
+    - verify crouch and ladder
+    - verify outfit visual path
+    - verify active item offsets
+    - verify save/load and death transitions
+  ui_mcm:
+    - align XML ids and script lookups
+    - update localization
+    - keep top-level MCM ids and collection names unique
+    - do not call ui_mcm.get during on_mcm_load
+    - re-read settings on apply callbacks instead of polling in hot paths
+    - validate key_bind uses val = 2 and descriptive naming
+    - keep MCM optional unless required
+    - avoid editing ui_main_menu or ui_mm_main unless the task is truly MCM UI integration
+    - check delayed attach duplication
+  tasks_story_alife:
+    - preserve ids unless migration is explicit
+    - distinguish online from server objects
+    - test level transition when relevant
+    - test save/load if state persists

@@ -1,0 +1,46 @@
+.heroBanner {
+  padding: 4rem 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(1000px 600px at 70% 0%, rgba(123, 210, 26, 0.12), transparent 70%),
+    linear-gradient(135deg, #0f1316 0%, #101416 35%, #0a0d0f 100%);
+  min-height: 70vh;
+  display: flex;
+  align-items: center;
+}
+
+.logoContainer {
+  margin-bottom: 2rem;
+}
+
+.logo {
+  height: 120px;
+  width: auto;
+}
+
+.buttonGroup {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.externalLinks {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+@media screen and (max-width: 768px) {
+  .heroBanner {
+    padding: 2rem;
+  }
+
+  .buttonGroup {
+    flex-direction: column;
+    align-items: center;
+  }
+}

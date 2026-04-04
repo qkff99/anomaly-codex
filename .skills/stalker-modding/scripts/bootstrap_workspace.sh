@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+"$script_dir/bootstrap_env.sh" ensure python rg luac
+if command -v python3 >/dev/null 2>&1; then
+  exec python3 "$script_dir/bootstrap_workspace.py" "$@"
+fi
+if command -v python >/dev/null 2>&1; then
+  exec python "$script_dir/bootstrap_workspace.py" "$@"
+fi
+echo "Python was not found after bootstrap attempt." >&2
+exit 1

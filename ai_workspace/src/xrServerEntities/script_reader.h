@@ -1,0 +1,13 @@
+////////////////////////////////////////////////////////////////////////////
+//	Module 		: script_reader.h
+//	Created 	: 05.10.2004
+//  Modified 	: 05.10.2004
+//	Author		: Dmitriy Iassenev
+//	Description : Script reader
+////////////////////////////////////////////////////////////////////////////
+
+#pragma once
+
+#include "script_export_space.h"
+
+typedef class_exporter<IReader> CScriptReader;

@@ -1,0 +1,48 @@
+{
+  "query_aliases": [
+    "mcm",
+    "log",
+    "fomod",
+    "gamma"
+  ],
+  "scaffold_templates": [
+    {
+      "template": "lua_feature",
+      "args": [
+        "--script-name",
+        "fixture_feature"
+      ]
+    },
+    {
+      "template": "lua_mcm",
+      "args": [
+        "--script-name",
+        "fixture_menu",
+        "--option-root",
+        "fixture_menu"
+      ]
+    },
+    {
+      "template": "localization_pack",
+      "args": [
+        "--xml-name",
+        "ui_st_fixture_pack.xml"
+      ]
+    },
+    {
+      "template": "dltx_patch",
+      "args": [
+        "--target-root",
+        "system"
+      ]
+    },
+    {
+      "template": "dxml_patch",
+      "args": [
+        "--target-xml",
+        "configs/ui/ui_mm_main.xml"
+      ]
+    }
+  ]
+}
+

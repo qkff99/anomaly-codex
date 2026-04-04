@@ -1,0 +1,56 @@
+{
+  "game_family": "anomaly",
+  "baseline": "anomaly_1_5_3_modded_exes",
+  "workspace_type": "skill_workbench",
+  "active_modules": [
+    ".skills/stalker-modding",
+    "plugins/stalker-modding-workbench",
+    ".agents/plugins/marketplace.json",
+    ".vscode/mcp.json"
+  ],
+  "reference_roots": [
+    "ai_workspace/vanilla scripts",
+    "ai_workspace/src",
+    "ai_workspace/lua_help.script.txt",
+    "ai_workspace/anomaly-modding-book-main",
+    "ai_workspace/Anomaly-Mod-Configuration-Menu-main",
+    "ai_workspace/user references"
+  ],
+  "known_conflicts": [
+    ".codex is a placeholder file; repo-local Codex bootstrap uses .agents/plugins and .codex-stalker instead."
+  ],
+  "priority_subsystems": [
+    "engine-capability",
+    "log-triage",
+    "reference-discovery",
+    "save-load",
+    "dxml-dltx",
+    "weapons-hud",
+    "ui-mcm",
+    "distribution-packaging"
+  ],
+  "qa_playbooks": [
+    "overlay-validation",
+    "helper-script-smoke",
+    "repo-plugin-discovery"
+  ],
+  "optional_systems": [
+    "deepwiki",
+    "xray-monolith",
+    "anomaly-modding-book",
+    "modorganizer2",
+    "stalker-gamma",
+    "powershell-wrappers",
+    "vscode-mcp"
+  ],
+  "external_paths": [],
+  "known_reference_repos": [
+    {
+      "id": "stalker-gamma",
+      "repo": "Grokitach/Stalker_GAMMA",
+      "mcp_server": "stalker-gamma",
+      "role": "modpack-index"
+    }
+  ],
+  "notes_language": "ru"
+}

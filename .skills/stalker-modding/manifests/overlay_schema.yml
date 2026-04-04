@@ -1,0 +1,58 @@
+overlay:
+  required_fields:
+    game_family:
+      type: string
+      default: anomaly
+    baseline:
+      type: string
+      default: anomaly_1_5_3_modded_exes
+    workspace_type:
+      type: string
+      default: mixed_workbench
+    active_modules:
+      type: list
+      item_type: string
+    reference_roots:
+      type: list
+      item_type: string
+    known_conflicts:
+      type: list
+      item_type: string
+    priority_subsystems:
+      type: list
+      item_type: string
+    qa_playbooks:
+      type: list
+      item_type: string
+    optional_systems:
+      type: list
+      item_type: string
+    notes_language:
+      type: string
+      default: ru
+  optional_fields:
+    external_paths:
+      type: list
+      item_type: object
+      fields:
+        id: string
+        kind: string
+        path: string
+        label: string
+      allowed_kinds:
+        - logs_dir
+        - mo2_mods_dir
+        - gamedata_root
+        - external_mod_root
+    known_reference_repos:
+      type: list
+      item_type: object
+      fields:
+        id: string
+        repo: string
+        mcp_server: string
+        role: string
+  notes:
+    - AGENTS.md remains the human policy layer
+    - help/stalker/*.md acts as local subsystem memory
+    - missing fields should merge with defaults where available

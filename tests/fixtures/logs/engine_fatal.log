@@ -1,0 +1,15 @@
+FATAL ERROR
+
+[error]Expression    : invalid parameter
+[error]Function      : invalid_parameter_handler
+[error]File          : E:\Anomaly-1.5.1\xray-monolith\src\xrCore\xrDebugNew.cpp
+[error]Line          : 1178
+[error]Description   : invalid parameter
+
+stack trace:
+
+xrCore\xrDebugNew.cpp (248): xrDebug::gather_info
+xrCore\xrDebugNew.cpp (308): xrDebug::backend
+xrCore\xrDebugNew.cpp (1178): invalid_parameter_handler
+Layers\xrRenderDX10\dx10SH_Texture.cpp (426): CTexture::Load
+

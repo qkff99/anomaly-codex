@@ -1,0 +1,61 @@
+tiers:
+  - id: local_workspace
+    trust_level: highest
+    volatility: workspace_specific
+    use_for:
+      - current behavior
+      - naming and conventions
+      - reviews and edits
+    avoid_for:
+      - vanilla baseline unless represented locally
+  - id: local_vanilla
+    trust_level: high
+    volatility: low
+    use_for:
+      - baseline comparison
+      - narrow patches
+      - regression checks
+    avoid_for:
+      - modded exes only features
+  - id: local_lua_api_export
+    trust_level: high
+    volatility: low
+    use_for:
+      - exported symbol confirmation
+      - rough API surface checks
+    avoid_for:
+      - full runtime semantics
+  - id: local_engine_source
+    trust_level: high
+    volatility: medium
+    use_for:
+      - engine capability lookup
+      - exported function and command tracing
+      - C++ side behavior
+    avoid_for:
+      - current workspace-only Lua behavior if code already differs
+  - id: indexed_repo_context
+    trust_level: medium
+    volatility: medium
+    use_for:
+      - subsystem mapping
+      - file discovery
+      - architecture questions
+    avoid_for:
+      - unverified implementation claims
+  - id: live_repo_refs
+    trust_level: medium
+    volatility: medium
+    use_for:
+      - xray-monolith engine docs and code search
+      - anomaly-modding-book tutorials and references
+    avoid_for:
+      - replacing local verification
+  - id: external_web
+    trust_level: lowest
+    volatility: high
+    use_for:
+      - last-resort lookup
+      - broad ecosystem context
+    avoid_for:
+      - authoritative runtime claims
