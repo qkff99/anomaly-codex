@@ -43,9 +43,9 @@ This repository is meant to be opened directly in Codex or VS Code. It provides:
 
 5. After the plugin is installed, ask Codex to initialize against this workspace or ask it what it can do now.
    Good starter prompts:
-   - `Освойся в этом workspace и скажи, что ты теперь умеешь делать`
-   - `Инициализируйся для работы с этим репо`
-   - `Какие modding workflows и helper tools доступны в этом workspace?`
+   - `Get oriented in this workspace and tell me what you can do now`
+   - `Initialize yourself for working with this repo`
+   - `What modding workflows and helper tools are available in this workspace?`
 
 6. After that, run the first local checks:
    - WSL / Linux:
