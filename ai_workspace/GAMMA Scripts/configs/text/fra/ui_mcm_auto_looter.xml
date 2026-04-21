@@ -1,0 +1,344 @@
+<?xml version="1.0" encoding="windows-1252"?>
+
+<string_table>
+
+<!--
+F.R.I.T.E.S | Thundard
+Dernière révision : 24 novembre 2025
+-->	
+
+<string id="ui_mcm_menu_auto_looter">
+<text>Auto-pillage</text>
+</string>
+<string id="ui_mcm_auto_looter_base_description">
+<text>La fonction auto-pillage suit un ordre d'actions spécifique : démontage ? extraction des pièces/accessoires -> pillage -> suppression. Par exemple, si tu actives le démontage pour les armures, les pièces extraites seront ensuite soumises à une vérification de condition supplémentaire avant leur pillage si cette option est également activée.</text>
+</string>
+
+<string id="ui_mcm_auto_looter_looter_key_title">
+<text>Touche de raccourci</text>
+</string>
+<string id="ui_mcm_auto_looter_looter_key_description">
+<text>Certaines mods bloquent certains événements clavier dans l'inventaire. Il est conseillé de ne pas modifier le raccourci ci-dessous, car le Alt gauche ne doit jamais être bloqué.</text>
+</string>
+<string id="ui_mcm_auto_looter_looter_key">
+<text>Touche de pillage</text>
+</string>
+
+<string id="ui_mcm_auto_looter_remote_looting_title">
+<text>Pillage à distance</text>
+</string>
+<string id="ui_mcm_auto_looter_remote_looting_description">
+<text>Définit la distance maximale à laquelle le pillage à distance est possible. Mettre 0 désactive cette option. ATTENTION : Le pillage à distance ne devrait pas être activé avec les mods qui déclenchent d'autres scripts lors de l'ouverture d'inventaires de stalkers/malles. Les joueurs GAMMA devraient toujours la désactiver.</text>
+</string>
+<string id="ui_mcm_auto_looter_remote_looting_distance">
+<text>Distance maximale</text>
+</string>
+
+<string id="ui_mcm_auto_looter_proximity_looting_title">
+<text>EXPÉRIMENTAL : Pillage de proximité</text>
+</string>
+<string id="ui_mcm_auto_looter_proximity_looting_description">
+<text>Le pillage de proximité fonctionne comme le pillage à distance, mais il se relance automatiquement à intervalles configurables et parcourt tous les corps pillables (hors coffres pour éviter de piller tes propres caches) dans la zone indiquée. Mettre la portée à 0 désactive la fonction. ATTENTION : Ne pas activer avec les mods qui lancent des scripts supplémentaires à l'ouverture des inventaires de stalkers. Les joueurs GAMMA doivent toujours la désactiver.</text>
+</string>
+<string id="ui_mcm_auto_looter_proximity_looting_distance">
+<text>Portée du pillage de proximité</text>
+</string>
+<string id="ui_mcm_auto_looter_proximity_looting_refire_time">
+<text>Intervalle de relance du pillage de proximité</text>
+</string>
+
+<string id="ui_mcm_auto_looter_disassemble_title">
+<text>Paramètres de démontage automatique</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_ammo">
+<text>Démonter les munitions</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_armor">
+<text>Démonter les tenues et casques</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_armor_desc">
+<text>Les pièces d'armure utilisables sont celles en état supérieur à 50 % ou pouvant être utilisées dans des recettes d'artisanat</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_weapon">
+<text>Démonter les armes</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_title">
+<text>Démonter les objets divers</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_description">
+<text>Étant donné que certaines pièces extraites d'objets divers ont peu de valeur, et que certaines tâches sur l'objet entier peuvent être plus avantageuses (ex. magazines porno), tu peux définir ci-dessous quels objets divers doivent être démontés ou non. Les PDA mentionnés en fin de liste concernent uniquement ceux largués par les stalkers et pouvant offrir des caches aléatoires.</text>
+</string>
+
+<string id="ui_mcm_auto_looter_strip_title">
+<text>Paramètres d'extraction automatique des pièces et accessoires</text>
+</string>
+<string id="ui_mcm_auto_looter_strip_attachments">
+<text>Extraire les accessoires</text>
+</string>
+<string id="ui_mcm_auto_looter_strip_weapon">
+<text>Extraire les pièces d'arme</text>
+</string>
+
+<string id="ui_mcm_auto_looter_loot_title">
+<text>Paramètres de pillage automatique</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_description">
+<text>Définis quels types d'objets tu souhaites piller (avec conditions éventuelles). Les armures et armes seront automatiquement omises. Les autres types non listés ci-dessous (kits d'amélioration, accessoires d'arme, objets de réparation, objets divers non démontés, etc.) seront pillés automatiquement pour ne pas complexifier la logique.</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_ammo">
+<text>Piller les munitions</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_ammo_parts">
+<text>Piller les composants de munitions</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_grenades">
+<text>Piller les grenades</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_magazines">
+<text>Piller les chargeurs</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_armor_parts">
+<text>Piller les pièces d'armure</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_armor_parts_desc">
+<text>Les pièces d'armure utilisables sont celles en état supérieur à 50 % ou pouvant être utilisées dans des recettes d'artisanat</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_weapon_parts">
+<text>Piller les pièces d'arme</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_title">
+<text>Piller les objets divers</text>
+</string>
+
+<string id="ui_mcm_auto_looter_delete_title">
+<text>Paramètres de suppression</text>
+</string>
+<string id="ui_mcm_auto_looter_delete_description">
+<text>Accumuler des corps pillés est amusant jusqu'à ce que les performances chutent. Les options ci-dessous permettent de supprimer automatiquement les corps ou objets pillés que tu n'utiliseras jamais mais qui affectent tout de même les performances rien qu'en restant dans les caches pillées. "Supprimer le reste" vise généralement les pièces d'arme et d'armure non récupérées par le pillard.</text>
+</string>
+<string id="ui_mcm_auto_looter_delete_body">
+<text>Supprimer le corps entier</text>
+</string>
+<string id="ui_mcm_auto_looter_delete_armor">
+<text>Supprimer les tenues et casques</text>
+</string>
+<string id="ui_mcm_auto_looter_delete_weapon">
+<text>Supprimer les armes</text>
+</string>
+<string id="ui_mcm_auto_looter_delete_misc">
+<text>Supprimer le reste</text>
+</string>
+
+<string id="ui_mcm_auto_looter_misc_options_title">
+<text>Paramètres divers</text>
+</string>
+<string id="ui_mcm_auto_looter_no_valid_tool_messaging">
+<text>Afficher un message si aucun outil de démontage adapté n'est disponible</text>
+</string>
+<string id="ui_mcm_auto_looter_usable_armor_part_condition_treshold">
+<text>Seuil de condition pour pièce d'armure utilisable</text>
+</string>
+<string id="ui_mcm_auto_looter_usable_weapon_part_condition_treshold">
+<text>Seuil de condition pour pièce d'arme utilisable</text>
+</string>
+<string id="ui_mcm_auto_looter_always_treat_recipe_part_as_usable">
+<text>Toujours considérer la pièce de recette comme utilisable</text>
+</string>
+<string id="ui_mcm_auto_looter_always_treat_recipe_part_as_usable_description">
+<text>Désactiver cette option fera que le pillard ne considérera que la condition de la pièce d'armure pour décider si celle-ci est utilisable. L'utilisation dans les recettes d'artisanat ne sera pas prise en compte.</text>
+</string>
+
+<!-- Options déroulantes -->
+<string id="ui_mcm_lst_auto_looter_all_label">
+<text>Tout</text>
+</string>
+<string id="ui_mcm_lst_auto_looter_none_label">
+<text>Aucun</text>
+</string>
+<string id="ui_mcm_lst_auto_looter_non_favourite_label">
+<text>Non favori uniquement</text>
+</string>
+<string id="ui_mcm_lst_auto_looter_with_usable_parts_label">
+<text>Avec pièces utilisables</text>
+</string>
+<string id="ui_mcm_lst_auto_looter_with_usable_barrel_label">
+<text>Avec canon utilisable</text>
+</string>
+<string id="ui_mcm_lst_auto_looter_usable_label">
+<text>Utilisable</text>
+</string>
+
+<!-- À faire : supprimer cette section une fois la prise en charge du champ "text" ajoutée pour plus de champs -->
+<!-- Exceptions possibles : bidon de poudre - pas d'XML défini, guitare (section : guitar_a, id : st_guitar_name), sac de couchage (section : itm_sleepbag, id : st_itm_sleepbag_name),  -->
+<!-- PDA (les XML existants ne précisent pas s'ils sont communs, peu communs ou rares) -->
+<string id="ui_mcm_auto_looter_disassemble_misc_porn">
+<text>PLAYBOY russe</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_porn2">
+<text>MAXIM ukrainien</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_beadspread">
+<text>Drap de lit</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_synthrope">
+<text>2 cordes synthétiques</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_tarpaulin">
+<text>Bâche camouflée</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_underwear">
+<text>Sous-vêtements trempés</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_shovel_old">
+<text>Pelle métallique</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_shovel_mili">
+<text>Pelle de terrain militaire</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_ball_hammer">
+<text>Marteau à panne ronde</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_boots">
+<text>Bottes en cuir</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_broken_detector">
+<text>Détecteur cassé</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_cutlery">
+<text>Couverts de terrain</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_explo_metalcan_powder">
+<text>Bidon de poudre</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_flashlight_broken">
+<text>Lampe de poche cassée</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_gloves">
+<text>Gants en cuir</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_hand_watch">
+<text>Montre-bracelet</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_headlamp">
+<text>Vieille lampe frontale</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_mirror">
+<text>Miroir télescopique</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_radio">
+<text>Petite radio</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_radio2">
+<text>Radio cassée</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_walkie">
+<text>Talkie-walkie</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_guitar_a">
+<text>Guitare</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_compression_bag">
+<text>Sac de compression</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_itm_sleepbag">
+<text>Sac de couchage</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_itm_pda_common">
+<text>PDA - Commun</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_itm_pda_uncommon">
+<text>PDA - Peu commun</text>
+</string>
+<string id="ui_mcm_auto_looter_disassemble_misc_itm_pda_rare">
+<text>PDA - Rare</text>
+</string>
+
+<string id="ui_mcm_auto_looter_loot_misc_porn">
+<text>PLAYBOY russe</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_porn2">
+<text>MAXIM ukrainien</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_beadspread">
+<text>Drap de lit</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_synthrope">
+<text>2 cordes synthétiques</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_tarpaulin">
+<text>Bâche camouflée</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_underwear">
+<text>Sous-vêtements trempés</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_shovel_old">
+<text>Pelle métallique</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_shovel_mili">
+<text>Pelle de terrain militaire</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_ball_hammer">
+<text>Marteau à panne ronde</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_boots">
+<text>Bottes en cuir</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_broken_detector">
+<text>Détecteur cassé</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_cutlery">
+<text>Couverts de terrain</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_explo_metalcan_powder">
+<text>Bidon de poudre</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_flashlight_broken">
+<text>Lampe de poche cassée</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_gloves">
+<text>Gants en cuir</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_hand_watch">
+<text>Montre-bracelet</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_headlamp">
+<text>Vieille lampe frontale</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_mirror">
+<text>Miroir télescopique</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_radio">
+<text>Petite radio</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_radio2">
+<text>Radio cassée</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_walkie">
+<text>Talkie-walkie</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_bolt">
+<text>Boulon</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_bolt_bullet">
+<text>Douille vide</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_guitar_a">
+<text>Guitare</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_compression_bag">
+<text>Sac de compression</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_itm_sleepbag">
+<text>Sac de couchage</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_itm_pda_common">
+<text>PDA - Commun</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_itm_pda_uncommon">
+<text>PDA - Peu commun</text>
+</string>
+<string id="ui_mcm_auto_looter_loot_misc_itm_pda_rare">
+<text>PDA - Rare</text>
+</string>
+	
+</string_table>

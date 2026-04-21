@@ -1,0 +1,278 @@
+--[[
+	Jabbers
+	30MAR2023
+	Jabbers Ironman Roguelite - Furniture Module
+--]]
+
+local config = {
+    is_placeables_restore_enabled = true,
+}
+
+local placeable_objects_section_names = {
+    "placeable_radio",
+    "placeable_piano",
+	"placeable_fridge",
+	"placeable_clinic_equipments",
+	"placeable_suit",
+	"placeable_rug",
+	"placeable_bed_1",
+	"placeable_bed_2",
+	"placeable_bed_3",
+	"placeable_couch1",
+	"placeable_cabinet",
+	"placeable_countertop",
+	"placeable_metal_table1",
+	"placeable_metal_table2",
+	"placeable_stretcher",
+	"placeable_map1",
+	"placeable_map2",
+	"placeable_board_map",
+	"placeable_barrel_metal",
+	"placeable_biliard",
+	"placeable_grave1",
+	"placeable_grave2",
+	"placeable_shooting_target_1",
+	"placeable_poster1",
+	"placeable_poster2",
+	"placeable_poster3",
+	"placeable_poster4",
+	"placeable_poster5",
+	"placeable_poster6",
+	"placeable_poster7",
+	"placeable_shelves",
+	"placeable_shelves_b",
+	"placeable_plant2",
+	"placeable_plant3",
+	"placeable_plant4",
+	"placeable_table1",
+	"placeable_table_2",
+	"placeable_dev_guitar",
+	"placeable_ammo_box",
+	"placeable_shelf_item",
+	"placeable_shelf_1",
+	"placeable_shelf_2",
+	"placeable_stove1",
+	"placeable_stove2",
+	"placeable_box_wood",
+	"placeable_exoskelet",
+	"placeable_fchair",
+	"placeable_bidon",
+	"placeable_kartina03",
+	"placeable_microscope",
+	"placeable_sidetable1",
+	"placeable_sidetable2",
+	"placeable_fuel",
+	"placeable_sink",
+	"placeable_trophie1",
+	"placeable_trophie2",
+	"placeable_trophie3",
+	"placeable_trophie4",
+	"placeable_trophie5",
+	"placeable_trophie6",
+	"placeable_trophie7",
+	"placeable_trophie8",
+	"placeable_trophie9",
+	"placeable_counter_1",
+	"placeable_med_case_1",
+	"placeable_exo_repair_kit_item",
+	"placeable_case_item",
+	"placeable_box_paper",
+	"placeable_documents_1",
+	"placeable_documents_2",
+	"placeable_notes_writing_book",
+	"placeable_radiola",
+	"placeable_guidebook1",
+	"placeable_guidebook2",
+	"placeable_survivalguide",
+	"placeable_gun_parts",
+	"placeable_junk",
+	"placeable_lead_box_open",
+	"placeable_clock_1",
+	"placeable_monitor",
+	"placeable_pccase",
+	"placeable_mice_pad",
+	"placeable_keyboard",
+	"placeable_radio_item",
+	"placeable_chair",
+	"placeable_bong",
+	"placeable_ashtray",
+	"placeable_cuttingboard",
+	"placeable_game",
+	"placeable_merc_outfit",
+	"placeable_stalker_outfit",
+	"placeable_pot",
+	"placeable_money_5000",
+	"placeable_psi_helmet",
+	"placeable_stool",
+	"placeable_teapot",
+	"placeable_cans_tuna",
+	"placeable_dish1",
+	"placeable_dish2",
+	"placeable_laptop_item",
+	"placeable_mug",
+	"placeable_gaz_balon",
+	"placeable_shower",
+	"placeable_sink",
+	"placeable_toilet",
+	"placeable_storage01",
+	"placeable_storage02",
+	"placeable_storage03",
+	"placeable_storage04",
+	"placeable_storage05",
+	"placeable_storage06",
+	"placeable_storage07",
+	"placeable_storage08",
+	"placeable_wooden_plank",
+	"placeable_door",
+	"placeable_door02",
+	"placeable_door03",
+	"placeable_door04",
+	"placeable_door05",
+	"placeable_wall",
+	"placeable_wall02",
+	"placeable_wall_doorway",
+	"placeable_wall_divider",
+	"placeable_wall_metal",
+	"placeable_wall02_metal",
+	"placeable_wall_doorway_metal",
+	"placeable_shield",
+	"placeable_metal_plate",
+	"placeable_wooden_board",
+	"placeable_arti_display",
+}
+
+local m_data = {
+    placeables_version = 1,
+    placeables = {}
+}
+
+--------------------------------
+-- Private stuff and things
+--------------------------------
+
+local function tablelength(T)
+    local count = 0
+    for _ in pairs(T) do count = count + 1 end
+    return count
+end
+
+local function restore_prior_state_placeables_v1(data)
+    for _, placeable_data in pairs(data.placeables) do
+        if placeable_data then
+            roguelite_manager.debug_write("Restoring placeable...")
+
+            local pos = vector():set(placeable_data.position.x, placeable_data.position.y, placeable_data.position.z)
+            local se_obj = alife_create(placeable_data.section, pos, placeable_data.level_vertex_id, placeable_data.game_vertex_id)
+            
+            if se_obj then
+                se_obj.angle = vector():set(placeable_data.angle.x, placeable_data.angle.y, placeable_data.angle.z)
+
+                roguelite_manager.debug_write("Restored placeable "..placeable_data.id.." ".. placeable_data.section)
+            end
+        else 
+            roguelite_manager.debug_write("Not expected.")
+        end
+    end
+end
+
+local function table_has_value (tab, val)
+    for index, value in ipairs(tab) do
+        if value == val then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function get_player_placeables()
+    local placeable_data = {}
+    local sim = alife()
+
+    roguelite_manager.debug_write("Searching for player placesables")
+
+    -- First find all the placesables
+    for i = 1, 65534 do
+        local se_obj = sim:object(i)
+        if se_obj then
+            local section_name = se_obj:section_name()
+            if table_has_value(placeable_objects_section_names, section_name) and se_obj.parent_id ~= AC_ID then
+                roguelite_manager.debug_write("Found placeable " .. se_obj:name() .. " " .. se_obj.id .. ".")
+                local ser_obj = roguelite_manager.serialize_se_obj(se_obj)
+                placeable_data[se_obj.id] = ser_obj   
+            end
+        end
+    end
+
+    return placeable_data
+end
+
+--------------------------------
+-- Game Callbacks
+--------------------------------
+local function save_state(data)
+    if not IsHardcoreMode() then
+        return
+    end
+
+    roguelite_manager.debug_write("Saving placeable data.")
+
+    if not data.roguelite_manager then
+        data.roguelite_manager = {}
+    end
+
+    data.roguelite_manager.placeables_version = m_data.placeables_version
+    data.roguelite_manager.placeables = m_data.placeables
+end
+
+local function load_state(data)
+    if not IsHardcoreMode() then
+        return
+    end
+
+    if not data.roguelite_manager then
+        return
+    end
+
+    local placeables_version = data.roguelite_manager.placeables_version
+
+    if placeables_version and placeables_version >= 1 then
+        m_data.placeables = data.roguelite_manager.placeables
+    end
+
+    data.roguelite_manager.placeables_version = nil
+    data.roguelite_manager.placeables = nil
+end
+
+function roguelite_load_state(save_data)
+    if config.is_placeables_restore_enabled then
+        if save_data.placeables_version and save_data.placeables_version >= 1 then
+            restore_prior_state_placeables_v1(save_data)
+        end
+    end
+end
+
+function roguelite_save_state(save_data)
+    save_data.placeables_version = m_data.placeables_version
+    save_data.placeables = get_player_placeables()
+end
+
+function append_mcm_options(gr)
+end
+
+function on_option_change()
+end
+
+function on_game_load()
+    if ui_mcm then
+	    on_option_change()
+    end
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_game_load", on_game_load)
+    RegisterScriptCallback("save_state", save_state)
+    RegisterScriptCallback("load_state", load_state)
+
+    roguelite_manager.debug_write("Placeables module callbacks registered")
+end

@@ -1,0 +1,26 @@
+local defaults = {
+	["jump_land"] = true,
+	["wpn_ads"] = true,
+	["leaning"] = true,
+	["moving"] = true,
+	["crouch"] = true,
+	["fire_mode"] = true,
+}
+
+function get_config(key)
+	if ui_mcm then return ui_mcm.get("crpmcm/" .. key) else return defaults[key] end
+end
+
+function on_mcm_load()
+	op = { id = "crpmcm",sh = true ,gr = {
+			{id = "title",type = "slide",link = "ui_options_slider_player",text = "ui_mcm_crp_title",size = {512,50},spacing = 20 },
+			{id = "jump_land", type = "check", val = 1, def = true},
+			{id = "leaning", type = "check", val = 1, def = true},
+			{id = "wpn_ads", type = "check", val = 1, def = true},
+			{id = "moving", type = "check", val = 1, def = true},
+			{id = "crouch", type = "check", val = 1, def = true},
+			{id = "fire_mode", type = "check", val = 1, def = true},
+		}
+	}
+	return op
+end

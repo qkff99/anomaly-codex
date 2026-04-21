@@ -1,0 +1,135 @@
+local defaults = {
+    -- 1. General System Controls
+    ["enable_debug"] = false,
+    ["detection_range"] = 80,
+    ["debug_type"] = 1,
+
+    -- 2. Weather Adjustments
+
+    ["weather_clear"] = 95,
+    ["weather_partly_cloudy"] = 0.9,
+    ["weather_cloudy"] = 0.85,
+    ["weather_cloudy_dark"] = 0.8,
+    ["weather_rain"] = 0.75,
+    ["weather_storm"] = 0.7,
+    ["weather_fog"] = 0.7,
+    ["weather_default"] = 0.9,
+
+    -- 3. Luminance Normalization Controls
+
+    ["global_luminance_multiplier"] = 1,
+    ["dark_area_boost_strength"] = -0,
+    ["bright_area_nerf_strength"] = 0,
+
+    -- 4. Movement and Body Factors
+    ["crouch_visibility_multiplier"] = 0.6,
+    ["slow_crouch_visibility_multiplier"] = 0.4,
+    ["sprinting_visibility_multiplier"] = 1.25,
+    ["surface_noise_intensity"] = 0.2,
+
+    -- 5. Lighting and Environmental Factors
+    ["campfire_influence_distance"] = 7,
+    ["indoor_check_frequency"] = 10,
+    ["use_ray_casting"] = true,
+
+    -- 6. Animation & Perception Factors
+    ["fov_central_vision_angle"] = 30,
+    ["fov_peripheral_vision_angle"] = 180,
+
+    -- 7. Camo & NVG Factors
+    ["nvg_bonus_strength"] = 0.5,
+    ["agressive_response"] = true,
+
+    -- 8. Master Weather Profile
+    ["key_0"] = 0.1,
+    ["key_2"] = 0.1,
+    ["key_4"] = 0.1,
+    ["key_6"] = 0.6,
+    ["key_8"] = 0.7,
+    ["key_10"] = 0.8,
+    ["key_12"] = 0.9,
+    ["key_14"] = 0.9,
+    ["key_16"] = 0.8,
+    ["key_18"] = 0.7,
+    ["key_20"] = 0.5,
+    ["key_22"] = 0.1,
+
+}
+
+function get_config(key)
+	if ui_mcm then
+        return ui_mcm.get("revision/"..key) else return defaults[key]
+    end
+end
+
+function on_mcm_load()
+
+    op = {id= "revision", sh=true , gr={
+            { id = "title", type = "slide", link = "ui_options_slider_mask", text = "ui_mcm_revision_title", size = { 512,50 }, spacing = 20 },
+            -- 1. General System Controls
+            { id = "line1", type = "line" },
+            { id = "enable_debug", type = "check", val = 1, def = false },
+            { id = "debug_type", type = "list", val = 2, content = {{1, "VDT"}, {2, "LUM"}}},
+            { id = "detection_range", type = "track", val = 2, min = 60, max = 120, step = 1, def = 80 },
+
+            -- 2. Weather Adjustments
+
+            { id = "line2", type = "line" },
+            { id = "weather_clear", type = "track", val = 2, min = 0, max = 1, step = 0.01, def = 95 },
+            { id = "weather_partly_cloudy", type = "track", val = 2, min = 0, max = 1, step = 0.01, def = 0.90 },
+            { id = "weather_cloudy", type = "track", val = 2, min = 0, max = 1, step = 0.01, def = 0.85 },
+            { id = "weather_cloudy_dark", type = "track", val = 2, min = 0, max = 1, step = 0.01, def = 0.8 },
+            { id = "weather_rain", type = "track", val = 2, min = 0, max = 1, step = 0.01, def = 0.75 },
+            { id = "weather_storm", type = "track", val = 2, min = 0, max = 1, step = 0.01, def = 0.7 },
+            { id = "weather_fog", type = "track", val = 2, min = 0, max = 1, step = 0.01, def = 0.7 },
+
+            -- 3. Luminance Normalization Controls
+            { id = "line3", type = "line" },
+            { id = "global_luminance_multiplier", type = "track", val = 2, min = -2, max = 2, step = 0.01, def = 1 },
+            { id = "dark_area_boost_strength", type = "track", val = 2, min = -1, max = 1, step = 0.01, def = 0 },
+            { id = "bright_area_nerf_strength", type = "track", val = 2, min = -1, max = 2, step = 0.01, def = 0 },
+
+            -- 4. Movement and Body Factors
+            { id = "line4", type = "line" },
+            { id = "crouch_visibility_multiplier", type = "track", val = 2, min = 0.1, max = 1.0, step = 0.01, def = 0.6 },
+            { id = "slow_crouch_visibility_multiplier", type = "track", val = 2, min = 0.1, max = 1.0, step = 0.01, def = 0.3 },
+            { id = "sprinting_visibility_multiplier", type = "track", val = 2, min = 1.0, max = 2.0, step = 0.01, def = 1.25 },
+            { id = "surface_noise_intensity", type = "track", val = 2, min = 0.0, max = 1.0, step = 0.1, def = 0.2 },
+
+            -- 5. Lighting and Environmental Factors
+            { id = "line5", type = "line" },
+            { id = "campfire_influence_distance", type = "track", val = 2, min = 3, max = 10, step = 1, def = 7 },
+            { id = "use_ray_casting", type = "check", val = 1, def = true },
+            { id = "indoor_check_frequency", type = "track", val = 2, min = 10, max = 30, step = 1, def = 10 },
+
+            -- 6. Animation & Perception Factors
+            { id = "line6", type = "line" },
+            { id = "fov_central_vision_angle", type = "track", val = 2, min = 30, max = 90, step = 1, def = 30 },
+            { id = "fov_peripheral_vision_angle", type = "track", val = 2, min = 90, max = 200, step = 1, def = 180 },
+
+            -- 7. Camo & NVG Factors
+            { id = "line7", type = "line" },
+            { id = "nvg_bonus_strength", type = "track", val = 2, min = 0, max = 1, step = 0.01, def = 0.5 },
+            { id = "line8", type = "line" },
+            { id = "agressive_response", type = "check", val = 1, def = true },
+
+            -- 8. Master Weather Profile
+            { id = "master_profile", type = "slide", link = "ui_options_slider_video", text = "ui_mcm_revision_master_profile", size = { 512,50 }, spacing = 20 },
+            { id = "line7", type = "line" },
+            { id = "key_0", type = "track", val = 2, min = 0, max = 1, step = 0.01, def = 0.1 },
+            { id = "key_2", type = "track", val = 2, min = 0, max = 1, step = 0.01, def = 0.1 },
+            { id = "key_4", type = "track", val = 2, min = 0, max = 1, step = 0.01, def = 0.1 },
+            { id = "key_6", type = "track", val = 2, min = 0, max = 1, step = 0.01, def = 0.6 },
+            { id = "key_8", type = "track", val = 2, min = 0, max = 1, step = 0.01, def = 0.7 },
+            { id = "key_10", type = "track", val = 2, min = 0, max = 1, step = 0.01, def = 0.8 },
+            { id = "key_12", type = "track", val = 2, min = 0, max = 1, step = 0.01, def = 0.9 },
+            { id = "key_14", type = "track", val = 2, min = 0, max = 1, step = 0.01, def = 0.9 },
+            { id = "key_16", type = "track", val = 2, min = 0, max = 1, step = 0.01, def = 0.8 },
+            { id = "key_18", type = "track", val = 2, min = 0, max = 1, step = 0.01, def = 0.7 },
+            { id = "key_20", type = "track", val = 2, min = 0, max = 1, step = 0.01, def = 0.5 },
+            { id = "key_22", type = "track", val = 2, min = 0, max = 1, step = 0.01, def = 0.1 },
+        }
+    }
+    
+    return op
+end

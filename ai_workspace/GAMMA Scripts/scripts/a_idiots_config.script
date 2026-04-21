@@ -1,0 +1,37 @@
+package.path = package.path .. ";.\\gamedata\\scripts\\?.lua;..\\gamedata\\scripts\\?.lua;"
+
+local UTIL = require "illish.lib.util"
+local VEC  = require "illish.lib.vector"
+local POS  = require "illish.lib.pos"
+
+
+-- GLOBALS --
+_G.time_plus      = UTIL.timePlus
+_G.time_plus_rand = UTIL.timePlusRandom
+_G.time_expired   = UTIL.timeExpired
+_G.time_left      = UTIL.timeLeft
+_G.vec            = VEC.set
+_G.vec_dir        = VEC.direction
+_G.vec_dist       = VEC.distance
+_G.vec_offset     = VEC.offset
+_G.vec_dot        = VEC.dotProduct
+_G.vec_avg        = VEC.average
+_G.vec_rot        = VEC.rotate
+_G.vec_rot_rand   = VEC.rotateRandom
+_G.vec_rot_range  = VEC.rotateRange
+_G.lvid           = POS.lvid
+_G.lvpos          = POS.position
+_G.lvsnap         = POS.snap
+
+
+-- STORAGE --
+DATA_VER = "1.0"
+DATA_KEY = "USEFUL_IDIOTS"
+
+DATA_STALE_KEYS = {
+  "IDIOTS_STATES",
+  "ZCDS_SHARED_ITEMS",
+  "ZCDS_STATES",
+  "ZCDS_SHARING_NPCS",
+  "CDHTS_STATES",
+}

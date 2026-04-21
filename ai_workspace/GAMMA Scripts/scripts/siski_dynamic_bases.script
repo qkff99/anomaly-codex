@@ -1,0 +1,1117 @@
+siski = siski or {}
+
+local type = _G.type
+local pcall = _G.pcall
+local require = _G.require
+local setmetatable = _G.setmetatable
+local tonumber = _G.tonumber
+local tostring = _G.tostring
+local pairs = _G.pairs
+local string_lower = _G.string and _G.string.lower or nil
+local string_gsub = _G.string and _G.string.gsub or nil
+local string_find = _G.string and _G.string.find or nil
+local table_sort = _G.table and _G.table.sort or nil
+local table_concat = _G.table and _G.table.concat or nil
+local time_global = _G.time_global
+local alife = _G.alife
+local game_graph = _G.game_graph
+local game_relations = _G.game_relations
+
+local function ensure_class()
+    local type = type
+    if type(siski.class) == "function" then
+        local ok, probe = pcall(siski.class, "_probe")
+        if ok and type(probe) == "table" then
+            return
+        end
+    end
+
+    if require then
+        pcall(require, "siski_oop")
+    end
+
+    local function define()
+        function siski.class(name)
+            local cls = {}
+            cls.__index = cls
+            cls.__name = name or "class"
+            function cls.new(...)
+                local self = setmetatable({}, cls)
+                if self.__init then
+                    self:__init(...)
+                end
+                return self
+            end
+            return cls
+        end
+    end
+
+    if type(siski.class) ~= "function" then
+        define()
+        return
+    end
+
+    local ok2, probe2 = pcall(siski.class, "_probe")
+    if not (ok2 and type(probe2) == "table") then
+        define()
+    end
+end
+
+ensure_class()
+
+local DynamicBases = siski.class("DynamicBases")
+DynamicBases.__index = DynamicBases
+
+local STATE_VERSION = "1.0.1"
+local DYNAMIC_RESPAWN_PREFIX = "faction_controlled_"
+
+local SUPPORTED_FACTIONS = {
+    "stalker",
+    "bandit",
+    "duty",
+    "freedom",
+    "merc",
+    "army",
+    "ecolog",
+    "monolith",
+    "csky",
+    "renegade",
+    "greh",
+    "isg",
+}
+
+local ENGINE_BY_ALIAS = {
+    stalker = "stalker",
+    bandit = "bandit",
+    duty = "dolg",
+    freedom = "freedom",
+    merc = "killer",
+    army = "army",
+    ecolog = "ecolog",
+    monolith = "monolith",
+    csky = "csky",
+    renegade = "renegade",
+    greh = "greh",
+    isg = "isg",
+}
+
+local ALIAS_BY_ENGINE = {
+    stalker = "stalker",
+    bandit = "bandit",
+    dolg = "duty",
+    duty = "duty",
+    freedom = "freedom",
+    killer = "merc",
+    merc = "merc",
+    army = "army",
+    military = "army",
+    ecolog = "ecolog",
+    monolith = "monolith",
+    csky = "csky",
+    renegade = "renegade",
+    greh = "greh",
+    isg = "isg",
+}
+
+local SQUADS_BY_FACTION = {
+    army = { "army_sim_squad_novice", "army_sim_squad_advanced", "army_sim_squad_veteran" },
+    bandit = { "bandit_sim_squad_novice", "bandit_sim_squad_advanced", "bandit_sim_squad_veteran" },
+    csky = { "csky_sim_squad_novice", "csky_sim_squad_advanced", "csky_sim_squad_veteran" },
+    dolg = { "duty_sim_squad_novice", "duty_sim_squad_advanced", "duty_sim_squad_veteran" },
+    ecolog = { "ecolog_sim_squad_novice", "ecolog_sim_squad_advanced", "ecolog_sim_squad_veteran" },
+    freedom = { "freedom_sim_squad_novice", "freedom_sim_squad_advanced", "freedom_sim_squad_veteran" },
+    killer = { "merc_sim_squad_novice", "merc_sim_squad_advanced", "merc_sim_squad_veteran" },
+    monolith = { "monolith_sim_squad_novice", "monolith_sim_squad_advanced", "monolith_sim_squad_veteran" },
+    stalker = { "stalker_sim_squad_novice", "stalker_sim_squad_advanced", "stalker_sim_squad_veteran" },
+    renegade = { "renegade_sim_squad_novice", "renegade_sim_squad_advanced", "renegade_sim_squad_veteran" },
+    greh = { "greh_sim_squad_novice", "greh_sim_squad_advanced", "greh_sim_squad_veteran" },
+    isg = { "isg_sim_squad_novice", "isg_sim_squad_advanced", "isg_sim_squad_veteran" },
+}
+
+local function now_level_name_by_gvid(gvid)
+    if not (gvid and alife and game_graph) then
+        return nil
+    end
+    local ok, level_name = pcall(function()
+        local gv = game_graph():vertex(gvid)
+        if not gv then
+            return nil
+        end
+        return alife():level_name(gv:level_id())
+    end)
+    return ok and level_name or nil
+end
+
+local function tg()
+    return (time_global and time_global()) or 0
+end
+
+local function get_board()
+    if SIMBOARD then
+        return SIMBOARD
+    end
+    if sim_board and sim_board.get_sim_board then
+        local ok, board = pcall(function() return sim_board.get_sim_board() end)
+        if ok then
+            return board
+        end
+    end
+    return nil
+end
+
+local function object_name(obj)
+    if type(obj) ~= "table" then
+        return nil
+    end
+    local raw_name = obj.name
+    if type(raw_name) == "string" and raw_name ~= "" then
+        return raw_name
+    end
+    local ok_name, res_name = pcall(function()
+        return obj:name()
+    end)
+    if ok_name and type(res_name) == "string" and res_name ~= "" then
+        return res_name
+    end
+    return nil
+end
+
+local function count_keys(src)
+    local total = 0
+    if type(src) ~= "table" then
+        return total
+    end
+    for _ in pairs(src) do
+        total = total + 1
+    end
+    return total
+end
+
+local function clone_list(src)
+    if type(src) ~= "table" then
+        return nil
+    end
+    local out = {}
+    for i = 1, #src do
+        out[i] = src[i]
+    end
+    return out
+end
+
+local function clone_nonempty_list(src)
+    local out = clone_list(src)
+    if type(out) ~= "table" or #out <= 0 then
+        return nil
+    end
+    return out
+end
+
+local function clone_respawn_params(src)
+    local out = {}
+    if type(src) ~= "table" then
+        return out
+    end
+    for key, value in pairs(src) do
+        if type(key) == "string" and type(value) == "table" then
+            local entry = {
+                num = value.num,
+                faction = value.faction,
+            }
+            local squads = clone_nonempty_list(value.squads)
+            local helicopter = clone_nonempty_list(value.helicopter)
+            if squads then
+                entry.squads = squads
+            end
+            if helicopter then
+                entry.helicopter = helicopter
+            end
+            out[key] = entry
+        end
+    end
+    return out
+end
+
+local function clone_already_spawned(src)
+    local out = {}
+    if type(src) ~= "table" then
+        return out
+    end
+    for key, value in pairs(src) do
+        if type(key) == "string" then
+            out[key] = { num = tonumber(type(value) == "table" and value.num or 0) or 0 }
+        end
+    end
+    return out
+end
+
+local function clone_original_entry(src)
+    if type(src) ~= "table" then
+        return nil
+    end
+    return {
+        faction_controlled = src.faction_controlled,
+        respawn_params = clone_respawn_params(src.respawn_params),
+        already_spawned = clone_already_spawned(src.already_spawned),
+    }
+end
+
+local function clone_original_by_name(src)
+    local out = {}
+    if type(src) ~= "table" then
+        return out
+    end
+    for smart_name, original in pairs(src) do
+        if type(smart_name) == "string" and smart_name ~= "" then
+            local cloned = clone_original_entry(original)
+            if cloned then
+                out[smart_name] = cloned
+            end
+        end
+    end
+    return out
+end
+
+local function is_dynamic_respawn_key(key)
+    return type(key) == "string"
+        and key ~= ""
+        and string_find
+        and string_find(key, DYNAMIC_RESPAWN_PREFIX, 1, true) == 1
+end
+
+local function normalize_alias(name)
+    if type(name) ~= "string" then
+        return nil
+    end
+    local key = name
+    if string_gsub then
+        key = string_gsub(key, "^%s*(.-)%s*$", "%1")
+    end
+    if string_lower then
+        key = string_lower(key)
+    end
+    if key == "" then
+        return nil
+    end
+    if siski.config and siski.config.get_faction_alias then
+        local alias = siski.config.get_faction_alias(key)
+        if type(alias) == "string" and alias ~= "" then
+            key = string_lower and string_lower(alias) or alias
+        end
+    end
+    return ALIAS_BY_ENGINE[key] or key
+end
+
+local function alias_to_engine(alias)
+    alias = normalize_alias(alias)
+    return alias and ENGINE_BY_ALIAS[alias] or nil
+end
+
+local function is_supported_alias(alias)
+    return alias ~= nil and ENGINE_BY_ALIAS[alias] ~= nil
+end
+
+local function has_stalker_presence(smart)
+    if not (smart and type(smart.npc_info) == "table") then
+        return false
+    end
+    for _, info in pairs(smart.npc_info) do
+        local se_obj = type(info) == "table" and info.se_obj or nil
+        if se_obj and IsStalker then
+            local ok, clsid = pcall(function() return se_obj:clsid() end)
+            if ok and IsStalker(nil, clsid) then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+local function community_alias_from_obj(se_obj)
+    if not se_obj then
+        return nil
+    end
+    local raw = nil
+    if siski.safe and siski.safe.safe_community then
+        raw = siski.safe.safe_community(se_obj)
+    else
+        local ok_raw, value = pcall(function() return se_obj:community() end)
+        raw = ok_raw and value or nil
+    end
+    return normalize_alias(raw)
+end
+
+local function factions_signature(src)
+    if type(src) ~= "table" or not table_concat then
+        return "-"
+    end
+    local out = {}
+    for alias in pairs(src) do
+        if type(alias) == "string" and alias ~= "" then
+            out[#out + 1] = alias
+        end
+    end
+    if #out <= 0 then
+        return "-"
+    end
+    if table_sort then
+        table_sort(out)
+    end
+    return table_concat(out, ",")
+end
+
+local function collect_live_stalker_factions(smart)
+    local factions_present = {}
+    local stalker_count = 0
+    local last_alias = nil
+    if not (smart and type(smart.npc_info) == "table") then
+        return factions_present, stalker_count, false, last_alias
+    end
+    for _, info in pairs(smart.npc_info) do
+        local se_obj = type(info) == "table" and info.se_obj or nil
+        if se_obj and IsStalker then
+            local ok, clsid = pcall(function() return se_obj:clsid() end)
+            if ok and IsStalker(nil, clsid) then
+                stalker_count = stalker_count + 1
+                local alias = community_alias_from_obj(se_obj)
+                if is_supported_alias(alias) then
+                    factions_present[alias] = true
+                    last_alias = alias
+                end
+            end
+        end
+    end
+
+    local faction_war = false
+    if game_relations and game_relations.is_factions_enemies then
+        for a in pairs(factions_present) do
+            local engine_a = alias_to_engine(a)
+            if engine_a then
+                for b in pairs(factions_present) do
+                    if a ~= b then
+                        local engine_b = alias_to_engine(b)
+                        if engine_b then
+                            local ok_enemy, hostile = pcall(function()
+                                return game_relations.is_factions_enemies(engine_a, engine_b)
+                            end)
+                            if ok_enemy and hostile == true then
+                                faction_war = true
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+            if faction_war then
+                break
+            end
+        end
+    end
+
+    return factions_present, stalker_count, faction_war, last_alias
+end
+
+local function is_base_respawn_smart(smart)
+    if not smart then
+        return false
+    end
+    local props = type(smart.props) == "table" and smart.props or nil
+    local base = props and tonumber(props.base) or 0
+    if base <= 0 then
+        return false
+    end
+    if smart.respawn_point ~= true then
+        return false
+    end
+    return type(smart.respawn_params) == "table"
+end
+
+local function key_signature(src)
+    if type(src) ~= "table" then
+        return "-"
+    end
+    local keys = {}
+    local n = 0
+    for key in pairs(src) do
+        n = n + 1
+        keys[n] = tostring(key)
+    end
+    if table_sort then
+        table_sort(keys)
+    end
+    if table_concat then
+        return table_concat(keys, ",")
+    end
+    local out = ""
+    for i = 1, #keys do
+        out = out .. keys[i] .. ","
+    end
+    return out
+end
+
+function DynamicBases:__init()
+    self.STATE = {
+        version = STATE_VERSION,
+    }
+    self.RUNTIME = {
+        active_enabled = false,
+        disabled_logged = false,
+        targets = {},
+        target_set = {},
+        dirty_targets = {},
+        original_by_name = {},
+        applied_signature_by_name = {},
+        owner_by_name = {},
+        stats = {
+            ticks = 0,
+            targets = 0,
+            touched = 0,
+            updated = 0,
+            owner_changed = 0,
+            cleared = 0,
+            restored = 0,
+            skipped_no_template = 0,
+            skipped_ap_owned = 0,
+        },
+    }
+end
+
+function DynamicBases:_is_enabled()
+    if not (siski.config and siski.config.get) then
+        return false
+    end
+    if siski.config.get("enabled", true) ~= true then
+        return false
+    end
+    return siski.config.get("dynamic_bases_enabled", false) == true
+end
+
+function DynamicBases:_num_cfg(key, default, min_v)
+    local value = default
+    if siski.config and siski.config.get then
+        local read = siski.config.get(key, default)
+        if tonumber(read) then
+            value = tonumber(read)
+        end
+    end
+    if min_v ~= nil and value < min_v then
+        value = min_v
+    end
+    return value
+end
+
+function DynamicBases:_log_info(fmt, ...)
+    if siski.log and siski.log.info then
+        siski.log.info("DYNAMIC_BASES", fmt, ...)
+    end
+end
+
+function DynamicBases:_log_warn(fmt, ...)
+    if siski.log and siski.log.warn then
+        siski.log.warn("DYNAMIC_BASES", fmt, ...)
+    end
+end
+
+function DynamicBases:_capture_original(smart_name, smart)
+    if type(smart_name) ~= "string" or smart_name == "" or not smart then
+        return
+    end
+    if self.RUNTIME.original_by_name[smart_name] ~= nil then
+        return
+    end
+    self.RUNTIME.original_by_name[smart_name] = {
+        faction_controlled = smart.faction_controlled,
+        respawn_params = clone_respawn_params(smart.respawn_params),
+        already_spawned = clone_already_spawned(smart.already_spawned),
+    }
+    self.RUNTIME.stats.touched = count_keys(self.RUNTIME.original_by_name)
+end
+
+function DynamicBases:_restore_all()
+    local board = get_board()
+    if not (board and board.smarts_by_names) then
+        self.RUNTIME.original_by_name = {}
+        self.RUNTIME.applied_signature_by_name = {}
+        self.RUNTIME.owner_by_name = {}
+        self.RUNTIME.stats.touched = 0
+        return
+    end
+
+    local restored = 0
+    for smart_name, original in pairs(self.RUNTIME.original_by_name) do
+        local smart = board.smarts_by_names[smart_name]
+        if smart and type(original) == "table" then
+            smart.faction_controlled = original.faction_controlled
+            smart.respawn_params = clone_respawn_params(original.respawn_params)
+            smart.already_spawned = clone_already_spawned(original.already_spawned)
+            restored = restored + 1
+        end
+    end
+
+    self.RUNTIME.original_by_name = {}
+    self.RUNTIME.applied_signature_by_name = {}
+    self.RUNTIME.owner_by_name = {}
+    self.RUNTIME.stats.restored = (tonumber(self.RUNTIME.stats.restored) or 0) + restored
+    self.RUNTIME.stats.touched = 0
+    self:_log_info("restored count=%s", tostring(restored))
+end
+
+function DynamicBases:_resolve_num_template(smart_name, smart)
+    local original = self.RUNTIME.original_by_name[smart_name]
+    local params = original and original.respawn_params or smart and smart.respawn_params or nil
+    if type(params) ~= "table" then
+        return nil
+    end
+    for _, value in pairs(params) do
+        if type(value) == "table" and value.num ~= nil then
+            return value.num
+        end
+    end
+    return nil
+end
+
+function DynamicBases:_refresh_target_list()
+    local targets = {}
+    for smart_name in pairs(self.RUNTIME.target_set or {}) do
+        targets[#targets + 1] = smart_name
+    end
+    if table_sort then
+        table_sort(targets)
+    end
+    self.RUNTIME.targets = targets
+    self.RUNTIME.stats.targets = #targets
+end
+
+function DynamicBases:_restore_target(smart_name, smart)
+    local original = self.RUNTIME.original_by_name[smart_name]
+    if smart and type(original) == "table" then
+        smart.faction_controlled = original.faction_controlled
+        smart.respawn_params = clone_respawn_params(original.respawn_params)
+        smart.already_spawned = clone_already_spawned(original.already_spawned)
+        self.RUNTIME.stats.restored = (tonumber(self.RUNTIME.stats.restored) or 0) + 1
+    end
+    self.RUNTIME.original_by_name[smart_name] = nil
+    self.RUNTIME.applied_signature_by_name[smart_name] = nil
+    self.RUNTIME.owner_by_name[smart_name] = nil
+    self.RUNTIME.dirty_targets[smart_name] = nil
+    self.RUNTIME.stats.touched = count_keys(self.RUNTIME.original_by_name)
+end
+
+function DynamicBases:_forget_target(smart_name, restore_current)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return false
+    end
+    if self.RUNTIME.target_set[smart_name] ~= true then
+        self:_restore_target(smart_name, nil)
+        return false
+    end
+
+    local smart = nil
+    if restore_current == true then
+        local board = get_board()
+        smart = board and board.smarts_by_names and board.smarts_by_names[smart_name] or nil
+    end
+
+    self.RUNTIME.target_set[smart_name] = nil
+    self:_restore_target(smart_name, smart)
+    self:_refresh_target_list()
+    return true
+end
+
+function DynamicBases:_sync_targets_from_index()
+    local board_index = siski.board_index
+    if not (board_index and board_index.get_known_smart_levels and board_index.get_respawn_base_smarts) then
+        self.RUNTIME.targets = {}
+        self.RUNTIME.target_set = {}
+        self.RUNTIME.stats.targets = 0
+        return
+    end
+
+    local next_set = {}
+    local levels = board_index.get_known_smart_levels() or {}
+    for i = 1, #levels do
+        local level_name = levels[i]
+        local list = board_index.get_respawn_base_smarts(level_name) or {}
+        for j = 1, #list do
+            local smart_name = list[j]
+            if type(smart_name) == "string" and smart_name ~= "" then
+                next_set[smart_name] = true
+            end
+        end
+    end
+
+    for smart_name in pairs(self.RUNTIME.target_set or {}) do
+        if next_set[smart_name] ~= true then
+            self:_forget_target(smart_name, true)
+        end
+    end
+
+    self.RUNTIME.target_set = next_set
+    self:_refresh_target_list()
+end
+
+function DynamicBases:_resolve_effective_owner_alias(smart)
+    local raw_faction = smart and smart.faction or nil
+    local owner = normalize_alias(raw_faction)
+    local factions_present, stalker_count, faction_war, live_alias = collect_live_stalker_factions(smart)
+    if stalker_count <= 0 then
+        return nil, "no_stalker_presence", stalker_count, factions_signature(factions_present), raw_faction
+    end
+    if is_supported_alias(owner) and factions_present[owner] == true then
+        return owner, "smart.faction", stalker_count, factions_signature(factions_present), raw_faction
+    end
+    if not faction_war and is_supported_alias(live_alias) then
+        return live_alias, "live_presence", stalker_count, factions_signature(factions_present), raw_faction
+    end
+    if faction_war then
+        return nil, "faction_war", stalker_count, factions_signature(factions_present), raw_faction
+    end
+    return nil, "unsupported_or_nil_faction", stalker_count, factions_signature(factions_present), raw_faction
+end
+
+function DynamicBases:_collect_allowed_factions(owner_alias)
+    local out = {}
+    local owner_engine = alias_to_engine(owner_alias)
+    if not owner_engine then
+        return out
+    end
+
+    for i = 1, #SUPPORTED_FACTIONS do
+        local alias = SUPPORTED_FACTIONS[i]
+        local engine = alias_to_engine(alias)
+        if engine then
+            if engine == owner_engine then
+                out[#out + 1] = engine
+            elseif game_relations and game_relations.is_factions_friends then
+                local ok_f, friends = pcall(function()
+                    return game_relations.is_factions_friends(owner_engine, engine)
+                end)
+                local enemies = false
+                if game_relations.is_factions_enemies then
+                    local ok_e, hostile = pcall(function()
+                        return game_relations.is_factions_enemies(owner_engine, engine)
+                    end)
+                    enemies = ok_e and hostile == true or false
+                end
+                if ok_f and friends == true and enemies ~= true then
+                    out[#out + 1] = engine
+                end
+            end
+        end
+    end
+
+    if table_sort then
+        table_sort(out)
+    end
+    return out
+end
+
+function DynamicBases:_build_respawn_params(owner_alias, num_template)
+    local params = {}
+    if not (owner_alias and num_template ~= nil) then
+        return params
+    end
+
+    local allowed = self:_collect_allowed_factions(owner_alias)
+    for i = 1, #allowed do
+        local faction = allowed[i]
+        local squads = SQUADS_BY_FACTION[faction]
+        if squads and #squads > 0 then
+            local key = "faction_controlled_" .. faction
+            params[key] = {
+                num = num_template,
+                squads = clone_list(squads),
+                faction = faction,
+            }
+        end
+    end
+    return params
+end
+
+function DynamicBases:_rebuild_respawn_params(existing, params)
+    local out = {}
+    for key, value in pairs(type(existing) == "table" and existing or {}) do
+        if type(key) == "string" and type(value) == "table" and not is_dynamic_respawn_key(key) then
+            local entry = {
+                num = value.num,
+                faction = value.faction,
+            }
+            local squads = clone_nonempty_list(value.squads)
+            local helicopter = clone_nonempty_list(value.helicopter)
+            if squads then
+                entry.squads = squads
+            end
+            if helicopter then
+                entry.helicopter = helicopter
+            end
+            out[key] = entry
+        end
+    end
+
+    for key, value in pairs(type(params) == "table" and params or {}) do
+        if type(key) == "string" and type(value) == "table" then
+            local entry = {
+                num = value.num,
+                faction = value.faction,
+            }
+            local squads = clone_nonempty_list(value.squads)
+            local helicopter = clone_nonempty_list(value.helicopter)
+            if squads then
+                entry.squads = squads
+            end
+            if helicopter then
+                entry.helicopter = helicopter
+            end
+            out[key] = entry
+        end
+    end
+
+    return out
+end
+
+function DynamicBases:_rebuild_already_spawned(existing, params)
+    local out = {}
+    for key, value in pairs(type(existing) == "table" and existing or {}) do
+        if type(key) == "string" then
+            out[key] = { num = tonumber(type(value) == "table" and value.num or 0) or 0 }
+        end
+    end
+    for key in pairs(params or {}) do
+        local num = tonumber(type(existing) == "table" and existing[key] and existing[key].num or 0) or 0
+        out[key] = { num = num }
+    end
+    return out
+end
+
+function DynamicBases:_is_target_smart(smart_name)
+    return type(smart_name) == "string"
+        and smart_name ~= ""
+        and type(self.RUNTIME.target_set) == "table"
+        and self.RUNTIME.target_set[smart_name] == true
+end
+
+function DynamicBases:_upsert_target_from_smart(smart, source)
+    local smart_name = object_name(smart)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return nil, false
+    end
+
+    if not is_base_respawn_smart(smart) then
+        self:_forget_target(smart_name, true)
+        return smart_name, false
+    end
+
+    if self.RUNTIME.target_set[smart_name] ~= true then
+        self.RUNTIME.target_set[smart_name] = true
+        self:_refresh_target_list()
+    end
+    return smart_name, true
+end
+
+function DynamicBases:_resolve_target_smart_name_from_squad(se_squad)
+    if not se_squad then
+        return nil
+    end
+
+    local scripted = type(se_squad.scripted_target) == "string" and se_squad.scripted_target or nil
+    if self:_is_target_smart(scripted) then
+        return scripted
+    end
+
+    local smart_id = tonumber(se_squad.smart_id) or nil
+    if smart_id and siski.board_index and siski.board_index.get_smart_name_by_id then
+        local smart_name = siski.board_index.get_smart_name_by_id(smart_id)
+        if self:_is_target_smart(smart_name) then
+            return smart_name
+        end
+    end
+
+    return nil
+end
+
+function DynamicBases:_consume_dirty_targets()
+    local out = {}
+    local dirty = type(self.RUNTIME.dirty_targets) == "table" and self.RUNTIME.dirty_targets or {}
+    for smart_name in pairs(dirty) do
+        if self:_is_target_smart(smart_name) then
+            out[#out + 1] = smart_name
+        end
+        dirty[smart_name] = nil
+    end
+    if table_sort then
+        table_sort(out)
+    end
+    self.RUNTIME.dirty_targets = dirty
+    return out
+end
+
+function DynamicBases:_mark_target_dirty(smart_name, reason)
+    if not self:_is_target_smart(smart_name) then
+        return false
+    end
+    self.RUNTIME.dirty_targets = type(self.RUNTIME.dirty_targets) == "table" and self.RUNTIME.dirty_targets or {}
+    self.RUNTIME.dirty_targets[smart_name] = true
+    return self:_run_dirty_reconcile(reason or "dirty")
+end
+
+function DynamicBases:_process_smart(board, smart_name)
+    local smart = board and board.smarts_by_names and board.smarts_by_names[smart_name] or nil
+    if not is_base_respawn_smart(smart) then
+        return
+    end
+    self:_capture_original(smart_name, smart)
+
+    local owner_alias, owner_source, stalker_count, factions_sig, raw_faction = self:_resolve_effective_owner_alias(smart)
+    local prev_owner = self.RUNTIME.owner_by_name[smart_name]
+    if prev_owner ~= owner_alias then
+        self.RUNTIME.owner_by_name[smart_name] = owner_alias
+        self.RUNTIME.stats.owner_changed = (tonumber(self.RUNTIME.stats.owner_changed) or 0) + 1
+    end
+
+    local num_template = self:_resolve_num_template(smart_name, smart)
+    if owner_alias and num_template == nil then
+        self.RUNTIME.stats.skipped_no_template = (tonumber(self.RUNTIME.stats.skipped_no_template) or 0) + 1
+        self:_log_warn("skip_no_template smart=%s owner=%s", tostring(smart_name), tostring(owner_alias))
+        return
+    end
+
+    local params = self:_build_respawn_params(owner_alias, num_template)
+    local signature = tostring(owner_alias or "none") .. "|" .. key_signature(params)
+    if self.RUNTIME.applied_signature_by_name[smart_name] == signature then
+        return
+    end
+
+    smart.faction_controlled = nil
+    smart.respawn_params = self:_rebuild_respawn_params(smart.respawn_params, params)
+    smart.already_spawned = self:_rebuild_already_spawned(smart.already_spawned, params)
+    self.RUNTIME.applied_signature_by_name[smart_name] = signature
+    self.RUNTIME.stats.updated = (tonumber(self.RUNTIME.stats.updated) or 0) + 1
+    if owner_alias == nil then
+        self.RUNTIME.stats.cleared = (tonumber(self.RUNTIME.stats.cleared) or 0) + 1
+    end
+
+    if owner_alias == nil or owner_source ~= "smart.faction" then
+        self:_log_info(
+            "apply smart=%s owner=%s groups=%s source=%s stalkers=%s factions=%s raw=%s",
+            tostring(smart_name),
+            tostring(owner_alias or "none"),
+            tostring(count_keys(params)),
+            tostring(owner_source or "-"),
+            tostring(stalker_count or 0),
+            tostring(factions_sig or "-"),
+            tostring(raw_faction or "-")
+        )
+    else
+        self:_log_info(
+            "apply smart=%s owner=%s groups=%s",
+            tostring(smart_name),
+            tostring(owner_alias),
+            tostring(count_keys(params))
+        )
+    end
+end
+
+function DynamicBases:_run_dirty_reconcile(reason)
+    if self.RUNTIME.reconcile_running == true then
+        self.RUNTIME.reconcile_pending = true
+        return false
+    end
+
+    self.RUNTIME.reconcile_running = true
+    local ok, err = pcall(function()
+        repeat
+            self.RUNTIME.reconcile_pending = false
+
+    if not self:_is_enabled() then
+        if self.RUNTIME.active_enabled == true then
+            self:_restore_all()
+        end
+        self.RUNTIME.active_enabled = false
+        if not self.RUNTIME.disabled_logged then
+            self:_log_info("disabled")
+            self.RUNTIME.disabled_logged = true
+        end
+        return
+    end
+
+    self.RUNTIME.disabled_logged = false
+    self.RUNTIME.active_enabled = true
+    self.RUNTIME.stats.ticks = (tonumber(self.RUNTIME.stats.ticks) or 0) + 1
+
+    local board = get_board()
+    local targets = self:_consume_dirty_targets()
+    if #targets <= 0 then
+        return
+    end
+    for i = 1, #targets do
+        self:_process_smart(board, targets[i])
+    end
+        until self.RUNTIME.reconcile_pending ~= true
+    end)
+    self.RUNTIME.reconcile_running = false
+    if not ok then
+        error(err)
+    end
+    return true
+end
+
+function DynamicBases:_reactivate_runtime(reason)
+    if not self:_is_enabled() then
+        if self.RUNTIME.active_enabled == true then
+            self:_restore_all()
+        end
+        self.RUNTIME.active_enabled = false
+        return
+    end
+    self.RUNTIME.disabled_logged = false
+    self.RUNTIME.active_enabled = true
+    self:_sync_targets_from_index()
+    self.RUNTIME.dirty_targets = {}
+    for i = 1, #(self.RUNTIME.targets or {}) do
+        self.RUNTIME.dirty_targets[self.RUNTIME.targets[i]] = true
+    end
+    self:_run_dirty_reconcile(reason or "reactivate")
+end
+
+function DynamicBases:_on_first_update()
+    self:_reactivate_runtime("first_update")
+end
+
+function DynamicBases:_reset_runtime(reason)
+    self.RUNTIME.targets = {}
+    self.RUNTIME.target_set = {}
+    self.RUNTIME.dirty_targets = {}
+    self.RUNTIME.original_by_name = {}
+    self.RUNTIME.applied_signature_by_name = {}
+    self.RUNTIME.owner_by_name = {}
+    self.RUNTIME.active_enabled = false
+    self.RUNTIME.disabled_logged = false
+    self.RUNTIME.reconcile_running = false
+    self.RUNTIME.reconcile_pending = false
+    if siski.log and siski.log.warn then
+        siski.log.warn("DYNAMIC_BASES", "reset_runtime reason=%s", tostring(reason or "-"))
+    end
+end
+
+function DynamicBases:_save_state(m_data)
+    if not m_data then
+        return
+    end
+    m_data.siski_dynamic_bases_state = {
+        version = STATE_VERSION,
+        original_by_name = clone_original_by_name(self.RUNTIME.original_by_name),
+    }
+end
+
+function DynamicBases:_load_state(m_data)
+    local loaded = m_data and m_data.siski_dynamic_bases_state or nil
+    self.STATE = {
+        version = type(loaded) == "table" and loaded.version or STATE_VERSION,
+    }
+    self.RUNTIME.targets = {}
+    self.RUNTIME.target_set = {}
+    self.RUNTIME.dirty_targets = {}
+    self.RUNTIME.original_by_name = clone_original_by_name(type(loaded) == "table" and loaded.original_by_name or nil)
+    self.RUNTIME.applied_signature_by_name = {}
+    self.RUNTIME.owner_by_name = {}
+    self.RUNTIME.active_enabled = false
+    self.RUNTIME.disabled_logged = false
+    self.RUNTIME.stats.touched = count_keys(self.RUNTIME.original_by_name)
+    self.RUNTIME.reconcile_running = false
+    self.RUNTIME.reconcile_pending = false
+end
+
+function DynamicBases:_get_runtime_stats()
+    local out = {}
+    for key, value in pairs(self.RUNTIME and self.RUNTIME.stats or {}) do
+        out[key] = value
+    end
+    out.targets = #(self.RUNTIME.targets or {})
+    out.touched = count_keys(self.RUNTIME.original_by_name)
+    return out
+end
+
+local inst = DynamicBases.new and DynamicBases.new() or setmetatable({}, DynamicBases)
+if not inst.RUNTIME then
+    DynamicBases.__init(inst)
+end
+
+local function bus_args(payload)
+    if type(payload) ~= "table" then
+        return {}
+    end
+    return type(payload.args) == "table" and payload.args or {}
+end
+
+if siski and siski.bus and siski.bus.subscribe then
+    siski.bus.subscribe("load_state", "siski_dynamic_bases", function()
+        inst:_reactivate_runtime("load_state")
+    end)
+    siski.bus.subscribe("on_option_change", "siski_dynamic_bases", function()
+        inst:_reactivate_runtime("option_change")
+    end)
+    siski.bus.subscribe("smart_terrain_on_update", "siski_dynamic_bases", function(payload)
+        local args = bus_args(payload)
+        local smart = args[1]
+        local smart_name, keep = inst:_upsert_target_from_smart(smart, "smart_update")
+        if keep and smart_name then
+            inst:_mark_target_dirty(smart_name, "smart_update")
+        end
+    end)
+    siski.bus.subscribe("squad_on_enter_smart", "siski_dynamic_bases", function(payload)
+        local args = bus_args(payload)
+        local smart_name = inst:_resolve_target_smart_name_from_squad(args[1])
+        if smart_name then
+            inst:_mark_target_dirty(smart_name, "enter_smart")
+        end
+    end)
+    siski.bus.subscribe("squad_on_leave_smart", "siski_dynamic_bases", function(payload)
+        local args = bus_args(payload)
+        local smart_name = inst:_resolve_target_smart_name_from_squad(args[1])
+        if smart_name then
+            inst:_mark_target_dirty(smart_name, "leave_smart")
+        end
+    end)
+    siski.bus.subscribe("squad_on_after_level_change", "siski_dynamic_bases", function(payload)
+        local args = bus_args(payload)
+        local smart_name = inst:_resolve_target_smart_name_from_squad(args[1])
+        if smart_name then
+            inst:_mark_target_dirty(smart_name, "after_level_change")
+        end
+    end)
+    siski.bus.subscribe("squad_on_npc_creation", "siski_dynamic_bases", function(payload)
+        local args = bus_args(payload)
+        local smart_name = inst:_resolve_target_smart_name_from_squad(args[1])
+        if smart_name then
+            inst:_mark_target_dirty(smart_name, "npc_creation")
+        end
+    end)
+    siski.bus.subscribe("squad_on_npc_death", "siski_dynamic_bases", function(payload)
+        local args = bus_args(payload)
+        local smart_name = inst:_resolve_target_smart_name_from_squad(args[1])
+        if smart_name then
+            inst:_mark_target_dirty(smart_name, "npc_death")
+        end
+    end)
+    siski.bus.subscribe("server_entity_on_unregister", "siski_dynamic_bases", function(payload)
+        local args = bus_args(payload)
+        local se_obj = args[1]
+        local smart_name = object_name(se_obj)
+        if inst:_is_target_smart(smart_name) then
+            inst:_forget_target(smart_name, false)
+            return
+        end
+        smart_name = inst:_resolve_target_smart_name_from_squad(se_obj)
+        if smart_name then
+            inst:_mark_target_dirty(smart_name, "server_unregister")
+        end
+    end)
+end
+
+inst.on_first_update = function() return inst:_on_first_update() end
+inst.reset_runtime = function(reason) return inst:_reset_runtime(reason) end
+inst.save_state = function(m_data) return inst:_save_state(m_data) end
+inst.load_state = function(m_data) return inst:_load_state(m_data) end
+inst.get_runtime_stats = function() return inst:_get_runtime_stats() end
+inst.get_effective_owner = function(smart) return inst:_resolve_effective_owner_alias(smart) end
+
+siski.dynamic_bases = inst

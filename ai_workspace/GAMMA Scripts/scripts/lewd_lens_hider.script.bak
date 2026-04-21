@@ -1,0 +1,258 @@
+---==================================================================================================================---
+---                                                                                                                  ---
+---    Original Author(s) : NLTP_ASHES                                                                               ---
+---    Edited : N/A                                                                                                  ---
+---    Date : 14/05/2024                                                                                             ---
+---    License : Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)                            ---
+---                                                                                                                  ---
+---    Script used to hide a specific bone when aiming down sights.                                                  ---
+---                                                                                                                  ---
+---==================================================================================================================---
+
+-- ---------------------------------------------------------------------------------------------------------------------
+-- Constants, global variables and imported functions
+-- ---------------------------------------------------------------------------------------------------------------------
+
+DEBUG_MODE = false
+
+CONFIG_KEY_ENABLED = "lewd_lens_hide_enabled"
+CONFIG_KEY_BONE_NAME = "lewd_lens_hide_bone"
+CONFIG_KEY_DELAYS = "lewd_lens_hide_delays"
+CONFIG_KEY_AIM_MODE = "lewd_lens_hide_aim_mode"
+CONFIG_KEY_SPAWN_SHOW = "lewd_lens_hide_show_on_spawn"
+CONFIG_KEY_SPAWN_HIDE = "lewd_lens_hide_hide_on_spawn"
+
+ZOOM_TYPES = {
+    NORMAL = 0,
+    ALT = 1,
+    GL = 2
+}
+
+-- ---------------------------------------------------------------------------------------------------------------------
+-- On game object spawn
+-- ---------------------------------------------------------------------------------------------------------------------
+
+--- Function triggered by callback used to trigger some code when a game_object is spawned.
+--- @param obj game_object
+--- @return nil
+function game_object_on_net_spawn(obj)
+    local enabled = ini_sys:r_bool_ex(obj:section(), CONFIG_KEY_ENABLED, false)
+    if not enabled then
+        return
+    end
+
+    local parent = obj:parent()
+    if not parent or parent:id() ~= AC_ID then
+        return
+    end
+
+    local show_bones = str_explode(ini_sys:r_string_ex(obj:section(), CONFIG_KEY_SPAWN_SHOW) or "",",")
+    for _,bone_name in pairs(show_bones) do
+        CreateTimeEvent("lewd_lens_hider_spawn_show", bone_name, 0.1, game_object_on_net_spawn_set_bone, obj:id(), bone_name, true)
+    end
+
+    local hide_bones = str_explode(ini_sys:r_string_ex(obj:section(), CONFIG_KEY_SPAWN_HIDE) or "",",")
+    for _,bone_name in pairs(hide_bones) do
+        CreateTimeEvent("lewd_lens_hider_spawn_show", bone_name, 0.1, game_object_on_net_spawn_set_bone, obj:id(), bone_name, false)
+    end
+end
+
+--- Function called to set the visibility a bone on an object that has lens hider enabled when it spawns.
+--- @param id number
+--- @param bone_name string
+--- @param visibility boolean
+--- @return boolean
+function game_object_on_net_spawn_set_bone(id, bone_name, visibility)
+    local obj = level.object_by_id(id)
+    if not obj then
+        printf("[LEWD LENS HIDER] ERROR | Game Object Net Spawn | Error with object with ID %s, the object was not found. Aborting...", id)
+        return true
+    end
+    printdbg("[LEWD LENS HIDER] INFO | Game Object Net Spawn | Setting visibility as %s for bone %s of object with name %s", visibility, bone_name, obj:name())
+    set_bone_visibility(obj, bone_name, visibility)
+    return true
+end
+
+-- ---------------------------------------------------------------------------------------------------------------------
+-- On zoom in/out
+-- ---------------------------------------------------------------------------------------------------------------------
+
+--- Function triggered by callback used to trigger some code when the actor aims down sights.
+--- @param obj game_object
+--- @return nil
+function actor_on_weapon_zoom_in(obj)
+    local enabled = ini_sys:r_bool_ex(obj:section(), CONFIG_KEY_ENABLED, false)
+    if not enabled then
+        return
+    end
+    local delay_in, _ = get_delays(obj)
+    if not delay_in then
+        return
+    end
+    local heatVisionEnabled = get_console_cmd(1, "r__heatvision")
+    if heatVisionEnabled then
+        return;
+    end
+
+    RemoveTimeEvent("lewd_lens_hider_out", obj:name())
+    CreateTimeEvent("lewd_lens_hider_in", obj:name(), delay_in, actor_on_weapon_zoom_set_bone, obj:id(), false)
+end
+
+--- Function triggered by callback used to trigger some code when the actor aims out of sights.
+--- @param obj game_object
+--- @return nil
+function actor_on_weapon_zoom_out(obj)
+    local enabled = ini_sys:r_bool_ex(obj:section(), CONFIG_KEY_ENABLED, false)
+    if not enabled then
+        return
+    end
+    local _, delay_out = get_delays(obj)
+    if not delay_out then
+        return
+    end
+    RemoveTimeEvent("lewd_lens_hider_in", obj:name())
+    CreateTimeEvent("lewd_lens_hider_out", obj:name(), delay_out, actor_on_weapon_zoom_set_bone, obj:id(), true)
+end
+
+--- Function called to set the visibility a bone on an object that has lens hider enabled when aiming in/out of sight.
+--- @param id number
+--- @param visibility boolean
+--- @return boolean
+function actor_on_weapon_zoom_set_bone(id, visibility)
+    local obj, bone_name, should_hide = get_information(id)
+
+    if obj and bone_name and should_hide then
+        printdbg("[LEWD LENS HIDER] INFO | On Weapon Zoom | Setting visibility as %s for bone %s of object with name %s", visibility, bone_name, obj:name())
+        set_bone_visibility(obj, bone_name, visibility)
+    end
+
+    return true
+end
+
+--- Function triggered by callback used to trigger some code when the actor changes the zoom type.
+--- @param obj game_object
+--- @param previous number
+--- @param current number
+--- @return nil
+function actor_on_weapon_zoom_type_changed(obj, previous, current)
+    printdbg("[LEWD LENS HIDER] INFO | Weapon Zoom Type Changed | [%s] %s -> %s", obj:name(), previous, current)
+
+    local enabled = ini_sys:r_bool_ex(obj:section(), CONFIG_KEY_ENABLED, false)
+    if not enabled then
+        return
+    end
+
+    if not axr_main.weapon_is_zoomed then
+        return
+    end
+    local heatVisionEnabled = get_console_cmd(1, "r__heatvision")
+    if heatVisionEnabled then
+        return;
+    end
+
+    local _, bone_name_prev, should_hide_prev = get_information(obj:id(), previous)
+    if bone_name_prev and should_hide_prev then
+        printdbg("[LEWD LENS HIDER] INFO | Weapon Zoom Type Changed | Showing bone %s", bone_name_prev)
+        set_bone_visibility(obj, bone_name_prev, true)
+    end
+
+    local _, bone_name_curr, should_hide_curr = get_information(obj:id(), current)
+    if bone_name_curr and should_hide_curr then
+        printdbg("[LEWD LENS HIDER] INFO | Weapon Zoom Type Changed | Hiding bone %s", bone_name_curr)
+        set_bone_visibility(obj, bone_name_curr, false)
+    end
+end
+
+-- ---------------------------------------------------------------------------------------------------------------------
+-- Callbacks registration
+-- ---------------------------------------------------------------------------------------------------------------------
+
+--- Function used to register callbacks.
+--- @return nil
+function on_game_start()
+    RegisterScriptCallback("game_object_on_net_spawn", game_object_on_net_spawn)
+    RegisterScriptCallback("actor_on_weapon_zoom_in", actor_on_weapon_zoom_in)
+    RegisterScriptCallback("actor_on_weapon_zoom_out", actor_on_weapon_zoom_out)
+    RegisterScriptCallback("actor_on_weapon_zoom_type_changed", actor_on_weapon_zoom_type_changed)
+end
+
+-- ---------------------------------------------------------------------------------------------------------------------
+-- Utility functions
+-- ---------------------------------------------------------------------------------------------------------------------
+
+--- Function used to get information for a certain ID.
+--- This will run all necessary checks and will either:
+--- - "return false, nil" - if something went wrong or if the object for the given ID isn't part of lens hider.
+--- - "return game_object, string" - if everything is in order and a bone should be shown/hidden for the object.
+--- @return boolean, game_object|nil
+function get_information(id, override_zoom_type)
+    local obj = level.object_by_id(id)
+    if not obj then
+        printf("[LEWD LENS HIDER] ERROR | Get Information | Error with object with ID %s, the object was not found", id)
+        return obj, nil, false
+    end
+
+    local wpn_obj = obj:cast_Weapon()
+    if not wpn_obj then
+        printf("[LEWD LENS HIDER] ERROR | Get Information | Error with object with name %s, the object failed to cast as a weapon", obj:name())
+        return obj, nil, false
+    end
+
+    local bone_name = ini_sys:r_string_ex(obj:section(), CONFIG_KEY_BONE_NAME)
+    if not bone_name then
+        printf("[LEWD LENS HIDER] ERROR | Get Information | Error with object with name %s, the config %s was not defined", obj:name(), CONFIG_KEY_BONE_NAME)
+        return obj, nil, false
+    end
+
+    local aim_modes = str_explode(ini_sys:r_string_ex(obj:section(), CONFIG_KEY_AIM_MODE) or "true,true,true",",")
+    if size_table(aim_modes) ~= 3 then
+        printf("[LEWD LENS HIDER] ERROR | Get Information | Error with object with name %s, the config %s should have %s elements, except it has %s", obj:name(), CONFIG_KEY_AIM_MODE, 3, size_table(aim_modes))
+        return obj, bone_name, false
+    end
+
+    local zoom_type = override_zoom_type or wpn_obj:GetZoomType()
+    if zoom_type == ZOOM_TYPES.NORMAL and aim_modes[1] == "false" then
+        printdbg("[LEWD LENS HIDER] INFO | Get Information | Discarding %s, lens hider is disabled for aim mode %s (0 = normal, 1 = alt, 2 = gl)", obj:name(), zoom_type)
+        return obj, bone_name, false
+    end
+    if zoom_type == ZOOM_TYPES.ALT and aim_modes[2] == "false" then
+        printdbg("[LEWD LENS HIDER] INFO | Get Information | Discarding %s, lens hider is disabled for aim mode %s (0 = normal, 1 = alt, 2 = gl)", obj:name(), zoom_type)
+        return obj, bone_name, false
+    end
+    if zoom_type == ZOOM_TYPES.GL and aim_modes[3] == "false" then
+        printdbg("[LEWD LENS HIDER] INFO | Get Information | Discarding %s, lens hider is disabled for aim mode %s (0 = normal, 1 = alt, 2 = gl)", obj:name(), zoom_type)
+        return obj, bone_name, false
+    end
+
+    return obj, bone_name, true
+end
+
+--- Function used to get delays when aiming in and aiming out.
+--- @param obj game_object
+--- @return number, number
+function get_delays(obj)
+    local delays = str_explode(ini_sys:r_string_ex(obj:section(), CONFIG_KEY_DELAYS) or "0.0, 0.0",",")
+    if size_table(delays) ~= 2 then
+        printf("[LEWD LENS HIDER] ERROR | Get Delays | Error with object with name %s, the config %s should have %s elements, except it has %s", obj:name(), CONFIG_KEY_AIM_MODE, 2, size_table(delays))
+        return nil, nil
+    end
+    return tonumber(delays[1]), tonumber(delays[2])
+end
+
+--- Function used to set the visibility of a bone for a HUD object.
+--- @param obj game_object
+--- @param bone_name string
+--- @param visibility boolean
+--- @return nil
+function set_bone_visibility(obj, bone_name, visibility)
+    obj:set_bone_visible(bone_name, visibility, true, true)
+end
+
+--- Function used to print information to the log if DEBUG_MODE is set to true.
+--- @param any
+--- @return nil
+function printdbg(...)
+    if DEBUG_MODE then
+        printf(...)
+    end
+end

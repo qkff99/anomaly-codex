@@ -1,0 +1,149 @@
+--[[   Script to take off/put on your helmet by holding hotkey.   ]]--
+
+ local holdDelay = 0.5		--Delay in seconds while holding key before action for non MCM version
+
+local lastHelmet
+local lastHelmetId = nil
+
+local KEY = headgear_animations_mcm.get_config("keybind") --change this if you don't use MCM or havn't updated to the curent version
+local modifier = headgear_animations_mcm.get_config("modifier")
+local mode = headgear_animations_mcm.get_config("mode")
+local mcm_keybinds = ui_mcm and ui_mcm.key_hold --there will be a better way to test for MCM versions soon, but this will always be a solid way to check for keybind support
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Callbacks
+-----------------------------------------------------------------------------------------------------------------------
+function on_game_start()
+	RegisterScriptCallback("on_option_change", on_option_change)
+
+	RegisterScriptCallback("on_key_hold", on_key_hold)
+	RegisterScriptCallback("on_key_press", on_key_press)
+	RegisterScriptCallback("on_key_release", on_key_release)
+
+	RegisterScriptCallback("load_state", on_load_state)
+	RegisterScriptCallback("save_state", on_save_state)
+	RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+end
+
+
+-----------------------------------------------------------------------------------------------------------------------
+-- 
+-----------------------------------------------------------------------------------------------------------------------
+function on_option_change()                --new in mcm 1.6.0 mcm passes true to the on_option_change callback
+	KEY = headgear_animations_mcm.get_config("keybind") -- if it can't find the option it will return nil this form insures that with old versions of mcm the key doesn't get reset
+	modifier = headgear_animations_mcm.get_config("modifier")
+	mode = headgear_animations_mcm.get_config("mode")
+end
+
+
+-----------------------------------------------------------------------------------------------------------------------
+-- MCM Keybinding setup
+-----------------------------------------------------------------------------------------------------------------------
+function on_key_hold(key)
+	if mcm_keybinds and (key == KEY) and (mode == 2) and ui_mcm.get_mod_key(modifier) and ui_mcm.key_hold("liz_qht",key) then --repeating after 5 seconds for demo pourposes.
+		toggle_helmet()
+	end	
+end
+
+
+function on_key_press(key)
+	if key ~= KEY then return end
+
+	if (not mcm_keybinds) then --No MCM case
+		CreateTimeEvent("quick_actions", "toggleHelmet", holdDelay, toggle_helmet)
+		return
+	end
+
+	if (mode == 0) and ui_mcm.get_mod_key(modifier) then
+		ui_mcm.simple_press("liz_qht", key, toggle_helmet)
+	end
+
+	if (mode == 1) and ui_mcm.get_mod_key(modifier) and ui_mcm.double_tap("liz_qht",key) then 
+		toggle_helmet()
+		return
+	end
+end
+
+
+function on_key_release(key)
+	if mcm_keybinds then return end
+
+	if key == KEY then		--if the released key matches, remove our event to stop it from firing if released earlier than holdDelay
+		RemoveTimeEvent("quick_actions","toggleHelmet")		
+	end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Persistance
+-----------------------------------------------------------------------------------------------------------------------
+function on_save_state(m_data)
+	if lastHelmet then
+		m_data.lastHelmetId = lastHelmet:id()
+	end
+end
+
+
+function on_load_state(m_data)
+	lastHelmetId = m_data.lastHelmetId
+end
+
+
+function actor_on_first_update()
+	local function itr(actor, item)
+		if item:id() == lastHelmetId then
+			lastHelmet = item
+			return
+		end
+	end
+	if lastHelmetId ~= nil then
+		db.actor:iterate_ruck(itr, nil)
+	end
+end
+
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Main
+-----------------------------------------------------------------------------------------------------------------------
+function toggle_helmet()
+	if (not db.actor) and (not db.actor:alive()) then return end
+	if enhanced_animations and enhanced_animations.used_item ~= nil then return end
+	-- if enhanced_animations.used_item ~= nil then return end
+
+	local currentHelmet = db.actor:item_in_slot(12)		--set currentHelmet to whatever player has equipped in helmet slot
+	if currentHelmet then								--if it's a helmet, move it to inventory and save it for re-equipping later
+		headgear_animations.on_toggle_unequip(currentHelmet)
+		lastHelmet = currentHelmet
+	elseif lastHelmet then								--if not, and lastHelmet is set, check player inventory for previously worn helmet
+		if not is_have_helmet() then						--if helmet slot is empty and not blocked by armor
+			db.actor:iterate_ruck(function (actor, item)
+				if item:id() == lastHelmet:id() then
+					headgear_animations.on_toggle_equip(item)
+				end
+			end, nil)
+		end
+	end
+
+end
+
+
+function is_have_helmet()
+    --check if we have helmet in helmet slot
+    local o_helm = db.actor:item_in_slot(12)
+    if o_helm then 
+        local m_headgear_is_in_whitelist = ini_whitelist:section_exist(o_helm:section())
+        if not m_headgear_is_in_whitelist then
+            return true
+        else
+            return false
+        end
+    end
+
+    --if not check if we have outfit that have integrated helmet
+    local o_outfit = db.actor:item_in_slot(7)
+    if o_outfit then
+        local c_outfit = o_outfit:cast_CustomOutfit()
+        if not c_outfit.bIsHelmetAvaliable then return true end
+    end
+
+    return false
+end

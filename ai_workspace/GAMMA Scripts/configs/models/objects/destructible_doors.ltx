@@ -1,0 +1,55 @@
+[disable]
+linear_factor            = 0.5
+angular_factor           = 0.5
+
+[collide]
+not_collide_parts 
+
+[collide_parts]
+small_object
+
+[destroyed]
+dynamics\box\part\box_wood_01_part_4
+dynamics\door\part\destr_door_wood_130x250_01_part_2
+dynamics\door\part\destr_door_wood_130x250_01_part_3
+dynamics\box\part\box_wood_01_part_7
+
+[autoremove_parts]
+time					  = 10
+
+[collision_damage]
+link                     = 0.01
+
+[particles]
+destroy_particles        = destroy_fx\destroy_wood_00
+
+
+[particle_bones]
+link                     =  0.0, 0.44, 0.0
+
+
+[sound]
+break_sound              =  material\wood\wood_big_hard_1
+
+default                  = 1.0, -1, 0.0
+
+[immunities]
+burn_immunity            = 0.05      
+strike_immunity          = 0.3
+shock_immunity           = 0.0
+wound_immunity           = 0.3
+radiation_immunity       = 0.0
+telepatic_immunity       = 0.0
+chemical_burn_immunity   = 0.0
+explosion_immunity       = 0.5
+fire_wound_immunity      = 0.04
+
+;--- impulse_transition ------------
+
+[impulse_transition_to_parts]
+random_min               = 5.0
+random_hit_imp           = 2.0
+;ref_bone                     
+imp_transition_factor    = 1.0
+lv_transition_factor     = 0.5
+av_transition_factor     = 0.5

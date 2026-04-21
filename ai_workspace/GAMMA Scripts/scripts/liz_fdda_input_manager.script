@@ -1,0 +1,214 @@
+-- --- TODO rewrite this stuff
+-- --- probably need to add "modes"
+-- --- to soupport various key sets for different situations
+
+-- is_input_disabled = false
+
+-- local key_bindings_whitelist = {
+--     [4] = true,         -- kJUMP
+--     [5] = true,         -- kCROUCH
+--     [6] = true,         -- kACCEL
+--     [7] = true,         -- SPRINT (?)
+--     [8] = true,         -- kFWD
+--     [9] = true,         -- kBACK
+--     [10] = true,        -- kL_STRAFE
+--     [11] = true,        -- kR_STRAFE
+--     [30] = true,        -- kWPN_FIRE
+--     [31] = true,        -- kWPN_ZOOM
+--     [34] = true,        -- kWPN_RELOAD
+--     [46] = true,        -- kCONSOLE
+--     [47] = true,        -- kINVENTORY
+--     [61] = true,        -- F1
+--     [62] = true,        -- F2
+--     [63] = true,        -- F3
+--     [64] = true,        -- F4
+--     [93] = true,        -- ALT
+--     -- [40] = true,     -- USE_KEY (?)
+-- }
+
+-- local key_whitelist = {
+--     [1] = true,         -- esc
+--     -- [2] = true,      -- 1
+--     -- [3] = true,      -- 2
+--     -- [4] = true,      -- 3
+--     -- [5] = true,      -- 4
+--     -- [6] = true,      -- 5
+--     -- [7] = true,      -- 6
+--     -- [8] = true,      -- 7
+--     -- [9] = true,      -- 8
+--     -- [10] = true,     -- 9
+--     -- [11] = true,     -- 0
+--     [29] = true,        -- const DIK_LCONTROL
+--     -- [33] = true,     -- f key (?)
+--     [41] = true,        -- kSCORES (console)
+--     [42] = true,        -- DIK_LSHIFT
+--     [56] = true,        -- DIK_LMENU (ALT)
+--     [57] = true,        -- DIK_SPACE
+--     [59] = true,        -- F1
+--     [60] = true,        -- F2
+--     [61] = true,        -- F3
+--     [62] = true,        -- F4
+--     [337] = true,       -- MOUSE_1
+--     [338] = true,       -- MOUSE_2
+--     [339] = true,       -- MOUSE_3
+-- }
+
+-- local key_bindings_action_skip = {
+--     [34] = true,        -- kWPN_RELOAD (doesn't work with keywrapper)
+-- }
+
+-- local key_action_skip = {
+--     [19] = true,        -- reload
+-- }
+
+-- function on_game_start()
+--     RegisterScriptCallback("on_before_key_press", on_before_key_press)
+-- end
+
+-- function on_before_key_press(key, bind, dis, flags)
+--     -- lam2.log("[INPUT MANAGER] key pressed: [%s], bind: [%s]", key, bind)
+--     if is_input_disabled and not (key_bindings_whitelist[bind] or key_whitelist[key]) then
+--         flags.ret_value = false
+--     end
+--     -- if is_input_disabled and (bind == key_bindings.kSHOW_DETECTOR or bind == key_bindings.kSHOWDETECTOR or bind == key_bindings.kDETECTOR) then -- Kute/Grok: Dislabe detector keybind
+--     --     flags.ret_value = false
+--     -- end
+--     if key_bindings_action_skip[bind] or key_action_skip[key] then
+--         lam2.stop_all_actions()
+--     end
+-- end
+
+is_input_disabled = false
+
+local keymaps = {
+    game = {
+        allowed_bindings = {
+            [4] = true,  -- kJUMP
+            [5] = true,  -- kCROUCH
+            [6] = true,  -- kACCEL
+            [7] = true,  -- SPRINT (?)
+            [8] = true,  -- kFWD
+            [9] = true,  -- kBACK
+            [10] = true, -- kL_STRAFE
+            [11] = true, -- kR_STRAFE
+            [30] = true, -- kWPN_FIRE
+            -- [31] = true, -- kWPN_ZOOM
+            [34] = true, -- kWPN_RELOAD
+            [46] = true, -- kCONSOLE
+            [47] = true, -- kINVENTORY
+            [61] = true, -- F1
+            [62] = true, -- F2
+            [63] = true, -- F3
+            [64] = true, -- F4
+            [93] = true, -- ALT
+            -- [40] = true,     -- USE_KEY (?)
+        },
+        allowed_keys = {
+            [1] = true, -- esc
+            [2] = true,      -- 1
+            [3] = true,      -- 2
+            [4] = true,      -- 3
+            -- [5] = true,      -- 4
+            -- [6] = true,      -- 5
+            -- [7] = true,      -- 6
+            -- [8] = true,      -- 7
+            -- [9] = true,      -- 8
+            -- [10] = true,     -- 9
+            -- [11] = true,     -- 0
+            [29] = true, -- const DIK_LCONTROL
+            -- [33] = true,     -- f key (?)
+            [41] = true, -- kSCORES (console)
+            [42] = true, -- DIK_LSHIFT
+            [56] = true, -- DIK_LMENU (ALT)
+            [57] = true, -- DIK_SPACE
+            [59] = true, -- F1
+            [60] = true, -- F2
+            [61] = true, -- F3
+            [62] = true, -- F4
+            [337] = true, -- MOUSE_1
+            -- [338] = true, -- MOUSE_2
+            -- [339] = true, -- MOUSE_3
+        },
+        skip_bidings = {
+            [34] = true, -- kWPN_RELOAD (doesn't work with keywrapper)
+        },
+        skip_keys = {
+            [19] = true, -- reload
+        }
+    },
+    inventory = {
+        allowed_bindings = {
+            [4] = true,  -- kJUMP
+            [5] = true,  -- kCROUCH
+            [6] = true,  -- kACCEL
+            [7] = true,  -- SPRINT (?)
+            [8] = true,  -- kFWD
+            [9] = true,  -- kBACK
+            [10] = true, -- kL_STRAFE
+            [11] = true, -- kR_STRAFE
+            [30] = true, -- kWPN_FIRE
+            [31] = true, -- kWPN_ZOOM
+            [34] = true, -- kWPN_RELOAD
+            [46] = true, -- kCONSOLE
+            [47] = true, -- kINVENTORY
+            [61] = true, -- F1
+            [62] = true, -- F2
+            [63] = true, -- F3
+            [64] = true, -- F4
+            [93] = true, -- ALT
+            -- [40] = true,     -- USE_KEY (?)
+        },
+        allowed_keys = {
+            [1] = true,   -- esc
+            [2] = true,   -- 1
+            [3] = true,   -- 2
+            [4] = true,   -- 3
+            [5] = true,   -- 4
+            [6] = true,   -- 5
+            [7] = true,   -- 6
+            [8] = true,   -- 7
+            [9] = true,   -- 8
+            [10] = true,  -- 9
+            [11] = true,  -- 0
+            [29] = true,  -- const DIK_LCONTROL
+            -- [33] = true,     -- f key (?)
+            [41] = true,  -- kSCORES (console)
+            [42] = true,  -- DIK_LSHIFT
+            [56] = true,  -- DIK_LMENU (ALT)
+            [57] = true,  -- DIK_SPACE
+            [59] = true,  -- F1
+            [60] = true,  -- F2
+            [61] = true,  -- F3
+            [62] = true,  -- F4
+            [337] = true, -- MOUSE_1
+            [338] = true, -- MOUSE_2
+            [339] = true, -- MOUSE_3
+        },
+        skip_bidings = {
+            [34] = true, -- kWPN_RELOAD (doesn't work with keywrapper)
+        },
+        skip_keys = {
+            [19] = true, -- reload
+        }
+    }
+}
+
+
+function on_game_start()
+    RegisterScriptCallback("on_before_key_press", on_before_key_press)
+end
+
+
+function on_before_key_press(key, bind, dis, flags)
+    -- lam2.log("[INPUT MANAGER] key pressed: [%s], bind: [%s]", key, bind)
+
+    if not is_input_disabled then return end
+
+    local keymap = liz_fdda_redone_backpack.is_ui_inventory_open and keymaps.inventory or keymaps.game
+    if not (keymap.allowed_bindings[bind] or keymap.allowed_keys[key]) then
+        flags.ret_value = false
+    end
+    if keymap.skip_bidings[bind] or keymap.skip_keys[key] then
+        lam2.stop_all_actions()
+    end
+end

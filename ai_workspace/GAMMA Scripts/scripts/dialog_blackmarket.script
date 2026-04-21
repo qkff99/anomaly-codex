@@ -1,0 +1,44 @@
+--This script injects the dialogues from my mod into the trader dialogue options, Many thanks to Demonized, the legend who made DLTX/DXML possible.
+
+dialogs_table = {
+	["esc_2_12_stalker_trader"]							= "blackmarket_no",
+	["esc_main_base_trader_mlr"]						= "blackmarket_no",
+	["baraholka_trader"]								= "blackmarket_no",
+	["hunter_gar_trader"]								= "blackmarket_no",
+	["jup_b6_scientist_nuclear_physicist"]				= "blackmarket_eco_3",
+	["yan_stalker_sakharov"]							= "blackmarket_eco_1",
+	["cit_killers_merc_trader_stalker"]					= "blackmarket_any_1",
+	["pri_special_trader_mlr"]							= "blackmarket_any_2",
+	["pri_monolith_monolith_trader_stalker"]			= "blackmarket_any_2",
+	["red_greh_trader"]									= "blackmarket_any_1",
+	["zat_stancia_trader_merc"]							= "blackmarket_any_3",
+	["trader_monolith_kbo"]								= "blackmarket_any_3",
+	["val_smart_terrain_7_4_bandit_trader_stalker"]		= "blackmarket_wp_1",
+	["dasc_trade_mlr"]									= "blackmarket_wp_1",
+	["baraholka_trader_night"]							= "blackmarket_wp_1",
+	["trucks_cemetery_bandit_trader"]					= "blackmarket_wp_2",
+	["bar_dolg_general_petrenko_stalker"]				= "blackmarket_wp_2",
+	["esc_3_16_military_trader"]						= "blackmarket_wp_2",
+	["red_forester_tech"]								= "blackmarket_wp_3",
+	["jup_cont_trader_bandit"]							= "blackmarket_wp_3",
+	["agr_smart_terrain_1_6_army_trader_stalker"]		= "blackmarket_wp_3",
+	["trader_pri_a15_mlr"]								= "blackmarket_wp_3",
+	["zat_a2_stalker_nimble"]							= "blackmarket_wp_3",
+	["mar_base_owl_stalker_trader"]						= "blackmarket_nato_1",
+	["mil_smart_terrain_7_10_freedom_trader_stalker"]	= "blackmarket_nato_2",
+	["jup_a6_freedom_trader_ashot"]						= "blackmarket_nato_3",
+	["jup_depo_isg_leader"]								= "blackmarket_nato_3",
+	["ds_domik_isg_leader"]								= "blackmarket_nato_3",
+	["zat_b30_owl_stalker_trader"]						= "blackmarket_nato_3",
+}
+
+function on_game_start()
+	RegisterScriptCallback("on_specific_character_dialog_list", function(character_id, dialog_list)
+		if dialogs_table[character_id] then
+			local res = dialog_list:add(dialogs_table[character_id])
+			if res then
+				printf("adding dialog %s for %s, pos %s", dialogs_table[character_id], character_id, res)
+			end
+		end
+	end)
+end

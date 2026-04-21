@@ -1,0 +1,27 @@
+![item_combination]
+;-------<Bandage Craft>-------------------------
+vodka:prt_o_fabrics_4 = bandage
+prt_o_fabrics_4:vodka = bandage
+
+;-------< Basic Tooolkit craft >----------------
+prt_i_fasteners:prt_i_scrap = prt_i_miscparts
+prt_i_scrap:prt_i_fasteners = prt_i_miscparts
+
+glue_a:glue_b = prt_i_assortadhesive
+glue_b:glue_a = prt_i_assortadhesive
+
+rasp_tool:leatherman_tool = prt_i_handtools
+leatherman_tool:rasp_tool = prt_i_handtools
+
+prt_i_maintcomp:prt_i_mainttools = itm_basickit
+prt_i_mainttools:prt_i_maintcomp = itm_basickit
+
+gun_oil_ru_d:solvent = prt_i_assortsolvents
+solvent:gun_oil_ru_d = prt_i_assortsolvents
+
+prt_i_handtools:prt_i_assortsolvents = prt_i_mainttools
+prt_i_assortsolvents:prt_i_handtools = prt_i_mainttools
+
+prt_i_assortadhesive:prt_i_miscparts = prt_i_maintcomp
+prt_i_miscparts:prt_i_assortadhesive = prt_i_maintcomp
+;----------------------------------------------

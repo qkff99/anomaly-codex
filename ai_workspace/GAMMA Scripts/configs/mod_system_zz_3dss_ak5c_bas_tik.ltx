@@ -1,0 +1,100 @@
+![wpn_ak5c_bas_5c_tik]
+scopes					= gauss_sight, t12
+
+!scope_lense_fov 
+scope_zoom_factor                = 15
+scope_texture                    =
+scope_status					 = 1
+scope_zoom_factor_alt            = 0
+ 		
+lewd_lens_hide_enabled       = true
+lewd_lens_hide_bone          = lens
+lewd_lens_hide_delays        = 0.1,0
+lewd_lens_hide_aim_mode      = true, false, false	
+		
+![wpn_ak5c_bas_5c_tik_hud]
+        aim_hud_offset_pos               = -0.054054, 0.011202, -0.089539
+        aim_hud_offset_pos_16x9          = -0.054054, 0.011202, -0.089539
+        aim_hud_offset_rot               = 0.015757, 0.005315, 0
+        aim_hud_offset_rot_16x9          = 0.015757, 0.005315, 0
+
+        aim_hud_offset_alt_pos           = -0.055429, -0.000777, -0.089539
+        aim_hud_offset_alt_pos_16x9      = -0.055429, -0.000777, -0.089539
+        aim_hud_offset_alt_rot           = 0.010407, 0.010096, 0
+        aim_hud_offset_alt_rot_16x9      = 0.010407, 0.010096, 0
+
+;--------------------------------------------------------------------------------
+[wpn_ak5c_bas_5c_tik_t12]:wpn_ak5c_bas_5c_tik
+hud                                      = wpn_ak5c_bas_5c_tik_t12_hud
+
+inv_grid_x         = 16
+inv_grid_y         = 22
+1icon_layer                              = t12_x
+1icon_layer_x                            = 115
+1icon_layer_y                            = -11
+
+scope_zoom_factor		= 0
+scope_status 			= 0
+scope_dynamic_zoom		= off
+
+	!s3ds_eye_relief 	
+	!s3ds_exit_pupil	
+	!s3ds_chroma_power			
+	!s3ds_reticle_type 	
+	!ms_count 			
+	!ms_colors 				
+
+	s3ds_reticle_size 	= 1.05
+	s3ds_image_type 	= 3
+	s3ds_reticle_type 	= 8
+	s3ds_min_zoom_1x	= 1
+	
+[wpn_ak5c_bas_5c_tik_t12_hud]:wpn_ak5c_bas_5c_tik_hud
+        item_visual                 = dynamics\weapons\wpn_ak5c_bas\wpn_ak5c_5c_tik_t12_hud.ogf
+        aim_hud_offset_pos               = -0.055356, 0.011793, -0.055
+        aim_hud_offset_pos_16x9          = -0.055356, 0.011793, -0.055
+        aim_hud_offset_rot               = 0.01143, 0.011469, 0
+        aim_hud_offset_rot_16x9          = 0.01143, 0.011469, 0
+		
+        aim_hud_offset_alt_pos           = -0.079321, -0.055301, -0.089539
+        aim_hud_offset_alt_pos_16x9      = -0.079321, -0.055301, -0.089539
+        aim_hud_offset_alt_rot           = 0.002896, 0.01616, 0.75
+        aim_hud_offset_alt_rot_16x9      = 0.002896, 0.01616, 0.75
+		
+;----------------------------------------------------------------------------------------
+[wpn_ak5c_bas_5c_tik_gauss_sight]:wpn_ak5c_bas_5c_tik
+hud						= wpn_ak5c_bas_5c_tik_gauss_sight_hud
+
+inv_grid_x         = 16
+inv_grid_y         = 22
+1icon_layer			    = gauss_sight_x
+1icon_layer_x			= 60
+1icon_layer_y			= -9
+
+zoom_rotate_time		= 0.25
+
+scope_status                     = 1
+scope_dynamic_zoom               = on
+scope_zoom_factor                = 12
+
+	s3ds_reticle_size 	= 5
+	s3ds_eye_relief 	=
+	s3ds_exit_pupil		=	
+	s3ds_image_type 	= 2
+	s3ds_chroma_power	=	
+	s3ds_reticle_type 	= 6
+	ms_count 			= 2
+	ms_colors 			=
+	magnifications 		= 1-10
+	
+[wpn_ak5c_bas_5c_tik_gauss_sight_hud]:wpn_ak5c_bas_5c_tik_hud
+        item_visual                 = dynamics\weapons\wpn_ak5c_bas\wpn_ak5c_5c_tik_gauss_hud.ogf
+        aim_hud_offset_pos               = -0.054393, 0.003284, -0.104973
+        aim_hud_offset_pos_16x9          = -0.054393, 0.003284, -0.104973
+        aim_hud_offset_rot               = 0.015388, 0.005499, 0
+        aim_hud_offset_rot_16x9          = 0.015388, 0.005499, 0
+		
+        aim_hud_offset_alt_pos           = -0.079321, -0.055301, -0.089539
+        aim_hud_offset_alt_pos_16x9      = -0.079321, -0.055301, -0.089539
+        aim_hud_offset_alt_rot           = 0.002896, 0.01616, 0.75
+        aim_hud_offset_alt_rot_16x9      = 0.002896, 0.01616, 0.75

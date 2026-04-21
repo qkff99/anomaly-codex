@@ -1,0 +1,347 @@
+#include "presets\trade_discounts.ltx"
+#include "presets\trade_presets.ltx"
+
+[trader]
+buy_condition                            = trade_generic_buy
+buy_item_condition_factor                = 0.20
+buy_item_exponent = 2.25
+sell_item_exponent = 0.75
+buy_supplies                             = supplies_generic
+price_profile                            = default
+sell_condition                           = trade_generic_sell
+discounts = discount_trasher
+
+[trade_generic_buy]:trasher
+
+[trade_generic_sell]:trasher
+
+itm_basickit	;NO TRADE
+itm_pda_common ;NO TRADE
+itm_pda_rare ;NO TRADE 
+itm_pda_uncommon ;NO TRADE 
+
+ammo_9x18_fmj = 0.6, 0.8
+ammo_9x18_fmj_bad = 0.8, 1.2
+ammo_9x18_fmj_verybad = 1, 1.5
+ammo_9x18_pmm = 0.6, 0.8
+ammo_9x18_pmm_bad = 0.8, 1.2
+ammo_9x18_pmm_verybad = 1, 3
+ammo_9x19_fmj = 0.8, 1
+ammo_9x19_fmj_bad = 0.8, 1.2
+ammo_9x19_fmj_verybad = 0.8, 1.5
+ammo_7.62x25_p = 0.7, 1
+ammo_7.62x25_p_bad = 0.8, 1.5
+ammo_7.62x25_p_verybad = 1, 3
+ammo_11.43x23_fmj_bad = 0.8, 1.5
+ammo_11.43x23_fmj_verybad = 1, 3
+ammo_5.45x39_fmj = 0.8, 1
+ammo_5.45x39_fmj_bad = 0.8, 1.5
+ammo_5.45x39_fmj_verybad = 1, 3
+ammo_5.56x45_fmj_bad = 0.8, 1.5
+ammo_5.56x45_fmj_verybad = 1, 3
+ammo_7.62x39_fmj_bad = 0.8, 1.5
+ammo_7.62x39_fmj_verybad = 1, 3
+ammo_7.92x33_fmj_verybad = 1, 2
+ammo_7.62x51_fmj_bad = 0.8, 1.5
+ammo_7.62x51_fmj_verybad = 1, 3
+ammo_7.62x54_7h1_verybad = 1, 3
+ammo_9x39_pab9_bad = 0.8, 1.5
+ammo_9x39_pab9_verybad = 1, 3
+ammo_12x76_zhekan = 0.6, 0.8
+ammo_12x76_zhekan_bad = 0.8, 1.5
+ammo_12x70_buck = 0.6, 0.8
+ammo_12x70_buck_bad = 0.8, 1.5
+ammo_357_hp_mag_bad = 0.8, 1.5
+ammo_357_hp_mag_verybad = 1, 3
+ammo_vog-25_verybad = 4, 6
+ammo_m209_verybad = 5, 7
+
+;ITEMS
+mutant_part_krovosos_jaw ;NO_TRADE
+mutant_part_boar_leg ;NO_TRADE
+mutant_part_chimera_kogot ;NO_TRADE
+mutant_part_chimera_claw ;NO_TRADE
+mutant_part_dog_tail ;NO_TRADE
+mutant_part_flesh_eye ;NO_TRADE
+mutant_part_psevdodog_tail ;NO_TRADE
+mutant_part_snork_leg ;NO_TRADE
+mutant_part_snork_hand ;NO_TRADE
+mutant_part_tushkano_head ;NO_TRADE
+mutant_part_pseudogigant_hand ;NO_TRADE
+mutant_part_pseudogigant_eye ;NO_TRADE
+mutant_part_controller_glass ;NO_TRADE
+mutant_part_controller_hand ;NO_TRADE
+mutant_part_burer_hand ;NO_TRADE
+mutant_part_cat_tail ;NO_TRADE
+mutant_part_fracture_hand ;NO_TRADE
+mutant_part_zombi_hand ;NO_TRADE
+mutant_part_boar_chop ;NO_TRADE
+mutant_part_general_meat ;NO_TRADE
+mutant_part_psevdodog_meat ;NO_TRADE
+mutant_part_flesh_meat ;NO_TRADE
+mutant_part_tushkano_meat ;NO_TRADE
+mutant_part_chimera_meat ;NO_TRADE
+mutant_part_krovosos_meat ;NO_TRADE
+mutant_part_dog_meat ;NO_TRADE
+
+
+[supplies_generic]
+;[Tier 1]
+swiss_knife			= 3, 0.60
+itm_actor_backpack 		= 3, 0.60
+cigar1				= 3, 0.60
+box_matches			= 3, 0.60
+tobacco				= 3, 0.60
+hand_rolling_tobacco		= 3, 0.60
+flask				= 3, 0.60
+water_drink			= 3, 0.60
+mineral_water			= 3, 0.60
+vodka				= 3, 0.60
+vodka2				= 3, 0.60
+energy_drink			= 3, 0.60
+bread 				= 4, 0.60
+kolbasa 			= 4, 0.60
+conserva 			= 4, 0.60
+batteries_dead			= 10, 0.60
+
+guitar_a 	= 1, 0.60
+harmonica_a 	= 1, 0.60
+
+bandage 	= 5, 0.60
+antirad 	= 3, 0.40
+medkit 		= 4, 0.40
+
+jar		= 4, 0.60
+welding_goggles	= 1, 0.60
+boots		= 2, 0.60
+headlamp	= 2, 0.60
+beadspread	= 2, 0.60
+walkie		= 1, 0.60
+mirror		= 2, 0.60
+tarpaulin	= 2, 0.60
+rope		= 2, 0.60
+synthrope	= 2, 0.60
+cutlery		= 4, 0.60
+radio		= 1, 0.60
+lead_box	= 3, 0.50
+grease		= 3, 0.60
+steel_wool	= 2, 0.60
+gun_oil		= 1, 0.50
+gun_oil_ru_d	= 1, 0.50
+gun_oil_ru	= 1, 0.50
+solvent		= 1, 0.50
+sewing_kit_b	= 1, 0.50
+sewing_kit_a	= 1, 0.50
+sewing_kit_h	= 1, 0.50
+cleaning_kit_p	= 1, 0.50
+cleaning_kit_s	= 1, 0.50
+itm_sleepbag 		= 3, 0.60
+itm_backpack 		= 3, 0.60
+itm_tent		= 3, 0.60
+box_matches             = 3, 0.60
+duct_tape		= 3, 0.60
+grease			= 3, 0.60
+hand_watch		= 3, 0.60
+leatherman_tool		= 1, 0.40
+rasp_tool   		= 3, 0.40        
+ramrod_tool 		= 3, 0.40
+sewing_thread		= 4, 0.40
+heavy_sewing_thread	= 2, 0.40
+
+detector_simple 		= 1, 0.60
+
+ammo_9x18_fmj 			= 4, 0.50
+ammo_9x18_pmm 			= 2, 0.50
+ammo_9x19_fmj 			= 4, 0.50
+ammo_7.62x25_p 			= 8, 0.50
+ammo_5.45x39_fmj 		= 3, 0.50
+ammo_12x76_zhekan 		= 4, 0.50
+ammo_12x70_buck 		= 4, 0.50
+
+ammo_9x18_fmj_bad 		= 8, 0.50                          
+ammo_9x18_pmm_bad 		= 8, 0.50                          
+ammo_9x18_ap_bad 		= 8, 0.50
+ammo_9x19_pbp_bad		= 8, 0.50
+ammo_9x19_fmj_bad		= 8, 0.50                           
+ammo_9x19_ap_bad		= 8, 0.50
+ammo_11.43x23_hydro_bad  	= 7, 0.50                  
+ammo_11.43x23_fmj_bad   	= 8, 0.50                   
+ammo_12x70_buck_bad   		= 8, 0.50                     
+ammo_12x76_zhekan_bad   	= 8, 0.50                    
+ammo_12x76_dart_bad   		= 8, 0.50
+ammo_5.45x39_ap_bad     	= 10, 0.50                    
+ammo_5.45x39_fmj_bad		= 10, 0.50 
+ammo_5.45x39_ep_bad  		= 10, 0.50
+ammo_5.56x45_fmj_bad 		= 10, 0.50                       
+ammo_5.56x45_ss190_bad  	= 10, 0.50                    
+ammo_5.56x45_ap_bad  		= 10, 0.50
+ammo_7.62x51_fmj_bad		= 8, 0.50
+ammo_7.62x51_ap_bad		= 8, 0.50
+ammo_7.62x25_p_bad		= 8, 0.50
+ammo_7.62x25_ps_bad		= 8, 0.50
+ammo_7.62x39_ap_bad		= 8, 0.50
+ammo_7.62x39_fmj_bad		= 8, 0.50
+ammo_7.62x54_7h1_bad		= 8, 0.50
+ammo_7.62x54_7h14_bad		= 8, 0.50
+ammo_7.62x54_ap_bad 		= 8, 0.50
+ammo_7.92x33_fmj_bad		= 8, 0.50
+ammo_7.92x33_ap_bad 		= 8, 0.50
+ammo_12.7x55_fmj_bad		= 5, 0.50
+ammo_12.7x55_ap_bad		= 5, 0.50
+
+trenchcoat_outfit 		= 1, 0.50
+dolg_novice_outfit 		= 1, 0.20
+bandit_novice_outfit 		= 1, 0.50
+novice_outfit 			= 1, 0.60
+cs_novice_outfit 		= 1, 0.50
+helm_respirator 		= 1, 0.50
+helm_bandana			= 1, 0.50
+helm_cloth_mask			= 1, 0.60
+
+af_kevlar		= 2, 0.50
+af_plates		= 2, 0.50
+
+kerosene		= 3, 0.40
+charcoal		= 4, 0.40
+explo_balon_gas		= 1, 0.30
+explo_jerrycan_fuel	= 1, 0.30
+
+upgr_w_1_weight		= 1, 0.40
+upgr_w_1_muffle		= 1, 0.40
+upgr_w_1_grenade_mount	= 1, 0.40
+upgr_w_1_reliability	= 1, 0.40
+upgr_w_1_speed		= 1, 0.40
+upgr_w_1_recoil		= 1, 0.40
+upgr_w_1_magazine	= 1, 0.40
+upgr_w_1_scope		= 1, 0.40
+upgr_w_1_dispersion	= 1, 0.40
+upgr_w_1_calibre	= 1, 0.40
+upgr_w_1_inertion	= 1, 0.40
+upgr_w_1_rpm		= 1, 0.40
+upgr_w_1_scope_mount	= 1, 0.40
+upgr_w_1_firemode	= 1, 0.40
+upgr_o_1_health		= 1, 0.40
+upgr_o_1_bleed		= 1, 0.40
+upgr_o_1_armor		= 1, 0.40
+upgr_o_1_damage		= 1, 0.40
+upgr_o_1_durability	= 1, 0.40
+upgr_o_1_power		= 1, 0.40
+upgr_o_1_chem		= 1, 0.40
+upgr_o_1_burn		= 1, 0.40
+upgr_o_1_shock		= 1, 0.40
+upgr_o_1_psi		= 1, 0.40
+upgr_o_1_rad		= 1, 0.40
+upgr_o_1_carry		= 1, 0.40
+upgr_o_1_arty		= 1, 0.40
+upgr_o_1_run		= 1, 0.40
+upgr_o_1_weight		= 1, 0.40
+
+light_repair_kit	= 3, 0.60
+itm_basickit		= 1, 0.50
+itm_ammokit		= 1, 0.50
+
+;[Tier 2]
+nbc_outfit		= 1, 0.40
+helm_respirator_gp5	= 1, 0.40
+helm_hardhat		= 1, 0.30
+helm_m40		= 1, 0.30
+ghillie_outfit		= 1, 0.20
+banditmerc_outfit	= 1, 0.30
+cs_light_outfit		= 1, 0.25
+svoboda_light_outfit	= 1, 0.20
+stalker_outfit		= 1, 0.40
+
+equ_small_pack		= 2, 0.40
+equ_small_military_pack	= 1, 0.30
+equ_military_pack	= 1, 0.20
+equ_tourist_pack	= 1, 0.10
+
+wpn_axe			= 1, 0.40
+wpn_axe2		= 1, 0.40
+wpn_axe3		= 1, 0.40
+
+detector_advanced 	= 1, 0.40
+device_torch_nv_1	= 1, 0.50
+device_torch_nv_2	= 1, 0.25
+
+upgr_o_2_health		= 1, 0.30
+upgr_o_2_bleed		= 1, 0.30
+upgr_o_2_armor		= 1, 0.30
+upgr_o_2_damage		= 1, 0.30
+upgr_o_2_durability	= 1, 0.30
+upgr_o_2_power		= 1, 0.30
+upgr_o_2_chem		= 1, 0.30
+upgr_o_2_burn		= 1, 0.30
+upgr_o_2_shock		= 1, 0.30
+upgr_o_2_psi		= 1, 0.30
+upgr_o_2_rad		= 1, 0.30
+upgr_o_2_carry		= 1, 0.30
+upgr_o_2_arty		= 1, 0.30
+upgr_o_2_run		= 1, 0.30
+upgr_o_2_weight		= 1, 0.30
+upgr_w_2_weight		= 1, 0.30
+upgr_w_2_muffle		= 1, 0.30
+upgr_w_2_grenade_mount	= 1, 0.30
+upgr_w_2_reliability	= 1, 0.30
+upgr_w_2_speed		= 1, 0.30
+upgr_w_2_recoil		= 1, 0.30
+upgr_w_2_magazine	= 1, 0.30
+upgr_w_2_scope		= 1, 0.30
+upgr_w_2_dispersion	= 1, 0.30
+upgr_w_2_calibre	= 1, 0.30
+upgr_w_2_inertion	= 1, 0.30
+upgr_w_2_rpm		= 1, 0.30
+upgr_w_2_scope_mount	= 1, 0.30
+upgr_w_2_firemode	= 1, 0.30
+
+itm_advancedkit		= 1, 0.30
+
+;[Tier 3]
+helm_battle		= 1, 0.20
+helm_m40		= 1, 0.20
+military_outfit		= 1, 0.30
+merc_outfit		= 1, 0.30
+nomad_outfit		= 1, 0.25
+travel_outfit		= 1, 0.25
+exo_wood_outfit		= 1, 0.15
+stalker_bear_outfit		= 1, 0.20
+stalker_salamander_outfit	= 1, 0.20
+stalker_graphite_outfit		= 1, 0.20
+stalker_drought_outfit		= 1, 0.20
+stalker_predator_outfit		= 1, 0.20
+stalker_autumn_outfit		= 1, 0.20
+stalker_vineleaf_outfit		= 1, 0.20
+stalker_tigerstripe_outfit	= 1, 0.20
+
+upgr_w_3_weight		= 1, 0.20
+upgr_w_3_muffle		= 1, 0.20
+upgr_w_3_grenade_mount	= 1, 0.20
+upgr_w_3_reliability	= 1, 0.20
+upgr_w_3_speed		= 1, 0.20
+upgr_w_3_recoil		= 1, 0.20
+upgr_w_3_magazine	= 1, 0.20
+upgr_w_3_scope		= 1, 0.20
+upgr_w_3_dispersion	= 1, 0.20
+upgr_w_3_calibre	= 1, 0.20
+upgr_w_3_inertion	= 1, 0.20
+upgr_w_3_rpm		= 1, 0.20
+upgr_w_3_scope_mount	= 1, 0.20
+upgr_w_3_firemode	= 1, 0.20
+upgr_o_3_health		= 1, 0.20
+upgr_o_3_bleed		= 1, 0.20
+upgr_o_3_armor		= 1, 0.20
+upgr_o_3_damage		= 1, 0.20
+upgr_o_3_durability	= 1, 0.20
+upgr_o_3_power		= 1, 0.20
+upgr_o_3_chem		= 1, 0.20
+upgr_o_3_burn		= 1, 0.20
+upgr_o_3_shock		= 1, 0.20
+upgr_o_3_psi		= 1, 0.20
+upgr_o_3_rad		= 1, 0.20
+upgr_o_3_carry		= 1, 0.20
+upgr_o_3_arty		= 1, 0.20
+upgr_o_3_run		= 1, 0.20
+upgr_o_3_weight		= 1, 0.20
+
+itm_expertkit		= 1, 0.20
+device_torch_nv_3	= 1, 0.15

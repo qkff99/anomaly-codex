@@ -1,0 +1,287 @@
+#include "presets\trade_discounts.ltx"
+#include "presets\trade_presets.ltx"
+
+[trader]
+buy_condition =  trade_generic_buy
+sell_condition = trade_generic_sell
+buy_supplies = {=actor_goodwill_ge(bandit:1000)} supplies_5, {=heavy_pockets_functor()} supplies_5, {=actor_goodwill_ge(bandit:800)} supplies_4, {=actor_goodwill_ge(bandit:600)} supplies_3, {=actor_goodwill_ge(bandit:400)} supplies_2,  supplies_1
+buy_item_condition_factor = 0.40		;0.40
+buy_item_exponent = 2.25
+sell_item_exponent = 0.75
+
+discounts = discount_trasher
+
+[trade_generic_buy]:trasher
+
+[trade_generic_sell]:trasher
+
+
+[supplies_1]:common_stock
+
+;[devices]
+detector_radio             		= 1, 1
+detector_geiger             		= 1, 1
+device_pda_1				= 1, 1
+device_flashlight			= 1, 1
+device_torch_dummy			= 1, 1
+batteries_dead				= 6, 1
+wpn_binoc_inv           		= 1, 1
+detector_simple				= 1, 1
+guitar_a				= 1, 1
+harmonica_a				= 1, 1
+duct_tape				= 2, 1
+grease					= 2, 1
+steel_wool				= 2, 1
+bolts_pack				= 3, 1
+
+;[food]
+meat_tushkano				= 3, 0.40
+meat_dog				= 3, 0.40
+meat_pseudodog				= 3, 0.40
+meat_flesh				= 3, 0.40
+meat_boar				= 3, 0.40
+meat_snork				= 1, 0.40
+meat_bloodsucker			= 2, 0.40
+meat_chimera				= 1, 0.40
+bread					= 3, 0.40
+breadold				= 4, 0.40
+kolbasa					= 3, 0.40
+conserva				= 3, 0.40
+tomato					= 2, 0.40
+sausage					= 2, 0.40
+corn					= 2, 0.40
+beans					= 2, 0.40
+chili					= 2, 0.40
+salmon					= 2, 0.40
+raisins					= 2, 0.40
+chocolate				= 2, 0.40
+nuts					= 2, 0.40
+mint					= 3, 0.40
+bolts_pack				= 2, 0.40
+
+;[drinks]
+energy_drink				= 3, 0.40
+water_drink				= 3, 0.40
+beer					= 3, 0.40
+vodka					= 3, 0.40
+vodka2					= 3, 0.75
+vodka_quality				= 3, 0.50
+mineral_water				= 3, 0.90
+flask					= 3, 0.75
+
+;[cigs]
+cigarettes 				= 3, 1
+cigar1 					= 2, 0.75
+cigar2 					= 2, 0.75
+cigar3 					= 2, 0.75
+joint					= 2, 0.50
+marijuana				= 2, 0.50
+tobacco					= 3, 1
+caffeine				= 3, 1
+hand_rolling_tobacco			= 3, 1
+cigar					= 1, 1
+cigarettes_lucky			= 3, 1
+cigarettes_russian			= 3, 1
+
+;[drugs]
+cocaine					= 3, 0.40
+salicidic_acid				= 3, 0.40
+morphine				= 3, 0.40
+
+;[supplies]
+porn					= 1, 0.75
+shovel_mili				= 1, 0.75
+;hammer_inv				= 1, 0.75
+;crowbar				= 1, 0.75
+beadspread				= 1, 0.75
+mirror					= 1, 0.75
+walkie					= 1, 0.75
+tarpaulin				= 1, 0.75
+cards					= 2, 0.75
+rope					= 1, 0.75
+synthrope				= 1, 0.75
+cutlery					= 1, 0.75
+itm_actor_backpack			= 1, 0.75
+itm_backpack				= 1, 0.75
+itm_tent                		= 1, 0.75
+itm_sleepbag				= 1, 0.75
+compression_bag				= 1, 0.75
+kerosene               			= 2, 0.75
+charcoal                		= 2, 0.75
+explo_balon_gas         		= 1, 0.50
+explo_jerrycan_fuel     		= 1, 0.75
+boots					= 2, 0.75
+flashlight_broken			= 2, 0.75
+cutlery					= 3, 0.75
+radio					= 1, 0.75
+radio2					= 1, 0.75
+jar					= 4, 0.75
+beadspread				= 1, 0.75
+
+hide_flesh				= 3, 0.50
+hide_boar				= 2, 0.50
+hide_psy_dog				= 2, 0.50
+hide_pseudodog				= 3, 0.50
+
+upgr_o_1_durability			= 1, 1
+upgr_o_2_durability			= 1, 0.50
+upgr_o_3_durability			= 1, 0.25
+
+upgr_o_1_carry				= 1, 1
+upgr_o_2_carry				= 1, 0.50
+upgr_o_3_carry				= 1, 0.25
+
+upgr_o_1_armor				= 1, 1
+upgr_o_2_armor				= 1, 0.50
+upgr_o_3_armor				= 1, 0.25
+
+upgr_w_1_weight				= 1, 1
+upgr_w_2_weight				= 1, 0.50
+upgr_w_3_weight				= 1, 0.25
+
+upgr_w_1_recoil				= 1, 1
+upgr_w_2_recoil				= 1, 0.50
+upgr_w_3_recoil				= 1, 0.25
+
+upgr_w_1_reliability			= 1, 1
+upgr_w_2_reliability			= 1, 0.50
+upgr_w_3_reliability			= 1, 0.25
+
+itm_basickit				= 1, 0.50
+
+bandit_patch				= 6, 0.45
+
+;[tools]
+grooming				= 1, 1
+kit_hunt				= 1, 1
+;swiss					= 1, 1
+box_matches				= 4, 1
+fieldcooker				= 1, 1
+               
+;[explosives]
+mine_new                    		= 5, 0.75
+
+;[melee]
+wpn_knife               		= 1, 1
+wpn_knife2              		= 1, 0.75
+
+;[pistols]
+wpn_colt1911       			= 1, 0.50
+wpn_fort          			= 1, 0.50
+wpn_hpsa           			= 1, 0.50
+wpn_gsh18           			= 1, 0.50
+wpn_pb					= 1, 0.50
+wpn_pm					= 1, 0.50
+wpn_usp            			= 1, 0.50
+wpn_tt33          			= 1, 0.50
+
+;[shotguns]
+wpn_bm16                		= 1, 0.50
+wpn_bm16_full           		= 1, 0.50
+wpn_bm16          			= 1, 0.50
+
+;[rifles]
+wpn_ppsh41            			= 1, 0.50
+wpn_kiparis				= 1, 0.50
+wpn_ppsh41_rednew			= 1, 0.50
+wpn_vz61				= 1, 0.50
+
+;[outfits]
+bandit_novice_outfit 			= 1, 1
+
+;[headgear]
+helm_rp_bala            		= 1, 1
+helm_cloth_mask				= 1, 1
+lead_box				= 3, 1
+
+;[ammo]
+ammo_9x18_fmj 			= 4, 1
+ammo_9x18_pmm 			= 2, 0.5
+ammo_9x19_fmj 			= 4, 1
+ammo_7.62x25_p 			= 8, 1
+ammo_5.45x39_fmj 		= 3, 0.7
+ammo_12x76_zhekan 		= 4, 0.7
+ammo_12x70_buck 		= 4, 1
+
+[supplies_2]:supplies_1
+;[devices]
+itm_advancedkit			= 1, 0.50
+
+;[melee]
+wpn_knife3              	= 1, 0.75
+wpn_axe                 	= 1, 1
+
+;[food]
+ration_ukr			= 1, 0.75
+ration_ru			= 1, 0.75
+mre				= 1, 0.75
+
+;[tools]
+army_bowler             	= 1, 1
+
+;[explosives]
+ied_rpg_new                 = 2, 0.75
+ied_new                     = 2, 0.75
+
+;[pistols]
+wpn_aps        	   = 1, 0.50
+wpn_oc33           = 1, 0.50
+
+;[shotguns]
+wpn_mossberg590         = 1, 0.50
+wpn_toz34_obrez         = 1, 0.50
+wpn_mp133		= 1, 0.50
+wpn_toz34_decor		= 1, 0.50
+wpn_sks			= 1, 0.50
+wpn_fort500		= 1, 0.50
+
+;[snipers]
+wpn_mosin           	= 1, 0.50
+wpn_svt40           	= 1, 0.50
+
+;[outfits]
+bandit_sun_outfit		= 1, 1
+
+
+[supplies_3]:supplies_2
+;[devices]
+itm_expertkit			= 1, 0.50
+
+hide_chimera			= 1, 0.50
+hide_controller			= 1, 0.50
+hide_bloodsucker		= 1, 0.50
+
+;[outfits]
+ghillie_outfit        		= 1, 0.50
+trenchcoat_brown_outfit		= 1, 1
+bandit_nbc_outfit       	= 1, 1
+
+;[pistols]
+wpn_desert_eagle   		= 1, 0.50
+
+;[shotguns]
+wpn_protecta          		= 1, 0.50
+wpn_type63          		= 1, 0.50
+
+
+[supplies_4]:supplies_3
+;[devices]
+
+;[melee]
+wpn_knife4              	= 1, 0.75
+
+;[ammo]
+ammo_pkm_100			= 4, 0.85
+ammo_og-7b			= 2, 0.85
+
+[shotguns]
+wpn_protecta          		= 1, 0.50
+wpn_type63          		= 1, 0.50
+
+wpn_rg-6			= 1, 0.50
+
+
+[supplies_5]:supplies_4
+
+;[melee]
+wpn_knife5            		= 2, 0.50

@@ -1,0 +1,68 @@
+
+-- supply tables
+
+local trade_table = {
+	{ -- freedom, isg, mercs
+		[1] = {
+			["wpn_aug"] = 1
+		},
+		[2] = {
+			["wpn_aug_custom"] = 1,
+			["wpn_aug_freedom"] = 1
+		},
+		[3] = {
+			["wpn_aug_modern"] = 1
+		},
+		[5] = {
+			["wpn_aug_merc"] = 1
+		},
+	},
+	{ -- monolith
+		[1] = {
+			["wpn_aug"] = 1,
+			["wpn_aug_freedom"] = 1
+		},
+		[2] = {
+			["wpn_aug_custom"] = 1
+		},
+		[3] = {
+			["wpn_aug_modern"] = 1
+		},
+	},
+}
+
+-- spawning guns
+
+function spawn_augmented(npc)
+	local is_trader = trader_autoinject.get_trader_type(npc) == trader_autoinject.SUPPLIER
+		if not is_trader then
+			return
+		end
+	local loot_table
+		if string.find(npc:section(),"jup_depo_isg_tech") or string.find(npc:section(),"mil_smart_terrain_7_10_freedom_trader_stalker") or string.find(npc:section(),"jup_a6_freedom_trader_ashot") or string.find(npc:section(),"cit_killers_merc_trader_stalker") then
+			local spawn_chance = 80
+			if (spawn_chance >= math.random(100)) then
+				loot_table = trade_table[1]
+			else
+				return
+			end		
+		elseif string.find(npc:section(),"pri_monolith_monolith_trader_stalker") then
+			loot_table = trade_table[2]
+		else
+			return
+		end
+	local supply_level = clamp(trader_autoinject.supply_level(npc, true) or 0, 0, 5)
+	for k,v in pairs(loot_table) do
+		if supply_level >= k then
+			trader_autoinject.spawn_items(npc, loot_table[k], true)
+		end
+	end
+end
+
+
+TraderAuto = trader_autoinject.update
+function trader_autoinject.update(npc)
+    TraderAuto(npc)
+    spawn_augmented(npc)
+end
+

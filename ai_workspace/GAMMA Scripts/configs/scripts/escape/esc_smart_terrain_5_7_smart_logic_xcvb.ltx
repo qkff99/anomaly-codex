@@ -1,0 +1,205 @@
+; =======================
+; ------------- DAY ---------------
+; =======================
+; sniper left
+[logic@esc_5_7_xcvb_day_1]
+active = walker@day_1
+suitable = {!surge_started !is_night =guard_has_rifle} true
+prior = 58
+
+[walker@day_1]
+path_walk = walker_3_walk
+
+
+; sniper right
+[logic@esc_5_7_xcvb_day_2]
+active = walker@day_2
+suitable = {!surge_started !is_night =guard_has_rifle} true
+prior = 57
+
+[walker@day_2]
+path_walk = walker_1_walk
+
+
+; entrance guard
+[logic@esc_5_7_xcvb_day_3]
+active = walker@day_3
+suitable = {!surge_started !is_night} true
+prior = 57
+
+[walker@day_3]
+path_walk = guard_1_walk
+path_look = guard_1_look
+
+
+; side entrance guard
+[logic@esc_5_7_xcvb_day_4]
+active = walker@day_4
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[walker@day_4]
+path_walk = walker_2_walk
+path_look = walker_2_look
+
+
+; farm patrol
+[logic@esc_5_7_xcvb_day_5]
+active = walker@day_5
+suitable = {!surge_started !is_night} true
+prior = 56
+
+[walker@day_5]
+path_walk = walker_5_walk
+
+
+
+; =======================
+; ------------ NIGHT -------------
+; =======================
+[beh@general]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+gather_items_enabled = false
+help_wounded_enabled = false
+corpse_detection_enabled = false
+meet = no_meet
+wounded = wounded@ignore
+use_camp = false
+
+[meet@general]
+close_anim 		= nil
+close_victim 	= nil
+far_anim 		= nil
+far_victim 		= nil
+close_distance  = 0
+far_distance 	= 0
+use = {=actor_enemy} false, {=dist_to_actor_le(3)} true, false
+snd_on_use = {!dist_to_actor_le(3)} nil
+meet_on_talking = false
+
+[wounded@ignore]
+hp_state        = 0|wounded_heavy@help_heavy
+hp_state_see    = 0|wounded_heavy@help_heavy
+hp_victim       = 0|nil
+hp_fight        = 0|false
+hp_cover        = 0|false
+
+
+; farm patrol
+[logic@esc_5_7_xcvb_night_1]
+active = walker@night_1
+suitable = {!surge_started =is_night} true
+prior = 59
+
+[walker@night_1]
+path_walk = walker_5_walk
+
+
+; farm guard 1
+[logic@esc_5_7_xcvb_night_2]
+active = beh@night_2
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[beh@night_2]:beh@general
+pt1 = 20000, guard | 		pos: 1.4, 1.5061, 268.1 	 	 look: 9.9452, 0.5293, 272.5231 
+path_end = loop
+meet = meet@general
+gather_items_enabled = true
+help_wounded_enabled = true
+corpse_detection_enabled = true
+
+
+; sleep 1
+[logic@esc_5_7_xcvb_night_3]
+active = beh@night_3
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[beh@night_3]:beh@general
+pt1 = 20000, sleep | 		pos: -16.8, 2.008, 254.8 	 	 look: -13.5946, 0.8716, 260.302 
+path_end = loop
+turn_on_campfire = true
+
+
+; sleep 2
+[logic@esc_5_7_xcvb_night_4]
+active = beh@night_4
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[beh@night_4]:beh@general
+pt1 = 20000, sleep | 		pos: -16.8, 2.004, 259.7 	 	 look: -14.7814, 0.872, 255.9285 
+path_end = loop
+turn_on_campfire = true
+
+
+; sleep 3
+[logic@esc_5_7_xcvb_night_5]
+active = beh@night_5
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[beh@night_5]:beh@general
+pt1 = 20000, sit_ass_drink_vodka | 		pos: -18.2, 1.9691, 256.9 	 	 look: -13.8768, 0.9367, 256.9713
+path_end = loop
+meet = meet@general
+help_wounded_enabled = true
+
+
+; farm guard 2
+[logic@esc_5_7_xcvb_night_6]
+active = beh@night_6
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[beh@night_6]:beh@general
+pt1 = 20000, guard | 		pos: 2.8, 1.4793, 278.6 	 	 look: 12.2692, 0.3008, 274.7251 
+path_end = loop
+meet = meet@general
+gather_items_enabled = true
+help_wounded_enabled = true
+corpse_detection_enabled = true
+
+
+; sleep 4
+[logic@esc_5_7_xcvb_night_7]
+active = beh@night_7
+suitable = {!surge_started =is_night} true
+prior = 55
+
+[beh@night_7]:beh@general
+pt1 = 20000, sleep | 		pos: -0.7, 2.0201, 260.4 	 	 look: 2.1775, 1.0249, 259.9778 
+path_end = loop
+
+
+; sleep 5
+[logic@esc_5_7_xcvb_night_8]
+active = beh@night_8
+suitable = {!surge_started =is_night} true
+prior = 54
+
+[beh@night_8]:beh@general
+pt1 = 20000, sleep | 		pos: -13.3, 1.9691, 256.2 	 	 look: -17.2483, 0.8737, 257.936 
+path_end = loop
+
+
+; sleep 6
+[logic@esc_5_7_xcvb_night_9]
+active = beh@night_9
+suitable = {!surge_started =is_night} true
+prior = 54
+
+[beh@night_9]:beh@general
+pt1 = 20000, sit_ass_eat_bread | 		pos: -14, 1.9785, 259 	 	 look: -17.3516, 0.9648, 255.4029 
+path_end = loop
+meet = meet@general

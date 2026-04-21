@@ -1,0 +1,201 @@
+local get_game_time = game.get_game_time
+local get_start_time = level.get_start_time
+
+local translate_string = game.translate_string
+
+local set_sound_play = xr_sound.set_sound_play
+
+local ceil = math.ceil
+local floor = math.floor
+local sqrt = math.sqrt
+
+local string_format = string.format
+local string_find = string.find
+
+local function get_time_elapsed()
+	--trace(time_factor)
+	return floor(get_game_time():diffSec(get_start_time()))
+end
+
+local function h_to_s(h)
+	return h * 60 * 60
+end
+
+local function s_to_h(s)
+	return s / 60 / 60
+end
+
+local function print_tip(text, ...)
+	local ico = "ui_inGame2_Dengi_otdani"
+	local text_color = utils_xml.get_color("pda_white")
+	local arg_color = utils_xml.get_color("d_green")
+	local t = {...}
+	for k, v in pairs(t) do
+		t[k] = arg_color .. tostring(t[k]) .. text_color
+	end
+	text = "%" .. text_color .. translate_string(text)
+	news_manager.send_tip(db.actor, string_format(text, unpack(t)), nil, ico, 6000)
+end
+
+-- Load the defaults
+local function load_defaults()
+	local t = {}
+	local op = fast_travel_limiter_mcm.op
+	for i, v in ipairs(op.gr) do
+		if v.def ~= nil then
+			t[v.id] = v.def
+		end
+	end
+	t["next_travel_inc"] = h_to_s(t["next_travel_inc"])
+	return t
+end
+local settings = load_defaults()
+
+next_travel = 0
+
+--global distance calculation, credits to Grimscribe and Immersive Fast Travel mod for code
+function get_travel_cost(se_obj)
+	local min_tax = 3500
+
+	local sim = alife()
+	local actor = db.actor
+	local closest_smart_id
+	for name,smart in pairs( SIMBOARD.smarts_by_names ) do
+	    if simulation_objects.is_on_the_same_level(sim:actor(), smart) then
+	        local dist = smart.position:distance_to(actor:position())
+	        local smrt = SIMBOARD.smarts[smart.id]
+	        if (smrt) and (not closest_smart_id or (dist < closest_smart_id[1])) then
+	            closest_smart_id = { dist, smart.id }
+	        end
+	    end
+	end
+	local closest_smart = alife_object(closest_smart_id[2])
+	local dist = sqrt(warfare.distance_to_xz_sqr(global_position.from(closest_smart), global_position.from(se_obj)))
+
+	local tax = ceil((min_tax + dist * 1.5) * settings.tax_multipler)
+	return tax
+end
+
+function fast_travel_limited_pre(property_ui, id, level_name, prop)
+	local t = get_time_elapsed()
+	if t < next_travel then
+		local hours_remain = ceil(s_to_h(next_travel - t))
+		set_sound_play(AC_ID, "pda_tips")
+		print_tip("st_ftl_next_travel_available", hours_remain)
+		return
+	end
+
+	local actor = db.actor
+	local tax = 0
+	if settings.tax_multipler > 0 then
+		tax = get_travel_cost(alife_object(id))
+		local money = actor:money()
+		if money < tax then
+			set_sound_play(AC_ID, "pda_tips")
+			print_tip("st_ftl_not_enough_money", tax, money)
+			return
+		end	
+	end
+	return tax
+end
+
+function fast_travel_limited_post(tax)
+	local actor = db.actor
+	if tax > 0 then
+		actor:give_money(-tax)
+		local news_text = tostring(tax)
+		local news_caption = translate_string("general_out_money")
+		local news_ico = "ui_inGame2_Dengi_otdani"
+		set_sound_play(AC_ID, "pda_tips")
+		actor:give_game_news(news_caption, news_text, news_ico, 0, 6000, 0)
+	end
+	next_travel = get_time_elapsed() + settings.next_travel_inc
+end
+
+local fast_travel = game_fast_travel.map_spot_menu_property_clicked
+game_fast_travel.map_spot_menu_property_clicked = function(property_ui, id, level_name, prop)
+	local tax = fast_travel_limited_pre(property_ui, id, level_name, prop)
+	if not tax then return end
+
+	local res, params = fast_travel(property_ui,id,level_name,prop)
+	if not res then return end
+
+	fast_travel_limited_post(tax)
+	return res, params
+end
+
+local backpack_travel = game_backpack_travel.map_spot_menu_property_clicked
+game_backpack_travel.map_spot_menu_property_clicked = function(property_ui, id, level_name, prop)
+	if prop == translate_string("bp_open") then
+		return backpack_travel(property_ui, id, level_name, prop)
+	end
+	
+	if prop == translate_string("bp_to") then
+		local tax = fast_travel_limited_pre(property_ui, id, level_name, prop)
+		if not tax then return end
+
+		local res, params = backpack_travel(property_ui,id,level_name,prop)
+		if not res then return end
+
+		fast_travel_limited_post(tax)
+		return res, params
+	end
+end
+
+function map_spot_menu_add_property(property_ui, id, level_name)
+	local se_obj = id > 0 and alife_object(id)
+	if not (se_obj) then
+		return
+	end
+
+	if (DEV_DEBUG) or (game_fast_travel.enabled > 0 and se_obj:clsid() == clsid.smart_terrain and game_fast_travel.tsmarts[se_obj:name()]) then
+		property_ui:AddItem(translate_string("st_ftl_get_travel_cost"))
+	end
+
+	if (game_backpack_travel.bp_travel) and (string_find(se_obj:name(), "inv_actor_backpack") or string_find(se_obj:name(), "inv_backpack")) then
+		property_ui:AddItem(translate_string("st_ftl_get_travel_cost"))
+	end
+end
+
+function map_spot_menu_property_clicked(property_ui, id, level_name, prop)
+	local se_obj = id > 0 and alife_object(id)
+	if not (se_obj) then
+		return
+	end
+
+	if (prop ~= translate_string("st_ftl_get_travel_cost")) then return end
+
+	if settings.tax_multipler == 0 then
+		print_tip("st_ftl_show_travel_cost", 0)
+		return
+	end
+
+	print_tip("st_ftl_show_travel_cost", get_travel_cost(se_obj))
+end
+
+local function save_state(m_data)
+	m_data.ftl_next_travel = next_travel
+end
+
+local function load_state(m_data)
+	next_travel = m_data.ftl_next_travel or 0
+end
+
+local function on_option_change()
+	settings = load_defaults()
+	if ui_mcm then
+		for k, v in pairs(settings) do
+			settings[k] = ui_mcm.get("fast_travel_limiter/" .. k)
+		end
+		settings["next_travel_inc"] = h_to_s(settings["next_travel_inc"])
+	end
+end
+
+function on_game_start()
+	RegisterScriptCallback("map_spot_menu_add_property", map_spot_menu_add_property)
+	RegisterScriptCallback("map_spot_menu_property_clicked", map_spot_menu_property_clicked)
+	RegisterScriptCallback("actor_on_first_update", on_option_change)
+	RegisterScriptCallback("on_option_change", on_option_change)
+	RegisterScriptCallback("load_state", load_state)
+	RegisterScriptCallback("save_state", save_state)
+end

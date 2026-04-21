@@ -1,0 +1,519 @@
+--[[
+=======================================================================================
+    DevTools Logging - Generic Structured Logging for S.T.A.L.K.E.R. Anomaly
+    
+    A standalone, mod-agnostic logging system with categories, severity levels,
+    ring buffer, file output, and filtering.
+    
+    Quick Start:
+        -- Register a category for your mod (optional - can use built-in):
+        devtools_logging.register_category("MY_MOD", {100, 200, 255, 255})
+        
+        -- Log messages:
+        devtools_logging.info("MY_MOD", "Something happened", {key = "value"})
+        devtools_logging.warn("MY_MOD", "Warning message")
+        devtools_logging.error_log("MY_MOD", "Error occurred")
+        
+        -- Or use the generic log function:
+        devtools_logging.log(devtools_logging.INFO, "MY_MOD", "Message", data)
+=======================================================================================
+--]]
+
+-- ============================================================================
+-- SEVERITY LEVELS
+-- ============================================================================
+
+DEBUG = 1
+INFO = 2
+WARN = 3
+ERROR = 4
+
+SEVERITY_NAMES = {
+    [DEBUG] = "DEBUG",
+    [INFO] = "INFO",
+    [WARN] = "WARN",
+    [ERROR] = "ERROR"
+}
+
+SEVERITY_COLORS = {
+    [DEBUG] = {128, 128, 128, 255},  -- Gray
+    [INFO] = {255, 255, 255, 255},   -- White
+    [WARN] = {255, 200, 0, 255},     -- Yellow
+    [ERROR] = {255, 80, 80, 255}     -- Red
+}
+
+-- ============================================================================
+-- DYNAMIC CATEGORY SYSTEM
+-- ============================================================================
+
+-- Built-in categories (always available)
+local BUILTIN_CATEGORIES = {
+    SYSTEM = {100, 200, 200, 255},   -- Cyan-ish
+    PERF = {255, 200, 150, 255}      -- Peach
+}
+
+-- Registered categories: name -> {r, g, b, a}
+local registered_categories = {}
+
+-- Initialize with built-in categories
+for name, color in pairs(BUILTIN_CATEGORIES) do
+    registered_categories[name] = color
+end
+
+-- Category constants for built-in types
+SYSTEM = "SYSTEM"
+PERF = "PERF"
+
+-- Register a new category
+function register_category(name, color)
+    if not name or name == "" then
+        return false
+    end
+    
+    -- Default color if not provided
+    color = color or {200, 200, 200, 255}
+    
+    registered_categories[name] = color
+    if DEVTOOLS_VERBOSE then
+        printf("[DEVTOOLS] Registered log category: " .. tostring(name))
+    end
+    return true
+end
+
+-- Unregister a category
+function unregister_category(name)
+    if BUILTIN_CATEGORIES[name] then
+        return false  -- Can't remove built-in categories
+    end
+    registered_categories[name] = nil
+    return true
+end
+
+-- Get all registered categories
+function get_categories()
+    local result = {}
+    for name, _ in pairs(registered_categories) do
+        table.insert(result, name)
+    end
+    table.sort(result)
+    return result
+end
+
+-- Get color for a category
+function get_category_color(name)
+    return registered_categories[name] or {200, 200, 200, 255}
+end
+
+-- Check if category exists
+function is_category_registered(name)
+    return registered_categories[name] ~= nil
+end
+
+-- ============================================================================
+-- CONFIGURATION
+-- ============================================================================
+
+local config = {
+    -- Buffer settings
+    max_entries = 1000,
+    
+    -- Filter settings (for display, not capture)
+    min_severity = DEBUG,
+    enabled_categories = {},     -- Empty = all enabled
+    
+    -- Output settings
+    write_to_file = false,
+    file_path = "appdata/logs/devtools_log.txt",
+    echo_to_console = false,
+    
+    -- Display settings
+    show_timestamp = true,
+    show_category = true,
+    
+    -- State
+    enabled = true,
+    paused = false
+}
+
+-- Initialize: all categories enabled by default
+for name, _ in pairs(registered_categories) do
+    config.enabled_categories[name] = true
+end
+
+-- ============================================================================
+-- RING BUFFER
+-- ============================================================================
+
+local log_buffer = {}
+local buffer_start = 1
+local buffer_count = 0
+local total_logged = 0
+
+-- Log entry structure:
+-- {
+--     id = number,
+--     timestamp = number,      -- Game time ms
+--     real_time = string,      -- Clock time
+--     severity = number,
+--     category = string,
+--     message = string,
+--     data = table,            -- Optional structured data
+--     source = string          -- Source file/function
+-- }
+
+local function add_to_buffer(entry)
+    if buffer_count < config.max_entries then
+        buffer_count = buffer_count + 1
+        log_buffer[buffer_count] = entry
+    else
+        log_buffer[buffer_start] = entry
+        buffer_start = buffer_start + 1
+        if buffer_start > config.max_entries then
+            buffer_start = 1
+        end
+    end
+end
+
+-- Get all entries in chronological order
+function get_entries()
+    local result = {}
+    
+    if buffer_count == 0 then
+        return result
+    end
+    
+    if buffer_count < config.max_entries then
+        for i = 1, buffer_count do
+            table.insert(result, log_buffer[i])
+        end
+    else
+        for i = 0, buffer_count - 1 do
+            local idx = ((buffer_start - 1 + i) % config.max_entries) + 1
+            table.insert(result, log_buffer[idx])
+        end
+    end
+    
+    return result
+end
+
+-- Get filtered entries
+function get_filtered_entries(search_text, severity_filter, category_filter)
+    local all_entries = get_entries()
+    local result = {}
+    
+    -- Use config values if not provided
+    severity_filter = severity_filter or config.min_severity
+    
+    for _, entry in ipairs(all_entries) do
+        local include = true
+        
+        -- Check severity
+        if entry.severity < severity_filter then
+            include = false
+        end
+        
+        -- Check category (if filtering enabled)
+        if include and category_filter and category_filter ~= "" then
+            if entry.category ~= category_filter then
+                include = false
+            end
+        elseif include and next(config.enabled_categories) then
+            -- Use config's enabled categories
+            if not config.enabled_categories[entry.category] then
+                include = false
+            end
+        end
+        
+        -- Check search text
+        if include and search_text and search_text ~= "" then
+            local search_lower = string.lower(search_text)
+            local msg_lower = string.lower(entry.message or "")
+            local cat_lower = string.lower(entry.category or "")
+            
+            if not string.find(msg_lower, search_lower, 1, true) and
+               not string.find(cat_lower, search_lower, 1, true) then
+                include = false
+            end
+        end
+        
+        if include then
+            table.insert(result, entry)
+        end
+    end
+    
+    return result
+end
+
+-- Clear buffer
+function clear()
+    log_buffer = {}
+    buffer_start = 1
+    buffer_count = 0
+end
+
+-- Get buffer stats
+function get_stats()
+    return {
+        count = buffer_count,
+        max = config.max_entries,
+        total_logged = total_logged
+    }
+end
+
+-- ============================================================================
+-- FILE OUTPUT
+-- ============================================================================
+
+local file_handle = nil
+
+local function write_to_file(entry)
+    if not file_handle then
+        file_handle = io.open(config.file_path, "a")
+        if not file_handle then
+            config.write_to_file = false
+            return
+        end
+    end
+    
+    local line = string.format("[%s][%s][%s] %s",
+        entry.real_time,
+        SEVERITY_NAMES[entry.severity] or "?",
+        entry.category or "?",
+        entry.message or "")
+    
+    if entry.data then
+        local data_parts = {}
+        for k, v in pairs(entry.data) do
+            table.insert(data_parts, k .. "=" .. tostring(v))
+        end
+        if #data_parts > 0 then
+            line = line .. " {" .. table.concat(data_parts, ", ") .. "}"
+        end
+    end
+    
+    file_handle:write(line .. "\n")
+    file_handle:flush()
+end
+
+local function close_file()
+    if file_handle then
+        file_handle:close()
+        file_handle = nil
+    end
+end
+
+-- ============================================================================
+-- MAIN LOGGING FUNCTION
+-- ============================================================================
+
+function log(severity, category, message, data)
+    if not config.enabled then return end
+    if config.paused then return end
+    
+    -- Validate severity
+    if not severity or severity < DEBUG or severity > ERROR then
+        severity = INFO
+    end
+    
+    -- Default category
+    if not category or category == "" then
+        category = SYSTEM
+    end
+    
+    -- Auto-register unknown categories
+    if not registered_categories[category] then
+        register_category(category)
+        config.enabled_categories[category] = true
+    end
+    
+    -- Get source info
+    local source = nil
+    local info_data = debug.getinfo(2, "nS")
+    if info_data then
+        local func_name = info_data.name or "?"
+        local file = info_data.short_src or "?"
+        file = string.match(file, "([^/\\]+)$") or file
+        source = file .. ":" .. func_name
+    end
+    
+    -- Create entry
+    total_logged = total_logged + 1
+    local entry = {
+        id = total_logged,
+        timestamp = time_global and time_global() or 0,
+        real_time = os.date("%H:%M:%S"),
+        severity = severity,
+        category = category,
+        message = message or "",
+        data = data,
+        source = source
+    }
+    
+    add_to_buffer(entry)
+    
+    -- Echo to console
+    if config.echo_to_console then
+        local console_msg = string.format("[%s][%s] %s",
+            SEVERITY_NAMES[severity] or "?",
+            category or "?",
+            message or "")
+        if printf then
+            printf("LOG: " .. tostring(console_msg))
+        end
+    end
+    
+    -- Write to file
+    if config.write_to_file then
+        write_to_file(entry)
+    end
+end
+
+-- ============================================================================
+-- CONVENIENCE FUNCTIONS
+-- ============================================================================
+
+function debug_log(category, message, data)
+    log(DEBUG, category, message, data)
+end
+
+function info(category, message, data)
+    log(INFO, category, message, data)
+end
+
+function warn(category, message, data)
+    log(WARN, category, message, data)
+end
+
+function error_log(category, message, data)
+    log(ERROR, category, message, data)
+end
+
+-- ============================================================================
+-- CONFIGURATION ACCESSORS
+-- ============================================================================
+
+function get_config()
+    return config
+end
+
+function set_min_severity(severity)
+    if severity >= DEBUG and severity <= ERROR then
+        config.min_severity = severity
+    end
+end
+
+function get_min_severity()
+    return config.min_severity
+end
+
+function set_category_enabled(category, enabled)
+    config.enabled_categories[category] = enabled
+end
+
+function is_category_enabled(category)
+    -- If no specific filters set, all categories are enabled
+    if not next(config.enabled_categories) then
+        return true
+    end
+    return config.enabled_categories[category] == true
+end
+
+function set_all_categories_enabled(enabled)
+    for name, _ in pairs(registered_categories) do
+        config.enabled_categories[name] = enabled
+    end
+end
+
+function set_enabled(enabled)
+    config.enabled = enabled
+end
+
+function is_enabled()
+    return config.enabled
+end
+
+function set_paused(paused)
+    config.paused = paused
+end
+
+function is_paused()
+    return config.paused
+end
+
+function set_echo_to_console(enabled)
+    config.echo_to_console = enabled
+end
+
+function is_echo_to_console()
+    return config.echo_to_console
+end
+
+function set_write_to_file(enabled)
+    config.write_to_file = enabled
+    if not enabled then
+        close_file()
+    end
+end
+
+function is_write_to_file()
+    return config.write_to_file
+end
+
+function get_file_path()
+    return config.file_path
+end
+
+function set_file_path(path)
+    if config.write_to_file then
+        close_file()
+    end
+    config.file_path = path
+end
+
+function set_max_entries(max)
+    config.max_entries = max
+end
+
+function get_max_entries()
+    return config.max_entries
+end
+
+-- ============================================================================
+-- FORMAT HELPERS
+-- ============================================================================
+
+function format_entry_short(entry)
+    return string.format("[%s] %s", entry.category or "?", entry.message or "")
+end
+
+function format_entry_full(entry)
+    local parts = {}
+    
+    if config.show_timestamp then
+        table.insert(parts, entry.real_time)
+    end
+    
+    table.insert(parts, "[" .. (SEVERITY_NAMES[entry.severity] or "?") .. "]")
+    
+    if config.show_category then
+        table.insert(parts, "[" .. (entry.category or "?") .. "]")
+    end
+    
+    table.insert(parts, entry.message or "")
+    
+    return table.concat(parts, " ")
+end
+
+-- ============================================================================
+-- INITIALIZATION
+-- ============================================================================
+
+function on_game_start()
+    info(SYSTEM, "DevTools Logging initialized", {
+        max_entries = config.max_entries
+    })
+end
+
+if RegisterScriptCallback then
+    RegisterScriptCallback("on_game_start", on_game_start)
+end

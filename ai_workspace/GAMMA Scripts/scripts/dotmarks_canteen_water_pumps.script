@@ -1,0 +1,58 @@
+-- =======================================================================
+--[[    FILLABLE CANTEENS PATCH FOR WATER PUMP OBJECTS
+-- =======================================================================
+    Author: Catspaw
+    Source: https://github.com/CatspawMods/Anomaly-Addon-Archive
+-- =======================================================================    
+    This patch enables DotMarks to detect and properly handle the water
+    pump interactions from the Fillable Canteens addon. Without this, the
+    pumps will not be detected as interactable objects, and may not show
+    an interaction prompt at all.
+
+    Addon authors can also use this as an example of how to add their own
+    compatibility patches using one or more of the callbacks added by
+    IDM. See dotmarks_callbacks.script or Github for more documentation.
+-- =====================================================================]]
+
+function on_game_start()
+    if bind_water_pump_furniture and dotmarks_main and dotmarks_callbacks then
+        RegisterScriptCallback("dotmarks_on_new_object_scan", 
+            function(id, args)
+                if not (id and args) then return end
+                if args.texture or not args.ret_value then return end
+                -- Abort if another script has already taken action on this callback
+                local obj = id and get_object_by_id(id)
+                if obj and (args.clsid == clsid.obj_physic) and string.match(obj:name(), "placeable_water_pump") then
+                    args.logged_type    = "a water pump"
+                        -- Used only for debug logging
+                    args.texture        = dotmarks_main.cfg.marker_dotmark or "ui_catsy_marker_intdot"
+                        -- Must be a valid texture in the game
+                    args.no_sec         = true
+                        -- Object cannot have a secondary action
+                    args.text           = game.translate_string("st_water_pump_no_canteen")
+                        -- Default text
+                    args.active_swap    = dup_table(dotmarks_main.cfg.swap_water_pump) --[[
+                        The "active swap" is a set of args that get swapped in whenever
+                        the marker gains focus, and back out to the original settings when 
+                        the actor's focus leaves the marker. This is primarily used to swap 
+                        in an alternate texture, but can alter literally any attribute of 
+                        the marker. --]]
+                    args.refresh_text   = true --[[
+                        Always refresh the text on every update
+                        Combined with a hint filter, this option causes the prompt to
+                        update its displayed text with a cleaned-up version of the 
+                        currently-filtered text whenever the game is tring to display
+                        that localization string.        --]]
+                    args.hint_filters   = { --[[
+                        -- Hint filters tell DotMarks which localization strings should be
+                        -- hidden whenever they appear on the vanilla interaction UI, when
+                        -- this marker is currently targeted and its interaction prompt is
+                        -- shown.       --]]
+                        ["st_water_pump_fill"] = "st_water_pump_fill",
+                        ["st_water_pump_no_canteen"] = "st_water_pump_no_canteen",
+                    }
+                end
+            end
+        )
+    end
+end

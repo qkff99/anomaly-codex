@@ -1,0 +1,234 @@
+#include "presets\trade_discounts.ltx"
+#include "presets\trade_presets.ltx"
+#include "presets\gamma_nato_preset.ltx"
+
+[trader]
+buy_condition =  trade_generic_buy
+sell_condition = trade_generic_sell
+buy_supplies = {=actor_goodwill_ge(freedom:2000)} supplies_5, {=actor_goodwill_ge(csky:2000)} supplies_5, {=actor_goodwill_ge(killer:2000)} supplies_5, {=heavy_pockets_functor()} supplies_5, {=actor_goodwill_ge(freedom:1500)} supplies_4, {=actor_goodwill_ge(csky:1500)} supplies_4, {=actor_goodwill_ge(killer:1500)} supplies_4, {=actor_goodwill_ge(freedom:1000)} supplies_3, {=actor_goodwill_ge(csky:1000)} supplies_3, {=actor_goodwill_ge(killer:1000)} supplies_3, {=actor_goodwill_ge(freedom:500)} supplies_2, {=actor_goodwill_ge(csky:500)} supplies_2, {=actor_goodwill_ge(killer:500)} supplies_2,  supplies_1
+buy_item_condition_factor = 0.50
+buy_item_exponent = 2.25
+sell_item_exponent = 0.75
+
+discounts = discount_supplier
+
+[trade_generic_buy]:trasher,furnitures_low
+itm_drugkit           = 5.0,5.0
+
+[trade_generic_sell]:trasher
+ammo_9x19_ap          = 0.75,0.75
+ammo_magnum_300       = 0.75,0.75
+
+[supplies_1]:common_stock,supply_1_nato
+
+broken_detector                      = 1, 1
+flashlight_broken                    = 1, 1
+
+detector_radio             = 1, 1
+detector_geiger             = 1, 1
+device_pda_1				= 1, 1
+bolts_pack				= 2, 1
+
+itm_tent                = 1, 1
+
+;items
+batteries_dead			= 6, 1
+itm_sleepbag			= 1, 1
+compression_bag			= 1, 1
+itm_actor_backpack		= 1, 1
+itm_backpack			= 1, 1
+
+device_flashlight		= 1, 1
+device_torch_dummy		= 1, 1
+
+;misc
+porn					= 1, 1
+shovel_mili				= 1, 1
+grooming				= 1, 1
+beadspread				= 1, 1
+mirror					= 1, 1
+kit_hunt				= 1, 1
+tarpaulin				= 1, 1
+rope					= 1, 1
+synthrope				= 1, 1
+cutlery					= 1, 1
+
+;еда
+meat_tushkano			= 3, 1
+meat_dog				= 3, 1
+meat_pseudodog			= 3, 1
+meat_flesh				= 3, 1
+meat_boar				= 3, 1
+meat_snork				= 1, 1
+meat_bloodsucker		= 2, 1
+meat_chimera			= 1, 1
+bread					= 3, 1
+breadold				= 4, 1
+kolbasa					= 3, 1
+conserva				= 3, 1
+tomato					= 2, 1
+sausage					= 2, 1
+corn					= 2, 1
+beans					= 2, 1
+chili					= 2, 1
+salmon					= 2, 1
+raisins					= 2, 1
+chocolate				= 2, 1
+nuts					= 2, 1
+mint					= 3, 1
+energy_drink			= 3, 1
+water_drink				= 3, 1
+beer					= 3, 1
+vodka					= 1, 1
+vodka2					= 1, 1
+vodka_quality			= 1, 1
+cocaine					= 2, 1
+salicidic_acid			= 2, 1
+morphine				= 2, 1
+cigarettes 				= 3, 1
+cigar1 					= 2, 1
+cigar2 					= 2, 1
+cigar3 					= 2, 1
+joint					= 2, 1
+marijuana				= 2, 1
+tobacco					= 3, 1
+flask					= 3, 1
+mineral_water			= 3, 1
+caffeine				= 3, 1
+hand_rolling_tobacco	= 3, 1
+cigar					= 1, 1
+cigarettes_lucky		= 3, 1
+cigarettes_russian		= 3, 1
+
+;ћедикаменты
+bandage					= 4, 1
+medkit					= 3, 1
+medkit_army				= 2, 1
+medkit_scientic			= 2, 1
+stimpack				= 2, 1
+stimpack_army			= 2, 1
+stimpack_scientic		= 2, 1
+antirad					= 2, 1
+salicidic_acid			= 2, 1
+morphine				= 2, 1
+box_matches			= 4, 1
+
+;Ѕуѝтеры
+drug_booster			= 2, 1
+drug_coagulant		= 1, 1
+drug_antidot			= 1, 1
+drug_radioprotector	= 1, 1
+drug_psy_blockade		= 1, 1
+drug_sleepingpills	= 1, 1
+
+;misc                   = 1, 1
+wpn_knife               = 1, 1
+wpn_knife2              = 1, 1
+mine_new                    = 5, 1
+ied_rpg_new                 = 5, 1
+ied_new                     = 5, 1
+wpn_binoc_inv           = 1, 1
+
+lead_box				= 3, 1
+
+;јммуници¤
+ammo_11.43x23_fmj                    = 8, 1
+ammo_11.43x23_hydro                  = 8, 1
+ammo_9x18_ap                         = 8, 1
+ammo_9x18_fmj                        = 8, 1
+ammo_9x18_pmm                        = 8, 1
+ammo_9x19_fmj                        = 8, 1
+ammo_9x19_pbp                        = 8, 1
+ammo_9x19_ap                         = 10, 1
+ammo_7.92x33_fmj                     = 2, 1
+ammo_12x70_buck                      = 8, 1
+ammo_7.62x25_p                       = 10, 1
+ammo_7.62x25_ps                      = 10, 1
+ammo_20x70_buck                      = 8, 1
+
+
+fieldcooker                          = 1, 1
+
+;јддоны
+
+;ѕредметы
+detector_simple			= 1, 1
+kit_hunt				= 1, 1
+fieldcooker				= 1, 1
+
+cooking					= 3, 1
+kerosene                = 2, 1
+charcoal                = 2, 1
+explo_balon_gas         = 1, 1
+explo_jerrycan_fuel     = 1, 1
+
+[supplies_2]:supplies_1,supply_2_nato
+
+af_iam					= 1, 1
+af_surge				= 1, 1
+af_frames				= 1, 1
+af_grid					= 1, 1
+af_freon				= 1, 1
+af_cooler				= 1, 1
+af_camelbak				= 1, 1
+
+ammo_12x76_zhekan                    = 8, 1
+ammo_357_hp_mag                      = 6, 1
+ammo_7.92x33_ap                      = 6, 1
+ammo_5.7x28_ss195                    = 10, 1
+
+wpn_addon_scope_galil	= 1, 0.88
+ac10632				= 1, 0.88
+eot					= 1, 0.88
+c-more	= 1, 0.88
+kobra	= 1, 0.88
+ps01	= 1, 0.88
+acog	= 1, 0.88
+
+wpn_knife3              = 1, 1
+wpn_axe                 = 1, 1
+
+;медикоменты
+medkit_ai1			    = 2, 1
+antirad_kalium			= 2, 1
+antirad_cystamine		= 1, 1
+antibio_sulfad			= 2, 1
+antiemetic				= 1, 1
+antibio_chlor			= 2, 1
+jgut					= 1, 1
+yadylin					= 2, 1
+analgetic				= 2, 1
+
+
+[supplies_3]:supplies_2,supply_3_nato
+
+af_aac					= 1, 1
+
+ammo_5.56x45_ss190                   = 8, 1
+ammo_5.56x45_fmj                     = 8, 1
+ammo_5.7x28_ss190                    = 10, 1
+grenade_f1                           = 1, 1
+ied_new                              = 1, 1
+mine _new                            = 1, 1
+ammo_338_federal                     = 5, 1
+
+wpn_knife4              = 2, 1
+
+[supplies_4]:supplies_3,supply_4_nato
+
+wpn_axe3                              = 1, 1
+ammo_12x76_dart                      = 5, 1
+ammo_5.56x45_ap                       = 6, 1
+ammo_7.62x51_fmj                     = 8, 1
+ammo_m209                            = 1, 1
+ammo_magnum_300                      = 3, 1
+
+wpn_knife5              = 2, 1
+
+[supplies_5]:supplies_4,supply_5_nato
+batteries_exo 						 = 4,1
+af_aam					= 1, 1
+
+ammo_7.62x51_ap                      = 8, 1
+ammo_magnum_300                      = 6, 1
+ammo_338_federal                     = 6, 1

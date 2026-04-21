@@ -1,0 +1,96 @@
+-- Prefer disassemble with better tools first (i.e. Multitool)
+
+--override pairs function for item_parts table to use
+--defined in metatable pairs first if exist like in Lua 5.2
+local _p = pairs;
+item_parts.pairs = function(t, ...)
+    return ((getmetatable(t) and getmetatable(t).__pairs) and getmetatable(t).__pairs or _p)(t, ...)
+end
+
+--sort initial hash array by values and return keys
+--to form sorted one later
+local function getKeysSortedByValue(tbl, sortFunction)
+  local keys = {}
+  for key in pairs(tbl) do
+    table.insert(keys, key)
+  end
+
+  table.sort(keys, function(a, b)
+    return sortFunction(tbl[a], tbl[b])
+  end)
+
+  return keys
+end
+
+--define orderedTable Table
+local function orderedTable( t )
+   local mt = {}
+   -- set methods
+   mt.__index = {
+      -- set key order table inside __index for faster lookup
+      _korder = {},
+      -- traversal of hidden values
+      hidden = function() return pairs( mt.__index ) end,
+      -- traversal of table ordered: returning index, key
+      ipairs = function( self ) return ipairs( self._korder ) end,
+      -- traversal of table
+      pairs = function( self ) return pairs( self ) end,
+      -- traversal of table ordered: returning key,value
+      opairs = function( self )
+      	 --printf('override pairs in metatable')
+         local i = 0
+         local function iter( self )
+            i = i + 1
+            local k = self._korder[i]
+            if k then
+               return k,self[k]
+            end
+         end
+         return iter,self
+      end,
+      -- to be able to delete entries we must write a delete function
+      del = function( self,key )
+         if self[key] then
+            self[key] = nil
+            for i,k in ipairs( self._korder ) do
+               if k == key then
+                  table.remove( self._korder, i )
+                  return
+               end
+            end
+         end
+      end,
+   }
+   -- set new index handling
+   mt.__newindex = function( self,k,v )
+      if k ~= "del" and v then
+         rawset( self,k,v )
+         table.insert( self._korder, k )
+      end      
+   end
+   mt.__pairs = mt.__index.opairs
+   return setmetatable( t or {},mt )
+end
+
+--The function which decides what item to use for disassemble
+--is item_parts.get_suitable_dtool and it picks whatever item
+--actor has first in GetItemList table return
+--
+--So, this overrides GetItemList for item_parts to return ordered
+--table where an item with least degradation factor is guaranteed to
+--go first when we want to disassemble items 
+item_parts.GetItemList = function(str)
+	local itemList = GetItemList(str)
+	if (str == "disassemble") then
+      printf("Prefer Best Disassembly Tool: Calling override GetItemList")
+		local sortedKeys = getKeysSortedByValue(itemList, function(a, b)
+         return a < b
+      end)
+		local newItemList = orderedTable()
+		for i, key in ipairs(sortedKeys) do
+			newItemList[key] = itemList[key]
+		end
+		return newItemList
+	end
+	return itemList
+end

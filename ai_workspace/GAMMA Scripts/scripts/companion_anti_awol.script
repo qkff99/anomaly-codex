@@ -1,0 +1,97 @@
+-- Default enable companion distance from player
+local enable_companion_anti_awol_companion_distance = true
+
+-- Companion distance from the player
+local companion_ignore_combat_player_distance = 40
+local companion_allow_combat_player_distance = 35
+
+-- Companion distance from the go to marker
+local companion_ignore_combat_goto_distance = 40
+local companion_allow_combat_goto_distance = 35
+
+-- Default enable enemy distance from player
+local enable_companion_anti_awol_enemy_distance = false
+
+-- Companion distance from the player
+local companion_ignore_combat_enemy_distance = 100
+
+-- Companion distance from the go to marker
+local companion_ignore_combat_goto_enemy_distance = 100
+
+
+local function companion_retreat_eval(obj,enemy,flags)
+	
+	if not (obj:has_info("npcx_is_companion")) then
+		return
+	end
+
+	local st = db.storage[obj:id()]
+	local lvid = st.beh.rally_lvid
+
+	-- Companion distance from player
+	if enable_companion_anti_awol_companion_distance then
+		if st.beh.behavior == "beh_move" then
+			if lvid then
+				local pos = level.vertex_position(lvid)
+				if not(companion_retreat[obj:id()]) and (obj:position():distance_to(pos) > companion_ignore_combat_goto_distance) then
+					companion_retreat[obj:id()] = true
+				elseif (obj:position():distance_to(pos) < companion_allow_combat_goto_distance) then
+					companion_retreat[obj:id()] = false
+				end
+			else
+				if not(companion_retreat[obj:id()]) and (db.actor:position():distance_to(obj:position()) > companion_ignore_combat_player_distance) then
+					companion_retreat[obj:id()] = true
+				elseif (db.actor:position():distance_to(obj:position()) < companion_allow_combat_player_distance) then
+					companion_retreat[obj:id()] = false
+				end
+			end
+		else
+			companion_retreat[obj:id()] = false
+		end
+	end
+
+	if companion_retreat[obj:id()] == true then
+		flags.override = true
+		flags.result = false
+	end
+
+	-- Player distance from enemy
+	if enable_companion_anti_awol_enemy_distance then
+		if lvid then
+			local pos = level.vertex_position(lvid)
+			if enemy:position():distance_to(pos) > companion_ignore_combat_goto_enemy_distance then
+				flags.override = true
+				flags.result = false
+			end
+		else
+			if db.actor:position():distance_to(enemy:position()) > companion_ignore_combat_enemy_distance then
+				flags.override = true
+				flags.result = false
+			end
+		end
+	end
+end
+
+local function load_settings()
+	if ui_mcm then
+		enable_companion_anti_awol_companion_distance = ui_mcm.get("companion_anti_awol/enable_companion_anti_awol")
+		companion_ignore_combat_player_distance = ui_mcm.get("companion_anti_awol/companion_ignore_combat_player_distance")
+		companion_allow_combat_player_distance = ui_mcm.get("companion_anti_awol/companion_allow_combat_player_distance")
+		companion_ignore_combat_goto_distance = ui_mcm.get("companion_anti_awol/companion_ignore_combat_goto_distance")
+		companion_allow_combat_goto_distance = ui_mcm.get("companion_anti_awol/companion_allow_combat_goto_distance")
+
+		enable_companion_anti_awol_enemy_distance = ui_mcm.get("companion_anti_awol/enable_companion_anti_awol_enemy") 
+		companion_ignore_combat_enemy_distance = ui_mcm.get("companion_anti_awol/companion_ignore_combat_enemy_distance")
+		companion_ignore_combat_goto_enemy_distance = ui_mcm.get("companion_anti_awol/companion_ignore_combat_goto_enemy_distance")
+    end
+	
+	companion_retreat = nil
+	companion_retreat = {}
+end
+
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_first_update", load_settings)
+	RegisterScriptCallback("on_option_change", load_settings)
+	RegisterScriptCallback("on_enemy_eval", companion_retreat_eval)
+end

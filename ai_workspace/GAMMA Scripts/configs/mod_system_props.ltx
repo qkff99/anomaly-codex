@@ -1,0 +1,1363 @@
+;------------------------
+;--- EFP Extra Props
+;------------------------
+[prop_bed_1]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_bed_1.ogf
+
+description								= st_prop_bed_1_descr
+inv_name								= st_prop_bed_1
+inv_name_short							= st_prop_bed_1
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 1
+inv_grid_y								= 0
+inv_grid_width							= 4
+inv_grid_height							= 2
+
+cost									= 2000
+inv_weight								= 5.0
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_bed_1
+
+[placeable_bed_1]:physic_object
+visual                                  = dynamics\efp_props\prop_bed_1.ogf
+placeable_type                          = prop
+base_rotation                           = 0
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_bed_1
+
+ui_on_interaction                       = ui_sleep_dialog.sleep_bag
+ui_on_simple_interaction                = ui_sleep_dialog.sleep_bag
+
+ui_texture                              = ui_efp_prop_bed1
+
+bounding_box_size                        = 2.15564, 0.941014, 0.113542
+bounding_box_origin                      = -0.002633, 0.055132, 0.012928
+
+;=================
+[prop_bed_2]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_bed_2.ogf
+
+description								= st_prop_bed_2_descr
+inv_name								= st_prop_bed_2
+inv_name_short							= st_prop_bed_2
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 6
+inv_grid_y								= 0
+inv_grid_width							= 4
+inv_grid_height							= 3
+
+cost									= 3500
+inv_weight								= 10.0
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_bed_2
+
+[placeable_bed_2]:physic_object
+visual                                  = dynamics\efp_props\prop_bed_2.ogf
+placeable_type                          = prop
+base_rotation                           = 0
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_bed_2
+ui_on_interaction                       = ui_sleep_dialog.sleep_bag
+ui_on_simple_interaction                = ui_sleep_dialog.sleep_bag
+
+ui_texture                              = ui_efp_prop_bed2
+
+bounding_box_size                        = 2.20486, 1.051904, 0.609146
+bounding_box_origin                      = 0.000341, 0.306108, -0.000994
+
+fixed_bones                             = link1, link2, link3
+;=================
+[prop_bed_3]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_bed_3.ogf
+
+description								= st_prop_bed_3_descr
+inv_name								= st_prop_bed_3
+inv_name_short							= st_prop_bed_3
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 0
+inv_grid_y								= 2
+inv_grid_width							= 4
+inv_grid_height							= 3
+
+cost									= 5000
+inv_weight								= 15.0
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_bed_3
+
+[placeable_bed_3]:physic_object
+visual                                  = dynamics\efp_props\prop_bed_3.ogf
+placeable_type                          = prop
+base_rotation                           = 0
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_bed_3
+ui_on_interaction                       = ui_sleep_dialog.sleep_bag
+ui_on_simple_interaction                = ui_sleep_dialog.sleep_bag
+
+ui_texture                              = ui_efp_prop_bed3
+
+bounding_box_size                        = 2.15412, 1.100024, 0.728962
+bounding_box_origin                      = -0.080034, 0.363287, 0.033148
+
+fixed_bones                             = link1, link2, link3
+
+;=================
+[prop_board_map]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_board_map.ogf
+
+description								= st_prop_board_map_descr
+inv_name								= st_prop_board_map
+inv_name_short							= st_prop_board_map
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 0
+inv_grid_y								= 5
+inv_grid_width							= 3
+inv_grid_height							= 3
+
+cost									= 4000
+inv_weight								= 4.25
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_board_map
+
+[placeable_board_map]:physic_object
+visual                                  = dynamics\efp_props\prop_board_map.ogf
+placeable_type                          = prop
+base_rotation                           = -90
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_board_map
+
+ui_texture                              = ui_efp_prop_mapboard
+
+bounding_box_size                        = 1.003382, 2.71256, 2.50106
+bounding_box_origin                      = -0.074621, 1.23581, 0.016555
+
+fixed_bones                             = link1, link2, link3, link4, link5, link6, link7, link8, link9, link10, link11
+
+;=================
+[prop_cans_tuna]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_cans_tuna.ogf
+
+description								= st_prop_cans_tuna_descr
+inv_name								= st_prop_cans_tuna
+inv_name_short							= st_prop_cans_tuna
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 0
+inv_grid_y								= 1
+inv_grid_width							= 1
+inv_grid_height							= 1
+
+cost									= 1000
+inv_weight								= 1.5
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = stash
+placeable_section                       = placeable_cans_tuna
+
+[placeable_cans_tuna]:inv_backpack
+visual                                  = dynamics\efp_props\prop_cans_tuna.ogf
+placeable_type                          = stash
+capacity                                = 150
+specialized_storage                     = canned_food
+
+base_rotation                           = -90
+
+item_section                            = prop_cans_tuna
+ui_texture                              = ui_efp_prop_canstuna
+
+bounding_box_size                        = 0.519562, 0.666338, 0.320082
+bounding_box_origin                      = -0.033553, 0.160559, -0.020897
+
+;=================
+[prop_couch_1]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_couch_1.ogf
+
+description								= st_prop_couch_1_descr
+inv_name								= st_prop_couch_1
+inv_name_short							= st_prop_couch_1
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 0
+inv_grid_y								= 8
+inv_grid_width							= 4
+inv_grid_height							= 2
+
+cost									= 5000
+inv_weight								= 15.0
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_couch1
+
+[placeable_couch1]:physic_object
+visual                                  = dynamics\efp_props\prop_couch_1.ogf
+placeable_type                          = prop
+base_rotation                           = -90
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_couch_1
+
+ui_texture                              = ui_efp_prop_sofa1
+
+bounding_box_size                        = 1.08449, 2.20094, 1.011576
+bounding_box_origin                      = 0.076466, 0.508903, -0.000526
+
+fixed_bones                             = link1, link2, link3
+
+;=================
+[prop_counter_1]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_counter_1.ogf
+
+description								= st_prop_counter_1_descr
+inv_name								= st_prop_counter_1
+inv_name_short							= st_prop_counter_1
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 4
+inv_grid_y								= 2
+inv_grid_width							= 2
+inv_grid_height							= 2
+
+cost									= 1500
+inv_weight								= 2.0
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_counter_1
+
+[placeable_counter_1]:physic_object
+visual                                  = dynamics\efp_props\prop_counter_1.ogf
+placeable_type                          = prop
+base_rotation                           = -90
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_counter_1
+
+ui_texture                              = ui_efp_prop_counter1
+
+bounding_box_size                        = 0.592, 1.03, 0.896
+bounding_box_origin                      = -0.013483, 0.45023, 0
+
+fixed_bones                             = link1, link2, link3, link4, link5
+
+;=================
+[prop_laptop_item]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_laptop.ogf
+
+description								= st_prop_laptop_item_descr
+inv_name								= st_prop_laptop_item
+inv_name_short							= st_prop_laptop_item
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 0
+inv_grid_y								= 0
+inv_grid_width							= 1
+inv_grid_height							= 1
+
+cost									= 15250
+inv_weight								= 1.25
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_proplaptop
+
+[placeable_proplaptop]:physic_object
+visual                                  = dynamics\efp_props\prop_laptop.ogf
+placeable_type                          = prop
+base_rotation                           = -90
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_laptop_item
+
+ui_texture                              = ui_efp_prop_laptop
+
+bounding_box_size                        = 0.264128, 0.367148, 0.037654
+bounding_box_origin                      = 0.027215, 0.021097, 0
+
+fixed_bones                             = link1
+
+;=================
+[prop_poster_vertical_item]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_poster_vertical.ogf
+
+description								= st_prop_poster_vertical_item_descr
+inv_name								= st_prop_poster_vertical_item
+inv_name_short							= st_prop_poster_vertical_item
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 3
+inv_grid_y								= 5
+inv_grid_width							= 1
+inv_grid_height							= 2
+
+cost									= 500
+inv_weight								= 0.01
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_proppostervertical
+
+[placeable_proppostervertical]:physic_object
+visual                                  = dynamics\efp_props\prop_poster_vertical.ogf
+placeable_type                          = prop
+base_rotation                           = 0
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_poster_vertical_item
+
+ui_texture                              = ui_efp_prop_postervertical
+
+bounding_box_size                        = 0.029702, 0.726874, 1.009274
+bounding_box_origin                      = 0.005057, 0.5057, 0.000149
+
+;=================
+[prop_table_1]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_table_1.ogf
+
+description								= st_prop_table_1_descr
+inv_name								= st_prop_table_1
+inv_name_short							= st_prop_table_1
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 4
+inv_grid_y								= 4
+inv_grid_width							= 3
+inv_grid_height							= 3
+
+cost									= 3000
+inv_weight								= 2.75
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_table1
+
+[placeable_table1]:physic_object
+visual                                  = dynamics\efp_props\prop_table_1.ogf
+placeable_type                          = prop
+base_rotation                           = -90
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_table_1
+
+ui_texture                              = ui_efp_prop_table1
+
+bounding_box_size                        = 0.802426, 1.603252, 0.908164
+bounding_box_origin                      = 0, 0.455398, 0.084036
+
+fixed_bones                             = link1, link2, link3, link4, link5, link6, link7, link8
+
+;=================
+[prop_table_2]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_table_2.ogf
+
+description								= st_prop_table_2_descr
+inv_name								= st_prop_table_2
+inv_name_short							= st_prop_table_2
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 4
+inv_grid_y								= 7
+inv_grid_width							= 3
+inv_grid_height							= 2
+
+cost									= 1250
+inv_weight								= 1.25
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_table_2
+
+[placeable_table_2]:physic_object
+visual                                  = dynamics\efp_props\prop_table_2.ogf
+placeable_type                          = prop
+base_rotation                           = -90
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_table_2
+
+ui_texture                              = ui_efp_prop_table2
+
+bounding_box_size                        = 0.819716, 1.13481, 0.64613
+bounding_box_origin                      = 0.014405, 0.322066, 0
+
+fixed_bones                             = link1, link2, link3, link4, link5
+
+;=================
+;=================
+;==== SECOND BATCH
+;=================
+;=================
+[prop_bong]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_bong.ogf
+
+description								= st_prop_bong_descr
+inv_name								= st_prop_bong
+inv_name_short							= st_prop_bong
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 5
+inv_grid_y								= 0
+inv_grid_width							= 1
+inv_grid_height							= 2
+
+cost									= 1000
+inv_weight								= 0.7
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_bong
+
+[placeable_bong]:physic_object
+visual                                  = dynamics\efp_props\prop_bong.ogf
+placeable_type                          = prop
+base_rotation                           = -90
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_bong
+
+ui_texture                              = ui_efp_prop_bong
+
+bounding_box_size                        = 0.492242, 0.493028, 0.27075
+bounding_box_origin                      = -0.030478, 0.13665, -0.024444
+
+fixed_bones                             = link1, link2
+
+;=================
+[prop_pccase]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_case.ogf
+
+description								= st_prop_case_descr
+inv_name								= st_prop_case
+inv_name_short							= st_prop_case
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 9
+inv_grid_y								= 8
+inv_grid_width							= 1
+inv_grid_height							= 2
+
+cost									= 1500
+inv_weight								= 1.5
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_pccase
+
+[placeable_pccase]:physic_object
+visual                                  = dynamics\efp_props\prop_case.ogf
+placeable_type                          = prop
+base_rotation                           = -90
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_pccase
+
+ui_texture                              = ui_efp_prop_case
+
+bounding_box_size                        = 0.708764, 0.263856, 0.625396
+bounding_box_origin                      = -0.036106, 0.312449, 0.023727
+
+;=================
+[prop_chair]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_chair.ogf
+
+description								= st_prop_chair_descr
+inv_name								= st_prop_chair
+inv_name_short							= st_prop_chair
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 8
+inv_grid_y								= 8
+inv_grid_width							= 1
+inv_grid_height							= 2
+
+cost									= 500
+inv_weight								= 1.35
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_chair
+
+[placeable_chair]:physic_object
+visual                                  = dynamics\efp_props\prop_chair.ogf
+placeable_type                          = prop
+base_rotation                           = -90
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_chair
+
+ui_texture                              = ui_efp_prop_chair
+
+bounding_box_size                        = 0.526576, 0.485252, 1.026502
+bounding_box_origin                      = -0.207186, 0.512982, 0
+
+fixed_bones                             = link1
+
+;=================
+[prop_dish1]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_dish1.ogf
+
+description								= st_prop_dish1_descr
+inv_name								= st_prop_dish1
+inv_name_short							= st_prop_dish1
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 4
+inv_grid_y								= 9
+inv_grid_width							= 1
+inv_grid_height							= 1
+
+cost									= 100
+inv_weight								= 0.1
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_dish1
+
+[placeable_dish1]:physic_object
+visual                                  = dynamics\efp_props\prop_dish1.ogf
+placeable_type                          = prop
+base_rotation                           = 0
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_dish1
+
+ui_texture                              = ui_efp_prop_dish1
+
+bounding_box_size                        = -0.31462, -0.31462, -0.030406
+bounding_box_origin                      = 0, 0.016, 0
+
+;=================
+[prop_dish2]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_dish2.ogf
+
+description								= st_prop_dish2_descr
+inv_name								= st_prop_dish2
+inv_name_short							= st_prop_dish2
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 6
+inv_grid_y								= 3
+inv_grid_width							= 1
+inv_grid_height							= 1
+
+cost									= 125
+inv_weight								= 0.1
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_dish2
+
+[placeable_dish2]:physic_object
+visual                                  = dynamics\efp_props\prop_dish2.ogf
+placeable_type                          = prop
+base_rotation                           = 0
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_dish2
+
+ui_texture                              = ui_efp_prop_dish2
+
+bounding_box_size                        = -0.428902, -0.428902, -0.119644
+bounding_box_origin                      = -0.004435, 0.060923, 0.023762
+
+;=================
+[prop_fan]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_fan.ogf
+
+description								= st_prop_fan_descr
+inv_name								= st_prop_fan
+inv_name_short							= st_prop_fan
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 3
+inv_grid_y								= 7
+inv_grid_width							= 1
+inv_grid_height							= 1
+
+cost									= 425
+inv_weight								= 0.4
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_fan
+
+[placeable_fan]:physic_object
+visual                                  = dynamics\efp_props\prop_fan.ogf
+placeable_type                          = prop
+base_rotation                           = -90
+
+script_binding                          = bind_table_fan.init
+item_section                            = prop_fan
+ui_on_interaction                       = bind_table_fan.toggle_fan
+ui_on_simple_interaction                = bind_table_fan.toggle_fan
+
+ui_texture                              = ui_efp_prop_fan
+
+bounding_box_size                        = 0.208386, 0.123402, 0.359112
+bounding_box_origin                      = -0.040593, 0.181895, 0.000063
+
+;=================
+[prop_fridge]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_fridge.ogf
+
+description								= st_prop_fridge_descr
+inv_name								= st_prop_fridge
+inv_name_short							= st_prop_fridge
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 7
+inv_grid_y								= 3
+inv_grid_width							= 2
+inv_grid_height							= 3
+
+cost									= 12500
+inv_weight								= 35.0
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = stash
+placeable_section                       = placeable_fridge
+
+[placeable_fridge]:inv_backpack
+visual                                  = dynamics\efp_props\prop_fridge.ogf
+placeable_type                          = stash
+base_rotation                           = -90
+capacity                                = 150
+
+item_section                            = prop_fridge
+
+ui_texture                              = ui_efp_prop_fridge
+
+bounding_box_size                        = 0.962086, 1.000592, 2.04
+bounding_box_origin                      = 0.169089, 1.02834, 0.000657
+
+;=================
+[prop_keyboard]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_keyboard.ogf
+
+description								= st_prop_keyboard_descr
+inv_name								= st_prop_keyboard
+inv_name_short							= st_prop_keyboard
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 5
+inv_grid_y								= 9
+inv_grid_width							= 2
+inv_grid_height							= 1
+
+cost									= 425
+inv_weight								= 0.65
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_keyboard
+
+[placeable_keyboard]:physic_object
+visual                                  = dynamics\efp_props\prop_keyboard.ogf
+placeable_type                          = prop
+base_rotation                           = -90
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_keyboard
+
+ui_texture                              = ui_efp_prop_keyboard
+
+bounding_box_size                        = 0.258694, 0.708308, 0.041696
+bounding_box_origin                      = 0.018146, 0.021854, 0.048423
+
+;=================
+;[prop_mice]:tch_junk
+;class									= II_ATTCH
+;kind								    = i_tool
+;visual									= dynamics\efp_props\prop_mice.ogf
+
+;description								= st_prop_mice_descr
+;inv_name								= st_prop_mice
+;inv_name_short							= st_prop_mice
+
+;icons_texture							= ui\ui_maid_efp_props
+;inv_grid_x								= 7
+;inv_grid_y								= 9
+;inv_grid_width							= 1
+;inv_grid_height							= 1
+
+;cost									= 200
+;inv_weight								= 0.1
+
+;use1_functor         				    = placeable_furniture.place_item
+;use1_action_functor  					= placeable_furniture.func_place_item
+
+;placeable_type                          = prop
+;placeable_section                       = placeable_mice
+
+;[placeable_mice]:physic_object
+;visual                                  = dynamics\efp_props\prop_mice.ogf
+;placeable_type                          = prop
+;base_rotation                           = 0
+
+;script_binding                          = bind_hf_base.init
+;item_section                            = prop_mice
+
+;ui_texture                              = ui_efp_prop_mice
+
+;bounding_box_size                        = -0.109946, -0.083829, -0.023042
+;bounding_box_origin                      = 0.006763, 0.00049, 0.022018
+
+;=================
+[prop_mice_pad]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_mice_pad.ogf
+
+description								= st_prop_mice_pad_descr
+inv_name								= st_prop_mice_pad
+inv_name_short							= st_prop_mice_pad
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 7
+inv_grid_y								= 8
+inv_grid_width							= 1
+inv_grid_height							= 1
+
+cost									= 100
+inv_weight								= 0.1
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_mice_pad
+
+[placeable_mice_pad]:physic_object
+visual                                  = dynamics\efp_props\prop_mice_pad.ogf
+placeable_type                          = prop
+base_rotation                           = -90
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_mice_pad
+
+ui_texture                              = ui_efp_prop_mice_pad
+
+bounding_box_size                        = 0.255944, 0.344332, 0.034464
+bounding_box_origin                      = 0, 0.018165, 0
+
+;=================
+[prop_monitor]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_monitor.ogf
+
+description								= st_prop_monitor_descr
+inv_name								= st_prop_monitor
+inv_name_short							= st_prop_monitor
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 7
+inv_grid_y								= 6
+inv_grid_width							= 2
+inv_grid_height							= 2
+
+cost									= 1000
+inv_weight								= 1.5
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_monitor
+
+[placeable_monitor]:physic_object
+visual                                  = dynamics\efp_props\prop_monitor.ogf
+placeable_type                          = prop
+base_rotation                           = -90
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_monitor
+
+ui_texture                              = ui_efp_prop_monitor
+
+bounding_box_size                        = 0.473358, 0.54681, 0.531904
+bounding_box_origin                      = -0.182404, 0.26884, -0.004893
+
+fixed_bones                             = link1
+
+;=================
+[prop_mug]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_mug.ogf
+
+description								= st_prop_mug_descr
+inv_name								= st_prop_mug
+inv_name_short							= st_prop_mug
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 9
+inv_grid_y								= 7
+inv_grid_width							= 1
+inv_grid_height							= 1
+
+cost									= 150
+inv_weight								= 0.15
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_mug
+
+[placeable_mug]:physic_object
+visual                                  = dynamics\efp_props\prop_mug.ogf
+placeable_type                          = prop
+base_rotation                           = -90
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_mug
+
+ui_texture                              = ui_efp_prop_mug
+
+bounding_box_size                        = 0.15, 0.15, 0.152
+bounding_box_origin                      = 0.1171, 0.075906, 0
+
+;=================
+[prop_stove1]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_stove1.ogf
+
+description								= st_prop_stove1_descr
+inv_name								= st_prop_stove1
+inv_name_short							= st_prop_stove1
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 10
+inv_grid_y								= 0
+inv_grid_width							= 2
+inv_grid_height							= 1
+
+cost									= 1750
+inv_weight								= 0.15
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_stove1
+
+[placeable_stove1]:physic_object
+visual                                  = dynamics\efp_props\prop_stove1.ogf
+placeable_type                          = prop
+base_rotation                           = -90
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_stove1
+ui_on_interaction                       = ui_stove_furniture.start_dialog
+ui_on_simple_interaction                = ui_stove_furniture.start_dialog
+
+ui_texture                              = ui_efp_prop_stove1
+
+bounding_box_size                        = 0.464, 0.708, 0.244
+bounding_box_origin                      = 0, 0.12559, 0
+
+;=================
+[prop_stove2]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_stove2.ogf
+
+description								= st_prop_stove2_descr
+inv_name								= st_prop_stove2
+inv_name_short							= st_prop_stove2
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 9
+inv_grid_y								= 3
+inv_grid_width							= 2
+inv_grid_height							= 3
+
+cost									= 3500
+inv_weight								= 25.0
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_stove2
+
+[placeable_stove2]:physic_object
+visual                                  = dynamics\efp_props\prop_stove2.ogf
+placeable_type                          = prop
+base_rotation                           = -90
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_stove2
+ui_on_interaction                       = ui_stove_furniture.start_dialog
+ui_on_simple_interaction                = ui_stove_furniture.start_dialog
+integrated_storage                      = placeable_stove2_stash
+
+ui_texture                              = ui_efp_prop_stove2
+
+bounding_box_size                        = 0.7292, 0.729436, 1.081456
+bounding_box_origin                      = -0.091483, 0.542009, 0.001021
+
+fixed_bones                             = link1, link2, link3, link4, link5
+
+[placeable_stove2_stash]:hidden_box
+capacity                                = 100
+placeable_type                          = stash
+
+;=================
+[prop_tv]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_tv.ogf
+
+description								= st_prop_tv_descr
+inv_name								= st_prop_tv
+inv_name_short							= st_prop_tv
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 10
+inv_grid_y								= 1
+inv_grid_width							= 2
+inv_grid_height							= 2
+
+cost									= 2000
+inv_weight								= 4.0
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_tv
+
+[placeable_tv]:physic_object
+visual                                  = dynamics\efp_props\prop_tv.ogf
+placeable_type                          = prop
+base_rotation                           = -90
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_tv
+
+ui_texture                              = ui_efp_prop_tv
+
+bounding_box_size                        = 0.358658, 0.528918, 0.486108
+bounding_box_origin                      = -0.088856, 0.256, -0.001798
+
+;=================
+[prop_shelf_1]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_shelf_1.ogf
+
+description								= st_prop_shelf_1_descr
+inv_name								= st_prop_shelf_1
+inv_name_short							= st_prop_shelf_1
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 11
+inv_grid_y								= 3
+inv_grid_width							= 2
+inv_grid_height							= 2
+
+cost									= 2250
+inv_weight								= 3.5
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+placeable_type                          = prop
+placeable_section                       = placeable_shelf_1
+
+[placeable_shelf_1]:physic_object
+visual                                  = dynamics\efp_props\prop_shelf_1.ogf
+placeable_type                          = prop
+base_rotation                           = -90
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_shelf_1
+
+ui_texture                              = ui_efp_prop_shelf_1
+
+fixed_bones                             = link.001, link.002, link.003, link.004, link.005
+
+bounding_box_size                        = 0.453686, 1.373014, 1.13328
+bounding_box_origin                      = 0.013033, 0.568882, -0.011971
+
+fixed_bones                             = link1, link2, link3, link4, link5
+
+;=================
+[prop_shelf_2]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_shelf_2.ogf
+
+description								= st_prop_shelf_2_descr
+inv_name								= st_prop_shelf_2
+inv_name_short							= st_prop_shelf_2
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 12
+inv_grid_y								= 0
+inv_grid_width							= 2
+inv_grid_height							= 3
+
+cost									= 3250
+inv_weight								= 6.5
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_shelf_2
+
+[placeable_shelf_2]:physic_object
+visual                                  = dynamics\efp_props\prop_shelf_2.ogf
+placeable_type                          = prop
+base_rotation                           = -90
+
+script_binding                          = bind_hf_base.init
+item_section                            = prop_shelf_2
+
+ui_texture                              = ui_efp_prop_shelf_2
+
+bounding_box_size                        = 0.545698, 1.416432, 2.09594
+bounding_box_origin                      = 0.010592, 1.04931, -0.011971
+
+fixed_bones                             = link1, link2, link3, link4, link5, link6, link7, link8, link9
+
+;=================
+[prop_clock_1]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_clock.ogf
+
+description								= st_prop_prop_clock_1_descr
+inv_name								= st_prop_prop_clock_1
+inv_name_short							= st_prop_prop_clock_1
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 9
+inv_grid_y								= 6
+inv_grid_width							= 2
+inv_grid_height							= 1
+
+cost									= 1750
+inv_weight								= 0.3
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = prop
+placeable_section                       = placeable_clock_1
+
+[placeable_clock_1]:physic_object
+visual                                  = dynamics\efp_props\prop_clock.ogf
+placeable_type                          = prop
+base_rotation                           = -90
+
+script_binding                          = bind_digital_clock_furniture.init
+item_section                            = prop_clock_1
+
+;ui_texture                              = ui_efp_clock_1
+
+bounding_box_size                        = 0.285594, 0.472316, 0.1265
+bounding_box_origin                      = 0, 0.064432, -0.000457
+
+;=================
+[prop_med_case_1]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_med_case.ogf
+
+description								= st_prop_med_case_1_descr
+inv_name								= st_prop_med_case_1
+inv_name_short							= st_prop_med_case_1
+
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 10
+inv_grid_y								= 8
+inv_grid_width							= 2
+inv_grid_height							= 2
+
+cost									= 3500
+inv_weight								= 0.3
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = stash
+placeable_section                       = placeable_prop_med_case_1
+
+[placeable_prop_med_case_1]:inv_backpack
+visual                                  = dynamics\efp_props\prop_med_case.ogf
+placeable_type                          = stash
+base_rotation                           = -90
+capacity                                = 75
+
+item_section                            = prop_med_case_1
+specialized_storage                     = meds
+;ui_texture                              = 
+
+bounding_box_size                        = 0.635256, 0.85776, 0.397624
+bounding_box_origin                      = -0.000492, 0.198815, -0.000147
+
+;================
+[prop_ammo_box]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_ammo_box.ogf
+description								= st_placeable_ammo_box_descr
+inv_name								= st_placeable_ammo_box
+inv_name_short							= st_placeable_ammo_box
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 11
+inv_grid_y								= 5
+inv_grid_height							= 2
+inv_grid_width							= 3
+cost									= 6500
+inv_weight								= 4
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = stash
+placeable_section                       = placeable_prop_ammo_box
+
+[placeable_prop_ammo_box]:inv_backpack
+visual                                  = dynamics\efp_props\prop_ammo_box.ogf
+capacity                                = 150
+placeable_type                          = stash
+item_section                            = prop_ammo_box
+specialized_storage                     = ammo
+
+base_rotation                            = -90
+bounding_box_size                        = 0.537134, 1.049702, 0.300536
+bounding_box_origin                      = -0.003363, 0.151252, 0.000095
+
+;=================
+[prop_lamp1]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_lamp.ogf
+description								= st_prop_lamp1_descr
+inv_name								= st_prop_lamp1
+inv_name_short							= st_prop_lamp1
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 10
+inv_grid_y								= 7
+inv_grid_height							= 1
+inv_grid_width							= 1
+cost									= 1250
+inv_weight								= 0.6
+
+
+use_condition                           = true
+power_critical							= 0.2
+power_consumption						= 0
+condition_bar							= power_progess_bar
+fuel_section                            = batteries_dead
+
+script_binding                          = item_device.bind
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+use6_functor                			= item_device.menu_battery
+use6_action_functor         			= item_device.func_battery
+
+placeable_type                          = light
+placeable_section                       = placeable_lamp1
+
+[placeable_lamp1]
+class                                    = SO_HLAMP
+visual									= dynamics\efp_props\prop_lamp.ogf
+script_binding                           = bind_light_furniture.init
+ui_on_interaction                        = ui_furniture_light.start_dialog
+ui_on_simple_interaction                 = ui_furniture_light.toggle_light
+
+fuel_duration                            = 8 ; measured in hours
+fuel_section                             = batteries_dead
+item_section                             = prop_lamp1
+light_section                            = definition_lamp_light2
+placeable_type                           = light
+
+base_rotation                            = 0
+bounding_box_size                        = 0.235684, 0.124144, 0.395092
+bounding_box_origin                      = -0.000238, 0.198491, 0.000095
+
+snd_turn_on                              = ambient\special\light_buzz_1
+snd_turn_off                             = ambient\special\light_sizzles_1
+hide_bone_off                            = bone_light
+
+ui_texture                               = ui_inGame2_placeable_metal_torch
+
+[prop_lamp2]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\efp_props\prop_lamp_2.ogf
+description								= st_prop_lamp2_descr
+inv_name								= st_prop_lamp2
+inv_name_short							= st_prop_lamp2
+icons_texture							= ui\ui_maid_efp_props
+inv_grid_x								= 11
+inv_grid_y								= 7
+inv_grid_height							= 1
+inv_grid_width							= 1
+cost									= 1450
+inv_weight								= 0.6
+
+
+use_condition                           = true
+power_critical							= 0.2
+power_consumption						= 0
+condition_bar							= power_progess_bar
+fuel_section                            = batteries_dead
+
+script_binding                          = item_device.bind
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+use6_functor                			= item_device.menu_battery
+use6_action_functor         			= item_device.func_battery
+
+placeable_type                          = light
+placeable_section                       = placeable_lamp2
+
+[placeable_lamp2]
+class                                    = SO_HLAMP
+visual									= dynamics\efp_props\prop_lamp_2.ogf
+script_binding                           = bind_light_furniture.init
+ui_on_interaction                        = ui_furniture_light.start_dialog
+ui_on_simple_interaction                 = ui_furniture_light.toggle_light
+
+fuel_duration                            = 8 ; measured in hours
+fuel_section                             = batteries_dead
+item_section                             = prop_lamp2
+light_section                            = definition_lamp_light2
+placeable_type                           = light
+
+base_rotation                            = 0
+bounding_box_size                        = 0.22932, 0.231682, 0.04503
+bounding_box_origin                      = -0.00157, 0.023507, 0.004667
+
+snd_turn_on                              = ambient\special\light_buzz_1
+snd_turn_off                             = ambient\special\light_sizzles_1
+hide_bone_off                            = bone_light
+
+ui_texture                               = ui_inGame2_placeable_metal_torch
+
+[definition_lamp_light1]
+type                                     = 2  ; 0-Direct 1-Point 2-Spot 3-OMNIPART 4-Reflected
+cone_angle                               = 40
+color                                    = 0.75, 0.91, 0.94, 1.0 ; <r,g,b,a>
+range                                    = 2; <in meters>
+has_shadows                              = true
+
+volumetric                               = true
+volumetric_distance                      = 0.5
+volumetric_quality                       = 0.5
+volumetric_intensity                     = 0.5
+
+main_bone                                = bone_light
+
+[definition_lamp_light2]
+type                                     = 2  ; 0-Direct 1-Point 2-Spot 3-OMNIPART 4-Reflected
+cone_angle                               = 45
+color                                    = 0.75, 0.91, 0.94, 1.0 ; <r,g,b,a>
+range                                    = 2; <in meters>
+has_shadows                              = true
+
+volumetric                               = true
+volumetric_distance                      = 0.5
+volumetric_quality                       = 0.5
+volumetric_intensity                     = 0.5
+
+main_bone                                = bone_light
+

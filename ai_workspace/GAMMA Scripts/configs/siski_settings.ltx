@@ -1,0 +1,670 @@
+[siski]
+enabled = true
+log_level = 0
+log_filter_active_level_only = true
+log_filter_active_level_drop_unknown = false
+debug_hud_enabled = false
+explore_enabled = true
+smart_tasks_enabled = true
+smart_tasks_control_enabled = true
+smart_tasks_control_max_squads_per_faction = 1
+story_events_enabled = true
+story_events_north_migration_enabled = true
+story_events_north_migration_percent = 33
+home_region_attachment_enabled = true
+story_psy_watchdog_enabled = true
+story_psy_watchdog_levels = l10_limansk, l10_red_forest, l10_radar
+story_psy_watchdog_immune_factions = monolith, isg, greh
+mutant_sim_enabled = true
+mutant_explore_enabled = true
+mutant_hunt_enabled = true
+artefact_enabled = true
+populate_enabled = true
+base_camping_enabled = true
+base_camping_duration_game_hours = 1
+base_filler_enabled = false
+base_filler_npc_min = 5
+base_filler_npc_max = 8
+base_filler_daily_respawn_game_hours = 24
+dynamic_bases_enabled = true
+service_filler_enabled = true
+service_filler_respawn_game_hours = 6
+patrol_enabled = true
+mutant_patrol_enabled = true
+trade_enabled = true
+loot_enabled = true
+loot_scan_radius_m = 35
+loot_corpse_detect_dist_m = 35
+loot_event_ttl_s = 180
+loot_event_cap_total = 1200
+loot_event_cap_corpses = 800
+loot_event_cap_items = 800
+loot_collect_during_surge = false
+loot_collect_after_surge_grace_ms = 120000
+loot_patch_max_memory_size = 48
+loot_disable_near_actor_limit = true
+loot_unlock_corpses = true
+loot_protect_quest_corpses_enabled = true
+loot_items_enabled = true
+loot_items_detect_dist_m = 35
+loot_items_allow_unseen = true
+offlevel_squad_update_skip_count = 0
+
+task_arrive_dist_cap_m = 5
+target_sync_enabled = true
+online_intent_enforce_enabled = true
+smart_enemy_cache_ttl_ms = 1000
+surge_check_cache_ms = 250
+npc_faction_override_enabled = true
+trade_max_squads_per_smart = 3
+trade_travel_timeout_ms = 600000
+fast_trading_enabled = true
+fast_trading_delay_ms = 500
+fast_trading_cooldown_ms = 60000
+
+trade_axr_buy_all_enabled = true
+
+night_rest_enabled = true
+rest_duration_game_hours = 0.25
+mutant_rest_duration_game_hours = 0.25
+mutant_patrol_duration_game_hours = 1.0
+rest_fallback_stay_min_sec = 900
+rest_fallback_stay_max_sec = 1800
+
+[level_bases]
+
+k00_marsh = mar_smart_terrain_base, mar_smart_terrain_8_11, mar_smart_terrain_11_11, mar_smart_terrain_10_5, mar_smart_terrain_12_2, mar_smart_terrain_4_5, mar_smart_terrain_3_3  
+k01_darkscape = ds2_lager_st, ds2_domik_st  
+k02_trucks_cemetery = trc_sim_20, trc_sim_18, trc_sim_1 
+
+l01_escape = esc_smart_terrain_5_7, esc_smart_terrain_2_12, esc_smart_terrain_7_11
+l02_garbage = gar_smart_terrain_3_7, gar_smart_terrain_3_5, gar_smart_terrain_6_3, gar_smart_terrain_5_2  
+l03_agroprom = agr_smart_terrain_6_4, agr_smart_terrain_4_4, agr_smart_terrain_1_6, agr_smart_terrain_1_6_near_1, agr_smart_terrain_1_6_near_2 
+l04_darkvalley = val_smart_terrain_7_4, val_smart_terrain_9_4, val_smart_terrain_7_3, val_smart_terrain_9_6, val_smart_terrain_1_2, val_smart_terrain_4_0    
+l05_bar = bar_visitors, bar_dolg_general
+l06_rostok = ros_smart_killers1, ros_smart_stalker_killers1  
+l07_military = mil_smart_terrain_7_10, mil_smart_terrain_7_7, mil_smart_terrain_7_12, mil_smart_terrain_2_10, mil_smart_terrain_7_4
+l08_yantar = yan_smart_terrain_6_4, yan_smart_terrain_3_6 
+l09_deadcity = cit_killers, cit_killers_vs_bandits  
+l10_limansk = lim_smart_terrain_1, lim_smart_terrain_3, lim_smart_terrain_6, lim_smart_terrain_9, lim_smart_terrain_10
+l10_red_forest = red_bridge_bandit_smart_skirmish, red_smart_terrain_bridge, red_smart_terrain_4_2 
+l10_radar = rad_antenna_monolith, rad_antenna_patrol, rad_antenna_camper, rad2_prip_teleport  
+l11_pripyat = hotel_poless_smart_alife, pri_monolith, mlr_terrain, pri_smart_monolith_stalker6  
+l11_hospital = katacomb_smart_terrain  
+l12_stancia = aes_smart_terrain_monolit_blockpost4
+l12_stancia_2 = aes2_monolith_camp1, aes2_monolith_camp2, aes2_monolith_camp3, aes2_monolith_camp4
+l13_generators = gen_smart_terrain_lab_entrance   
+
+zaton = zat_b40_smart_terrain, zat_stalker_base_smart, zat_b103_merc_smart, zat_b5_smart_terrain
+jupiter = jup_a12, jup_b200, jup_b41, jup_a6  
+pripyat = pri_a18_smart_terrain, pri_b301, pri_b306, pri_b36_smart_terrain
+
+[dungeon_levels_neighbors]
+l03u_agr_underground = l03_agroprom
+l04_labx18 = l04_darkvalley
+l08u_brainlab = l08_yantar
+jupiter_underground = jupiter
+labx8 = pripyat
+
+
+[trade_smarts]
+k00_marsh = mar_smart_terrain_base
+l01_escape = esc_smart_terrain_5_7
+l02_garbage = gar_smart_terrain_3_5
+l04_darkvalley = val_smart_terrain_7_4
+l05_bar = bar_visitors
+l07_military = mil_smart_terrain_7_10
+l09_deadcity = cit_killers
+zaton = zat_stalker_base_smart
+jupiter = jup_a6
+
+[anomaly_smarts]
+k00_marsh = mar_smart_terrain_doc_2, mar_smart_terrain_3_7, mar_smart_terrain_4_7, mar_smart_terrain_6_7,mar_smart_terrain_8_8, mar_smart_terrain_8_9, mar_smart_terrain_10_10, mar_smart_terrain_4_5, mar_smart_terrain_10_5, mar_smart_terrain_7_3   
+k01_darkscape = ds_ptr4, ds_deb1, ds_ptr, ds_kem3
+k02_trucks_cemetery = trc_sim_4, trc_sim_10, trc_sim_13, trc_sim_8
+l01_escape = esc_smart_terrain_1_11, esc_smart_terrain_5_4, esc_smart_terrain_8_9, esc_smart_terrain_4_9
+l02_garbage = gar_smart_terrain_6_7, gar_smart_terrain_3_7, gar_smart_terrain_5_6, gar_smart_terrain_2_4, gar_smart_terrain_5_4, gar_smart_terrain_8_3 
+l03_agroprom = agr_smart_terrain_5_7, agr_smart_terrain_7_5, agr_smart_terrain_4_4_near_1, agr_smart_terrain_1_3, agr_smart_terrain_1_2, agr_smart_terrain_5_2
+l04_darkvalley = val_smart_terrain_9_10, val_smart_terrain_1_2, val_smart_terrain_6_5, val_smart_terrain_6_4, val_smart_terrain_9_4
+l05_bar = bar_zastava_2
+l06_rostok = ros_smart_monster4, ros_smart_monster5, ros_smart_monster7
+l07_military = mil_smart_terrain_7_4, mil_smart_terrain_4_7, mil_smart_terrain_4_3, mil_smart_terrain_2_6, mil_smart_terrain_2_1
+l08_yantar = yan_smart_terrain_5_3, yan_smart_terrain_4_2, yan_smart_terrain_2_5, yan_smart_terrain_1_6
+l09_deadcity = cit_kanaliz2, zombie_smart_ds_mlr_1
+l10_limansk = lim_smart_terrain_4, lim_smart_terrain_10
+l10_radar = rad_pseudodogs, rad_antenna_patrol 
+l10_red_forest = red_smart_terrain_6_6, red_smart_terrain_4_5, red_smart_terrain_6_3, red_smart_terrain_4_2, red_smart_terrain_3_3, red_smart_terrain_monsters
+l11_pripyat = pri_smart_monolith_stalker2, pri_smart_giant_lair1
+l12_stancia = aes_smart_terran_monolit_blockpost, aes_smart_terran_monsters4
+l12_stancia_2 = aes2_monolith_snipers_2, aes2_monsters1 
+l13_generators = gen_smart_terrain_cemetery, gen_smart_terrain_lab_entrance_2 
+y04_pole = pol_smart_terrain_1_3
+zaton = zat_b100, zat_b56, zat_b54, zat_b39, zat_b55, zat_b7, zat_b101, zat_b20_smart_terrain, zat_b14_smart_terrain, zat_b53
+jupiter = jup_sim_18, jup_sim_17, jup_sim_b32, jup_sim_b209, jup_sim_206, jup_sim_b25, jup_sim_b6_anom_2, jup_sim_b1, jup_sim_b211, jup_sim_b200  
+pripyat = pri_a21_smart_terrain, pri_b307, pri_a28_school, pri_b302, pri_b303
+
+[faction_aliases]
+dolg = duty
+killer = merc
+
+[spawner_allowed_sections_stalker]
+stalker_sim_squad_novice
+stalker_sim_squad_advanced
+stalker_sim_squad_veteran
+stalker_sim_squad_expert
+stalker_sim_squad_master
+
+[spawner_allowed_sections_bandit]
+bandit_sim_squad_novice
+bandit_sim_squad_advanced
+bandit_sim_squad_veteran
+bandit_sim_squad_expert
+bandit_sim_squad_master
+
+[spawner_allowed_sections_duty]
+duty_sim_squad_novice
+duty_sim_squad_advanced
+duty_sim_squad_veteran
+duty_sim_squad_expert
+duty_sim_squad_master
+
+[spawner_allowed_sections_freedom]
+freedom_sim_squad_novice
+freedom_sim_squad_advanced
+freedom_sim_squad_veteran
+freedom_sim_squad_expert
+freedom_sim_squad_master
+
+[spawner_allowed_sections_merc]
+merc_sim_squad_novice
+merc_sim_squad_advanced
+merc_sim_squad_veteran
+merc_sim_squad_expert
+merc_sim_squad_master
+
+[spawner_allowed_sections_army]
+army_sim_squad_novice
+army_sim_squad_advanced
+army_sim_squad_veteran
+army_sim_squad_expert
+army_sim_squad_master
+
+[spawner_allowed_sections_ecolog]
+ecolog_sim_squad_novice
+ecolog_sim_squad_advanced
+ecolog_sim_squad_veteran
+ecolog_sim_squad_expert
+ecolog_sim_squad_master
+
+[spawner_allowed_sections_monolith]
+monolith_sim_squad_novice
+monolith_sim_squad_advanced
+monolith_sim_squad_veteran
+monolith_sim_squad_expert
+monolith_sim_squad_master
+
+[spawner_allowed_sections_csky]
+csky_sim_squad_novice
+csky_sim_squad_advanced
+csky_sim_squad_veteran
+csky_sim_squad_expert
+csky_sim_squad_master
+
+[spawner_allowed_sections_renegade]
+renegade_sim_squad_novice
+renegade_sim_squad_advanced
+renegade_sim_squad_veteran
+renegade_sim_squad_expert
+renegade_sim_squad_master
+
+[spawner_allowed_sections_greh]
+greh_sim_squad_novice
+greh_sim_squad_advanced
+greh_sim_squad_veteran
+greh_sim_squad_expert
+greh_sim_squad_master
+
+[spawner_allowed_sections_isg]
+isg_sim_squad_novice
+isg_sim_squad_advanced
+isg_sim_squad_veteran
+isg_sim_squad_expert
+isg_sim_squad_master
+
+[spawner_allowed_sections_mutants]
+simulation_dog
+simulation_pseudodog
+simulation_psydog
+simulation_cat
+simulation_tushkano
+simulation_flesh
+simulation_boar
+simulation_snork
+simulation_bloodsucker
+simulation_chimera
+simulation_fracture
+simulation_burer
+simulation_controller
+simulation_poltergeist
+simulation_gigant
+simulation_zombie
+
+[spawner_allowed_sections_zombied]
+zombied_sim_squad_novice
+zombied_sim_squad_advanced
+zombied_sim_squad_veteran
+
+[level_smarts_jupiter]
+jup_a10_smart_terrain
+jup_b200_tushkan_smart_terrain
+jup_b205_smart_terrain
+jup_b205_smart_terrain_tushkano
+jup_b8_smart_terrain
+
+[level_smarts_k00_marsh]
+mar_smart_terrain_10_10
+mar_smart_terrain_10_5
+mar_smart_terrain_10_7
+mar_smart_terrain_11_11
+mar_smart_terrain_11_3
+mar_smart_terrain_12_2
+mar_smart_terrain_3_10
+mar_smart_terrain_3_3
+mar_smart_terrain_3_7
+mar_smart_terrain_4_5
+mar_smart_terrain_4_7
+mar_smart_terrain_5_12
+mar_smart_terrain_5_8
+mar_smart_terrain_6_10
+mar_smart_terrain_6_11
+mar_smart_terrain_6_4
+mar_smart_terrain_6_7
+mar_smart_terrain_6_8
+mar_smart_terrain_7_3
+mar_smart_terrain_7_7
+mar_smart_terrain_8_11
+mar_smart_terrain_8_4
+mar_smart_terrain_8_8
+mar_smart_terrain_8_9
+mar_smart_terrain_base
+mar_smart_terrain_doc
+mar_smart_terrain_doc_2
+
+[level_smarts_l01_escape]
+esc_smart_terrain_1_11
+esc_smart_terrain_2_12
+esc_smart_terrain_2_14
+esc_smart_terrain_3_16
+esc_smart_terrain_3_7
+esc_smart_terrain_4_11
+esc_smart_terrain_4_13
+esc_smart_terrain_4_9
+esc_smart_terrain_5_12
+esc_smart_terrain_5_2
+esc_smart_terrain_5_4
+esc_smart_terrain_5_6
+esc_smart_terrain_5_7
+esc_smart_terrain_5_9
+esc_smart_terrain_6_6
+esc_smart_terrain_6_8
+esc_smart_terrain_7_11
+esc_smart_terrain_8_10
+esc_smart_terrain_8_9
+esc_smart_terrain_9_10
+esc_smart_terrain_9_7
+
+[level_smarts_l02_garbage]
+gar_smart_terrain_1_5
+gar_smart_terrain_1_7
+gar_smart_terrain_2_4
+gar_smart_terrain_3_5
+gar_smart_terrain_3_7
+gar_smart_terrain_4_2
+gar_smart_terrain_4_5
+gar_smart_terrain_5_2
+gar_smart_terrain_5_4
+gar_smart_terrain_5_5
+gar_smart_terrain_5_6
+gar_smart_terrain_5_8
+gar_smart_terrain_6_1
+gar_smart_terrain_6_3
+gar_smart_terrain_6_6
+gar_smart_terrain_6_7
+gar_smart_terrain_7_4
+gar_smart_terrain_8_3
+gar_smart_terrain_8_5
+
+[level_smarts_l03_agroprom]
+agr_smart_terrain_1_2
+agr_smart_terrain_1_3
+agr_smart_terrain_1_6
+agr_smart_terrain_1_6_near_1
+agr_smart_terrain_1_6_near_2
+agr_smart_terrain_2_2
+agr_smart_terrain_4_4
+agr_smart_terrain_4_4_near_1
+agr_smart_terrain_4_4_near_2
+agr_smart_terrain_4_4_near_3
+agr_smart_terrain_4_6
+agr_smart_terrain_5_2
+agr_smart_terrain_5_3
+agr_smart_terrain_5_4
+agr_smart_terrain_5_7
+agr_smart_terrain_6_4
+agr_smart_terrain_6_6
+agr_smart_terrain_7_4
+agr_smart_terrain_7_5
+
+[level_smarts_l04_darkvalley]
+val_smart_terrain_1_2
+val_smart_terrain_3_0
+val_smart_terrain_4_0
+val_smart_terrain_5_10
+val_smart_terrain_5_7
+val_smart_terrain_5_8
+val_smart_terrain_6_4
+val_smart_terrain_6_5
+val_smart_terrain_7_11
+val_smart_terrain_7_3
+val_smart_terrain_7_4
+val_smart_terrain_7_5
+val_smart_terrain_7_8
+val_smart_terrain_8_6
+val_smart_terrain_8_7
+val_smart_terrain_8_9
+val_smart_terrain_9_10
+val_smart_terrain_9_2
+val_smart_terrain_9_4
+val_smart_terrain_9_6
+
+[level_smarts_l04u_labx18]
+dar_smart_snork
+
+[level_smarts_l06_rostok]
+ros_smart_killers1
+ros_smart_monster4
+ros_smart_monster5
+ros_smart_monster7
+ros_smart_poltergeist2
+ros_smart_snork1
+ros_smart_stalker_killers1
+ros_smart_stalker1
+
+[level_smarts_l07_military]
+mil_smart_terrain_2_1
+mil_smart_terrain_2_10
+mil_smart_terrain_2_2
+mil_smart_terrain_2_4
+mil_smart_terrain_2_6
+mil_smart_terrain_3_8
+mil_smart_terrain_4_2
+mil_smart_terrain_4_3
+mil_smart_terrain_4_5
+mil_smart_terrain_4_7
+mil_smart_terrain_4_8
+mil_smart_terrain_7_10
+mil_smart_terrain_7_12
+mil_smart_terrain_7_4
+mil_smart_terrain_7_7
+mil_smart_terrain_7_8
+mil_smart_terrain_8_3
+
+[level_smarts_l08_yantar]
+yan_smart_terrain_1_6
+yan_smart_terrain_2_4
+yan_smart_terrain_2_5
+yan_smart_terrain_3_4
+yan_smart_terrain_3_6
+yan_smart_terrain_4_2
+yan_smart_terrain_4_4
+yan_smart_terrain_4_5
+yan_smart_terrain_5_3
+yan_smart_terrain_5_5
+yan_smart_terrain_6_2
+yan_smart_terrain_6_4
+yan_smart_terrain_snork_u
+yan_smart_terrain_zombi_spawn
+
+[level_smarts_l09_deadcity]
+zombie_smart_ds_mlr_1
+zombie_smart_ds_mlr_2
+
+[level_smarts_l10_limansk]
+lim_smart_terrain_1
+lim_smart_terrain_10
+lim_smart_terrain_3
+lim_smart_terrain_4
+lim_smart_terrain_5
+lim_smart_terrain_6
+lim_smart_terrain_7
+lim_smart_terrain_8
+lim_smart_terrain_9
+
+[level_smarts_l10_red_forest]
+red_bridge_bandit_smart_skirmish
+red_smart_terrain_3_1
+red_smart_terrain_3_2
+red_smart_terrain_3_3
+red_smart_terrain_4_2
+red_smart_terrain_4_3
+red_smart_terrain_4_5
+red_smart_terrain_5_5
+red_smart_terrain_5_6
+red_smart_terrain_6_3
+red_smart_terrain_6_6
+red_smart_terrain_bridge
+red_smart_terrain_monsters
+red_smart_terrain_monsters_2
+red_smart_terrain_monsters_3
+
+[level_smarts_l11_hospital]
+katacomb_smart_terrain
+
+[level_smarts_l11_pripyat]
+hotel_poless_smart_alife
+monolith_snipers_smart_1_mlr
+pri_smart_bloodsucker_lair1
+pri_smart_controler_lair1
+pri_smart_controler_lair2
+pri_smart_giant_lair1
+pri_smart_monolith_stalker2
+pri_smart_monolith_stalker3
+pri_smart_monolith_stalker4
+pri_smart_monolith_stalker6
+pri_smart_monster_lair1
+pri_smart_neutral_stalker1
+pri_smart_pseudodog_lair1
+pri_smart_snork_lair1
+pri_smart_snork_lair2
+pri_smart_tushkano_lair1
+
+[level_smarts_l12_stancia]
+aes_smart_terrain_monolit_blockpost
+aes_smart_terrain_monolit_blockpost2
+aes_smart_terrain_monolit_blockpost4
+aes_smart_terrain_monsters1
+aes_smart_terrain_monsters2
+aes_smart_terrain_monsters3
+aes_smart_terrain_monsters4
+aes_smart_terran_soldier
+aes_smart_terran_soldier2
+
+[level_smarts_l13_generators]
+gen_smart_terrain_cemetery
+gen_smart_terrain_forest
+gen_smart_terrain_junk
+gen_smart_terrain_lab_entrance
+gen_smart_terrain_lab_entrance_2
+gen_smart_terrain_military
+gen_smart_terrain_urod
+gen_undeground_smart_mlr_burers
+gen_undeground_smart_mlr_controller
+gen_undeground_smart_mlr_giant
+
+[level_smarts_l13u_warlab]
+warlab_common_consciousness_smart_terrain
+
+[level_smarts_labx8]
+lx8_smart_terrain
+
+[level_smarts_pripyat]
+pri_a18_smart_terrain
+pri_a21_smart_terrain
+pri_a22_smart_terrain
+pri_a25_smart_terrain
+pri_b304_monsters_smart_terrain
+pri_b36_smart_terrain
+
+[level_smarts_y04_pole]
+pol_smart_terrain_1_1
+pol_smart_terrain_1_2
+pol_smart_terrain_1_3
+pol_smart_terrain_2_1
+pol_smart_terrain_2_2
+
+[level_smarts_zaton]
+zat_a23_smart_terrain
+zat_b103_merc_smart
+zat_b106_smart_terrain
+zat_b14_smart_terrain
+zat_b20_smart_terrain
+zat_b40_smart_terrain
+zat_b42_smart_terrain
+zat_b5_smart_terrain
+zat_medic_home_smart
+zat_stalker_base_smart
+
+; Section prefixes that trigger fast_trade when NPC picks up items
+; Add more prefixes to expand the trigger list
+[fast_trade_triggers]
+af_ = true
+
+
+[npc_faction_override]
+; squad_section = community_id
+; jup_a6_freedom_trader_ashot_squad = stalker
+agr_1_6_barman_army_mlr_squad = trader
+agr_1_6_medic_army_mlr_squad = trader
+agr_smart_terrain_1_6_army_mechanic_stalker_squad = trader
+agr_smart_terrain_1_6_army_medic_stalker_squad = trader
+agr_smart_terrain_1_6_army_trader_stalker_squad = trader
+agr_u_bandits_boss_squad = trader
+army_sim_squad_barman = trader
+army_sim_squad_mechanic = trader
+army_sim_squad_medic = trader
+army_sim_squad_trader = trader
+bandit_main_base_medic_mlr_squad = trader
+bandit_sim_squad_barman = trader
+bandit_sim_squad_mechanic = trader
+bandit_sim_squad_medic = trader
+bandit_sim_squad_trader = trader
+bar_dolg_leader_squad = trader
+bar_duty_security_squad_leader_squad = trader
+bar_visitors_barman_stalker_trader_squad = trader
+bar_visitors_cardan_tech_squad = trader
+bar_zastava_2_commander_squad = trader
+boss_sultan_task_5_bandits = trader
+boss_sultan_task_5_stalkers = trader
+cit_killers_merc_mechanic_stalker_squad = trader
+cit_killers_merc_medic_stalker_squad = trader
+cit_killers_merc_trader_stalker_squad = trader
+csky_sim_squad_barman = trader
+csky_sim_squad_mechanic = trader
+csky_sim_squad_medic = trader
+csky_sim_squad_trader = trader
+dasc_tech_mlr_squad = trader
+dasc_trade_mlr_squad = trader
+dolg_medic_squad = trader
+dolg_sim_squad_barman = trader
+dolg_sim_squad_mechanic = trader
+dolg_sim_squad_medic = trader
+dolg_sim_squad_trader = trader
+ds_isg_leader_squad = trader
+ds_killer_guide_main_base_squad = trader
+ds_killer_medic_mlr_squad = trader
+ecolog_sim_squad_barman = trader
+ecolog_sim_squad_mechanic = trader
+ecolog_sim_squad_medic = trader
+ecolog_sim_squad_trader = trader
+esc_2_12_stalker_trader_squad = trader
+esc_3_16_military_trader_squad = trader
+esc_smart_terrain_5_7_loner_mechanic_stalker_squad = trader
+escape_main_base_trader_mlr = trader
+freedom_sim_squad_barman = trader
+freedom_sim_squad_mechanic = trader
+freedom_sim_squad_medic = trader
+freedom_sim_squad_trader = trader
+greh_sim_squad_barman = trader
+greh_sim_squad_mechanic = trader
+greh_sim_squad_medic = trader
+greh_sim_squad_trader = trader
+guards_boss_bandit_in_main_base = trader
+guid_jup_stalker_garik_squad = trader
+hunter_gar_trader_squad = trader
+isg_sim_squad_barman = trader
+isg_sim_squad_mechanic = trader
+isg_sim_squad_medic = trader
+isg_sim_squad_trader = trader
+jup_a6_freedom_leader_squad = trader
+jup_a6_freedom_trader_ashot_squad = trader
+jup_a6_stalker_barmen_squad = trader
+jup_a6_stalker_medik_squad = trader
+jup_b10_stalker_drunk_squad = trader
+jup_b25_alex_squad = trader
+jup_b47_bunker_guard_stalker_leader = trader
+jup_cont_trader_bandit_squad = trader
+jup_depo_isg_leader_squad = trader
+jup_depo_isg_tech_squad = trader
+mar_base_owl_stalker_trader_squad = trader
+mar_base_stalker_barmen_squad = trader
+mar_base_stalker_tech_squad = trader
+mar_smart_terrain_base_stalker_leader_marsh_squad = trader
+mechanic_army_yan_mlr_squad = trader
+merc_sim_squad_barman = trader
+merc_sim_squad_mechanic = trader
+merc_sim_squad_medic = trader
+merc_sim_squad_trader = trader
+mil_freedom_barman_mlr_squad = trader
+mil_freedom_medic_squad = trader
+mil_smart_terrain_7_10_freedom_trader_stalker_squad = trader
+mil_smart_terrain_7_7_freedom_leader_stalker_squad = trader
+mil_smart_terrain_7_7_freedom_mechanic_stalker_squad = trader
+mlr_bandit_boss_squad = trader
+monolith_bridge_trader_mlr_squad = trader
+monolith_jup_mechanic_squad = trader
+monolith_jup_trader_mlr_squad = trader
+monolith_sim_squad_barman = trader
+monolith_sim_squad_mechanic = trader
+monolith_sim_squad_medic = trader
+monolith_sim_squad_trader = trader
+pri_a16_medic_yar_squad = trader
+pri_monolith_monolith_mechanic_stalker_squad = trader
+pri_monolith_monolith_trader_stalker_squad = trader
+pri_special_trader_mlr_squad = trader
+red_greh_tech_squad = trader
+red_greh_trader_squad = trader
+renegade_sim_squad_barman = trader
+renegade_sim_squad_mechanic = trader
+renegade_sim_squad_medic = trader
+renegade_sim_squad_trader = trader
+stalker_sim_baraholka_traders = trader
+stalker_sim_squad_barman = trader
+stalker_sim_squad_mechanic = trader
+stalker_sim_squad_medic = trader
+stalker_sim_squad_trader = trader
+trader_pri_a15_mlr_squad = trader
+trucks_cemetery_bandit_mechanic_squad = trader
+trucks_cemetery_bandit_trader_squad = trader
+val_smart_terrain_7_3_bandit_mechanic_stalker_squad = trader
+val_smart_terrain_7_4_bandit_trader_stalker_squad = trader
+zat_a2_stalker_mechanic_squad = trader
+zat_b215_stalker_guide_jupiter_squad = trader
+zat_b215_stalker_guide_zaton_squad = trader
+zat_b22_barmen = trader
+zat_b22_medic = trader
+zat_b30_owl_stalker_trader_squad = trader
+zat_b7_bandit_boss_sultan_squad = trader
+zat_stancia_trader_merc_squad = trader
+zat_tech_mlr_squad = trader
+zaton_killer_guide_station_squad = trader
+jup_b6_scientist_group = trader

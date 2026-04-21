@@ -1,0 +1,73 @@
+--[[
+Battery Warning Script
+18/11/2020
+This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License
+Author: RavenAscendant
+--]]
+
+
+
+
+
+local tg_update = 0
+local tg_update_step = 10000 --[ms] lower hud is more snappy, higher it uses less cpu time.
+
+lastdev = 0
+
+function on_game_start()
+	RegisterScriptCallback("ActorMenu_on_mode_changed",reset_on_inentory)
+	RegisterScriptCallback("actor_on_update",batt_checker)
+
+end
+
+
+function reset_on_inentory()
+
+	if tg_update ~= 0 and (actor_menu.inventory_opened()) then --if they have an inventory open tg check is to only fire this once.
+		clear()
+		tg_update = 0 -- set timer to trigger when they open the inventory
+	end
+end
+
+function clear()
+		if actor_menu.last_hud_msg(3,"ui_inGame2_notify_low_battery") then --if there is a battery alram
+			actor_menu.set_notification(nil, "ui_inGame2_notify_low_battery", 1) --clear it
+		end
+
+end
+
+function batt_checker()	
+	local dev = db.actor:active_detector() or nil
+	
+	if dev and (dev:id() ~= lastdev) then 
+		tg_update = 0 --reset timer if they changed item in hand
+		clear()
+		lastdev = dev:id() --update last device
+	elseif dev == nil and lastdev ~= 0 then
+		lastdev = 0 -- if no device active update last device
+		tg_update = 0 --reset timer if they changed item in hand
+		clear()
+		return
+	end
+	
+	if (not main_hud_shown()) or ActorMenu.get_pda_menu():IsShown() or actor_menu.inventory_opened() then --lets not beep at ppl in menus.
+		return
+	end
+	
+	
+
+	
+	local tg = time_global()
+	if tg < tg_update then --if it hasn't been enough time return
+
+		return
+	end
+	tg_update = tg + tg_update_step -- addvance the timer
+	local charged = item_device.is_device_charged(dev)
+	if (charged ~= nil) then
+		if not charged then
+			actor_menu.set_notification(nil, "ui_inGame2_notify_low_battery", 20, "device\\pda\\pda_alarm")
+		end
+	end
+
+end

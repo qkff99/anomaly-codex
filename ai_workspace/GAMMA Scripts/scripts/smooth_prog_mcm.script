@@ -1,0 +1,54 @@
+
+tier_disc ={
+	tier1 = 0.5,
+	tier2 = 1.1,
+	tier3 = 1.5,
+}
+
+weapon_upgr_mult = 0.5
+outfit_upgr_mult = 1
+
+wpn_disc_apply = false
+
+function get_tierdisc(key)
+    if ui_mcm then
+		return ui_mcm.get("smooth_prog/"..key)
+	else
+		return tier_disc[key]
+	end
+end
+
+CanRepair = inventory_upgrades.can_repair_item
+
+function inventory_upgrades.can_repair_item( sec, cond, mechanic ) --( string, float, string )
+	local obj = db.actor:object(sec)
+	wpn_disc_apply = obj and IsWeapon(obj) or false
+	return CanRepair(sec, cond, mechanic)
+end
+
+function get_wpndisc(key)
+	if wpn_disc_apply then
+		if ui_mcm then
+			return ui_mcm.get("smooth_prog/"..key)
+		else
+			return weapon_upgr_mult
+		end
+	else
+		return outfit_upgr_mult
+	end
+end
+
+function on_mcm_load()
+	op = { id = "smooth_prog", sh=true, gr={
+			{ id= "title", type= "slide", link= "ui_options_slider_gameplay_diff", text= "ui_mcm_smooth_prog_title", size= {512,50}, spacing= 20 },
+			{id = "tier1", type = "track", val = 2, min=0.1, max=2, step=0.1, def = 0.5},
+			{id = "tier2", type = "track", val = 2, min=0.1, max=2, step=0.1, def = 1.1},
+			{id = "tier3", type = "track", val = 2, min=0.1, max=2, step=0.1, def = 1.5},
+			{id = "wpn_upgr_mult", type = "track", val = 2, min=0.1, max=2, step=0.1, def = 0.5},
+			{id = "smooth_text", type = "desc", text = "ui_mcm_desc_smooth", clr = {255,183,47,43}},
+			}
+		}
+		
+	return op
+end
+

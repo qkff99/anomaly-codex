@@ -1,0 +1,10 @@
+if take_item_anim then
+    local originalAOIBP = take_item_anim.actor_on_item_before_pickup
+    function take_item_anim.actor_on_item_before_pickup(item, flags)
+        if not headgear_animations.enable_animations then
+            flags.ret_value = false
+            return 
+        end
+        originalAOIBP(item, flags)
+    end
+end

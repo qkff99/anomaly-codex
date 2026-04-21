@@ -1,0 +1,113 @@
+local print_tip = print_tip or function(text, ...)
+    local text = tostring(text)
+    printf(text, ...)
+    if not db.actor then
+        return
+    end
+    
+    local ico = "ui_inGame2_Dengi_otdani"
+    local text_color = utils_xml.get_color("pda_white")
+    local arg_color = utils_xml.get_color("d_green")
+    local function colorize(s)
+        return arg_color .. s .. text_color
+    end
+    local i = 0
+    local t = {...}
+    if #t > 0 then
+        local function sr(a)
+            i = i + 1
+            if (type(t[i]) == 'userdata') then
+                if (t[i].x and t[i].y) then
+                    return colorize(vec_to_str(t[i]))
+                end
+                return colorize('userdata')
+            end
+            return colorize(tostring(t[i]))
+        end
+        text = string.gsub(game.translate_string(text), "%%s", sr)
+    else
+    	text = game.translate_string(text)
+    end
+    text = text_color .. text
+    news_manager.send_tip(db.actor, text, nil, ico, 6000)
+end
+
+op = {
+	id = "patches_by_hotkey", sh = true, gr = {
+    	{id = "banner", type = "slide", text = "ui_mcm_patches_by_hotkey_title", size = {512, 50}, spacing = 20},
+
+    	{id = "enabled", type = "check", val = 1, def = true},
+        {id = "key", type = "key_bind", val = 2, def = DIK_keys.DIK_MINUS},
+    }
+}
+
+function on_mcm_load()
+    return op
+end
+
+-- MCM
+-- Load the defaults
+local function load_defaults()
+	local t = {}
+	local op = op
+	for i, v in ipairs(op.gr) do
+		if v.def ~= nil then
+			t[v.id] = v.def
+		end
+	end
+	return t
+end
+
+local settings = load_defaults()
+
+local function load_settings()
+	settings = load_defaults()
+	if ui_mcm then
+		for k, v in pairs(settings) do
+			settings[k] = ui_mcm.get("patches_by_hotkey/" .. k)
+		end
+	end
+end
+
+local possible_factions = {
+	["army"] = true,
+	["bandit"] = true,
+	["csky"] = true,
+	["dolg"] = true,
+	["ecolog"] = true,
+	["freedom"] = true,
+	["killer"] = true,
+	["monolith"] = true,
+	["stalker"] = true,
+	["renegade"] = true,
+	["greh"] = true,
+	["isg"] = true,
+}
+function on_key_press(dik)
+	if dik == settings.key and settings.enabled and db.actor:item_in_slot(7) then
+		local obj = db.actor:item_in_slot(7)
+		local id = obj:id()
+		local section = obj:section()
+		local state = se_load_var(id, obj:name(), "unpatched")
+		local comm = ini_sys:r_string_ex(section,"community")
+		if not (comm and (comm ~= "") and possible_factions[comm]) then return end
+		local obj_patch = gameplay_disguise.get_patch(comm)
+		if state then
+			if obj_patch then
+				print_tip("st_patches_by_hotkey_apply_patch")
+			else
+				print_tip("st_patches_by_hotkey_no_patch")
+				return
+			end
+		else
+			print_tip("st_patches_by_hotkey_remove_patch")
+		end
+		gameplay_disguise.menu_patch_action(db.actor:item_in_slot(7))
+	end
+end
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_first_update", load_settings)
+	RegisterScriptCallback("on_option_change", load_settings)
+	RegisterScriptCallback("on_key_press", on_key_press)
+end

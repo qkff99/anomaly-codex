@@ -1,0 +1,341 @@
+[section@squad]
+target@base = {=check_squad_section(squad_duty_girl_capture_the_brirge_mono)} red_smart_terrain_bridge, red_smart_terrain_5_5
+condlist	= {+duty_girl_capture_the_brirge_dead !actor_on_level(l10_red_forest)} %=script(task_duty_girl:capture_the_brirge_spawn_outpost) =squad_self_release()%
+
+[section@logic]
+logic@monolith_frontline_1
+logic@monolith_frontline_2
+logic@monolith_frontline_3
+logic@monolith_frontline_4
+logic@monolith_frontline_5
+logic@monolith_frontline_6
+logic@monolith_frontline_7
+logic@monolith_frontline_8
+logic@monolith_frontline_9
+logic@monolith_frontline_10
+
+logic@monolith_1
+logic@monolith_2
+logic@monolith_3
+logic@monolith_4
+logic@monolith_5
+logic@monolith_6
+logic@monolith_7
+logic@monolith_8
+logic@monolith_9
+logic@monolith_10
+
+logic@duty_1
+logic@duty_2
+logic@duty_3
+logic@duty_4
+logic@duty_5
+logic@duty_6
+logic@duty_7
+logic@duty_8
+logic@duty_9
+
+logic@duty_combat_1
+logic@duty_combat_2
+logic@duty_combat_3
+logic@duty_combat_4
+logic@duty_combat_5
+logic@duty_combat_6
+logic@duty_combat_7
+logic@duty_combat_8
+logic@duty_combat_9
+
+
+
+
+[logic@base]
+post_combat_time = 0,0
+net_spawn = pt1
+
+[logic@combat_camper]
+combat_type = camper
+
+[logic@monolith]:logic@base
+suitable = {=check_npc_name(sim_default_monolith)} true
+
+[logic@monolith_frontline]:logic@monolith
+prior = 100
+
+[logic@monolith_frontline_1]:logic@monolith_frontline,logic@combat_camper
+active = beh@monolith_frontline_1
+[logic@monolith_frontline_2]:logic@monolith_frontline
+active = beh@monolith_frontline_2
+[logic@monolith_frontline_3]:logic@monolith_frontline,logic@combat_camper
+active = beh@monolith_frontline_3
+[logic@monolith_frontline_4]:logic@monolith_frontline
+active = beh@monolith_frontline_4
+[logic@monolith_frontline_5]:logic@monolith_frontline
+active = beh@monolith_frontline_5
+[logic@monolith_frontline_6]:logic@monolith_frontline,logic@combat_camper
+active = beh@monolith_frontline_6
+[logic@monolith_frontline_7]:logic@monolith_frontline
+active = beh@monolith_frontline_7
+[logic@monolith_frontline_8]:logic@monolith_frontline
+active = beh@monolith_frontline_8
+prior = 50
+[logic@monolith_frontline_9]:logic@monolith_frontline
+active = beh@monolith_frontline_9
+prior = 50
+[logic@monolith_frontline_10]:logic@monolith_frontline
+active = beh@monolith_frontline_10
+prior = 50
+
+
+
+[logic@monolith_1]:logic@monolith
+active = beh@monolith_1
+[logic@monolith_2]:logic@monolith
+active = beh@monolith_2
+[logic@monolith_3]:logic@monolith
+active = beh@monolith_3
+[logic@monolith_4]:logic@monolith
+active = beh@monolith_4
+[logic@monolith_5]:logic@monolith
+active = beh@monolith_5
+[logic@monolith_6]:logic@monolith
+active = beh@monolith_6
+[logic@monolith_7]:logic@monolith
+active = beh@monolith_7
+[logic@monolith_8]:logic@monolith
+active = beh@monolith_8
+[logic@monolith_9]:logic@monolith
+active = beh@monolith_9
+[logic@monolith_10]:logic@monolith
+active = beh@monolith_10
+
+
+
+
+[logic@duty]:logic@base,logic@combat_camper
+suitable = {-duty_girl_capture_the_brirge_move =check_npc_name(sim_default_duty)} true
+
+[logic@lone]:logic@base,logic@combat_camper
+suitable = {-duty_girl_capture_the_brirge_move =check_npc_name(sim_default_stal)} true
+
+[logic@duty_1]:logic@duty
+active = beh@duty_1
+[logic@duty_2]:logic@duty
+active = beh@duty_2
+[logic@duty_3]:logic@duty
+active = beh@duty_3
+[logic@duty_4]:logic@duty
+active = beh@duty_4
+[logic@duty_5]:logic@duty
+active = beh@duty_5
+[logic@duty_6]:logic@duty
+active = beh@duty_6
+[logic@duty_7]:logic@lone
+active = beh@duty_7
+[logic@duty_8]:logic@lone
+active = beh@duty_8
+[logic@duty_9]:logic@lone
+active = beh@duty_9
+
+
+[logic@duty_combat]:logic@base
+suitable = {+duty_girl_capture_the_brirge_move =check_npc_name(sim_default_duty)} true
+
+[logic@lone_combat]:logic@base
+suitable = {+duty_girl_capture_the_brirge_move =check_npc_name(sim_default_stal)} true
+
+[logic@duty_combat_1]:logic@duty_combat
+active = {-duty_girl_capture_the_brirge_dead} beh@duty_combat_1, beh@duty_guard_1
+[logic@duty_combat_2]:logic@duty_combat
+active = {-duty_girl_capture_the_brirge_dead} beh@duty_combat_2, beh@duty_guard_2
+[logic@duty_combat_3]:logic@duty_combat
+active = {-duty_girl_capture_the_brirge_dead} beh@duty_combat_3, beh@duty_guard_3
+[logic@duty_combat_4]:logic@duty_combat
+active = {-duty_girl_capture_the_brirge_dead} beh@duty_combat_4, beh@duty_guard_4
+[logic@duty_combat_5]:logic@duty_combat
+active = {-duty_girl_capture_the_brirge_dead} beh@duty_combat_5, beh@duty_guard_5
+[logic@duty_combat_6]:logic@duty_combat
+active = {-duty_girl_capture_the_brirge_dead} beh@duty_combat_6, beh@duty_guard_6
+[logic@duty_combat_7]:logic@lone_combat
+active = {-duty_girl_capture_the_brirge_dead} beh@duty_combat_7, beh@duty_guard_7
+[logic@duty_combat_8]:logic@lone_combat
+active = {-duty_girl_capture_the_brirge_dead} beh@duty_combat_8, beh@duty_guard_8
+[logic@duty_combat_9]:logic@lone_combat
+active = {-duty_girl_capture_the_brirge_dead} beh@duty_combat_9, beh@duty_guard_9
+
+;==================================================
+[beh@base]
+dont_keep_items						= true
+gather_items_enabled				= false
+help_wounded_enabled				= false
+corpse_detection_enabled			= false
+combat_ignore_keep_when_attacked	= true
+target								= waypoint
+path_end							= loop
+walk_dist							= 0
+jog_dist							= 0
+run_anim							= patrol
+meet								= no_meet
+
+before_hit		= task_duty_girl@capture_the_brirge_hit
+danger_ignore	= true
+
+
+
+[beh@animpoint]:beh@base
+target = %=animpoint()% nil
+
+[beh@combat_camper_stand]
+combat_camper_state_fire = threat_fire
+combat_camper_state_look = threat
+combat_ignore_cond	= {!reach_beh()} true, {-duty_girl_capture_the_brirge_move =enemy_squad(squad_duty_girl_capture_the_brirge)} true
+
+[beh@monolith_frontline]:beh@animpoint
+run_anim = assault
+combat_ignore_cond	= {-duty_girl_capture_the_brirge_move =enemy_squad(squad_duty_girl_capture_the_brirge)} true
+enemy_ignore_cond	= {-duty_girl_capture_the_brirge_move =enemy_squad(squad_duty_girl_capture_the_brirge)} true
+;combat_ignore_cond	= true
+;enemy_ignore_cond	= true
+
+[beh@monolith_frontline_1]:beh@monolith_frontline,beh@combat_camper_stand
+pt1 = 999999,guard 	| pos:-101.5,1.75,-249.2 dir:180
+[beh@monolith_frontline_2]:beh@monolith_frontline
+pt1 = 999999,hide 	| pos:-102.9,2.73,-249.2 dir:180
+[beh@monolith_frontline_3]:beh@monolith_frontline,beh@combat_camper_stand
+pt1 = 999999,guard	| pos:-121.8,4.72,-261.8 dir:-150
+[beh@monolith_frontline_4]:beh@monolith_frontline
+pt1 = 999999,hide	| pos:-113.4,4.72,-261.8 dir:-150
+[beh@monolith_frontline_5]:beh@monolith_frontline
+pt1 = 999999,guard 	| pos:-114.1,0.10,-265.3 dir:-150
+[beh@monolith_frontline_6]:beh@monolith_frontline,beh@combat_camper_stand
+pt1 = 999999,guard 	| pos:-110.6,-0.40,-248.5 dir:-150
+[beh@monolith_frontline_7]:beh@monolith_frontline
+pt1 = 999999,guard 	| pos:-107.8,-0.30,-242.9 dir:-150
+[beh@monolith_frontline_8]:beh@monolith_frontline
+pt1 = 999999,hide 	| pos:-111.3,-0.12,-259.7 dir:-150
+[beh@monolith_frontline_9]:beh@monolith_frontline
+pt1 = 999999,hide 	| pos:-113.4,-0.02,-261.8 dir:-150
+[beh@monolith_frontline_10]:beh@monolith_frontline
+pt1 = 999999,hide 	| pos:-114.8,-0.19,-251.3 dir:-150
+
+
+[beh@monolith]:beh@animpoint
+run_anim = assault
+combat_ignore_cond	= {!fighting_dist_le(40)} true, {-duty_girl_capture_the_brirge_move =enemy_squad(squad_duty_girl_capture_the_brirge)} true
+enemy_ignore_cond	= {!fighting_dist_le(40)} true, {-duty_girl_capture_the_brirge_move =enemy_squad(squad_duty_girl_capture_the_brirge)} true
+;combat_ignore_cond	= true
+;enemy_ignore_cond	= true
+
+[beh@monolith_1]:beh@monolith
+pt1 = 999999,hide	| pos:-98.0,0.00,-235.2 dir:180
+[beh@monolith_2]:beh@monolith
+pt1 = 999999,hide	| pos:-99.4,0.00,-233.8 dir:180
+[beh@monolith_3]:beh@monolith
+pt1 = 999999,hide	| pos:-100.1,0.00,-235.9 dir:180
+[beh@monolith_4]:beh@monolith
+pt1 = 999999,hide	| pos:-101.5,0.00,-236.6 dir:180
+[beh@monolith_5]:beh@monolith
+pt1 = 999999,hide	| pos:-120.4,-0.64,-224.7 dir:180
+[beh@monolith_6]:beh@monolith
+pt1 = 999999,hide	| pos:-120.4,-0.64,-222.6 dir:180
+[beh@monolith_7]:beh@monolith
+pt1 = 999999,hide	| pos:-116.9,-0.64,-225.4 dir:180
+[beh@monolith_8]:beh@monolith
+pt1 = 999999,hide	| pos:-112.7,-0.64,-217.0 dir:180
+[beh@monolith_9]:beh@monolith
+pt1 = 999999,hide	| pos:-114.8,-0.64,-223.3 dir:180
+[beh@monolith_10]:beh@monolith
+pt1 = 999999,hide	| pos:-116.2,-0.64,-220.5 dir:180
+
+
+
+
+[beh@duty]:beh@animpoint
+run_anim = rush
+combat_ignore_cond	= {=is_enemy_actor()} true, {!dist_to_beh(30)} true
+
+[beh@duty_1]:beh@duty
+pt1 = 999999,salut	| pos:-13.3,-0.80,-326.2 dir:90
+on_info = {+duty_girl_capture_the_brirge_move} beh@duty_combat_1
+[beh@duty_2]:beh@duty
+pt1 = 999999,salut	| pos:-13.3,-0.80,-327.6 dir:90
+on_info = {+duty_girl_capture_the_brirge_move} beh@duty_combat_2
+[beh@duty_3]:beh@duty
+pt1 = 999999,salut	| pos:-13.3,-0.80,-329.0 dir:90
+on_info = {+duty_girl_capture_the_brirge_move} beh@duty_combat_3
+[beh@duty_4]:beh@duty
+pt1 = 999999,salut	| pos:-13.3,-0.80,-330.4 dir:90
+on_info = {+duty_girl_capture_the_brirge_move} beh@duty_combat_4
+[beh@duty_5]:beh@duty
+pt1 = 999999,hide	| pos:-9.1,-1.00,-320.6 dir:0
+on_info = {+duty_girl_capture_the_brirge_move} beh@duty_combat_5
+[beh@duty_6]:beh@duty
+pt1 = 999999,hide	| pos:-11.9,-1.00,-321.3 dir:30
+on_info = {+duty_girl_capture_the_brirge_move} beh@duty_combat_6
+[beh@duty_7]:beh@duty
+pt1 = 999999,hide	| pos:-11.2,3.00,-323.4 dir:30
+on_info = {+duty_girl_capture_the_brirge_move} beh@duty_combat_7
+[beh@duty_8]:beh@duty
+pt1 = 999999,hide	| pos:-9.8,-0.98,-333.9 dir:180
+on_info = {+duty_girl_capture_the_brirge_move} beh@duty_combat_8
+[beh@duty_9]:beh@duty
+pt1 = 999999,hide	| pos:-19.6,-0.82,-326.9 dir:30
+on_info = {+duty_girl_capture_the_brirge_move} beh@duty_combat_9
+
+
+
+
+[beh@duty_combat]:beh@animpoint
+combat_ignore_cond	= {=is_enemy_actor()} true
+run_anim = assault
+
+[beh@duty_combat_1]:beh@duty_combat
+pt1 = 999999,hide | pos:-109.9,0.38,-293.3 dir:-30
+on_info = {+duty_girl_capture_the_brirge_dead} beh@duty_guard_1
+[beh@duty_combat_2]:beh@duty_combat
+pt1 = 999999,hide | pos:-108.5,0.40,-292.6 dir:-30
+on_info = {+duty_girl_capture_the_brirge_dead} beh@duty_guard_2
+[beh@duty_combat_3]:beh@duty_combat
+pt1 = 999999,hide | pos:-112.7,-0.22,-287.7 dir:-30
+on_info = {+duty_girl_capture_the_brirge_dead} beh@duty_guard_3
+[beh@duty_combat_4]:beh@duty_combat
+pt1 = 999999,hide | pos:-102.2,0.25,-284.2 dir:-30
+on_info = {+duty_girl_capture_the_brirge_dead} beh@duty_guard_4
+[beh@duty_combat_5]:beh@duty_combat
+pt1 = 999999,hide | pos:-95.2,2.85,-303.1 dir:-30
+on_info = {+duty_girl_capture_the_brirge_dead} beh@duty_guard_5
+[beh@duty_combat_6]:beh@duty_combat
+pt1 = 999999,hide | pos:-84.7,2.27,-294.0 dir:0
+on_info = {+duty_girl_capture_the_brirge_dead} beh@duty_guard_6
+[beh@duty_combat_7]:beh@duty_combat
+pt1 = 999999,hide | pos:-84.0,2.48,-292.6 dir:30
+on_info = {+duty_girl_capture_the_brirge_dead} beh@duty_guard_7
+[beh@duty_combat_8]:beh@duty_combat
+pt1 = 999999,hide | pos:-84.0,2.24,-284.9 dir:30
+on_info = {+duty_girl_capture_the_brirge_dead} beh@duty_guard_8
+[beh@duty_combat_9]:beh@duty_combat
+pt1 = 999999,hide | pos:-91.7,0.12,-271.6 dir:30
+on_info = {+duty_girl_capture_the_brirge_dead} beh@duty_guard_9
+
+
+[beh@duty_guard]:beh@animpoint
+combat_ignore_cond	= {=is_enemy_actor()} true
+
+[beh@duty_guard_1]:beh@duty_guard
+pt1 = 999999,sit_ass | pos:-104.3,0.30,-269.5 look:-105.7,0.30,-270.9
+[beh@duty_guard_2]:beh@duty_guard
+pt1 = 999999,sit_ass | pos:-104.3,0.30,-270.9 look:-105.7,0.30,-270.9
+[beh@duty_guard_3]:beh@duty_guard
+pt1 = 999999,sit_ass | pos:-104.3,0.30,-272.3 look:-105.7,0.30,-270.9
+[beh@duty_guard_4]:beh@duty_guard
+pt1 = 999999,sit_ass | pos:-107.1,0.30,-268.8 look:-105.7,0.30,-270.9
+[beh@duty_guard_5]:beh@duty_guard
+pt1 = 999999,sit_ass | pos:-107.8,0.30,-270.2 look:-105.7,0.30,-270.9
+[beh@duty_guard_6]:beh@duty_guard
+pt1 = 999999,sit_ass | pos:-107.8,0.30,-271.6 look:-105.7,0.30,-270.9
+[beh@duty_guard_7]:beh@duty_guard
+pt1 = 999999,sit_ass | pos:-107.1,0.30,-273.0 look:-105.7,0.30,-270.9
+[beh@duty_guard_8]:beh@duty_guard
+pt1 = 999999,sit_ass | pos:-105.7,0.30,-273.7 look:-105.7,0.30,-270.9
+[beh@duty_guard_9]:beh@duty_guard
+pt1 = 999999,sit_ass | pos:-105.0,0.30,-268.8 look:-105.7,0.30,-270.9
+

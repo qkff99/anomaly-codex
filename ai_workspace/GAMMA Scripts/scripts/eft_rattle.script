@@ -1,0 +1,58 @@
+local opt_aim_rattle = true
+local opt_lower_raise_rattle = false
+
+function load_settings()
+    if ui_mcm then
+        opt_aim_rattle = ui_mcm.get("eft_rattle/aim_rattle")
+        opt_lower_raise_rattle = ui_mcm.get("eft_rattle/lower_raise_rattle")
+    end
+end
+
+local tm
+function play_aim_sound(dir, name)
+    local player = db.actor
+    if not (player and player:alive()) then return end
+
+    local ct = time_global()
+    if not tm or ct > tm then
+        local list = getFS():file_list_open("$game_sounds$", dir, bit_or(FS.FS_ListFiles, FS.FS_RootOnly)) -- Perhaps cache the result...?
+        if list then
+            local sound = xr_sound.get_safe_sound_object(dir .. name .. tostring(math.random(list:Size())))
+            sound:play(ply, 0, sound_object.s2d)
+            tm = ct + 175
+        end
+    end
+end
+
+function actor_on_weapon_zoom_in()
+    if opt_aim_rattle then
+        play_aim_sound("weapons\\rattle\\aimin\\", "aim_in_")
+    end
+end
+
+function actor_on_weapon_zoom_out()
+    if opt_aim_rattle then
+        play_aim_sound("weapons\\rattle\\aimout\\", "aim_out_")
+    end
+end
+
+function actor_on_weapon_raise(wpn)
+    if opt_lower_raise_rattle then
+        play_aim_sound("weapons\\rattle\\raise\\", "raise_")
+    end
+end
+
+function actor_on_weapon_lower(wpn)
+    if opt_lower_raise_rattle then
+        play_aim_sound("weapons\\rattle\\lower\\", "lower_")
+    end
+end
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_first_update", load_settings)
+	RegisterScriptCallback("on_option_change", load_settings)
+    RegisterScriptCallback("actor_on_weapon_zoom_in", actor_on_weapon_zoom_in)
+    RegisterScriptCallback("actor_on_weapon_zoom_out", actor_on_weapon_zoom_out)
+    RegisterScriptCallback("actor_on_weapon_raise", actor_on_weapon_raise)
+    RegisterScriptCallback("actor_on_weapon_lower", actor_on_weapon_lower)
+end

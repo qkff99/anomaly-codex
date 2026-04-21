@@ -1,0 +1,177 @@
+[beh@general]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+gather_items_enabled = false
+help_wounded_enabled = false
+corpse_detection_enabled = false
+meet = no_meet
+wounded = wounded@ignore
+use_camp = false
+
+[meet@general]
+close_anim 		= nil
+close_victim 	= nil
+far_anim 		= nil
+far_victim 		= nil
+close_distance  = 0
+far_distance 	= 0
+use = {=actor_enemy} false, {=dist_to_actor_le(3)} true, false
+snd_on_use = {!dist_to_actor_le(3)} nil
+meet_on_talking = false
+
+[wounded@ignore]
+hp_state        = 0|wounded_heavy@help_heavy
+hp_state_see    = 0|wounded_heavy@help_heavy
+hp_victim       = 0|nil
+hp_fight        = 0|false
+hp_cover        = 0|false
+
+; =======================
+; ------------- DAY ---------------
+; =======================
+; guard sniper north-east
+[logic@mar_5_8_xcvb_day_1]
+active = walker@day_1
+suitable = {!surge_started !is_night =guard_has_rifle} true
+prior = 59
+
+[walker@day_1]
+path_walk = guard_5_walk
+path_look = guard_5_look
+
+
+; guard south
+[logic@mar_5_8_xcvb_day_2]
+active = walker@day_2
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[walker@day_2]
+path_walk = guard_4_walk
+path_look = guard_4_look
+
+
+; guard east
+[logic@mar_5_8_xcvb_day_3]
+active = walker@day_3
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[walker@day_3]
+path_walk = comander_walk
+path_look = comander_look
+
+
+; patrol roof all sides
+[logic@mar_5_8_xcvb_day_4]
+active = walker@day_4
+suitable = {!surge_started !is_night =guard_has_rifle} true
+prior = 55
+
+[walker@day_4]
+path_walk = walker_1_walk
+path_look = walker_1_look
+
+
+; patrol roof all sides sniper
+[logic@mar_5_8_xcvb_day_5]
+active = walker@day_5
+suitable = {!surge_started !is_night =guard_has_sniper_rifle} true
+prior = 56
+
+[walker@day_5]
+path_walk = guard_3_walk
+path_look = guard_3_look
+
+
+
+; =======================
+; ------------ NIGHT -------------
+; =======================
+; guard south
+[logic@mar_5_8_xcvb_night_1]
+active = walker@night_1
+suitable = {!surge_started =is_night} true
+prior = 59
+
+[walker@night_1]
+path_walk = guard_4_walk
+path_look = guard_4_look
+
+
+; guard east
+[logic@mar_5_8_xcvb_night_2]
+active = walker@night_2
+suitable = {!surge_started =is_night} true
+prior = 59
+
+[walker@night_2]
+path_walk = comander_walk
+path_look = comander_look
+
+
+; sleep 1
+[logic@mar_5_8_xcvb_night_3]
+active = beh@night_3
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[beh@night_3]:beh@general
+pt1 = 30000, drunk_sit_ass | 		pos: -4.9, 4.3565, 13.3 	 	 look: -4.6469, 3.3276, 10.6623 
+path_end = loop
+
+
+; sleep 2
+[logic@mar_5_8_xcvb_night_4]
+active = beh@night_4
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[beh@night_4]:beh@general
+pt1 = 30000, sit_ass_drink_vodka | 		pos: 0.7, 4.3353, 9.1 	 	 look: 1.5006, 3.3476, 12.6986 
+path_end = loop
+gather_items_enabled = true
+help_wounded_enabled = true
+corpse_detection_enabled = true
+meet = meet@general
+
+
+; guard north
+[logic@mar_5_8_xcvb_night_5]
+active = walker@night_5
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[walker@night_5]
+path_walk = guard_6_walk
+path_look = guard_6_look
+
+
+; sleep 3
+[logic@mar_5_8_xcvb_night_6]
+active = beh@night_6
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[beh@night_6]:beh@general
+pt1 = 30000, drunk_sit_ass | 		pos: -6.3, 4.3432, 11.9 	 	 look: -2.8228, 3.3615, 11.7368 
+path_end = loop
+
+
+; patrol roof all sides
+[logic@mar_5_8_xcvb_night_7]
+active = walker@night_7
+suitable = {!surge_started =is_night =guard_has_rifle} true
+prior = 55
+
+[walker@night_7]
+path_walk = walker_1_walk
+path_look = walker_1_look

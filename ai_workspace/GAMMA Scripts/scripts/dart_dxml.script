@@ -1,0 +1,262 @@
+local Dart  = dart_core
+local Utils = dart_utils
+
+
+local REPLACEMENT_QUEUE = {}
+
+
+-- split path into filename, alias, ratio
+-- "ui\foo_16.xml" => "foo_16.xml", "foo", "16"
+function splitPath(path)
+  return path:match("ui\\(([_%w]-)_?(%d?%d?)%d*.xml)$")
+end
+
+
+-- transfer contents of one XML object to another
+function transferXML(FXML, TXML)
+  TXML.xml_table.kids = FXML.xml_table.kids
+end
+
+
+-- retrieve an entry from REPLACEMENT_QUEUE
+function getQueuedReplacement(path)
+  return REPLACEMENT_QUEUE[path]
+end
+
+
+-- queue replacement of XML with another file
+function requestReplacement(XML, path)
+  REPLACEMENT_QUEUE[path] = XML
+  local file = splitPath(path)
+
+  function load()
+    CScriptXmlInit():ParseFile(file)
+  end
+
+  local status = pcall(load)
+
+  if not status then
+    REPLACEMENT_QUEUE[path] = nil
+  end
+
+  return status
+end
+
+
+-- settle a queued replacement request
+function settleReplacement(XML, path)
+  local TXML = REPLACEMENT_QUEUE[path]
+
+  if not TXML then
+    return false
+  end
+
+  REPLACEMENT_QUEUE[path] = nil
+  transferXML(XML, TXML)
+
+  return true
+end
+
+
+-- detect source aspect ratio from path and rules
+function getXMLAspectRatio(XML, path)
+  local _, _, ratio = splitPath(path)
+
+  return
+    Dart.xmlAspectRatios[path]
+    or Dart.xmlFileSuffixes[ratio]
+    or Dart.ratio16x9
+end
+
+
+-- like XML:isElement() but does not throw
+function safeIsElement(XML, element)
+  return element and element.el and XML:isElement(element)
+end
+
+
+-- like XML:getElementAttr() but sanitizes values
+function safeGetAttrs(XML, element)
+  return Utils.validateAttrs(XML:getElementAttr(element) or {})
+end
+
+
+-- like XML:setElementAttr() but accepts callbacks that pass current attrs
+function safeSetAttrs(XML, element, attrs)
+  if type(attrs) == "function" then
+    attrs = attrs(safeGetAttrs(XML, element))
+  end
+
+  XML:setElementAttr(element, attrs)
+end
+
+
+-- like XML:iterateChildren() but only iterates elements
+-- element is optional and defaults to XML:getRoot()
+-- return values from callback are collected and returned
+function safeIterate(XML, element, callback)
+  if not callback and type(element) == "function" then
+    callback = element
+    element  = XML:getRoot()
+  end
+
+  local results
+
+  XML:iterateChildren(element, function(child, index)
+    if not safeIsElement(XML, child) then
+      return
+    end
+
+    local result = callback(child, index)
+
+    if result then
+      if not results then
+        results = {}
+      end
+      results[#results+1] = result
+    end
+  end)
+
+  return results
+end
+
+
+-- find {l, r, t, b} bounds of [n] elements (or XML:getRoot().kids)
+function getElementBounds(XML, ...)
+  local args  = {...}
+  local attrs = {}
+
+  if #args == 0 then
+    args = XML:getRoot().kids
+  end
+
+  Utils.ipairscb(args, function(element)
+    if safeIsElement(XML, element) then
+      attrs[#attrs + 1] = safeGetAttrs(XML, element)
+    end
+  end)
+
+  return Utils.getBounds(unpack(attrs))
+end
+
+
+-- aspect ratio corrections
+function correctElementX(XML, element, targetRatio, settings)
+  local x = tonumber(safeGetAttrs(XML, element).x)
+  if x then
+    safeSetAttrs(XML, element, {
+      x = Utils.correctX(x, targetRatio, settings)
+    })
+  end
+end
+
+
+function correctElementY(XML, element, targetRatio, settings)
+  local y = tonumber(safeGetAttrs(XML, element).y)
+  if y then
+    safeSetAttrs(XML, element, {
+      y = Utils.correctY(y, targetRatio, settings)
+    })
+  end
+end
+
+
+function correctElementW(XML, element, targetRatio, settings)
+  local width = tonumber(safeGetAttrs(XML, element).width)
+  if width then
+    safeSetAttrs(XML, element, {
+      width = Utils.correctW(width, targetRatio, settings)
+    })
+  end
+end
+
+
+function correctElementH(XML, element, targetRatio, settings)
+  local height = tonumber(safeGetAttrs(XML, element).height)
+  if height then
+    safeSetAttrs(XML, element, {
+      height = Utils.correctH(height, targetRatio, settings)
+    })
+  end
+end
+
+
+function correctElementXY(XML, element, targetRatio, settings)
+  local attrs = safeGetAttrs(XML, element)
+  safeSetAttrs(XML, element, Utils.correctXY(attrs, targetRatio, settings))
+end
+
+
+function correctElementWH(XML, element, targetRatio, settings)
+  local attrs = safeGetAttrs(XML, element)
+  safeSetAttrs(XML, element, Utils.correctWH(attrs, targetRatio, settings))
+end
+
+
+function correctElement(XML, element, targetRatio, settings)
+  local attrs = safeGetAttrs(XML, element)
+  safeSetAttrs(XML, element, Utils.correctAttrs(attrs, targetRatio, settings))
+end
+
+
+-- Extend an XML object with methods and properties
+function extendXMLObject(XML, path)
+  local file, alias, ratio = splitPath(path)
+
+  if not file then
+    error("Unexpected filename passed to XML: " .. path)
+  end
+
+  XML.isExtended  = true
+  XML.path        = path
+  XML.aspectRatio = getXMLAspectRatio(XML, path)
+
+
+  function XML:safeIsElement(element)
+    return safeIsElement(self, element)
+  end
+
+  function XML:safeIterate(element, callback)
+    return safeIterate(self, element, callback)
+  end
+
+  function XML:safeGetAttrs(element)
+    return safeGetAttrs(self, element)
+  end
+
+  function XML:safeSetAttrs(element, attrs)
+    return safeSetAttrs(self, element, attrs)
+  end
+
+  function XML:getBounds(...)
+    return getElementBounds(self, ...)
+  end
+
+  function XML:correctX(element, settings)
+    return correctElementX(self, element, self.aspectRatio, settings)
+  end
+
+  function XML:correctY(element, settings)
+    return correctElementY(self, element, self.aspectRatio, settings)
+  end
+
+  function XML:correctW(element, settings)
+    return correctElementW(self, element, self.aspectRatio, settings)
+  end
+
+  function XML:correctH(element, settings)
+    return correctElementH(self, element, self.aspectRatio, settings)
+  end
+
+  function XML:correctXY(element, settings)
+    return correctElementXY(self, element, self.aspectRatio, settings)
+  end
+
+  function XML:correctWH(element, settings)
+    return correctElementWH(self, element, self.aspectRatio, settings)
+  end
+
+  function XML:correctElement(element, settings)
+    return correctElement(self, element, self.aspectRatio, settings)
+  end
+end

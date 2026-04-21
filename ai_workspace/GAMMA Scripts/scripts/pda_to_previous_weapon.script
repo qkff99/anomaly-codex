@@ -1,0 +1,40 @@
+local previous_slot
+
+function toggle_pda()
+    -- PDA Map
+    local pda3d = get_console_cmd(1, "g_3d_pda")
+    if not pda3d then return end
+    
+    local pda_menu = ActorMenu.get_pda_menu()
+    if not pda_menu:IsShown() and db.actor:item_in_slot(8) then
+        -- printf("save slot %s", db.actor:active_slot())
+        previous_slot = db.actor:active_slot()
+    elseif pda_menu:IsShown() and previous_slot then
+        
+        -- Postpone on next tick
+        CreateTimeEvent("pda_restore_slot", "pda_restore_slot", 0, function()
+            -- printf("restore slot %s", previous_slot)
+            db.actor:activate_slot(previous_slot)
+            previous_slot = nil
+            return true
+        end)
+    end
+end
+
+function on_key_press(key)    
+    if key == DIK_keys.DIK_ESCAPE or dik_to_bind(key) == 51 then
+        toggle_pda()
+    end
+end
+
+-- Special case for map key
+function on_key_release(key)    
+    if dik_to_bind(key) == key_bindings.kCUSTOM20 then
+        toggle_pda()
+    end
+end
+
+function on_game_start()
+    RegisterScriptCallback("on_key_press", on_key_press)
+    RegisterScriptCallback("on_key_release", on_key_release)
+end

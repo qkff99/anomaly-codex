@@ -1,0 +1,451 @@
+--[[
+    PDA Interactive - Shared Utilities
+    Performance optimizations and common functions
+    
+    This module provides:
+    - Throttling utilities
+    - Object caching
+    - Section category caching
+    - Optimized iteration helpers
+    - Common constants
+]]
+
+pda_inter_utils = {}
+
+-- ### CONSTANTS
+pda_inter_utils.CONSTANTS = {
+    -- Alife limits
+    MAX_ALIFE_ID = 65534,
+    NULL_PARENT_ID = 65535,
+    
+    -- Distance thresholds (meters)
+    SQUAD_SEARCH_RADIUS = 150,
+    NPC_NEARBY_RADIUS = 150,
+    MIN_SMART_DISTANCE = 500,
+    MAX_SMART_DISTANCE = 3000,
+    
+    -- Update intervals (milliseconds)
+    UPDATE_FAST = 100,
+    UPDATE_NORMAL = 500,
+    UPDATE_SLOW = 1000,
+    UPDATE_VERY_SLOW = 3000,
+    
+    -- Throttle keys
+    THROTTLE_RAID_SEARCH = "raid_search",
+    THROTTLE_TRADE_UPDATE = "trade_update",
+    THROTTLE_TASK_UPDATE = "task_update",
+    THROTTLE_FIND_UPDATE = "find_update",
+    THROTTLE_BANTER_UPDATE = "banter_update",
+}
+
+-- ### LOCALIZED FUNCTIONS (for performance)
+local pairs = pairs
+local ipairs = ipairs
+local type = type
+local tostring = tostring
+local tonumber = tonumber
+local math_random = math.random
+local math_floor = math.floor
+local math_ceil = math.ceil
+local math_min = math.min
+local math_max = math.max
+local string_find = string.find
+local string_sub = string.sub
+local string_format = string.format
+local table_insert = table.insert
+local table_remove = table.remove
+
+-- Export for other scripts
+pda_inter_utils.pairs = pairs
+pda_inter_utils.ipairs = ipairs
+pda_inter_utils.type = type
+pda_inter_utils.math_random = math_random
+pda_inter_utils.math_floor = math_floor
+pda_inter_utils.math_ceil = math_ceil
+pda_inter_utils.math_min = math_min
+pda_inter_utils.math_max = math_max
+pda_inter_utils.string_find = string_find
+pda_inter_utils.string_sub = string_sub
+pda_inter_utils.table_insert = table_insert
+pda_inter_utils.table_remove = table_remove
+
+-- ### THROTTLING SYSTEM
+local throttle_timers = {}
+
+-- Check if enough time has passed since last update
+-- Returns true if update should proceed, false if throttled
+function pda_inter_utils.should_update(key, interval)
+    local tg = time_global()
+    if throttle_timers[key] and tg < throttle_timers[key] then
+        return false
+    end
+    throttle_timers[key] = tg + interval
+    return true
+end
+
+-- Reset a specific throttle timer
+function pda_inter_utils.reset_throttle(key)
+    throttle_timers[key] = nil
+end
+
+-- Clear all throttle timers
+function pda_inter_utils.clear_all_throttles()
+    throttle_timers = {}
+end
+
+-- ### SECTION CATEGORY CACHE
+-- avoids repeated string.find calls for NPC section classification
+local section_category_cache = {}
+
+-- Get cached category for a section name
+function pda_inter_utils.get_section_category(sec)
+    if not sec then return nil end
+    
+    -- Return cached result if available
+    if section_category_cache[sec] then
+        return section_category_cache[sec]
+    end
+    
+    -- Determine category
+    local cat = nil
+    
+    if string_find(sec, "_trader_") then
+        cat = "trader"
+    elseif string_find(sec, "_barman") then
+        cat = "barman"
+    elseif string_find(sec, "_mechanic") then
+        cat = "mechanic"
+    elseif string_find(sec, "_medic") then
+        cat = "medic"
+    elseif string_find(sec, "yan_stalker_sakharov") or string_find(sec, "jup_b6_scientist_nuclear_physicist") then
+        cat = "sci"
+    elseif string_find(sec, "sim_default") then
+        cat = "stalker"
+    elseif string_find(sec, "_sim_squad_") then
+        cat = "squad"
+    elseif string_find(sec, "simulation_") then
+        cat = "mutant_squad"
+    elseif string_find(sec, "sim_squad") then
+        cat = "sim_squad"
+    end
+    
+    -- Cache the result
+    section_category_cache[sec] = cat or "unknown"
+    return section_category_cache[sec]
+end
+
+-- Check if section matches a pattern (cached)
+local section_pattern_cache = {}
+function pda_inter_utils.section_matches(sec, pattern)
+    if not sec or not pattern then return false end
+    
+    local cache_key = sec .. "|" .. pattern
+    if section_pattern_cache[cache_key] ~= nil then
+        return section_pattern_cache[cache_key]
+    end
+    
+    local result = string_find(sec, pattern) ~= nil
+    section_pattern_cache[cache_key] = result
+    return result
+end
+
+-- Clear section caches (call on game load if needed)
+function pda_inter_utils.clear_section_cache()
+    section_category_cache = {}
+    section_pattern_cache = {}
+end
+
+-- ### OPTIMIZED ITERATION HELPERS
+-- use game's built-in collections instead of 65534 loops
+
+-- Iterate over all online stalkers efficiently
+-- callback(id, se_obj) - return true to stop iteration
+function pda_inter_utils.iterate_online_stalkers(callback)
+    if not db.OnlineStalkers then return end
+    
+    for _, id in ipairs(db.OnlineStalkers) do
+        local se_obj = alife_object(id)
+        if se_obj then
+            if callback(id, se_obj) then
+                return
+            end
+        end
+    end
+end
+
+-- Iterate over all squads efficiently using SIMBOARD
+-- callback(squad_id, squad) - return true to stop iteration
+function pda_inter_utils.iterate_squads(callback)
+    if not SIMBOARD or not SIMBOARD.squads then return end
+    
+    for squad_id, squad in pairs(SIMBOARD.squads) do
+        if squad then
+            if callback(squad_id, squad) then
+                return
+            end
+        end
+    end
+end
+
+-- Iterate over all smart terrains efficiently
+-- callback(smart_name, smart) - return true to stop iteration
+function pda_inter_utils.iterate_smarts(callback)
+    if not SIMBOARD or not SIMBOARD.smarts_by_names then return end
+    
+    for smart_name, smart in pairs(SIMBOARD.smarts_by_names) do
+        if smart then
+            if callback(smart_name, smart) then
+                return
+            end
+        end
+    end
+end
+
+-- Get all stalkers (online + offline) - uses alife iteration but optimized
+-- filter_func(se_obj) should return true to include the stalker
+function pda_inter_utils.get_all_stalkers(filter_func)
+    local result = {}
+    local sim = alife()
+    if not sim then return result end
+    
+    -- Use online stalkers first (faster)
+    if db.OnlineStalkers then
+        for _, id in ipairs(db.OnlineStalkers) do
+            local se_obj = alife_object(id)
+            if se_obj and (not filter_func or filter_func(se_obj)) then
+                result[#result + 1] = se_obj
+            end
+        end
+    end
+    
+    return result
+end
+
+-- Collect objects by type using SIMBOARD when possible
+-- obj_type: "stalker", "squad", "smart", "trader"
+function pda_inter_utils.collect_objects_by_type(obj_type, filter_func)
+    local result = {}
+    
+    if obj_type == "squad" then
+        pda_inter_utils.iterate_squads(function(id, squad)
+            if not filter_func or filter_func(squad) then
+                result[#result + 1] = {id = id, obj = squad}
+            end
+        end)
+    elseif obj_type == "smart" then
+        pda_inter_utils.iterate_smarts(function(name, smart)
+            if not filter_func or filter_func(smart) then
+                result[#result + 1] = {name = name, obj = smart}
+            end
+        end)
+    elseif obj_type == "stalker" then
+        pda_inter_utils.iterate_online_stalkers(function(id, se_obj)
+            if IsStalker(se_obj) and (not filter_func or filter_func(se_obj)) then
+                result[#result + 1] = {id = id, obj = se_obj}
+            end
+        end)
+    end
+    
+    return result
+end
+
+-- ### ALIFE OBJECT CACHE
+-- reduces repeated alife_object() calls for same ID
+local alife_cache = {}
+local alife_cache_times = {}
+local ALIFE_CACHE_TTL = 1000  -- 1 second cache lifetime
+
+function pda_inter_utils.get_alife_obj(id)
+    if not id then return nil end
+    
+    local now = time_global()
+    
+    -- Check cache
+    if alife_cache[id] and alife_cache_times[id] and (now - alife_cache_times[id]) < ALIFE_CACHE_TTL then
+        -- Verify object still exists
+        if alife_cache[id].id then
+            return alife_cache[id]
+        end
+    end
+    
+    -- Cache miss - get fresh object
+    local obj = alife_object(id)
+    if obj then
+        alife_cache[id] = obj
+        alife_cache_times[id] = now
+    else
+        alife_cache[id] = nil
+        alife_cache_times[id] = nil
+    end
+    
+    return obj
+end
+
+function pda_inter_utils.invalidate_alife_cache(id)
+    if id then
+        alife_cache[id] = nil
+        alife_cache_times[id] = nil
+    end
+end
+
+function pda_inter_utils.clear_alife_cache()
+    alife_cache = {}
+    alife_cache_times = {}
+end
+
+-- ### DISTANCE UTILITIES
+
+-- Get distance between two alife objects (cached positions)
+function pda_inter_utils.get_distance(obj1, obj2)
+    if not obj1 or not obj2 then return nil end
+    
+    local pos1 = obj1.position
+    local pos2 = obj2.position
+    
+    if pos1 and pos2 then
+        return pos1:distance_to(pos2)
+    end
+    
+    return nil
+end
+
+-- Check if object is within radius of actor
+function pda_inter_utils.is_near_actor(se_obj, radius)
+    if not se_obj or not db.actor then return false end
+    
+    local ac_pos = db.actor:position()
+    local obj_pos = se_obj.position
+    
+    if ac_pos and obj_pos then
+        return ac_pos:distance_to(obj_pos) <= radius
+    end
+    
+    return false
+end
+
+-- ### TABLE UTILITIES (optimized versions)
+
+-- Check if value exists in array (faster than pairs loop)
+function pda_inter_utils.in_array(arr, val)
+    if not arr then return false end
+    for i = 1, #arr do
+        if arr[i] == val then
+            return true
+        end
+    end
+    return false
+end
+
+-- Get table size (for non-array tables)
+function pda_inter_utils.table_size(t)
+    if not t then return 0 end
+    local count = 0
+    for _ in pairs(t) do
+        count = count + 1
+    end
+    return count
+end
+
+-- Safe table empty check
+function pda_inter_utils.is_empty(t)
+    if not t then return true end
+    return next(t) == nil
+end
+
+-- Get random key from table
+function pda_inter_utils.random_key(t)
+    if not t then return nil end
+    
+    local keys = {}
+    for k in pairs(t) do
+        keys[#keys + 1] = k
+    end
+    
+    if #keys == 0 then return nil end
+    return keys[math_random(#keys)]
+end
+
+-- ### COMMUNITY/FACTION UTILITIES
+
+-- Cache for faction relationships
+local faction_relation_cache = {}
+local FACTION_CACHE_TTL = 5000
+
+function pda_inter_utils.are_factions_enemies(faction1, faction2)
+    if not faction1 or not faction2 then return false end
+    
+    local cache_key = faction1 .. "|" .. faction2
+    local now = time_global()
+    
+    if faction_relation_cache[cache_key] and faction_relation_cache[cache_key].time and 
+       (now - faction_relation_cache[cache_key].time) < FACTION_CACHE_TTL then
+        return faction_relation_cache[cache_key].result
+    end
+    
+    local result = game_relations.is_factions_enemies(faction1, faction2)
+    faction_relation_cache[cache_key] = {result = result, time = now}
+    
+    return result
+end
+
+function pda_inter_utils.are_factions_friends(faction1, faction2)
+    if not faction1 or not faction2 then return false end
+    
+    local cache_key = faction1 .. "|" .. faction2 .. "|friend"
+    local now = time_global()
+    
+    if faction_relation_cache[cache_key] and faction_relation_cache[cache_key].time and 
+       (now - faction_relation_cache[cache_key].time) < FACTION_CACHE_TTL then
+        return faction_relation_cache[cache_key].result
+    end
+    
+    local result = game_relations.is_factions_friends(faction1, faction2)
+    faction_relation_cache[cache_key] = {result = result, time = now}
+    
+    return result
+end
+
+function pda_inter_utils.clear_faction_cache()
+    faction_relation_cache = {}
+end
+
+-- ### SAFE METHOD CALLS
+-- prevents crashes when methods don't exist
+
+function pda_inter_utils.safe_call(obj, method_name, ...)
+    if obj and obj[method_name] then
+        return obj[method_name](obj, ...)
+    end
+    return nil
+end
+
+function pda_inter_utils.safe_get_community(squad)
+    if squad and squad.get_squad_community then
+        return squad:get_squad_community()
+    end
+    return nil
+end
+
+function pda_inter_utils.safe_get_name(se_obj)
+    if not se_obj then return "unknown" end
+    if se_obj.character_name then
+        return se_obj:character_name()
+    elseif se_obj.name then
+        return se_obj:name()
+    end
+    return "unknown"
+end
+
+-- ### GAME START / CLEANUP
+
+local function on_game_load()
+    -- Clear all caches on game load
+    pda_inter_utils.clear_section_cache()
+    pda_inter_utils.clear_alife_cache()
+    pda_inter_utils.clear_faction_cache()
+    pda_inter_utils.clear_all_throttles()
+end
+
+function on_game_start()
+    RegisterScriptCallback("on_game_load", on_game_load)
+end

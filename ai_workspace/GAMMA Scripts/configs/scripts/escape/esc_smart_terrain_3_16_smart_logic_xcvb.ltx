@@ -1,0 +1,256 @@
+; =======================
+; ------------- DAY ---------------
+; =======================
+; guard entrance
+[logic@esc_3_16_xcvb_day_1]
+active = walker@day_1
+suitable = {!surge_started !is_night} true
+prior = 59
+
+[walker@day_1]
+path_walk = guard_2_walk
+path_look = guard_2_look
+
+
+; patrol central road
+[logic@esc_3_16_xcvb_day_2]
+active = walker@day_2
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[walker@day_2]
+path_walk = guard_4_walk
+
+
+; patrol all btr area
+[logic@esc_3_16_xcvb_day_3]
+active = walker@day_3
+suitable = {!surge_started !is_night} true
+prior = 57
+
+[walker@day_3]
+path_walk = walker_3_walk
+
+
+; small patrol entrance
+[logic@esc_3_16_xcvb_day_4]
+active = walker@day_4
+suitable = {!surge_started !is_night} true
+prior = 56
+
+[walker@day_4]
+path_walk = guard_1_walk
+
+
+; patrol around btr and barracks
+[logic@esc_3_16_xcvb_day_5]
+active = walker@day_5
+suitable = {!surge_started !is_night} true
+prior = 55
+
+[walker@day_5]
+path_walk = walker_4_walk
+
+
+; sniper
+[logic@esc_3_16_xcvb_day_6]
+active = walker@day_6
+suitable = {!surge_started !is_night =guard_has_rifle} true
+prior = 55
+
+[walker@day_6]
+path_walk = sniper_1_walk
+path_look = sniper_1_look
+
+
+; small patrol inside the house near entrance
+[logic@esc_3_16_xcvb_day_7]
+active = walker@day_7
+suitable = {!surge_started !is_night} true
+prior = 54
+
+[walker@day_7]
+path_walk = walker_1_walk
+
+
+; small patrol base
+[logic@esc_3_16_xcvb_day_8]
+active = walker@day_8
+suitable = {!surge_started !is_night} true
+prior = 53
+
+[walker@day_8]
+path_walk = guard_3_walk
+
+
+
+; =======================
+; ------------ NIGHT -------------
+; =======================
+[beh@general]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+gather_items_enabled = false
+help_wounded_enabled = false
+corpse_detection_enabled = false
+meet = no_meet
+wounded = wounded@ignore
+use_camp = false
+
+[meet@general]
+close_anim 		= nil
+close_victim 	= nil
+far_anim 		= nil
+far_victim 		= nil
+close_distance  = 0
+far_distance 	= 0
+use = {=actor_enemy} false, {=dist_to_actor_le(3)} true, false
+snd_on_use = {!dist_to_actor_le(3)} nil
+meet_on_talking = false
+
+[wounded@ignore]
+hp_state        = 0|wounded_heavy@help_heavy
+hp_state_see    = 0|wounded_heavy@help_heavy
+hp_victim       = 0|nil
+hp_fight        = 0|false
+hp_cover        = 0|false
+
+
+; guard entrance 1
+[logic@esc_3_16_xcvb_night_1]
+active = walker@night_1
+suitable = {!surge_started =is_night} true
+prior = 59
+
+[walker@night_1]
+path_walk = guard_2_walk
+path_look = guard_2_look
+
+
+; patrol central road
+[logic@esc_3_16_xcvb_night_2]
+active = walker@night_2
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[walker@night_2]
+path_walk = guard_4_walk
+
+
+; patrol around btr and barracks
+[logic@esc_3_16_xcvb_night_3]
+active = walker@night_3
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[walker@night_3]
+path_walk = walker_4_walk
+
+
+; sleep sit barrack 1
+[logic@esc_3_16_xcvb_night_4]
+active = beh@night_4
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[beh@night_4]:beh@general
+pt1 = 20000, sit_ass_drink_vodka | 		pos: -119.7, -29.032, -385.7 	 	 look: -121.521, -30.0518, -383.355 
+path_end = loop
+meet = meet@general
+help_wounded_enabled = true
+turn_on_campfire = true
+
+
+; sleep barrack 2
+[logic@esc_3_16_xcvb_night_5]
+active = beh@night_5
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[beh@night_5]:beh@general
+pt1 = 20000, sleep | 		pos: -116.2, -28.9501, -387.1 	 	 look: -116.2635, -30.0507, -384.773 
+path_end = loop
+turn_on_campfire = true
+
+
+; small patrol entrance
+[logic@esc_3_16_xcvb_night_6]
+active = walker@night_6
+suitable = {!surge_started =is_night} true
+prior = 55
+
+[walker@night_6]
+path_walk = guard_1_walk
+
+
+; sleep barrack 3
+[logic@esc_3_16_xcvb_night_7]
+active = beh@night_7
+suitable = {!surge_started =is_night} true
+prior = 54
+
+[beh@night_7]:beh@general
+pt1 = 20000, sleep | 		pos: -121.8, -29.032, -383.6 	 	 look: -119.2162, -30.0523, -385.7994 
+path_end = loop
+
+
+; sleep barrack 4 (stand)
+[logic@esc_3_16_xcvb_night_8]
+active = beh@night_8
+suitable = {!surge_started =is_night} true
+prior = 53
+
+[beh@night_8]:beh@general
+pt1 = 20000, smoking_stand | 		pos: -121.1, -29.032, -380.8 	 	 look: -119.5114, -30.0507, -375.8038 
+path_end = loop
+meet = meet@general
+help_wounded_enabled = true
+
+
+; patrol all btr area
+[logic@esc_3_16_xcvb_night_9]
+active = walker@night_9
+suitable = {!surge_started =is_night} true
+prior = 53
+
+[walker@night_9]
+path_walk = walker_3_walk
+
+
+; sleep barrack 5 (sleep_sit)
+[logic@esc_3_16_xcvb_night_10]
+active = beh@night_10
+suitable = {!surge_started =is_night} true
+prior = 52
+
+[beh@night_10]:beh@general
+pt1 = 20000, drunk_sit_ass | 		pos: -126, -29.0266, -375.2 	 	 look: -122.9729, -30.0513, -375.1473 
+path_end = loop
+
+
+; small patrol inside the house near entrance
+[logic@esc_3_16_xcvb_night_11]
+active = walker@night_11
+suitable = {!surge_started =is_night} true
+prior = 51
+
+[walker@night_11]
+path_walk = walker_1_walk
+
+
+; small patrol base
+[logic@esc_3_16_xcvb_night_12]
+active = walker@night_12
+suitable = {!surge_started =is_night} true
+prior = 51
+
+[walker@night_12]
+path_walk = guard_3_walk

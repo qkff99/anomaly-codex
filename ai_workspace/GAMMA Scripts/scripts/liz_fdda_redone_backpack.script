@@ -1,0 +1,317 @@
+
+is_ui_inventory_open = false
+local ini_eff = {}
+local mcm_backpack_enable = true
+local mcm_backpack_max_speed = 1.5
+local mcm_backpack_min_speed = 1
+local mcm_backpack_min_weight_multiplier = 0.5  -- how much percent from max weight triggers backpack slowdown
+local mcm_backpack_speed_mode = 1               -- 0 - set from mcm, 1 - based on weight carry, 2 - based on backpack type
+local current_backpack_id = -1
+local is_force_close = false
+
+--- -------------------------------------------------
+--- init
+--- -------------------------------------------------
+
+function on_game_start()
+    RegisterScriptCallback("on_game_load", initialize)
+    RegisterScriptCallback("on_option_change", initialize)
+    RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+end
+
+function initialize()
+    ini_eff = ini_file("items\\items\\animations_settings.ltx")
+    mcm_backpack_enable = liz_fdda_redone_mcm.get_config("backpack/enable")
+    mcm_backpack_max_speed = liz_fdda_redone_mcm.get_config("backpack/max_speed")
+    mcm_backpack_min_weight_multiplier = liz_fdda_redone_mcm.get_config("backpack/min_weight_multiplier") / 100
+    mcm_backpack_speed_mode = liz_fdda_redone_mcm.get_config("backpack/type")
+end
+
+function actor_on_first_update()
+    RegisterScriptCallback("GUI_on_show", GUI_on_show)
+    RegisterScriptCallback("GUI_on_hide", GUI_on_hide)
+    RegisterScriptCallback("actor_item_to_slot", on_item_to_slot)
+    RegisterScriptCallback("actor_item_to_ruck", on_item_to_ruck)
+    RegisterScriptCallback("actor_on_item_drop", on_item_to_ruck)
+    -- remember backpack that was on palyer during game start
+    local equipped_backpack = db.actor:item_in_slot(13)
+    if equipped_backpack then
+        current_backpack_id = equipped_backpack:id()
+    end
+end
+
+function GUI_on_show(name)
+    if name == "UIInventory" then
+        local gui = ui_inventory.GUI
+        if gui and gui.mode and gui.mode == "inventory" then
+            is_ui_inventory_open = true
+            try_open_backpack()
+        end
+    end
+end
+
+function GUI_on_hide(name)
+    if name == "UIInventory" then
+        is_ui_inventory_open = false
+    end
+end
+
+function on_item_to_slot(obj)
+    if IsItem("backpack", nil, obj) and obj:id() ~= current_backpack_id then
+        current_backpack_id = obj:id()
+    end
+end
+
+function on_item_to_ruck(obj)
+    if IsItem("backpack", nil, obj) and obj:id() == current_backpack_id then
+        current_backpack_id = -1
+    end
+end
+
+--- -------------------------------------------------
+--- MAIN
+--- -------------------------------------------------
+
+function try_open_backpack()
+    if not mcm_backpack_enable then return end
+    if not lam2.get_action_with_tag("backpack_try_open") then
+        lam2.add_action(get_template_action_backpack_try_open())
+    end
+end
+
+-- function try_close_backpack()
+--         is_force_close = true
+-- end
+
+function get_backpack_speed()
+    local speed = mcm_backpack_min_speed
+    if mcm_backpack_speed_mode == 0 then
+        --get backpack speed from mcm config
+        speed = mcm_backpack_max_speed
+    elseif mcm_backpack_speed_mode == 1 then
+        --get backpack speed based on carryweight
+        local is_overweight
+        local tot_weight
+        local max_weight
+        is_overweight, tot_weight, max_weight = actor_status.get_overweight(false)
+        local min_weight = max_weight * mcm_backpack_min_weight_multiplier
+        local bonus_influence = clamp((tot_weight - max_weight)/(min_weight - max_weight), 0, 1)
+        speed = mcm_backpack_min_speed + (mcm_backpack_max_speed - mcm_backpack_min_speed) * bonus_influence
+    elseif mcm_backpack_speed_mode == 2 and current_backpack_id ~= -1 then
+        --get backpack speed from cofig file
+        local obj = level.object_by_id(current_backpack_id)
+        speed = ini_sys:r_float_ex(obj:section(), "bonus_open_speed") or mcm_backpack_min_speed
+    end
+    return speed
+end
+
+--- -------------------------------------------------
+--- TEMPLATES
+--- -------------------------------------------------
+
+function get_template_action_backpack_try_open()
+    local a = {}
+    a.tag = "backpack_try_open"
+    a.hands = 2
+    a.execute = function (self, time)
+        --open backpack if we have one equipped, open fake one if we don't
+        --note: fake backpack animation? fake backpack if we wearing exo?
+        if is_ui_inventory_open and not lam2.get_action_with_tag("backpack_open") then
+            if current_backpack_id ~= -1 then
+                -- lam2.add_action_first(ta_backpack_fsm())
+
+                local player_faction = character_community(db.actor):sub(7) or "stalker"
+                lam2.add_action_first(get_template_action_backpack_idle(player_faction))
+                lam2.add_action_first(get_template_action_backpack_open(player_faction))
+
+                -- local c = lam2.get_template_action_composite()
+                -- c.tag = "backpack_open"
+                -- c:add(get_template_action_backpack_open(player_faction))
+                -- c:add(get_template_action_backpack_idle(player_faction))
+                -- c:add(get_template_action_backpack_close(player_faction))
+                -- lam2.add_action_first(c)
+            else
+                lam2.add_action_first(get_template_action_backpack_empty())
+            end
+            return lam2.states.success
+        end
+        return lam2.states.fail
+    end
+    return a
+end
+
+
+
+function get_template_action_backpack_open(player_faction)
+    local section = ini_eff:section_exist("backpack_open_" .. player_faction) and "backpack_open_" .. player_faction or "backpack_open_stalker"
+    -- local a = liz_fdda_redone_consumables.get_template_action_play_animation_fdda_config("backpack_open_" .. player_faction)
+    local a = liz_fdda_redone_consumables.get_template_action_play_animation_fdda_config(section)
+    a.tag = "backpack_open"
+    a.name = "backpack_open"
+    a.can_skip = false
+    a.speed = get_backpack_speed()
+    a.on_execute = function (self, time)
+        if time > self.duration - 0.1 then
+            return lam2.states.success
+        end
+    end
+    return a
+end
+
+
+function get_template_action_backpack_idle(player_faction)
+    local section = ini_sys:section_exist("item_ea_backpack_open_" .. player_faction .. "_hud") and "item_ea_backpack_open_" .. player_faction .. "_hud" or "item_ea_backpack_open_stalker_hud"
+    local a = lam2.get_template_action_play_animation()
+    a.sec = section
+    a.anm = "anm_ea_idle"
+    a.tag = "backpack_open"
+    a.name = "backpack_idle"
+    a.only_allow_movekeys = false --liz test
+    a.can_skip = false
+    a.on_execute = function (self, time)
+        if lam2.has_queued_actions() then
+            -- try_close_backpack()
+            is_force_close = true
+        end
+        if not is_ui_inventory_open or is_force_close then
+            local player_faction = character_community(db.actor):sub(7)
+            lam2.add_action_first(get_template_action_backpack_close(player_faction))
+            return lam2.states.success
+        end
+        return lam2.states.running
+    end
+    return a
+end
+
+
+function get_template_action_backpack_close(player_faction)
+    local section = ini_eff:section_exist("backpack_close_" .. player_faction) and "backpack_close_" .. player_faction or "backpack_open_stalker"
+    local a = liz_fdda_redone_consumables.get_template_action_play_animation_fdda_config(section)
+    a.tag = "backpack_open"
+    a.name = "backpack_close"
+    a.can_skip = false
+    a.speed = get_backpack_speed()
+    a.on_exit = function (self)
+        is_force_close = false
+    end
+    return a
+end
+
+
+function get_template_action_backpack_empty()
+    local a = {}
+    a.tag = "backpack_open"
+    a.name = "backpack_empty"
+    a.can_skip = false
+    a.execute = function(self, time)
+        if lam2.has_queued_actions() then
+            -- try_close_backpack()
+            is_force_close = true
+        end
+        if not is_ui_inventory_open or is_force_close then
+            is_force_close = false
+            return lam2.states.success
+        end
+        return lam2.states.running
+    end
+    return a
+end
+
+-- local fsm_backpack = nil
+-- function ta_backpack_fsm()
+--     --return backpack state machine
+--     if fsm_backpack then
+--         return fsm_backpack
+--     end
+
+--     --if none, create it
+--     fsm_backpack = lam2.get_template_action_complex()
+--     fsm_backpack.tag = "backpack_open"
+--     fsm_backpack.name = "backpack_fsm"
+
+--     local action_open = liz_fdda_redone_consumables.get_template_action_play_animation_fdda_config("backpack_open_stalker")
+--     action_open.on_init = function (self)
+--         local item_section = "backpack_open_" .. character_community(db.actor):sub(7)
+--         if not ini_eff:section_exist(item_section) then
+--             item_section = "backpack_open_stalker"
+--         end
+--         self.name = "fdda_anim_" .. item_section
+--         self.sec = ini_eff:r_string_ex(item_section, "anm") .. "_hud"
+--         self.cam = ini_eff:r_string_ex(item_section, "cam")
+--         self.snd = ini_eff:r_string_ex(item_section, "snd")
+--         self.tm = (ini_eff:r_float_ex(item_section, "tm") / 1000) * 0.367 --this formula is from origila fdda
+--         self.speed = get_backpack_speed()
+--     end
+
+--     local action_idle = lam2.get_template_action_play_animation()
+--     action_idle.anm = "anm_ea_idle"
+--     action_idle.tag = "backpack_open"
+--     action_idle.name = "backpack_idle"
+--     action_idle.only_allow_movekeys = false
+--     action_idle.can_skip = false
+--     action_idle.on_init = function (self)
+--         local section = "item_ea_backpack_open_" .. character_community(db.actor):sub(7) .. "_hud"
+--         if not ini_sys:section_exist(section) then
+--             section = "item_ea_backpack_open_stalker_hud"
+--         end
+--         self.sec = section
+--     end
+--     action_idle.on_execute = function (self, time)
+--         if lam2.has_queued_actions() then
+--             is_force_close = true
+--         end
+--     end
+
+--     local action_close = liz_fdda_redone_consumables.get_template_action_play_animation_fdda_config("backpack_close_stalker")
+--     action_close.on_init = function (self)
+--         local item_section = "backpack_close_" .. character_community(db.actor):sub(7)
+--         if not ini_eff:section_exist(item_section) then
+--             item_section = "backpack_close_stalker"
+--         end
+--         self.name = "fdda_anim_" .. item_section
+--         self.sec = ini_eff:r_string_ex(item_section, "anm") .. "_hud"
+--         self.cam = ini_eff:r_string_ex(item_section, "cam")
+--         self.snd = ini_eff:r_string_ex(item_section, "snd")
+--         self.tm = (ini_eff:r_float_ex(item_section, "tm") / 1000) * 0.367 --this formula is from origila fdda
+--         self.speed = get_backpack_speed()
+--     end
+--     action_close.on_exit = function (self)
+--         is_force_close = false
+--     end
+
+--     local action_stop_fsm = {}
+--     action_stop_fsm.enter = function (self)
+--         fsm_backpack.state = lam2.states.success
+--     end
+
+--     fsm_backpack:add_action("open", action_open)
+--     fsm_backpack:add_action("idle", action_idle)
+--     fsm_backpack:add_action("close", action_close)
+--     fsm_backpack:add_action("stop_fsm", action_stop_fsm)
+--     fsm_backpack:set_default_action("open")
+
+--     local function predicate_on_animation_end(fsm, state)
+--         if fsm.time_current > state.duration then
+--             return true
+--         end
+--     end
+
+--     local function predicate_if_ui_inventory_closed(fsm, state)
+--         if not is_ui_inventory_open then
+--             return true
+--         end
+--     end
+
+--     local function predicate_if_force_close_inventory(fsm, state)
+--         if is_force_close then
+--             return true
+--         end
+--     end
+
+--     fsm_backpack:add_transition("open", "idle", predicate_on_animation_end)
+--     fsm_backpack:add_transition("idle", "close", predicate_if_ui_inventory_closed)
+--     fsm_backpack:add_transition("idle", "close", predicate_if_force_close_inventory)
+--     fsm_backpack:add_transition("close", "stop_fsm", predicate_on_animation_end)
+
+--     return fsm_backpack
+-- end

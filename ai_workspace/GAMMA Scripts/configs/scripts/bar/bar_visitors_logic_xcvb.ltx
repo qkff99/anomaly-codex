@@ -1,0 +1,324 @@
+[beh@general]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+gather_items_enabled = true
+help_wounded_enabled = true
+corpse_detection_enabled = true
+meet = meet@general
+wounded = wounded@ignore
+use_camp = false
+path_end = loop
+
+
+[beh@combat]:beh@general
+walk_dist = 25
+jog_dist = 220
+wait_anim = patrol
+walk_anim = patrol
+jog_anim = patrol
+run_anim = patrol
+sound_idle = state
+
+
+[beh@campfire]:beh@general
+turn_on_campfire = true
+sound_idle = state
+
+[beh@sleep]:beh@general
+gather_items_enabled = false
+corpse_detection_enabled = false
+meet = no_meet
+
+
+[meet@general]
+close_anim 		= nil
+close_victim 	= nil
+far_anim 		= nil
+far_victim 		= nil
+close_distance  = 0
+far_distance 	= 0
+use = {=actor_enemy} false, {=dist_to_actor_le(3)} true, false
+snd_on_use = {!dist_to_actor_le(3)} nil
+meet_on_talking = false
+
+[wounded@ignore]
+hp_state        = 0|wounded_heavy@help_heavy
+hp_state_see    = 0|wounded_heavy@help_heavy
+hp_victim       = 0|nil
+hp_fight        = 0|false
+hp_cover        = 0|false
+
+
+; =======================
+; ------------- DAY ---------------
+; =======================
+; angar 1
+[logic@bar_visitors_animp_01_day]
+active = animpoint@day_1
+suitable = {!surge_started !is_night !npc_community(dolg)} true
+prior = 60
+
+[animpoint@day_1]
+cover_name = bar_visitors_animpoint_kamp1
+use_camp = true
+turn_on_campfire = true 
+
+
+[logic@bar_visitors_animp_02_day]
+active = animpoint@day_2
+suitable = {!surge_started !is_night !npc_community(dolg)} true
+prior = 61
+
+[animpoint@day_2]
+cover_name = bar_visitors_animpoint_kamp2
+use_camp = true
+turn_on_campfire = true 
+
+
+[logic@bar_visitors_animp_03_day]
+active = animpoint@day_3
+suitable = {!surge_started !is_night !npc_community(dolg)} true
+prior = 60
+
+[animpoint@day_3]
+cover_name = bar_visitors_animpoint_kamp3
+use_camp = true
+turn_on_campfire = true 
+
+
+; angar 2
+[logic@bar_visitors_animp_04_day]
+active = animpoint@day_4
+suitable = {!surge_started !is_night !npc_community(dolg)} true
+prior = 61
+
+[animpoint@day_4]
+cover_name = bar_visitors_animpoint_kamp4
+use_camp = true
+turn_on_campfire = true 
+
+
+[logic@bar_visitors_animp_05_day]
+active = animpoint@day_5
+suitable = {!surge_started !is_night !npc_community(dolg)} true
+prior = 60
+
+[animpoint@day_5]
+cover_name = bar_visitors_animpoint_kamp5
+use_camp = true
+turn_on_campfire = true 
+
+
+[logic@bar_visitors_animp_06_day]
+active = animpoint@day_6
+suitable = {!surge_started !is_night !npc_community(dolg)} true
+prior = 61
+
+[animpoint@day_6]
+cover_name = bar_visitors_animpoint_kamp6
+use_camp = true
+turn_on_campfire = true 
+
+
+; angar 3
+[logic@bar_visitors_animp_07_day]
+active = animpoint@day_7
+suitable = {!surge_started !is_night !npc_community(dolg)} true
+prior = 61
+
+[animpoint@day_7]
+cover_name = bar_visitors_animpoint_kamp7
+use_camp = true
+turn_on_campfire = true 
+
+
+[logic@bar_visitors_animp_08_day]
+active = animpoint@day_8
+suitable = {!surge_started !is_night !npc_community(dolg)} true
+prior = 60
+
+[animpoint@day_8]
+cover_name = bar_visitors_animpoint_kamp8
+use_camp = true
+turn_on_campfire = true 
+
+
+[logic@bar_visitors_animp_09_day]
+active = animpoint@day_9
+suitable = {!surge_started !is_night !npc_community(dolg)} true
+prior = 61
+
+[animpoint@day_9]
+cover_name = bar_visitors_animpoint_kamp9
+use_camp = true
+turn_on_campfire = true 
+
+
+
+; =======================
+; ------------ NIGHT -------------
+; =======================
+; angar 1
+[logic@bar_visitors_animp_01_night]
+active = beh@night_1
+suitable = {!surge_started =is_night !npc_community(dolg)} true
+prior = 61
+
+[beh@night_1]:beh@sleep
+pt1 = 20000, sleep | 		pos: 132.3, 1.2131, 61.6 	 	 look: 131.2053, 0.096, 61.0576 
+
+
+[logic@bar_visitors_animp_02_night]
+active = beh@night_2
+suitable = {!surge_started =is_night !npc_community(dolg)} true
+prior = 60
+
+[beh@night_2]:beh@sleep
+pt1 = 20000, sleep | 		pos: 128.8, 1.1842, 57.4 	 	 look: 129.6803, 0.094, 58.5642 
+
+
+; angar 2
+[logic@bar_visitors_animp_03_night]
+active = beh@night_3
+suitable = {!surge_started =is_night !npc_community(dolg)} true
+prior = 61
+
+[beh@night_3]:beh@sleep
+pt1 = 20000, sleep | 		pos: 98.7, 1.1717, 89.6 	 	 look: 98.2293, 0.0957, 88.0359
+
+
+[logic@bar_visitors_animp_04_night]
+active = beh@night_4
+suitable = {!surge_started =is_night !npc_community(dolg)} true
+prior = 60
+
+[beh@night_4]:beh@sleep
+pt1 = 20000, sleep | 		pos: 101.5, 1.2076, 93.1 	 	 look: 100.027, 0.099, 92.2481 
+
+
+[logic@bar_visitors_animp_05_night]
+active = beh@night_5
+suitable = {!surge_started =is_night !npc_community(dolg)} true
+prior = 61
+
+[beh@night_5]:beh@sleep
+pt1 = 20000, sleep | 		pos: 98.7, 1.2209, 95.9 	 	 look: 98.7961, 0.0958, 97.6252 
+
+
+[logic@bar_visitors_animp_06_night]
+active = beh@night_6
+suitable = {!surge_started =is_night !npc_community(dolg)} true
+prior = 60
+
+[beh@night_6]:beh@sleep
+pt1 = 20000, sleep | 		pos: 95.2, 1.3825, 93.8 	 	 look: 95.331, 0.0997, 95.8089 
+
+
+[logic@bar_visitors_animp_07_night]
+active = beh@night_7
+suitable = {!surge_started =is_night !npc_community(dolg)} true
+prior = 60
+
+[beh@night_7]:beh@sleep
+pt1 = 20000, sleep | 		pos: 95.9, 1.2147, 98 	 	 look: 97.7153, 0.0983, 97.8088 
+
+
+[logic@bar_visitors_animp_08_night]
+active = beh@night_8
+suitable = {!surge_started =is_night !npc_community(dolg)} true
+prior = 60
+
+[beh@night_8]:beh@sleep
+pt1 = 20000, sleep | 		pos: 95.9, 1.2076, 100.8 	 	 look: 97.1911, 0.0984, 100.7822 
+
+
+[logic@bar_visitors_animp_09_night]
+active = beh@night_9
+suitable = {!surge_started =is_night !npc_community(dolg)} true
+prior = 61
+
+[beh@night_9]:beh@sleep
+pt1 = 20000, sleep | 		pos: 102.2, 1.1842, 98 	 	 look: 102.1512, 0.0918, 96.1086 
+
+
+; angar 3
+[logic@bar_visitors_animp_10_night]
+active = beh@night_10
+suitable = {!surge_started =is_night !npc_community(dolg)} true
+prior = 60
+
+[beh@night_10]:beh@sleep
+pt1 = 20000, sleep | 		pos: 119, 0.9922, 120.4 	 	 look: 120.9482, 0.005, 120.6092 
+
+
+[logic@bar_visitors_animp_11_night]
+active = beh@night_11
+suitable = {!surge_started =is_night !npc_community(dolg)} true
+prior = 61
+
+[beh@night_11]:beh@sleep
+pt1 = 20000, sleep | 		pos: 118.3, 0.9922, 125.3 	 	 look: 118.1458, 0.0028, 123.8632 
+
+
+; duty outside
+[logic@bar_visitors_animp_12_night]
+active = beh@night_12
+suitable = {!surge_started =is_night =npc_community(dolg) !is_rain} true
+prior = 60
+
+[beh@night_12]:beh@sleep
+pt1 = 20000, drunk_sit_ass | 		pos: 204.4, 1.0125, 86.1 	 	 look: 204.4918, -0.0003, 87.5712 
+
+
+[logic@bar_visitors_animp_13_night]
+active = beh@night_13
+suitable = {!surge_started =is_night =npc_community(dolg) !is_rain} true
+prior = 61
+
+[beh@night_13]:beh@sleep
+pt1 = 20000, sleep | 		pos: 201.6, 1.0187, 88.2 	 	 look: 202.761, 0.0418, 87.9809 
+
+
+[logic@bar_visitors_animp_14_night]
+active = beh@night_14
+suitable = {!surge_started =is_night =npc_community(dolg) !is_rain} true
+prior = 60
+
+[beh@night_14]:beh@sleep
+pt1 = 20000, sleep | 		pos: 201.6, 0.9086, 91 	 	 look: 203.3551, -0.0007, 90.9286 
+
+
+[logic@bar_visitors_animp_15_night]
+active = beh@night_15
+suitable = {!surge_started =is_night =npc_community(dolg) !is_rain} true
+prior = 61
+
+[beh@night_15]:beh@sleep
+pt1 = 20000, drunk_sit_ass | 		pos: 205.8, 1.014, 86.1 	 	 look: 205.5143, -0.0173, 87.6764 
+
+
+; duty inside
+[logic@bar_visitors_animp_16_night]
+active = beh@night_16
+suitable = {!surge_started =is_night =npc_community(dolg)} true
+prior = 60
+
+[beh@night_16]:beh@sleep
+pt1 = 20000, sleep | 		pos: 218.4, -4.1365, 123.2 	 	 look: 218.5407, -5.4499, 125.8998 
+
+
+[logic@bar_visitors_animp_17_night]
+active = beh@night_17
+suitable = {!surge_started =is_night =npc_community(dolg)} true
+prior = 61
+
+[beh@night_17]:beh@sleep
+pt1 = 20000, sleep | 		pos: 220.5, -4.1451, 123.2 	 	 look: 220.2468, -5.4495, 125.932 

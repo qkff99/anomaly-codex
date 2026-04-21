@@ -1,0 +1,73 @@
+local Dart   = dart_core
+local Utils  = dart_utils
+local Module = dart_module
+
+
+local mod = "companionList"
+
+
+-- convoluted process per axr_companions
+function getBounds(XML)
+  local magicCount   = 8
+  local magicPadding = 10
+
+  local list   = XML:query("companion_list")[1]
+  local health = XML:query("companion_list > slot > health")[1]
+  local bg     = XML:query("companion_list > slot > background")[1]
+
+  local xlist, ylist =
+    XML:safeGetAttrs(list).x,
+    XML:safeGetAttrs(list).y
+
+  local xhealth, whealth =
+    XML:safeGetAttrs(health).x,
+    XML:safeGetAttrs(health).width
+
+  local xbg, wbg, hbg =
+    XML:safeGetAttrs(bg).x,
+    XML:safeGetAttrs(bg).width,
+    XML:safeGetAttrs(bg).height
+
+  return {
+    l = xlist,
+    t = ylist,
+    r = xlist + math.max(xhealth + whealth, xbg + wbg),
+    b = ylist + magicCount * (hbg + magicPadding)
+  }
+end
+
+
+function parseUIHud(XML, config)
+  local bounds = getBounds(XML)
+
+  local list     = XML:query("companion_list")[1]
+  local slot     = XML:query("companion_list > slot")[1]
+  local healthBg = XML:query("companion_list > slot > health > background")[1]
+
+  -- fixes being partly offscreen in base GAMMA
+  if bounds.r > Dart.baseWidth then
+    XML:safeSetAttrs(list, function(attrs)
+      return {x = attrs.x + Dart.baseWidth - bounds.r}
+    end)
+  end
+
+  XML:correctElement(list, {
+    bounds   = getBounds(XML),
+    offset   = config.offset,
+    anchor   = config.anchor,
+    scale    = config.scale,
+    safezone = config.safezone
+  })
+
+  XML:correctElement(slot, {scale = config.scale})
+  XML:correctElement(healthBg, {scale = config.scale})
+
+  XML:safeIterate(slot, function(child)
+    XML:correctElement(child, {scale = config.scale})
+  end)
+end
+
+
+function on_xml_read()
+  Module.registerModule(mod, "ui_hud", parseUIHud)
+end

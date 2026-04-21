@@ -1,0 +1,80 @@
+--[[
+Item Info Tooltip pin in corner.
+29/11/2020
+This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License
+Author: RavenAscendant
+--]]
+
+ -- x and y of upper corner
+local wind_x = 10
+local wind_y = 10
+local move_to_bottom = true
+local shift_down = false
+local alt_x = 1024 - wind_x
+
+local base_udate = utils_ui.UIInfoItem.Update
+function utils_ui.UIInfoItem:Update(obj, sec, flags)
+	base_udate(self, obj, sec, flags)
+	if not self:Pass(obj, sec) then
+		self:Show(false)
+		return
+	end
+	
+
+	local base = self.dialog
+	local element = self.frame
+	local offset_x, offset_y = 0,0
+	
+	curPos = GetCursorPosition()
+	
+	--local cpos = GetCursorPosition()
+	local cpos  = vector2():set(shift_down and alt_x or wind_x,wind_y)
+	local w = element and element:GetWidth() or base:GetWidth()
+	local h = element and element:GetHeight() or base:GetHeight()
+	
+	-- Default pos at cursor is top/left corner
+	if move_to_bottom and curPos.x <500 and curPos.y<380 then
+		cpos.y = 768 - wind_y 
+	end
+	
+	
+	
+	
+	
+	-- case: element pos to right is smaller than its width
+	if (1024 - cpos.x < w) then
+		cpos.x = cpos.x - w
+	end
+	
+	-- case: element pos to bottom is smaller than its height
+	if (768 - cpos.y < h) then
+		-- after switch: make sure element doesn't go above the view
+		local y = cpos.y - h
+		cpos.y = y < 0 and 0 or y
+	end
+	if curPos.x <= 514 and curPos.x >= 510 and curPos.y <= 386 and curPos.y >= 382 then
+		base:Show(false)
+	else
+		base:SetWndPos(vector2():set( cpos.x + (offset_x or 0) , cpos.y + (offset_y or 0) ))
+	end
+	
+end
+
+
+local function on_key_press(key)
+	if key == DIK_keys.DIK_LSHIFT or key == DIK_keys.DIK_RSHIFT then
+		shift_down = true
+	end
+end
+
+local function on_key_release(key)
+	if key == DIK_keys.DIK_LSHIFT or key == DIK_keys.DIK_RSHIFT then
+		shift_down = false
+	end
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_key_release",on_key_release)
+    RegisterScriptCallback("on_key_press",on_key_press)
+
+end

@@ -1,0 +1,77 @@
+local droplet_reset = false
+local droplet_last_pwr
+local droplet_last_speed
+local droplet_pwr = 0
+local droplet_speed = 0
+local droplet_time = 500
+local droplet_update = time_global() or 0
+local droplet_step = 0.01
+local effects_droplets_enabled = true
+
+local og_droplets_reset = level_environment.droplets_reset
+function level_environment.droplets_reset()
+	droplet_reset = true
+	return og_droplets_reset()
+end
+
+local og_update_settings = level_environment.update_settings
+function update_settings()
+	effects_droplets_enabled = ui_options.get("video/player/rain_droplets")
+	return og_update_settings()
+end
+
+function level_environment.update_rain_droplets(wthr, pos, rain_factor, rain_volume, inside, current_hour, time_g)
+	-- Mask Cleaning
+	if droplet_reset then
+		droplet_pwr = droplet_pwr - 0.1
+		droplet_pwr = clamp(droplet_pwr, 0, 1)
+
+		if (droplet_pwr <= 0.01) then
+			droplet_reset = false
+		end
+		-- Rain droplets building
+	elseif (effects_droplets_enabled) and (actor_effects.is_mask_on()) then
+		if (time_g > droplet_update) then
+			droplet_update = time_g + droplet_time
+			local step = (not inside) and (rain_factor > 0) and (rain_volume > 0) and droplet_step or 0
+			droplet_pwr = droplet_pwr + ((step > 0) and (step * clamp(rain_factor, 0.5, 1)) or -droplet_step)
+			droplet_pwr = clamp(droplet_pwr, 0, 1)
+
+			-- fall speed
+			if (step > 0) then
+				droplet_speed = 1
+			else
+				droplet_speed = 0.1
+			end
+			--
+		end
+	else
+		droplet_pwr = 0
+	end
+
+	-- When there are barely any raindrops, fall speed will be resetted
+	if (droplet_pwr < 0.1) then
+		droplet_speed = 0
+	end
+
+	if (droplet_pwr ~= droplet_last_pwr) or (droplet_speed ~= droplet_last_speed) then
+		-- printf("-- Rain droplets | power: %s - speed: %s", droplet_pwr, droplet_speed)
+		local str = strformat("r2_drops_control %s,0,%s", droplet_pwr, droplet_speed)
+		exec_console_cmd(str)
+		droplet_last_pwr = droplet_pwr
+		droplet_last_speed = droplet_speed
+		alife_storage_manager.get_state().r2_drops_control = { droplet_pwr, droplet_speed } -- save
+	end
+end
+
+local function on_game_load()
+	-- Loading droplets val
+	local droplet = alife_storage_manager.get_state().r2_drops_control or { 0, 0 }
+	droplet_pwr = clamp(droplet[1], 0, 1)
+	droplet_speed = clamp(droplet[2], 0, 1)
+	exec_console_cmd(strformat("r2_drops_control %s,0,%s", droplet_pwr, droplet_speed))
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_game_load", on_game_load)
+end

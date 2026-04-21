@@ -1,0 +1,68 @@
+
+function pesta_certified_ammo(o,c)
+
+	--This is just IsGrenade() from _g.script just replaced the handgrenades with gl grenades. The reason this exists is because IsAmmo() and IsGrenade() doesn't include these for some reason.
+	--For the mines we used section() because the clsid() they use is obj_antirad which is assigned to some other items aswell.
+	
+	
+	if not (c) then
+		c = o and o:clsid()
+	end
+	
+	if not (custom_ammo_classes) then
+		custom_ammo_classes = {
+				[clsid.wpn_ammo_m209_s] 		= true,
+				[clsid.wpn_ammo_og7b_s] 		= true,
+				[clsid.wpn_ammo_vog25_s]		= true,
+				[clsid.wpn_ammo_m209] 			= true,
+				[clsid.wpn_ammo_og7b] 			= true,
+				[clsid.wpn_ammo_vog25]			= true
+		}
+	end
+	
+	if not (mine_sections) then
+		mine_sections = {
+				["mine_new"]			= true,
+				["ied_rpg_new"]			= true,
+				["ied_new"]				= true
+		}
+	end
+	
+	local sec = o:section()
+	
+	return c and (custom_ammo_classes[c] or mine_sections[sec]) or false
+end
+
+
+function pesta_certified_is_magazine(obj)
+
+	--Check for Mags Redux and check for mags if it's installed, return false otherwise. 
+	
+	
+	if magazine_binder then
+		return magazine_binder.is_magazine(obj)
+	else
+		return false
+	end
+end
+
+
+function custom_storage()
+
+	--So, that abomination of an if statement is basically, check if it's ammo, grenade, gl grenade or magazine.
+	
+	
+	haru_specialized_storage_boxes.storage_types["ammo"] = function(obj) 
+																if IsAmmo(obj) or IsGrenade(obj) or zzz_haru_storage_mags_monkey.pesta_certified_ammo(obj) or zzz_haru_storage_mags_monkey.pesta_certified_is_magazine(obj) then
+																	return true
+																else
+																	return false
+																end
+															end
+end
+
+
+function on_game_start()
+	RegisterScriptCallback("ActorMenu_on_item_before_move", custom_storage)
+end
+	

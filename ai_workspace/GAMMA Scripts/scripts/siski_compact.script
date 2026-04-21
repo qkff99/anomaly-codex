@@ -1,0 +1,913 @@
+siski_compact = siski_compact or {}
+
+local compact = siski_compact
+
+local type = _G.type
+local tonumber = _G.tonumber
+local tostring = _G.tostring
+local pairs = _G.pairs
+local next = _G.next
+local rawget = _G.rawget
+local time_global = _G.time_global
+local alife = _G.alife
+local game = _G.game
+local get_object_story_id = _G.get_object_story_id
+local IsMonster = _G.IsMonster
+local RegisterScriptCallback = _G.RegisterScriptCallback
+
+local math_random = math.random
+local math_randomseed = math.randomseed
+local math_min = math.min
+local string_lower = string.lower
+local string_match = string.match
+local string_sub = string.sub
+local string_gsub = string.gsub
+
+local VERSION = "0.1.0"
+local PHASE_MOVE = "move"
+local PHASE_HOLD = "hold"
+local MUTANT_PREFIX = "simulation_"
+
+local SMART_CACHE_TTL_MS = 15000
+local STATE_GC_INTERVAL_MS = 60000
+local STATE_STALE_MS = 1800000
+local PICK_SAMPLE_LIMIT = 24
+local PICK_FALLBACK_LIMIT = 96
+local RESYNC_INTERVAL_MS = 10000
+
+local STALKER_MOVE_TIMEOUT_MS = 420000
+local MUTANT_MOVE_TIMEOUT_MS = 300000
+local STALKER_HOLD_MIN_MS = 45000
+local STALKER_HOLD_MAX_MS = 120000
+local MUTANT_HOLD_MIN_MS = 20000
+local MUTANT_HOLD_MAX_MS = 60000
+
+local COMMUNITIES = {
+    "stalker",
+    "bandit",
+    "duty",
+    "freedom",
+    "merc",
+    "army",
+    "ecolog",
+    "monolith",
+    "csky",
+    "renegade",
+    "greh",
+    "isg",
+}
+
+local COMMUNITY_ALIASES = {
+    killer = "merc",
+    dolg = "duty",
+}
+
+local RANKS = {
+    "novice",
+    "advanced",
+    "veteran",
+    "expert",
+    "master",
+}
+
+local STALKER_SECTIONS = {}
+for i = 1, #COMMUNITIES do
+    for j = 1, #RANKS do
+        STALKER_SECTIONS[COMMUNITIES[i] .. "_sim_squad_" .. RANKS[j]] = true
+    end
+end
+
+local RUNTIME = {
+    by_sid = {},
+    cache = {
+        at_tg = 0,
+        stalker = {},
+        mutant = {},
+    },
+    next_gc_tg = 0,
+}
+
+local function now_tg()
+    return (time_global and time_global()) or 0
+end
+
+local function trim_lower(text)
+    if type(text) ~= "string" then
+        return nil
+    end
+    text = string_lower(string_gsub(text, "^%s*(.-)%s*$", "%1"))
+    if text == "" then
+        return nil
+    end
+    return text
+end
+
+local function normalize_faction_key(text)
+    text = trim_lower(text)
+    if not text then
+        return nil
+    end
+    return COMMUNITY_ALIASES[text] or text
+end
+
+local function valid_id(value)
+    local id = tonumber(value)
+    if not id or id <= 0 or id == 65535 then
+        return nil
+    end
+    return id
+end
+
+local function prop_num(props, key)
+    if type(props) ~= "table" or key == nil then
+        return 0
+    end
+    return tonumber(props[key]) or 0
+end
+
+local function read_section(obj)
+    if not obj then
+        return nil
+    end
+    local value = nil
+    local field = obj.section_name
+    if type(field) == "function" then
+        value = field(obj)
+    elseif type(field) == "string" then
+        value = field
+    end
+    value = trim_lower(value)
+    if value then
+        return value
+    end
+    field = obj.section
+    if type(field) == "function" then
+        value = field(obj)
+    elseif type(field) == "string" then
+        value = field
+    end
+    return trim_lower(value)
+end
+
+local function read_player_id(se_squad)
+    if not se_squad then
+        return nil
+    end
+    local value = se_squad.player_id
+    if type(value) == "function" then
+        value = value(se_squad)
+    end
+    return normalize_faction_key(value)
+end
+
+local function stalker_player_id_from_section(section)
+    if type(section) ~= "string" then
+        return nil
+    end
+    return normalize_faction_key(string_match(section, "^(.-)_sim_squad_"))
+end
+
+local function read_commander_id(se_squad)
+    if not se_squad then
+        return nil
+    end
+    local value = se_squad.commander_id
+    if type(value) == "function" then
+        value = value(se_squad)
+    end
+    return valid_id(value)
+end
+
+local function read_smart_id(se_squad)
+    if not se_squad then
+        return nil
+    end
+    return valid_id(se_squad.smart_id)
+end
+
+local function read_assigned_target_id(se_squad)
+    if not se_squad then
+        return nil
+    end
+    return valid_id(se_squad.assigned_target_id)
+end
+
+local function read_current_target_id(se_squad)
+    if not se_squad then
+        return nil
+    end
+    return valid_id(se_squad.current_target_id)
+end
+
+local function get_server_object(id)
+    id = valid_id(id)
+    if not id or not alife then
+        return nil
+    end
+    local sim = alife()
+    if not sim then
+        return nil
+    end
+    return sim:object(id)
+end
+
+local function is_companion_squad(sid)
+    if not sid then
+        return false
+    end
+    local mod = rawget(_G, "axr_companions")
+    local squads = mod and mod.companion_squads or nil
+    if type(squads) ~= "table" then
+        return false
+    end
+    return squads[sid] ~= nil or squads[tostring(sid)] ~= nil
+end
+
+local function has_story_binding(object_id)
+    object_id = valid_id(object_id)
+    if not object_id or not get_object_story_id then
+        return false
+    end
+    local story_id = get_object_story_id(object_id)
+    return story_id ~= nil and story_id ~= false
+end
+
+local function is_mutant_squad(se_squad, player_id, commander)
+    local monster_index = rawget(_G, "is_squad_monster")
+    if player_id and type(monster_index) == "table" and monster_index[player_id] == true then
+        return true
+    end
+    if commander and IsMonster then
+        return IsMonster(commander) == true
+    end
+    return false
+end
+
+local function get_board()
+    local board = rawget(_G, "SIMBOARD")
+    if board then
+        return board
+    end
+    local sim_board = rawget(_G, "sim_board")
+    if sim_board and sim_board.get_sim_board then
+        return sim_board.get_sim_board()
+    end
+    return nil
+end
+
+local function get_sim_objects()
+    return rawget(_G, "simulation_objects")
+end
+
+local function smart_has_bucket(sm, key)
+    return prop_num(sm and sm.props or nil, key) > 0
+end
+
+local function rebuild_smart_cache(now)
+    local cache = RUNTIME.cache
+    cache.stalker = {}
+    cache.mutant = {}
+    cache.at_tg = now
+
+    local board = get_board()
+    local by_name = board and board.smarts_by_names or nil
+    if type(by_name) ~= "table" then
+        return
+    end
+
+    for name, sm in pairs(by_name) do
+        if type(name) == "string" and sm then
+            if smart_has_bucket(sm, "base") or smart_has_bucket(sm, "resource") or smart_has_bucket(sm, "territory") then
+                cache.stalker[#cache.stalker + 1] = name
+            end
+            if smart_has_bucket(sm, "lair") or smart_has_bucket(sm, "territory") then
+                cache.mutant[#cache.mutant + 1] = name
+            end
+        end
+    end
+end
+
+local function ensure_smart_cache(now)
+    local cache = RUNTIME.cache
+    if now >= ((tonumber(cache.at_tg) or 0) + SMART_CACHE_TTL_MS) then
+        rebuild_smart_cache(now)
+    end
+    return cache
+end
+
+local function hour_now()
+    if not (game and game.get_game_time) then
+        return 12
+    end
+    local ct = game.get_game_time()
+    if not (ct and ct.get) then
+        return 12
+    end
+    local _, _, _, hour = ct:get(0, 0, 0, 0, 0, 0, 0)
+    return tonumber(hour) or 12
+end
+
+local function in_time_interval(from_hour, to_hour)
+    local hour = hour_now()
+    if from_hour <= to_hour then
+        return hour >= from_hour and hour < to_hour
+    end
+    return hour >= from_hour or hour < to_hour
+end
+
+local function surge_started()
+    local xr = rawget(_G, "xr_conditions")
+    if xr and xr.surge_started then
+        return xr.surge_started() == true
+    end
+    return false
+end
+
+local function is_enemy_faction(a, b)
+    local rel = rawget(_G, "game_relations")
+    if not (a and b and rel and rel.is_valid and rel.is_factions_enemies) then
+        return false
+    end
+    if rel.is_valid(a) ~= true or rel.is_valid(b) ~= true then
+        return false
+    end
+    return rel.is_factions_enemies(a, b) == true
+end
+
+local function can_target_base(player_id, target_faction)
+    player_id = normalize_faction_key(player_id)
+    target_faction = normalize_faction_key(target_faction)
+    if target_faction == nil or target_faction == player_id then
+        return true
+    end
+    if is_enemy_faction(player_id, target_faction) then
+        return in_time_interval(3, 6)
+    end
+    return true
+end
+
+local function can_target_territory(player_id, target_faction)
+    player_id = normalize_faction_key(player_id)
+    target_faction = normalize_faction_key(target_faction)
+    if player_id == "monster_predatory_day" or player_id == "monster_zombied_day" then
+        return in_time_interval(6, 19)
+    end
+    if player_id == "monster_predatory_night" or player_id == "monster_zombied_night" then
+        return in_time_interval(19, 6)
+    end
+    if player_id == "monster_vegetarian" or player_id == "zombied" then
+        return true
+    end
+    if target_faction == nil or target_faction == player_id then
+        return true
+    end
+    if is_enemy_faction(player_id, target_faction) then
+        return in_time_interval(9, 15)
+    end
+    return true
+end
+
+local function smart_accepts_stalker(sm, player_id)
+    if not (sm and type(player_id) == "string" and player_id ~= "") then
+        return false
+    end
+    local props = sm.props
+    local any = prop_num(props, "all") > 0 or prop_num(props, "all_stalker") > 0 or prop_num(props, player_id) > 0
+    if not any then
+        return false
+    end
+    if player_id ~= "monolith" and surge_started() then
+        return prop_num(props, "surge") > 0
+    end
+    if prop_num(props, "base") > 0 and can_target_base(player_id, sm.faction) then
+        return true
+    end
+    if prop_num(props, "resource") > 0 and in_time_interval(10, 6) then
+        return true
+    end
+    if prop_num(props, "territory") > 0 and can_target_territory(player_id, sm.faction) then
+        return true
+    end
+    return false
+end
+
+local function smart_accepts_mutant(sm, player_id)
+    if not sm then
+        return false
+    end
+    local props = sm.props
+    if player_id == "zombied" then
+        local any_zombied = prop_num(props, "all") > 0 or prop_num(props, "all_stalker") > 0 or prop_num(props, player_id) > 0
+        if not any_zombied then
+            return false
+        end
+        return prop_num(props, "territory") > 0 and can_target_territory(player_id, sm.faction)
+    end
+    local any = prop_num(props, "all") > 0 or prop_num(props, "all_monster") > 0 or prop_num(props, player_id) > 0
+    if not any then
+        return false
+    end
+    if prop_num(props, "lair") > 0 then
+        return true
+    end
+    if prop_num(props, "territory") > 0 and can_target_territory(player_id, sm.faction) then
+        return true
+    end
+    return false
+end
+
+local function read_squad_info(se_squad)
+    if not se_squad then
+        return nil
+    end
+
+    local sid = valid_id(se_squad.id)
+    if not sid then
+        return nil
+    end
+    if is_companion_squad(sid) then
+        return nil
+    end
+
+    local commander_id = read_commander_id(se_squad)
+    if commander_id and has_story_binding(commander_id) then
+        return nil
+    end
+
+    local section = read_section(se_squad)
+    if not section then
+        return nil
+    end
+
+    local player_id = read_player_id(se_squad)
+    local commander = commander_id and get_server_object(commander_id) or nil
+    local mutant = is_mutant_squad(se_squad, player_id, commander)
+
+    if mutant then
+        if string_sub(section, 1, #MUTANT_PREFIX) ~= MUTANT_PREFIX then
+            return nil
+        end
+        return {
+            sid = sid,
+            section = section,
+            player_id = player_id,
+            kind = "mutant",
+        }
+    end
+
+    if not STALKER_SECTIONS[section] then
+        return nil
+    end
+
+    return {
+        sid = sid,
+        section = section,
+        player_id = player_id or stalker_player_id_from_section(section),
+        kind = "stalker",
+    }
+end
+
+local function clear_state(sid)
+    sid = valid_id(sid)
+    if sid then
+        RUNTIME.by_sid[sid] = nil
+    end
+end
+
+local function maybe_gc(now)
+    if now < (tonumber(RUNTIME.next_gc_tg) or 0) then
+        return
+    end
+    RUNTIME.next_gc_tg = now + STATE_GC_INTERVAL_MS
+
+    for sid, state in pairs(RUNTIME.by_sid) do
+        local last_seen_tg = tonumber(state and state.last_seen_tg) or 0
+        if now >= (last_seen_tg + STATE_STALE_MS) then
+            RUNTIME.by_sid[sid] = nil
+        end
+    end
+end
+
+local function get_state(sid)
+    local state = RUNTIME.by_sid[sid]
+    if not state then
+        state = {
+            target = nil,
+            phase = nil,
+            until_tg = 0,
+            last_sync_tg = 0,
+            last_seen_tg = 0,
+        }
+        RUNTIME.by_sid[sid] = state
+    end
+    return state
+end
+
+local function get_smart_by_name(name)
+    if type(name) ~= "string" or name == "" then
+        return nil
+    end
+    local board = get_board()
+    local by_name = board and board.smarts_by_names or nil
+    if type(by_name) ~= "table" then
+        return nil
+    end
+    return by_name[name]
+end
+
+local function smart_population(board, sm)
+    if not (board and sm) then
+        return 0
+    end
+    if board.get_smart_population then
+        return tonumber(board:get_smart_population(sm)) or 0
+    end
+    local node = board.smarts and board.smarts[sm.id] or nil
+    return tonumber(node and node.population) or 0
+end
+
+local function smart_ready_for_picker(board, sm)
+    if not (board and sm and valid_id(sm.id)) then
+        return false
+    end
+    if sm.disabled == true then
+        return false
+    end
+    local sim_objects = get_sim_objects()
+    local available = sim_objects and sim_objects.available_by_id or nil
+    if type(available) == "table" and available[sm.id] ~= true then
+        return false
+    end
+    local node = board.smarts and board.smarts[sm.id] or nil
+    if not (node and type(node.squads) == "table") then
+        return false
+    end
+    local max_population = tonumber(sm.max_population) or 0
+    if max_population > 0 and smart_population(board, sm) >= max_population then
+        return false
+    end
+    return true
+end
+
+local function smart_ready_for_state(board, sm)
+    if not (board and sm and valid_id(sm.id)) then
+        return false
+    end
+    if sm.disabled == true then
+        return false
+    end
+    local sim_objects = get_sim_objects()
+    local available = sim_objects and sim_objects.available_by_id or nil
+    if type(available) == "table" and available[sm.id] ~= true then
+        return false
+    end
+    local node = board.smarts and board.smarts[sm.id] or nil
+    return node ~= nil and type(node.squads) == "table"
+end
+
+local function target_still_valid(info, target_name, sm)
+    if not (info and target_name and sm) then
+        return false
+    end
+    local board = get_board()
+    if not smart_ready_for_state(board, sm) then
+        return false
+    end
+    if info.kind == "stalker" then
+        return smart_accepts_stalker(sm, info.player_id)
+    end
+    return smart_accepts_mutant(sm, info.player_id)
+end
+
+local function is_arrived_to_target(se_squad, sm)
+    if not (se_squad and sm) then
+        return false
+    end
+    local target_id = valid_id(sm.id)
+    if not target_id then
+        return false
+    end
+    local current_action = tonumber(se_squad.current_action) or nil
+    local current_target_id = read_current_target_id(se_squad)
+    local smart_id = read_smart_id(se_squad)
+
+    if current_action == 1 and (current_target_id == target_id or smart_id == target_id) then
+        return true
+    end
+    if smart_id == target_id then
+        return true
+    end
+    if sm.am_i_reached then
+        return sm:am_i_reached(se_squad) == true
+    end
+    return false
+end
+
+local function random_between(min_ms, max_ms)
+    if min_ms >= max_ms then
+        return min_ms
+    end
+    return math_random(min_ms, max_ms)
+end
+
+local function move_timeout_ms(kind)
+    if kind == "mutant" then
+        return MUTANT_MOVE_TIMEOUT_MS
+    end
+    return STALKER_MOVE_TIMEOUT_MS
+end
+
+local function hold_timeout_ms(kind)
+    if kind == "mutant" then
+        return random_between(MUTANT_HOLD_MIN_MS, MUTANT_HOLD_MAX_MS)
+    end
+    return random_between(STALKER_HOLD_MIN_MS, STALKER_HOLD_MAX_MS)
+end
+
+local function choose_target_list(kind, now)
+    local cache = ensure_smart_cache(now)
+    if kind == "mutant" then
+        return cache.mutant
+    end
+    return cache.stalker
+end
+
+local function can_pick_target(se_squad, info, state, board, smart_name, sm)
+    if not (se_squad and info and state and board and smart_name and sm) then
+        return false
+    end
+    if state.target == smart_name then
+        return false
+    end
+    local smart_id = valid_id(sm.id)
+    if not smart_id then
+        return false
+    end
+    if read_smart_id(se_squad) == smart_id then
+        return false
+    end
+    if not smart_ready_for_picker(board, sm) then
+        return false
+    end
+    if info.kind == "stalker" then
+        return smart_accepts_stalker(sm, info.player_id)
+    end
+    return smart_accepts_mutant(sm, info.player_id)
+end
+
+local function pick_target(se_squad, info, state, now)
+    local board = get_board()
+    local by_name = board and board.smarts_by_names or nil
+    if not (board and type(by_name) == "table") then
+        return nil, nil
+    end
+
+    local list = choose_target_list(info.kind, now)
+    local total = list and #list or 0
+    if total <= 0 then
+        return nil, nil
+    end
+
+    local attempts = math_min(PICK_SAMPLE_LIMIT, total)
+    for _ = 1, attempts do
+        local smart_name = list[math_random(total)]
+        local sm = smart_name and by_name[smart_name] or nil
+        if can_pick_target(se_squad, info, state, board, smart_name, sm) then
+            return smart_name, sm
+        end
+    end
+
+    local start_idx = math_random(total)
+    local limit = math_min(total, PICK_FALLBACK_LIMIT)
+    for offset = 0, limit - 1 do
+        local idx = ((start_idx + offset - 1) % total) + 1
+        local smart_name = list[idx]
+        local sm = smart_name and by_name[smart_name] or nil
+        if can_pick_target(se_squad, info, state, board, smart_name, sm) then
+            return smart_name, sm
+        end
+    end
+
+    return nil, nil
+end
+
+local function apply_target(se_squad, state, smart_name, sm, now)
+    if not (se_squad and state and smart_name and sm) then
+        return false
+    end
+
+    local smart_id = valid_id(sm.id)
+    if not smart_id then
+        return false
+    end
+
+    se_squad.scripted_target = smart_name
+    if se_squad.task_target_id ~= nil then
+        se_squad.task_target_id = nil
+    end
+    se_squad.assigned_target_id = smart_id
+    se_squad.current_action = 0
+    se_squad.current_target_id = nil
+    se_squad.stay_time = nil
+    se_squad.arrive_time = nil
+
+    state.target = smart_name
+    state.phase = PHASE_MOVE
+    state.until_tg = now + move_timeout_ms(state.kind)
+    state.last_sync_tg = now
+    return true
+end
+
+local function sync_target_if_needed(se_squad, state, sm, now)
+    if not (se_squad and state and sm) then
+        return
+    end
+    if state.phase ~= PHASE_MOVE then
+        return
+    end
+    if now < ((tonumber(state.last_sync_tg) or 0) + RESYNC_INTERVAL_MS) then
+        return
+    end
+
+    local target_id = valid_id(sm.id)
+    if not target_id then
+        return
+    end
+
+    local changed = false
+    if se_squad.scripted_target ~= state.target then
+        se_squad.scripted_target = state.target
+        changed = true
+    end
+    if se_squad.task_target_id ~= nil then
+        se_squad.task_target_id = nil
+        changed = true
+    end
+    if read_assigned_target_id(se_squad) ~= target_id then
+        se_squad.assigned_target_id = target_id
+        changed = true
+    end
+    local current_target_id = read_current_target_id(se_squad)
+    if tonumber(se_squad.current_action) == 1 and current_target_id ~= target_id then
+        se_squad.current_action = 0
+        changed = true
+    end
+    if changed then
+        se_squad.current_target_id = nil
+        se_squad.stay_time = nil
+        se_squad.arrive_time = nil
+    end
+
+    state.last_sync_tg = now
+end
+
+local function reset_state(state)
+    if not state then
+        return
+    end
+    state.target = nil
+    state.phase = nil
+    state.until_tg = 0
+    state.last_sync_tg = 0
+end
+
+local function on_no_target(state, now)
+    reset_state(state)
+    state.last_seen_tg = now
+end
+
+function compact.on_squad_update(se_squad)
+    if not se_squad then
+        return
+    end
+
+    local now = now_tg()
+    maybe_gc(now)
+
+    local sid = valid_id(se_squad.id)
+    local info = read_squad_info(se_squad)
+    if not info then
+        clear_state(sid)
+        return
+    end
+
+    local state = get_state(info.sid)
+    state.kind = info.kind
+    state.last_seen_tg = now
+
+    local target_name = state.target
+    local target_smart = target_name and get_smart_by_name(target_name) or nil
+    local target_valid = target_name and target_smart and target_still_valid(info, target_name, target_smart) or false
+
+    if not target_valid then
+        local new_target_name, new_target_smart = pick_target(se_squad, info, state, now)
+        if not new_target_name or not new_target_smart then
+            on_no_target(state, now)
+            return
+        end
+        apply_target(se_squad, state, new_target_name, new_target_smart, now)
+        return
+    end
+
+    if is_arrived_to_target(se_squad, target_smart) then
+        if state.phase ~= PHASE_HOLD then
+            state.phase = PHASE_HOLD
+            state.until_tg = now + hold_timeout_ms(info.kind)
+            state.last_sync_tg = now
+            return
+        end
+        if now < (tonumber(state.until_tg) or 0) then
+            return
+        end
+
+        local next_target_name, next_target_smart = pick_target(se_squad, info, state, now)
+        if not next_target_name or not next_target_smart then
+            state.until_tg = now + hold_timeout_ms(info.kind)
+            return
+        end
+        apply_target(se_squad, state, next_target_name, next_target_smart, now)
+        return
+    end
+
+    if state.phase ~= PHASE_MOVE then
+        state.phase = PHASE_MOVE
+        state.until_tg = now + move_timeout_ms(info.kind)
+        state.last_sync_tg = 0
+    elseif now >= (tonumber(state.until_tg) or 0) then
+        local retry_target_name, retry_target_smart = pick_target(se_squad, info, state, now)
+        if retry_target_name and retry_target_smart then
+            apply_target(se_squad, state, retry_target_name, retry_target_smart, now)
+            return
+        end
+        state.until_tg = now + move_timeout_ms(info.kind)
+    end
+
+    sync_target_if_needed(se_squad, state, target_smart, now)
+end
+
+function compact.save_state(m_data)
+    if type(m_data) ~= "table" then
+        return
+    end
+
+    local now = now_tg()
+    maybe_gc(now)
+
+    local out = { by_sid = {} }
+    for sid, state in pairs(RUNTIME.by_sid) do
+        local last_seen_tg = tonumber(state and state.last_seen_tg) or 0
+        if now < (last_seen_tg + STATE_STALE_MS) then
+            out.by_sid[sid] = {
+                target = type(state.target) == "string" and state.target or nil,
+                phase = state.phase == PHASE_MOVE and PHASE_MOVE or state.phase == PHASE_HOLD and PHASE_HOLD or nil,
+                until_tg = tonumber(state.until_tg) or 0,
+                last_sync_tg = tonumber(state.last_sync_tg) or 0,
+                last_seen_tg = last_seen_tg,
+            }
+        end
+    end
+    m_data.siski_compact = out
+end
+
+function compact.load_state(m_data)
+    RUNTIME.by_sid = {}
+    RUNTIME.cache.at_tg = 0
+    RUNTIME.cache.stalker = {}
+    RUNTIME.cache.mutant = {}
+    RUNTIME.next_gc_tg = 0
+
+    local data = type(m_data) == "table" and m_data.siski_compact or nil
+    local by_sid = type(data) == "table" and data.by_sid or nil
+    if type(by_sid) ~= "table" then
+        return
+    end
+
+    for sid, state in pairs(by_sid) do
+        local valid_sid = valid_id(sid)
+        if valid_sid and type(state) == "table" then
+            RUNTIME.by_sid[valid_sid] = {
+                kind = nil,
+                target = type(state.target) == "string" and state.target or nil,
+                phase = state.phase == PHASE_MOVE and PHASE_MOVE or state.phase == PHASE_HOLD and PHASE_HOLD or nil,
+                until_tg = tonumber(state.until_tg) or 0,
+                last_sync_tg = tonumber(state.last_sync_tg) or 0,
+                last_seen_tg = tonumber(state.last_seen_tg) or 0,
+            }
+        end
+    end
+end
+
+function compact.on_game_start()
+    if math_randomseed and time_global then
+        math_randomseed(time_global())
+    end
+    if RegisterScriptCallback then
+        RegisterScriptCallback("squad_on_update", compact.on_squad_update)
+        RegisterScriptCallback("save_state", compact.save_state)
+        RegisterScriptCallback("load_state", compact.load_state)
+    end
+end
+
+compact.VERSION = VERSION
+
+return compact

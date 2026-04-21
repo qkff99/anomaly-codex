@@ -1,0 +1,69 @@
+[items_brewed_coffee_hud]:item_ea_energy_drink_nonstop_hud
+hands_position = 0,0,0
+hands_position_16x9 = 0,0,0
+item_visual = dynamics\brewed_coffee\brewed_coffee_hud.ogf
+anm_ea_show = hand_coffee_drink_anim, brewed_coffee_hud_item_anims
+
+[brewed_coffee]:booster
+$spawn = "food and drugs\brewed_coffee"
+cform = skeleton
+visual = dynamics\brewed_coffee\brewed_coffee
+kind = i_drink
+description = st_brewed_coffee_descr
+cost = 400
+inv_name = st_brewed_coffee
+inv_name_short = st_brewed_coffee
+inv_weight = 0.33
+script_binding = bind_item.bind
+inv_grid_width = 1
+inv_grid_height = 1
+icons_texture = brewed_coffee\brewed_coffee_icon
+inv_grid_x = 0
+inv_grid_y = 0
+attach_angle_offset = 0.000000, 0.000000, 0.000000
+attach_position_offset = 0.087266, -0.078540, 0.052360
+attach_bone_name = bip01_r_hand
+auto_attach = false
+boost_time = 500
+boost_max_weight = 1.2
+boost_radiation_restore = 0.00005
+boost_power_restore = 0.0025
+eat_alcohol = -0.350
+eat_satiety = 0.120
+eat_sleepiness = -0.10
+eat_thirstiness = -3.30
+use_sound = interface\inv_drink_flask_2
+tier = 1
+
+[ground_coffee]:booster_multi
+$spawn = "food and drugs\ground_coffee"
+cform = skeleton
+visual = dynamics\ground_coffee\ground_coffee
+kind = i_drink
+description = st_ground_coffee_descr
+cost = 100
+inv_name = st_ground_coffee
+inv_name_short = st_ground_coffee
+use_condition = true
+script_binding = bind_item.bind
+max_uses = 5
+inv_weight = 0.340
+empty_weight = 0.010
+inv_grid_width = 1
+inv_grid_height = 1
+inv_grid_x = 0
+inv_grid_y = 0
+icons_texture = ground_coffee\ground_coffee_icon
+attach_angle_offset = 0.440521, 1.378287, -0.644026
+attach_position_offset = 0.104196, -0.010821, 0.076969
+attach_bone_name = bip01_r_hand
+auto_attach = false
+bone_name = bip01_r_hand
+position_offset = 0.0,0.0,0.0
+angle_offset = 1.570790,1.570790,3.92699
+eat_satiety = 0.01
+eat_sleepiness = -0.03
+eat_thirstiness = 0.30
+use_sound = interface\inv_eat_paperwrap_2
+tier = 1
+

@@ -1,0 +1,394 @@
+Find_available_messages = {}		-- slowly add npcs to this table
+local potential_senders = {}			-- collect npcs here on trigger
+local tmr
+
+local respond_chance_mult = pda_inter_mcm.get_config("find_respond_mult")
+local npc_see_target_radius = pda_inter_mcm.get_config("find_see_distance")		-- radius at which npc can see target and become a sender
+local npc_can_lie = pda_inter_mcm.get_config("find_can_lie")				-- based on faction, reputation and relations towards you
+local base_price_mult = pda_inter_mcm.get_config("find_base_price")
+
+local gt = game.translate_string
+
+-- multiplier to modify price
+local rarity_mult = {
+	["artefact"] = 2,
+	["mutant"] = 0.5,
+	["stalker"] = 1,
+}
+
+-- faction lie factor	(if actor from same faction it will be 0.1 lower)
+local comm_lie_t = {
+	["greh"] = 0,
+	["monolith"] = 0,
+	["isg"] = 0,
+	["army"] = 0.05,
+	["ecolog"] = 0.1,
+	["csky"] = 0.1,
+	["dolg"] = 0.15,
+	["trader"] = 0.15,
+	["stalker"] = 0.2,
+	["freedom"] = 0.3,	-- stoned phone prankers
+	["killer"] = 0.4,
+	["bandit"] = 0.55,
+	["renegade"] = 0.6,
+}
+
+-- blacklist ignored if actor from the same faction
+local senders_blacklist = {
+	["army"] = true,
+	["monolith"] = true,
+	["greh"] = true,
+	["zombied"] = true,
+}
+
+-- replacement for some scuffed encyclopedia strings
+local str_replace = {
+	["psydog"] = "psy_dog",
+	["pseudogiant"] = "gigant",
+}
+
+-- get all senders and check if any of them are in +-100m radius from target
+-- million loops coz target can be stalker (senders are stalkers too)
+function store_senders()
+	local start_time = os.clock()
+
+	local item_str = pda_inter_gui.pda_msg_states[2].active_str
+	local str_is_stalker = false
+
+	-- replace some string
+	if str_replace[item_str] then
+		item_str = str_replace[item_str]
+	end
+
+	-- check if we are looking for stalker to replace section with name during target searching
+	if (not pda_inter_gui.pdax_mutant_list[item_str]) and (not pda_inter_gui.pdax_artefact_list[item_str]) then
+		str_is_stalker = true
+	end
+
+	-- get all potential senders and possible targets
+	local senders = {}
+	local targets = {}
+	for i = 1, 65534 do
+		local se_obj = alife_object(i)
+		if se_obj then
+
+			local obj_level_id = game_graph():vertex(se_obj.m_game_vertex_id):level_id()
+			local is_stalker = IsStalker(se_obj) and se_obj:alive()
+			local is_target_monster = IsMonster(se_obj) and se_obj:alive() and string.find(se_obj:section_name(), item_str)
+			local is_target_artefact = string.find(item_str, "af_") and se_obj.parent_id == 65535 and string.find(se_obj:section_name(), item_str)
+
+			if is_stalker then
+				-- se_obj is stalker and target
+				if str_is_stalker and string.find(se_obj.character_name and se_obj:character_name(), item_str) and (se_obj:community() ~= "zombied") then
+					targets[se_obj.id] = obj_level_id
+		--			pr("STALKER TARGET: %s", se_obj:name())
+				-- se_obj is sender and (not blacklisted OR have same community as actor)
+				elseif (not senders_blacklist[se_obj:community()]) or (get_actor_true_community() == se_obj:community()) then
+					senders[se_obj.id] = obj_level_id
+		--			pr("SENDER: %s", se_obj:name())
+				end
+			-- se_obj is mutant
+			elseif is_target_monster then
+				targets[se_obj.id] = obj_level_id
+		--		pr("MUTANT TARGET: %s", se_obj:section_name())
+			-- se_obj is artefact
+			elseif is_target_artefact then
+				targets[se_obj.id] = obj_level_id
+		--		pr("ARTEFACT TARGET: %s", se_obj:section_name())
+			end
+		end
+	end
+
+	-- test
+	local senders_total = size_table(senders)
+	pr("senders_total: %s", senders_total)
+	local targets_total = size_table(targets)
+	pr("targets_total: %s", targets_total)
+
+
+	-- get all smart terrains
+	local smarts = {}
+	local smart_ini = ini_file("misc\\simulation.ltx")
+	smart_ini:section_for_each(function(section)
+		local smart = SIMBOARD.smarts_by_names[section]
+		if smart then
+			local smart_level = game_graph():vertex(smart.m_game_vertex_id):level_id()
+			smarts[smart.id] = smart_level
+		end
+	end)
+
+	-- now compare distance between each and get name, icon etc of this stalker and save smart name of target
+	-- dont care if npc die or whatever happens to him later, can save all right here and never update
+	for sender_id, sender_level in pairs(senders) do
+		for target_id, target_level in pairs(targets) do
+
+			if sender_level == target_level and not potential_senders[sender_id] then
+				local sender = alife_object(sender_id)
+				local target = alife_object(target_id)
+				local sender_pos = sender.position
+				local target_pos = target.position
+				local pos_diff = sender_pos:distance_to(target_pos) <= npc_see_target_radius
+
+				-- sender is close to target
+				if pos_diff then
+					-- get target's nearest smart
+					local target_level_id = game_graph():vertex(target.m_game_vertex_id):level_id()
+					local nearest_target_smart, target_level, random_smart_id = get_smart_of_target(target, target_level_id, smarts)
+					pr("received smarts: near: %s || level: %s || for lie: %s", nearest_target_smart, target_level, random_smart_id)
+
+					-- get relations with actor
+					local relations = get_sender_relations(sender)
+
+					-- save character info
+					potential_senders[sender_id] = {}
+					potential_senders[sender_id].icon = sender:character_icon()
+					potential_senders[sender_id].name = sender.character_name and sender:character_name() or sender:name()
+					potential_senders[sender_id].comm = sender:community()
+					potential_senders[sender_id].reputation = sender:reputation()
+					potential_senders[sender_id].relation = relations
+
+					-- save target info
+					pr("saving target smart: %s", nearest_target_smart)
+					potential_senders[sender_id].target_smart = nearest_target_smart
+					potential_senders[sender_id].target_level = target_level
+
+					-- save lie xd
+					if random_smart_id and alife_object(random_smart_id) then
+						pr("saving lie smart: %s", alife_object(random_smart_id):name())
+						potential_senders[sender_id].lie_smart = alife_object(random_smart_id):name()
+						local smart = alife_object(random_smart_id)
+						local smart_lid = game_graph():vertex(smart.m_game_vertex_id):level_id()
+						local smart_lname = alife():level_name(smart_lid)
+						potential_senders[sender_id].lie_level = smart_lname
+					end
+
+				end
+			end
+		end
+	end
+
+	pr("potential_senders: %s", size_table(potential_senders))
+
+	pr("prrrrrrr: %s", os.clock() - start_time)
+
+end
+
+function upd_find_gui()
+	local tg = time_global()
+	if (tmr and tg < tmr) then return end
+	tmr = tg + 3000
+
+	local state = pda_inter_gui.pda_msg_states[2] and pda_inter_gui.pda_msg_states[2].state
+	if (not state) or state ~= 5 then return end
+
+	-- try to add sender
+	add_sender()
+
+end
+
+function add_sender()
+	if #Find_available_messages >= 6 then return end
+
+	-- pick random potential sender id
+	local t = potential_senders
+
+	local sender_id = size_table(t) > 0 and rnd_key_table(t)
+	if not sender_id then return end
+
+	-- get target rarity
+	local item_str = pda_inter_gui.pda_msg_states[2].active_str
+	local rarity = pda_inter_gui.pdax_mutant_list[item_str] or pda_inter_gui.pdax_artefact_list[item_str] or (0.75)		-- (0.75) if stalker... for now
+
+	-- modify rarity cost for certain type of selected item
+	local rarity_cost_mult
+	if pda_inter_gui.pdax_artefact_list[item_str] then
+		rarity_cost_mult = rarity_mult["artefact"]
+	elseif pda_inter_gui.pdax_mutant_list[item_str] then
+		rarity_cost_mult = rarity_mult["mutant"]
+	else
+		rarity_cost_mult = rarity_mult["stalker"]
+	end
+
+	-- get relations and exclude enemies from sending messages
+	local relation = t[sender_id].relation
+	if (not relation) then return end
+
+	-- get reputation
+	local reputation = t[sender_id].reputation
+	if not reputation then return end
+
+	-- get name and faction (for message)
+	local sender_name = t[sender_id].name
+	local sender_comm = t[sender_id].comm
+
+	-- calculate price based on rarity and relation
+	local relation_val = (relation == "friend" and 0.5) or (relation == "neutral" and 1.25) or (relation == "enemy" and 2)
+	local price_range = math.random(7, 13) / 10		-- 70% to 130%
+	local price = rarity * rarity_cost_mult * relation_val * base_price_mult * price_range
+	price = math.floor(price)
+
+	-- chance to be added based on item (target) rarity
+	local chance = (1 - rarity) * respond_chance_mult
+	if chance <= math.random() then return end
+	pr("proced chance: %s", chance)
+
+	-- add message to "Find_available_messages"
+	table.insert(Find_available_messages, {})
+	Find_available_messages[#Find_available_messages].icon = t[sender_id].icon
+	Find_available_messages[#Find_available_messages].name = t[sender_id].name
+	Find_available_messages[#Find_available_messages].comm = t[sender_id].comm
+	Find_available_messages[#Find_available_messages].reputation = t[sender_id].reputation
+	Find_available_messages[#Find_available_messages].relation = t[sender_id].relation
+	Find_available_messages[#Find_available_messages].price = price
+
+	-- check if npc can lie and if they gonna do so
+	local comm_lie = comm_lie_t[t[sender_id].comm]
+	comm_lie = (get_actor_true_community() == sender_comm) and (comm_lie - 0.1) or comm_lie
+	pr("sender_id: %s || sender_comm: %s || comm_lie: %s || name: %s", sender_id, sender_comm, comm_lie, sender_name)
+	if not comm_lie then
+		comm_lie = 0.3
+	elseif comm_lie < 0 then
+		comm_lie = 0
+	end
+
+	reputation = normalize(reputation, 2000, -2000)
+	local lie_chance = comm_lie * reputation * relation_val / 2
+	pr("lie chance: %s * %s * %s / 2 = %s", comm_lie, reputation, relation_val, lie_chance)
+
+	if npc_can_lie and lie_chance > math.random() then
+		pr("lie smart proc: %s", t[sender_id].lie_smart)
+		Find_available_messages[#Find_available_messages].target_smart = t[sender_id].lie_smart
+		Find_available_messages[#Find_available_messages].target_level = t[sender_id].lie_level
+	else
+		pr("normal smart proc: %s", t[sender_id].target_smart)
+		Find_available_messages[#Find_available_messages].target_smart = t[sender_id].target_smart
+		Find_available_messages[#Find_available_messages].target_level = t[sender_id].target_level
+	end
+
+	-- send message from NPC (msg, header, timeout, showtime, sender, sound, icon_by)
+	local def_clr = strformat("%c[%s,%s,%s,%s]", 255, 190, 190, 190)
+	local inc_clr = strformat("%c[%s,%s,%s,%s]", 255, 0, 140, 180)
+	local msg = inc_clr .. gt("pda_private_msg") .. " " .. def_clr .. gt("pda_find_seen_" .. math.random(1, 5))
+	dynamic_news_helper.send_tip(msg, sender_name, nil, 5, t[sender_id].icon, "news", "npc")
+
+	-- and remove from "potential_senders"
+	potential_senders[sender_id] = nil
+
+	-- update GUI
+	pda_inter_gui.GUI:UpdFindLowerMenu()
+
+end
+
+function send_accept_message(idx)
+	local item = pda_inter_gui.pda_msg_states[2].active_str
+	local lang = ini_sys:r_string_ex("string_table", "language") or ""		-- eng xml has locations, rus does not
+	local def_clr = strformat("%c[%s,%s,%s,%s]", 255, 190, 190, 190)
+	local inc_clr = strformat("%c[%s,%s,%s,%s]", 255, 0, 140, 180)
+	local sender_name = Find_available_messages[idx].name
+	local sender_comm = Find_available_messages[idx].comm
+
+	local str = gt("encyclopedia_mutants_" .. item)
+	local is_stalker = (not pda_inter_gui.pdax_mutant_list[item]) and (not pda_inter_gui.pdax_artefact_list[item])
+	local is_artefact = pda_inter_gui.pdax_artefact_list[item] and string.find(item, "af_")
+	if is_stalker then
+		str = item
+	elseif is_artefact then
+		str = gt("st_" .. item .. "_name")
+	end
+
+	local location_rus = gt("st_" .. Find_available_messages[idx].target_smart .. "_name") .. ". " .. gt(Find_available_messages[idx].target_level)
+	local location_eng = gt("st_" .. Find_available_messages[idx].target_smart .. "_name")
+
+	local msg = inc_clr .. gt("pda_private_msg") .. " " .. def_clr .. gt("pda_find_info_see_" .. math.random(1, 3)) .. " " .. str .. " " .. gt("pda_find_info_at_" .. math.random(1, 2)) .. " " .. (lang == "eng" and location_eng or location_rus)
+
+	dynamic_news_helper.send_tip(msg, sender_name, nil, 10, Find_available_messages[idx].icon, "danger", "npc")
+
+end
+
+function clear_find_tables()
+	Find_available_messages = {}
+	iempty_table(Find_available_messages)
+	empty_table(potential_senders)
+
+end
+
+function get_smart_of_target(target, target_level_id, t)
+	local nearest_smart_name		-- check if crashes
+	local target_level_name
+	local random_smart_id
+	local target_pos = target and target.position
+	local sim = alife()
+	local dist
+
+	for smart_id, smart_level_id in pairs(t) do
+		local smart = alife_object(smart_id)
+		local smart_pos = smart and smart.position
+		if smart_pos and target_pos then
+
+			-- get level names
+			local target_lid = target_level_id
+			local target_lname = sim:level_name(target_lid)
+			local smart_lid = smart_level_id
+
+			-- check distance
+			if (target_lid == smart_lid) and ( (not dist) or (target_pos:distance_to(smart_pos) < dist) ) then
+				dist = target_pos:distance_to(smart_pos)
+				nearest_smart_name = smart:name()
+				target_level_name = target_lname
+		--		pr("Smart check Target name: %s at %s, %s || distance: %s", target:name() or target:section_name(), smart:name(), sim:level_name(smart_lid), dist)
+			end
+
+		end
+	end
+
+	if size_table(t) > 0 then
+		random_smart_id = rnd_key_table(t)
+	end
+
+	return nearest_smart_name, target_level_name, random_smart_id
+end
+
+function get_sender_relations(sender)
+	local sender_comm = sender:community()
+	local ac_true_comm = get_actor_true_community()
+	local relation
+
+	if game_relations.is_factions_friends(sender_comm, ac_true_comm) then
+		relation = "friend"
+	elseif game_relations.is_factions_neutrals(sender_comm, ac_true_comm) then
+		relation = "neutral"
+	elseif game_relations.is_factions_enemies(sender_comm, ac_true_comm) then
+		relation = "enemy"
+	end
+
+	return relation
+end
+
+function rnd_key_table(t)		-- for 1.5.1
+	local check = t and type(t) == "table"
+	if not check then
+		return
+	end
+	local n = {}
+	for k,v in pairs(t) do
+		n[#n+1] = k
+	end
+	return #n > 0 and n[math.random(#n)] or nil
+end
+
+function pr(...)
+	if not pda_inter_gui.Custom_PDA_debug then return end
+	printf(...)
+end
+
+function on_option_change()
+	respond_chance_mult = pda_inter_mcm.get_config("find_respond_mult")
+	npc_see_target_radius = pda_inter_mcm.get_config("find_see_distance")
+	npc_can_lie = pda_inter_mcm.get_config("find_can_lie")
+	base_price_mult = pda_inter_mcm.get_config("find_base_price")
+end
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_update", upd_find_gui)
+	RegisterScriptCallback("on_option_change", on_option_change)
+end

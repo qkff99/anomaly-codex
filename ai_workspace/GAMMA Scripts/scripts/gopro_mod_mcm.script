@@ -1,0 +1,234 @@
+local DEFAULT_TOGGLE_KEY = (DIK_keys and DIK_keys.DIK_G) or 34
+local DEFAULT_UI_TOGGLE_KEY = (DIK_keys and DIK_keys.DIK_H) or 36
+local DEFAULT_FREE_LOOK_KEY = (DIK_keys and DIK_keys.DIK_LMENU) or 56
+local DEFAULT_ENABLED = true
+local DEFAULT_FOLLOW_ACTOR = true
+local DEFAULT_HIDE_HEAD_IN_POV = true
+local DEFAULT_DEATH_CAM = true
+local DEFAULT_DEATH_AUTO_SWITCH = true
+local DEFAULT_DEATH_AUTO_SWITCH_MODE = "auto"
+local DEFAULT_POV_FOV = 100.0
+local DEFAULT_CAMERA_UPDATE_HZ = 60.0
+local DEFAULT_CAMERA_EMA_STRENGTH = 0.80
+local DEFAULT_CAMERA_LAG_COMPENSATION = 1.0
+local DEFAULT_BANNER_LINK = "AMCM_Banner.dds"
+local CUSTOM_BANNER_LINK = "ui\\gopro_mod\\gopro_mod_mcm_banner.dds"
+
+local function get_banner_link()
+	local fs = getFS and getFS()
+	if fs and fs.exist and fs:exist("$game_textures$", CUSTOM_BANNER_LINK) ~= nil then
+		return CUSTOM_BANNER_LINK
+	end
+
+	return DEFAULT_BANNER_LINK
+end
+
+function on_mcm_load()
+	return {
+		id = "gopro_mod",
+		sh = true,
+		text = "ui_mcm_menu_gopro_mod",
+		gr = {
+			{
+				id = "slide_gopro_mod",
+				type = "slide",
+				link = get_banner_link(),
+				text = "ui_mcm_title_gopro_mod",
+				size = {512, 50},
+				spacing = 20,
+			},
+			{
+				id = "desc_gopro_mod",
+				type = "desc",
+				text = "ui_mcm_gopro_mod_overview",
+				clr = {255, 125, 175, 200},
+			},
+			{
+				id = "enabled",
+				type = "check",
+				val = 1,
+				def = DEFAULT_ENABLED,
+				hint = "gopro_mod_enabled",
+			},
+			{
+				id = "toggle_key",
+				type = "key_bind",
+				val = 2,
+				def = DEFAULT_TOGGLE_KEY,
+				hint = "gopro_mod_toggle_key",
+			},
+			{
+				id = "ui_toggle_key",
+				type = "key_bind",
+				val = 2,
+				def = DEFAULT_UI_TOGGLE_KEY,
+				hint = "gopro_mod_ui_toggle_key",
+			},
+			{
+				id = "free_look_key",
+				type = "key_bind",
+				val = 2,
+				def = DEFAULT_FREE_LOOK_KEY,
+				hint = "gopro_mod_free_look_key",
+			},
+			{
+				id = "follow_actor",
+				type = "check",
+				val = 1,
+				def = DEFAULT_FOLLOW_ACTOR,
+				hint = "gopro_mod_follow_actor",
+			},
+			{
+				id = "hide_head_in_pov",
+				type = "check",
+				val = 1,
+				def = DEFAULT_HIDE_HEAD_IN_POV,
+				hint = "gopro_mod_hide_head_in_pov",
+			},
+			{
+				id = "death_cam",
+				type = "check",
+				val = 1,
+				def = DEFAULT_DEATH_CAM,
+				hint = "gopro_mod_death_cam",
+			},
+			{
+				id = "death_auto_switch",
+				type = "check",
+				val = 1,
+				def = DEFAULT_DEATH_AUTO_SWITCH,
+				hint = "gopro_mod_death_auto_switch",
+			},
+			{
+				id = "death_auto_switch_mode",
+				type = "list",
+				val = 0,
+				def = DEFAULT_DEATH_AUTO_SWITCH_MODE,
+				hint = "gopro_mod_death_auto_switch_mode",
+				content = {
+					{"auto", "gopro_mod_death_auto_switch_mode_auto"},
+					{"killer", "gopro_mod_death_auto_switch_mode_killer"},
+				},
+			},
+			{
+				id = "pov_fov",
+				type = "track",
+				val = 2,
+				def = DEFAULT_POV_FOV,
+				min = 5.0,
+				max = 180.0,
+				step = 1.0,
+				prec = 0,
+				hint = "gopro_mod_pov_fov",
+			},
+			{
+				id = "camera_update_hz",
+				type = "track",
+				val = 2,
+				def = DEFAULT_CAMERA_UPDATE_HZ,
+				min = 1.0,
+				max = 60.0,
+				step = 1.0,
+				prec = 0,
+				hint = "gopro_mod_camera_update_hz",
+			},
+			{
+				id = "camera_ema_strength",
+				type = "track",
+				val = 2,
+				def = DEFAULT_CAMERA_EMA_STRENGTH,
+				min = 0.0,
+				max = 1.0,
+				step = 0.01,
+				prec = 2,
+				hint = "gopro_mod_camera_ema_strength",
+			},
+			{
+				id = "camera_lag_compensation",
+				type = "track",
+				val = 2,
+				def = DEFAULT_CAMERA_LAG_COMPENSATION,
+				min = 0.0,
+				max = 2.0,
+				step = 0.05,
+				prec = 2,
+				hint = "gopro_mod_camera_lag_compensation",
+			},
+			{
+				id = "camera_bone",
+				type = "list",
+				val = 0,
+				def = "bip01_head",
+				hint = "gopro_mod_camera_bone",
+				content = {
+					{"bip01_head", "gopro_mod_bone_bip01_head"},
+					{"eye_left", "gopro_mod_bone_eye_left"},
+					{"eye_right", "gopro_mod_bone_eye_right"},
+					{"bip01_neck", "gopro_mod_bone_bip01_neck"},
+					{"bip01_spine2", "gopro_mod_bone_bip01_spine2"},
+					{"bip01_spine1", "gopro_mod_bone_bip01_spine1"},
+					{"bip01_spine", "gopro_mod_bone_bip01_spine"},
+					{"bip01_pelvis", "gopro_mod_bone_bip01_pelvis"},
+					{"pelvis", "gopro_mod_bone_pelvis"},
+					{"head", "gopro_mod_bone_head"},
+					{"head_boss", "gopro_mod_bone_head_boss"},
+				},
+			},
+			{
+				id = "roll_offset_deg",
+				type = "track",
+				val = 2,
+				def = 90.0,
+				min = -180.0,
+				max = 180.0,
+				step = 1.0,
+				prec = 0,
+				hint = "gopro_mod_roll_offset_deg",
+			},
+			{
+				id = "viewport_near",
+				type = "track",
+				val = 2,
+				def = 0.03,
+				min = 0.005,
+				max = 0.2,
+				step = 0.005,
+				prec = 3,
+				hint = "gopro_mod_viewport_near",
+			},
+			{
+				id = "forward_offset",
+				type = "track",
+				val = 2,
+				def = 0.15,
+				min = -0.15,
+				max = 0.15,
+				step = 0.005,
+				prec = 3,
+				hint = "gopro_mod_forward_offset",
+			},
+			{
+				id = "up_offset",
+				type = "track",
+				val = 2,
+				def = 0.05,
+				min = -0.15,
+				max = 0.15,
+				step = 0.005,
+				prec = 3,
+				hint = "gopro_mod_up_offset",
+			},
+			{
+				id = "right_offset",
+				type = "track",
+				val = 2,
+				def = 0.0,
+				min = -0.15,
+				max = 0.15,
+				step = 0.005,
+				prec = 3,
+				hint = "gopro_mod_right_offset",
+			},
+		},
+	}
+end

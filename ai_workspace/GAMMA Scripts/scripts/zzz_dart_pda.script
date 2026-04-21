@@ -1,0 +1,90 @@
+-- backup copies of font getters
+local GetFont16 = _G.GetFontLetterica16Russian
+local GetFont18 = _G.GetFontLetterica18Russian
+local GetFont19 = _G.GetFontGraffiti19Russian
+local GetFont22 = _G.GetFontGraffiti22Russian
+local GetFont25 = _G.GetFontLetterica25
+local GetFont32 = _G.GetFontGraffiti32Russian
+local GetFont50 = _G.GetFontGraffiti50Russian
+
+-- maps scaling of fonts
+local FONT_LIST = {
+  GetFont16,
+  GetFont18,
+  GetFont19,
+  GetFont22,
+  GetFont25,
+  GetFont32,
+  GetFont50,
+}
+
+
+-- get the font to upscsale to according to config
+function getUpscaled(font)
+  local textScale   = ui_mcm.get("dart/dart_pda/textScale")
+  local textCeiling = ui_mcm.get("dart/dart_pda/textCeiling")
+
+  for i, v in ipairs(FONT_LIST) do
+    if font == v then
+      return FONT_LIST[math.min(i + textScale, textCeiling)]
+    end
+  end
+  return font
+end
+
+
+-- upscale fonts, run passed function, then restore fonts
+function wrapWithUpscaledFonts(fn)
+   _G.GetFontLetterica16Russian = getUpscaled(GetFont16)
+   _G.GetFontLetterica18Russian = getUpscaled(GetFont18)
+   _G.GetFontGraffiti19Russian  = getUpscaled(GetFont19)
+   _G.GetFontGraffiti22Russian  = getUpscaled(GetFont22)
+   _G.GetFontLetterica25        = getUpscaled(GetFont25)
+   _G.GetFontGraffiti32Russian  = getUpscaled(GetFont32)
+  fn()
+  _G.GetFontLetterica16Russian = GetFont16
+  _G.GetFontLetterica18Russian = GetFont18
+  _G.GetFontGraffiti19Russian  = GetFont19
+  _G.GetFontGraffiti22Russian  = GetFont22
+  _G.GetFontLetterica25        = GetFont25
+  _G.GetFontGraffiti32Russian  = GetFont32
+end
+
+
+-- upscaling for contact tab
+local ContactRow = ui_pda_contacts_tab.ui_contact_row
+class "ContactRowCustom" (ContactRow)
+function ContactRowCustom:__init(parent, row, xml)
+  wrapWithUpscaledFonts(function()
+    super(parent, row, xml)
+  end)
+end
+ui_pda_contacts_tab.ui_contact_row = ContactRowCustom
+
+
+-- upscaling for relations tab
+local CompanionRow = ui_pda_relations_tab.ui_companion_row
+class "CompanionRowCustom" (CompanionRow)
+function CompanionRowCustom:__init(owner,row,xml)
+  wrapWithUpscaledFonts(function()
+    super(owner,row,xml)
+  end)
+end
+ui_pda_relations_tab.ui_companion_row = CompanionRowCustom
+
+
+-- upscaling for encyclopedia tab
+local EncyclopediaInitCategories = ui_pda_encyclopedia_tab.pda_encyclopedia_tab.InitCategories
+function ui_pda_encyclopedia_tab.pda_encyclopedia_tab:InitCategories()
+  wrapWithUpscaledFonts(function()
+    EncyclopediaInitCategories(self)
+  end)
+end
+
+
+local EncyclopediaInitArticles = ui_pda_encyclopedia_tab.pda_encyclopedia_tab.InitArticles
+function ui_pda_encyclopedia_tab.pda_encyclopedia_tab:InitArticles(section, c)
+  wrapWithUpscaledFonts(function()
+    EncyclopediaInitArticles(self, section, c)
+  end)
+end

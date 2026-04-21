@@ -1,0 +1,49 @@
+local defaults = {
+    ["keybind"] = bind_to_dik(key_bindings.kCAM_ZOOM_IN),
+    ["modifier"] = 0,
+    ["mode"] = 2,
+    ["strict_helmets"] = false,
+    ["icon_state"] = 0  --liz
+}
+
+--liz
+--game.translate_string("liz_ha_text_cant_consume_item")
+local table_icon_state = {
+    { 0, "ui_mcm_liz_qht_icon_state_none" },
+    { 1, "ui_mcm_liz_qht_icon_state_enabled" },
+    { 2, "ui_mcm_liz_qht_icon_state_inverted" }
+}
+
+function on_game_start()
+    RegisterScriptCallback("on_option_change", on_option_change)
+end
+
+function on_mcm_load()
+    local options = {
+        id = "liz_qht",
+        sh = true,
+        gr = {
+            { id = "liz_qht",  type = "slide",             link = "ui_options_slider_player",  text = "ui_mcm_menu_liz_qht", size = { 512, 50 },                        spacing = 20 },
+            { id = "keybind",  type = "key_bind",          val = 2,                            def = defaults["keybind"] },
+            { id = "modifier", type = ui_mcm.kb_mod_radio, val = 2,                            def = 0,                      hint = "mcm_kb_modifier",                  content = { { 0, "mcm_kb_mod_none" }, { 1, "mcm_kb_mod_shift" }, { 3, "mcm_kb_mod_alt" } } },
+            { id = "mode",     type = ui_mcm.kb_mod_radio, val = 2,                            def = 2,                      hint = "mcm_kb_mode",                      content = { { 0, "mcm_kb_mode_press" }, { 1, "mcm_kb_mode_dtap" }, { 2, "mcm_kb_mode_hold" } } },
+            { id = "desc_mcm", type = "desc",              text = "ui_mcm_liz_qht_update_mcm", clr = { 255, 175, 0, 0 },     precondition = { function() return not (ui_mcm and ui_mcm.key_hold) end } }, --warning message that will only show with pre 1.6.0 versions of mcm explaining why there seems to be no settings
+            { id = "divider", type = "line"},
+            { id = "strict_helmets", type = "check", val = 1, def = false},
+            { id = "divider", type = "line", precondition = { function() return actor_status_gasmask end } }, --liz
+            { id = "icon_state", type = "list", val = 2, def = 0, content = table_icon_state, no_str = true, precondition = { function() return actor_status_gasmask end } }    --liz
+        }
+    }
+
+    return options
+end
+
+
+function on_option_change()
+    defaults["keybind"] = bind_to_dik(key_bindings.kCAM_ZOOM_IN)
+end
+
+
+function get_config(key)
+    if ui_mcm and ui_mcm.key_hold then return ui_mcm.get("liz_qht/" .. key) else return defaults[key] end
+end

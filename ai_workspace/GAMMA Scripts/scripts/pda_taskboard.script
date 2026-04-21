@@ -1,0 +1,329 @@
+local prepared_tasks_data = {}
+local tasks_details = {}
+local tasks_details_capture_next = false
+local currently_processed_npc_id = nil
+local excluded_npc_sections = { "bar_duty_security_squad_leader" }
+local actually_is_sim = {
+	"bar_visitors_garik_stalker_guard",             	-- Garik
+	"bar_visitors_zhorik_stalker_guard2",           	-- Zhorik
+	"bar_arena_guard",                              	-- Liolik
+	"bar_dolg_general_zoneguard_stalker",           	-- "Get out of here stalker" guy
+	"mil_smart_terrain_7_7_freedom_bodyguard_stalker", 	-- Lukash's bodyguards
+	"mil_smart_terrain_7_7_freedom_bodyguard2_stalker" 	-- Lukash's bodyguards
+}
+normalizer = {
+	setup_supplies_fetch_task_lostzone_patch = "setup_fetch_task",
+	setup_generic_fetch_task = "setup_fetch_task",
+	drx_sl_create_quest_stash = "setup_bounty_task", 	-- The actor message in base vanilla files is sent to the wrong queue here
+	setup_dominance_task = "setup_assault_task",  		-- Same as above - this actually scraps the whole Dominance category and puts these tasks as assault tasks
+	multifetch_on_job_descr = "setup_fetch_task"  		-- Unnecessary thing, but there's only one task in this category
+}
+local excluded_tasks = {
+	"jup_b19_freedom_yar_task_1", 	-- Yar's CoC task - bugged
+	"merc_pri_a18_mech_mlr_task_1", -- Outskirts merc mechanic task for tools - bugged
+	"agr_u_bandit_boss_task_1"   	-- Reefer's task (Agro underground) - it doesn't use the standard setup functions and breaks the board logic
+}
+
+-- default config
+function load_defaults()
+	local t = {}
+	local op = pda_taskboard_mcm.op
+	for i, v in ipairs(op.gr) do
+		if v.def ~= nil then
+			t[v.id] = v.def
+		end
+	end
+	return t
+end
+function load_settings()
+	config = load_defaults()
+	if ui_mcm then
+		for k, v in pairs(config) do
+			config[k] = ui_mcm.get("pda_taskboard/" .. k)
+		end
+	end
+end
+config = load_defaults()
+
+--- -------------------------------------------
+--- main
+--- -------------------------------------------
+
+function refresh_tasks()
+	--clear info
+	tasks_details = {}
+	prepared_tasks_data = {}
+
+	-- gather info
+	local npc_list = get_nearby_npcs()
+	trigger_generate_available_tasks(npc_list)
+	prepared_tasks_data = get_prepared_task_data(npc_list)
+
+	-- check task duplicates and remove them
+	clear_task_that_already_eccepted(prepared_tasks_data)
+	prepared_tasks_data = clear_duplicate_task_id_reversed(prepared_tasks_data)
+
+	local sorted_keys = get_sorted_keys(prepared_tasks_data)
+
+	-- prepare tasks (oh boy, here we go)
+	z_taskboard_overrides.StartOverride()
+	for task_effect_id, task_effect in ipairs(sorted_keys) do
+		for task_id, task in ipairs(prepared_tasks_data[task_effect]) do
+			prepare_task(task)
+			task.details_id = z_taskboard_overrides.GetID()
+		end
+	end
+	z_taskboard_overrides.StopOverride()
+
+end
+
+function accept_task(task_id, npc_id)
+	currently_processed_npc_id = npc_id
+	task_manager.get_task_manager():give_task(task_id, npc_id)
+	currently_processed_npc_id = nil
+end
+
+--- -------------------------------------------
+--- getters and setters
+--- -------------------------------------------
+
+function get_details(task_info)
+	if task_info.details_id then
+		local details = tasks_details[task_info.details_id]
+		return details
+	elseif not task_info.has_details then
+		if igi_generic_task then
+			if igi_description and igi_description.get_task_text_values then
+				local cache = igi_generic_task.TASK_SETUP[task_info.task_id]
+				if cache then
+					local title, text, icon = igi_description.get_task_text_values(cache)
+					return {
+						task_title = title,
+						task_details = text,
+						task_icon = icon
+					}
+				end
+			end
+		end
+	end
+end
+
+function get_data()
+	return prepared_tasks_data
+end
+
+function get_currently_processed_npc_id()
+	return currently_processed_npc_id
+end
+
+function get_tasks_details_capture_next()
+	return tasks_details_capture_next
+end
+
+function set_tasks_details_capture_next(val)
+	tasks_details_capture_next = val
+end
+
+function add_tasks_details(details)
+	tasks_details_capture_next = false
+	table.insert(tasks_details, details)
+end
+
+--- -------------------------------------------
+--- original Taskboard functions
+--- -------------------------------------------
+
+function get_nearby_npcs()
+	local radius = config.scanning_range
+	local npc_list = {}
+	level.iterate_nearest(db.actor:position(), radius, function(obj)
+		local is_alive_friendly_stalker = IsStalker(obj) and obj:alive() and obj:relation(db.actor) ~= game_object.enemy
+		local is_excluded_npc = has_value(excluded_npc_sections, obj:section())
+		local is_companion = obj:has_info("npcx_is_companion")
+
+		if
+			is_alive_friendly_stalker
+			and not is_excluded_npc
+			and (is_companion and config.companions_give_tasks or not is_companion)
+		then
+			table.insert(npc_list, obj)
+		end
+	end)
+
+	-- Special case for Sidorovich and Forester.
+	local function add_by_sid(sid)
+		local id = story_objects.object_id_by_story_id[sid]
+		if (id) then
+			local npc = db.storage[id] and db.storage[id].object
+			if (npc and db.actor:position():distance_to(npc:position()) <= radius) then
+				table.insert(npc_list, npc)
+			end
+		end
+	end
+	add_by_sid("esc_m_trader")
+	add_by_sid("red_tech_forester")
+
+	return npc_list
+end
+
+function trigger_generate_available_tasks(npc_list)
+	for _, npc in pairs(npc_list) do
+		-- Sim npcs are random roaming stalkers. Non sims are traders, mechanics, etc.
+		local is_sim = string.find(npc:section(), "sim_")
+		currently_processed_npc_id = npc:id()
+		if has_value(actually_is_sim, npc:section()) then
+			axr_task_manager.generate_available_tasks(npc, not is_sim)
+		else
+			axr_task_manager.generate_available_tasks(npc, is_sim)
+		end
+		currently_processed_npc_id = nil
+	end
+end
+
+function get_task_effect(task_id) -- (task_id: string) => task_effect: string, has_details: boolean
+	-- Support for mods that add more tasks and dispatch effects of their own and can't be categorized using the base Anomaly task types
+	local task_category_override = task_manager.task_ini:r_string_ex(task_id, "task_category_override")
+	if task_category_override then return task_category_override end
+
+
+	local raw_task_effect = task_manager.task_ini:r_string_ex(task_id, "on_job_descr") or
+	task_manager.task_ini:r_string_ex(task_id, "fetch_func")
+	local task_effect = string.gmatch(raw_task_effect or "", "=(.*)%(")() or "rest"
+	task_effect = normalize_task_effect(task_effect)
+
+	-- If there's no category string defined for a given effect/category override, default to `rest` to avoid ugly strings
+	-- Also makes it easy for modders to just dump all their tasks into `Other tasks` category by simply not defining category override in ini
+	local has_invalid_category = string.find(game.translate_string('st_pda_caption_' .. task_effect), '_')
+	if has_invalid_category then
+		return "rest", not not raw_task_effect
+	else
+		return task_effect, not not raw_task_effect
+	end
+end
+
+
+function get_prepared_task_data(npc_list)
+	-- Split available tasks into categories based on their init effect
+	local result = {}
+	for _, stalker in pairs(npc_list) do
+		local stalker_task_list = axr_task_manager.available_tasks[stalker:id()] or {}
+		for _, task_id in pairs(stalker_task_list) do
+			local task_effect, has_details = get_task_effect(task_id)
+			if not has_value(excluded_tasks, task_id) then
+				if not result[task_effect] then
+					result[task_effect] = {}
+				end
+				table.insert(result[task_effect], {
+					npc_id = stalker:id(),
+					task_id = task_id,
+					has_details = has_details
+				})
+			end
+		end
+	end
+	return result
+end
+
+function prepare_task(task_data)
+	currently_processed_npc_id = task_data.npc_id
+	local on_job_descr = task_data.task_id and task_manager.task_ini:r_string_ex(task_data.task_id, "on_job_descr")
+	if (on_job_descr) then
+		local cond = xr_logic.parse_condlist(db.actor, "task_manager", "condlist", on_job_descr)
+		if (cond) then
+			xr_logic.pick_section_from_condlist(db.actor, db.actor, cond)
+		end
+	end
+
+	local fetch = task_data.task_id and task_manager.task_ini:r_string_ex(task_data.task_id, "fetch_descr")
+	if (fetch) then
+		axr_task_manager.trigger_fetch_func(task_data.task_id)
+	end
+	task_data.task_description = get_long_task_description(task_data)
+
+	currently_processed_npc_id = nil
+end
+
+function get_long_task_description(task_data)
+	-- Mechanic quests are using standard "job_descr" in the dialog manager instead of the fetch one, even though they're
+	-- technically a fetch task. This requires a small exception
+	local is_mechanic_task = string.find(task_data.task_id, "mechanic_task")
+	local base_desc = game.translate_string(
+		(not is_mechanic_task and axr_task_manager.get_fetch_task_description(task_data.task_id)) or
+		axr_task_manager.get_task_job_description(task_data.task_id)
+	)
+	return strformat(base_desc, dialogs._FETCH_TEXT or "")
+end
+
+--- -------------------------------------------
+--- utils
+--- -------------------------------------------
+
+function clear_duplicate_task_id_reversed(data)
+	local unic_id = {}
+	local sorted_keys = get_sorted_keys(data)
+
+	--collect unic tasks (only last ones)
+	for key_index, effect_name in ipairs(sorted_keys) do
+		for index, task in ipairs(data[effect_name]) do
+			local item = {}
+			item.effect_name = effect_name
+			item.index = index
+			unic_id[task.task_id] = item
+		end
+	end
+
+	--recreate table
+	local deduplicated_table = {}
+	for i, v in pairs(unic_id) do
+		if not deduplicated_table[v.effect_name] then
+			deduplicated_table[v.effect_name] = {}
+		end
+		table.insert(deduplicated_table[v.effect_name], data[v.effect_name][v.index])
+	end
+	return deduplicated_table
+end
+
+function clear_task_that_already_eccepted(data)
+	local task_to_remove = {}
+	local tm = task_manager.get_task_manager()
+	for name, table in pairs(data) do
+		for index, task in ipairs(table) do
+			if tm.task_info[task.task_id] then
+				imgui_liz_log.Log("[WARNING] Task %s already accepted!", task.task_id)
+				local item = {}
+				item.effect_name = name
+				item.index = index
+				table.insert(task_to_remove, item)
+			end
+		end
+	end
+	for index, item in ipairs(task_to_remove) do
+		imgui_liz_log.Log("Removing task %s at pos %s ...", item.effect_name, item.index)
+		table.remove(data[item.effect_name], item.index)
+	end
+end
+
+function has_value(tab, val)
+	for index, value in ipairs(tab) do
+		if value == val then
+			return true
+		end
+	end
+
+	return false
+end
+
+function get_sorted_keys(input_table)
+	local tab = input_table or prepared_tasks_data
+	local result = {}
+	for key, _ in pairs(tab) do
+		table.insert(result, key)
+	end
+	table.sort(result)
+	return result
+end
+
+function normalize_task_effect(task_effect)
+	return normalizer[task_effect] or task_effect
+end
+

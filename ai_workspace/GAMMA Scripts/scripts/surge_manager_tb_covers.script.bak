@@ -1,0 +1,104 @@
+--Protected function call to prevent crashes to desktop
+--Prints error in console if occured, otherwise proceed normally
+--Use for test only, slower than usual
+local try = try or function(func, ...)
+	local status, error_or_result = pcall(func, ...)
+	if not status then
+		printf(error_or_result)
+		return false, status, error_or_result
+	else
+		return error_or_result, status
+	end
+end
+
+local debug_enabled = true
+local function printf(str, ...)
+	if debug_enabled then
+		_G.printf(str, ...)
+	end
+end
+
+function get_se_obj_level(se_obj)
+	return alife():level_name(game_graph():vertex(se_obj.m_game_vertex_id):level_id())
+end
+
+function is_on_actor_level(se_obj)
+	local level_name = level.name()
+	local se_obj_level = get_se_obj_level(se_obj)
+	return se_obj_level == level_name
+end
+
+tb = {}
+tb_covers = {}
+tb_cover_radius_sqr = 64
+
+function build_surge_covers()
+	local surge_manager = surge_manager.get_surge_manager()
+	if not surge_manager then return true end
+
+	local curr_level = level.name()
+
+	-- TB Zones
+	empty_table(tb)
+	for i = 1, 65534 do
+		local se_obj = alife_object(i)
+		if se_obj then
+			local sec = se_obj:section_name()
+			if sec == "tb_tiny_cube" and is_on_actor_level(se_obj) then
+				-- utils_obj.switch_online(i)
+				printf("adding TB based zones surge cover %s, %s", se_obj:name(), se_obj.id)
+				tb[#tb + 1] = se_obj.id
+			end
+		end
+	end
+
+	if is_not_empty(tb) then
+		tb_covers = kd_tree.buildTreeSeObjectIds(tb)
+		if surge_rush_scheme_common then
+			surge_rush_scheme_common.tb_covers = tb_covers
+			surge_rush_scheme_common.build_surge_covers()
+		end
+	end
+end
+
+if tb_coordinate_based_safe_zones then
+	tb_coordinate_based_safe_zones.alife_create_item = function(section, obj, t)
+		local pos = obj[1]
+		pos = vector():set(pos.x, pos.y, pos.z)
+		local lvid = level.vertex_id(pos)
+		if (lvid < 4294967295 and lvid >= 0) then
+			pos = level.vertex_position(lvid)
+			printf("adjusting tb zone position")
+			printf("old: %s %s %s, %s", obj[1].x, obj[1].y, obj[1].z, obj[2])
+			printf("new: %s %s %s, %s", pos.x, pos.y, pos.z, lvid)
+			obj[1] = pos
+			obj[2] = lvid
+		end
+		return _G.alife_create_item(section, obj, t)
+	end
+
+	local add_tiny_cubes_to_world = tb_coordinate_based_safe_zones.add_tiny_cubes_to_world
+	tb_coordinate_based_safe_zones.add_tiny_cubes_to_world = function()
+		printf("adding tb zones")
+		add_tiny_cubes_to_world()
+		CreateTimeEvent("surge_rush", "surge_rush_tb_zones", 0.25, function()
+			build_surge_covers()
+			return true
+		end)
+	end
+
+	local in_cover = surge_manager.CSurgeManager.pos_in_cover
+	surge_manager.CSurgeManager.pos_in_cover = function(self, pos, by_name)
+		local res = in_cover(self, pos, by_name)
+		if res then return res end
+
+		if is_empty(tb_covers) or not tb_covers.nearest then return false end
+
+		local nearest_cover = tb_covers:nearest(pos)
+		if nearest_cover and nearest_cover[1] and nearest_cover[1][2] and nearest_cover[1][2] < tb_cover_radius_sqr then
+			return true
+		end
+
+		return false
+	end
+end

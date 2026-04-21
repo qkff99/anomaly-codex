@@ -1,0 +1,27 @@
+
+[soulslike_rescuers_radio_frequency_note]:identity_immunities
+$spawn 				                     = "devices\roubles"
+$prefetch 			                     = 16
+kind		    	                     = i_letter
+class				                     = II_ATTCH
+cform				                     = skeleton
+visual				                     = dynamics\equipments\quest\notes_letter_1.ogf
+description			                     = st_soulslike_rescuers_radio_frequency_note_desc
+inv_name			                     = st_soulslike_rescuers_radio_frequency_note_name
+inv_name_short			                 = st_soulslike_rescuers_radio_frequency_note_name
+inv_grid_width		                     = 1
+inv_grid_height		                     = 1
+inv_grid_x			                     = 6
+inv_grid_y			                     = 14
+cost				                     = 0
+inv_weight			                     = 0.01
+attach_angle_offset		                 = -0.287979, 1.560923, 1.544060
+attach_position_offset		             = 0.096910, -0.013594, 0.107925
+attach_bone_name		                 = bip01_r_hand
+auto_attach				                 = false
+repair_part_bonus	 	                 = 0.01
+letter									 = true
+snd_on_take								 = paper
+use1_functor         					 = soulslike_note.menu_read
+use1_action_functor  					 = soulslike_note.func_radio_freq
+use1_allow_db         					 = false

@@ -1,0 +1,642 @@
+______________________________________________________________________________________________________________________________________________________________________________________________   
+|                                                                                                                                                                                             |
+|                                           R.A.K Weapon Pack Experimental Gravigun                                                                                                           |
+|_____________________________________________________________________________________________________________________________________________________________________________________________|
+
+[wpn_gravigun]:identity_immunities,default_weapon_params
+
+        GroupControlSection		= spawn_group
+        ;discovery_dependency	= 
+        $spawn              	= "weapons\wpn_gravigun"	
+        $npc					= on				
+        $prefetch 				= 8
+        scheduled				= off               
+        cform               	= skeleton
+		parent_section  		= wpn_gravigun
+		
+        class               	= WP_AK74			
+		slot 					= 2									
+		animation_slot			= 3									
+		ef_main_weapon_type		= 2
+		ef_weapon_type			= 6
+		ef_detector_type        = 1
+		hand_dependence			= 1									
+		single_handed			= 0
+		
+		default_to_ruck         = false
+		sprint_allowed       	= true
+		
+;___________________________ Scripts ___________________________________
+
+		script_binding  = bind_gr_gun.init
+		;bind_ggun.init
+		
+	    use1_functor                					       = item_device.bind
+
+;___________________________ Icon ___________________________________
+
+        icons_texture      = ui\gravigun_icon
+		
+        inv_grid_width     = 6
+        inv_grid_height    = 2
+        inv_grid_x         = 0
+        inv_grid_y         = 0
+		
+		inv_name				= st_GraviGun_name
+		inv_name_short			= st_GraviGun_name
+		description				= st_GraviGun_desc
+
+;____________________________________________________________________
+
+        kind                    = i_device
+		inv_weight				= 2.3
+		cost					= 35000				
+		repair_type             = rifle
+		weapon_class			= assault_rifle
+
+		hud                     = wpn_gravigun_hud
+		visual                  	= dynamics\weapons\wpn_gravigun\wpn_gravigun.ogf
+		position         	        = -0.026, -0.215, -0.03			
+		orientation      	        = 0,0,0	
+        fire_point             		=  0.0, 0.27109, 0.87317		 
+        ;fire_point2            		=  0.0, 0.262, 0.547	
+
+        strap_position         		= -0.18,-0.45,0.2			 
+        strap_orientation      		= -10,-5,10					
+        strap_bone0					= bip01_spine2
+        strap_bone1					= bip01_spine1
+
+        ph_mass						= 5
+
+        ;flame_particles				= weapons\generic_weapon03	; particles for shooting effects
+        ;smoke_particles				= weapons\generic_shoot_00
+        grenade_flame_particles		= weapons\generic_weapon01	
+
+        shell_point		 			= 0.00, 0.262, 0.189		
+        ;shell_particles	 		= weapons\generic_shells
+
+        light_color					= 0.0,0.0,0.0				; params for light during the fire
+        light_range					= 0.0							; radius
+        light_var_color				= 0.0						
+        light_var_range				= 0.0
+        light_time 					= 0.0
+
+        ammo_limit				= 250				
+        ammo_elapsed			= 250					
+        ammo_mag_size			= 1				
+        ;fire_modes				= 1
+        ammo_class				= ammo_gravi
+
+;___________________________ Upgrades ___________________________________
+        
+        upgrades                    = 
+        ;installed_upgrades          =
+        upgrade_scheme              = upgrade_scheme_ak74
+		
+		upgr_icon_path              = ui\gravigun_icon
+        upgr_icon_x                 = 300
+        upgr_icon_y                 = 0
+        upgr_icon_width             = 300
+        upgr_icon_height            = 150		
+
+;___________________________________ Scope __________________________________________ 
+
+        scope_status				= 0	
+        scope_zoom_factor 			= 0	
+
+;____________________________________________________________________________________
+
+        silencer_hit_power       		= 0.64
+        silencer_hit_impulse	 		= 6
+        silencer_fire_distance   		= 250
+        silencer_bullet_speed	 		= 600
+        silencer_status				= 0	
+						
+        grenade_launcher_status		= 0	
+		
+
+        hit_power           	    = 100,100,100,100		
+        hit_type 					= fire_wound 	
+        bullet_speed				= 1000		
+        hit_power_critical = 100
+        fire_distance            	= 15		
+        hit_impulse		 			= 5000			
+        rpm                    		= 120
+		
+        use_aim_bullet				= true	
+        time_to_aim				= 1.0	
+        zoom_enabled				= true	
+
+        gg_scan_radius              = 20
+        gg_punt_radius              = 4
+        gg_capture_cone_hold        = 0.999
+        gg_capture_cone_punt        = 0.99
+        gg_max_mass                 = 1000
+        gg_hold_distance            = 1.6
+	        gg_hold_right_offset        = 0
+	        gg_hold_up_offset           = 0
+        gg_pull_gain                = 0.7
+        gg_velocity_damping         = 1.0
+        gg_vertical_bias            = 1.15
+        gg_scan_interval_ms         = 100
+        gg_release_grace_ms         = 250
+        gg_stuck_timeout_ticks      = 3
+
+        fire_dispersion_condition_factor 		=	5	    	 
+        misfire_probability 		=	0.005		
+        misfire_condition_k		=	0.05		
+        condition_shot_dec 		=	0.0001		
+
+        misfire_start_condition		= 0.1
+        misfire_end_condition		= 0.1
+        misfire_start_prob	     	= 0.0055
+        misfire_end_prob	     	= 0.055			
+
+        min_radius          	= 250				
+        max_radius          	= 250				
+        holder_range_modifier	= 2.0		       
+        holder_fov_modifier		= 1.0 
+
+        cam_relax_speed         		=	5.477		
+        cam_dispersion          		=	0.062		
+        cam_dispersion_inc		=	0.012		
+        cam_dispertion_frac		=	0.050		
+        cam_max_angle		=	0.193	    	
+        cam_max_angle_horz		=	0.193		
+        cam_step_angle_horz		=	0.062			
+
+        kill_msg_x			= 0
+        kill_msg_y			= 123
+        kill_msg_width		= 69
+        kill_msg_height		= 30
+
+        fire_dispersion_base			= 0.009		
+        control_inertion_factor			= 2.74f
+        condition_queue_shot_dec	= 0.0001
+									
+        PDM_disp_base 		=	0.58		
+        PDM_disp_vel_factor 		=	1.0		
+        PDM_disp_accel_factor 		=	1.0		
+        PDM_disp_crouch	 	=	1.0		
+        PDM_disp_crouch_no_acc 		=	1.0		
+
+        use_first_bullet = true
+        first_bullet_dispertion = 0.0
+		first_bullet_timeout = 0
+		first_bullet_velocity_limit = false
+		
+		;___________________________ Grenade launcher ___________________________________
+        
+        grenade_class               = ammo_vog-25, ammo_vog-25_bad, ammo_vog-25_verybad
+        grenade_launcher_name       = wpn_addon_grenade_launcher
+        grenade_launcher_status     = 0
+		
+        grenade_launcher_x          = 189
+        grenade_launcher_y          = 15
+        launch_speed                = 0
+;_________________________________________________ Sounds ______________________________________________________
+
+        snd_draw					= weapons\generic_draw
+        snd_holster					= weapons\generic_holster
+        snd_shoot					= weapons\gen_empty, 0.0, 0.0;weapons\pkm_shot.ogg
+        snd_empty					= weapons\gen_empty, 0.0, 0.0 ;weapons\gen_empty, 0.5
+        snd_reload					= weapons\gen_empty, 0.0, 0.0 ;weapons\pkm_reload.ogg
+
+
+        snd_switch					= weapons\gen_empty, 0.0, 0.0 ;weapons\groza_switch, 1.0, 0.5
+
+;_________________________________________________ Activation Artefacts ______________________________________________________
+
+af_radius		                                       = 30
+af_vis_radius		                                   = 6
+tier                                                   = 5
+ui_p			                                       = -0.02904,0.01,0.0364
+ui_r			                                       = 0,90,0
+----------------(Rank 0 \ Junk)
+af_class_1		                                       = af_dragon_eye
+af_sound_1_		                                       = detectors\art_beep1
+af_freq_1		                                       = 0.05, 2
+
+af_class_2		                                       = af_fire_loop
+af_sound_2_		                                       = detectors\art_beep1
+af_freq_2		                                       = 0.05, 2
+
+af_class_3		                                       = af_ball
+af_sound_3_		                                       = detectors\art_beep1
+af_freq_3		                                       = 0.05, 2
+
+af_class_4		                                       = af_fonar
+af_sound_4_		                                       = detectors\art_beep1
+af_freq_4		                                       = 0.05, 2
+
+af_class_5		                                       = af_tapeworm
+af_sound_5_		                                       = detectors\art_beep1
+af_freq_5		                                       = 0.05, 2
+
+af_class_6		                                       = af_moh
+af_sound_6_		                                       = detectors\art_beep1
+af_freq_6		                                       = 0.05, 2
+
+af_class_7		                                       = af_serofim
+af_sound_7_		                                       = detectors\art_beep1
+af_freq_7		                                       = 0.05, 2
+
+af_class_8		                                       = af_elektron
+af_sound_8_		                                       = detectors\art_beep1
+af_freq_8		                                       = 0.05, 2
+
+af_class_9		                                       = af_kogot
+af_sound_9_		                                       = detectors\art_beep1
+af_freq_9		                                       = 0.05, 2
+
+af_class_10		                                       = af_generator
+af_sound_10_		                                   = detectors\art_beep1
+af_freq_10		                                       = 0.05, 2
+
+af_class_11		                                       = af_black_angel
+af_sound_11_		                                   = detectors\art_beep1
+af_freq_11		                                       = 0.05, 2
+
+af_class_19		                                       = af_grapes
+af_sound_19_		                                   = detectors\art_beep1
+af_freq_19		                                       = 0.05, 2
+
+af_class_20		                                       = af_skull_miser
+af_sound_20_		                                   = detectors\art_beep1
+af_freq_20		                                       = 0.05, 2
+
+af_class_21		                                       = af_star_phantom
+af_sound_21_		                                   = detectors\art_beep1
+af_freq_21		                                       = 0.05, 2
+
+af_class_22		                                       = af_medallion
+af_sound_22_		                                   = detectors\art_beep1
+af_freq_22		                                       = 0.05, 2
+
+af_class_23		                                       = af_peas
+af_sound_23_		                                   = detectors\art_beep1
+af_freq_23		                                       = 0.05, 2
+
+af_class_24		                                       = af_kislushka
+af_sound_24_		                                   = detectors\art_beep1
+af_freq_24		                                       = 0.05, 2
+
+af_class_25		                                       = af_zhelch
+af_sound_25_		                                   = detectors\art_beep1
+af_freq_25		                                       = 0.05, 2
+
+af_class_26		                                       = af_sandstone
+af_sound_26_		                                   = detectors\art_beep1
+af_freq_26		                                       = 0.05, 2
+
+af_class_12		                                       = af_fountain
+af_sound_12_		                                   = detectors\art_beep1
+af_freq_12		                                       = 0.05, 2
+
+af_class_13		                                       = af_spaika
+af_sound_13_		                                   = detectors\art_beep1
+af_freq_13		                                       = 0.05, 2
+
+af_class_14		                                       = af_signet
+af_sound_14_		                                   = detectors\art_beep1
+af_freq_14		                                       = 0.05, 2
+
+af_class_15		                                       = af_repei
+af_sound_15_		                                   = detectors\art_beep1
+af_freq_15		                                       = 0.05, 2
+
+af_class_16		                                       = af_bat
+af_sound_16_		                                   = detectors\art_beep1
+af_freq_16		                                       = 0.05, 2
+
+af_class_17		                                       = af_sun
+af_sound_17_		                                   = detectors\art_beep1
+af_freq_17		                                       = 0.05, 2
+
+af_class_18		                                       = af_ear
+af_sound_18_		                                   = detectors\art_beep1
+af_freq_18		                                       = 0.05, 2
+
+af_class_27		                                       = af_chelust
+af_sound_27_		                                   = detectors\art_beep1
+af_freq_27		                                       = 0.05, 2
+
+af_class_28		                                       = af_atom
+af_sound_28_	                                       = detectors\art_beep1
+af_freq_28		                                       = 0.05, 2
+
+af_class_29		                                       = af_lighthouse
+af_sound_29_	                                       = detectors\art_beep1
+af_freq_29		                                       = 0.05, 2
+
+af_class_30		                                       = af_cell
+af_sound_30_	                                       = detectors\art_beep1
+af_freq_30		                                       = 0.05, 2
+
+af_class_31		                                       = af_cocoon
+af_sound_31_	                                       = detectors\art_beep1
+af_freq_31		                                       = 0.05, 2
+
+
+----------------(Special)
+af_class_32		                                       = jup_b1_half_artifact
+af_sound_32_	                                       = detectors\art_beep1
+af_freq_32		                                       = 0.05, 2
+
+;af_class_33		                                   = af_quest_b14_twisted
+;af_sound_33_	                                       = detectors\art_beep1
+;af_freq_33		                                       = 0.05, 2
+
+af_class_33		                                       = af_monolith
+af_sound_33_	                                       = detectors\art_beep1
+af_freq_33		                                       = 0.05, 2
+
+af_class_34		                                       = af_compass
+af_sound_34_	                                       = detectors\art_beep1
+af_freq_34		                                       = 0.05, 2
+
+af_class_35		                                       = af_oasis_heart
+af_sound_35_	                                       = detectors\art_beep1
+af_freq_35		                                       = 0.05, 2
+
+----------------(Rank 1)
+af_class_36		                                       = af_itcher
+af_sound_36_	                                       = detectors\art_beep1
+af_freq_36		                                       = 0.05, 2
+
+af_class_37		                                       = af_pin
+af_sound_37_	                                       = detectors\art_beep1
+af_freq_37		                                       = 0.05, 2
+
+af_class_38		                                       = af_blood
+af_sound_38_	                                       = detectors\art_beep1
+af_freq_38		                                       = 0.05, 2
+
+af_class_39		                                       = af_mincer_meat
+af_sound_39_		                                   = detectors\art_beep1
+af_freq_39		                                       = 0.05, 2
+
+af_class_40		                                       = af_electra_sparkler
+af_sound_40_	                                       = detectors\art_beep1
+af_freq_40		                                       = 0.05, 2
+
+af_class_41		                                       = af_sponge
+af_sound_41_	                                       = detectors\art_beep1
+af_freq_41		                                       = 0.05, 2
+
+af_class_42		                                       = af_cristall_flower
+af_sound_42_	                                       = detectors\art_beep1
+af_freq_42		                                       = 0.05, 2
+
+af_class_43		                                       = af_lobster_eyes
+af_sound_43_	                                       = detectors\art_beep1
+af_freq_43		                                       = 0.05, 2
+
+af_class_44		                                       = af_medusa
+af_sound_44_	                                       = detectors\art_beep1
+af_freq_44		                                       = 0.05, 2
+
+af_class_45		                                       = af_night_star
+af_sound_45_	                                       = detectors\art_beep1
+af_freq_45		                                       = 0.05, 2
+
+af_class_46		                                       = af_dummy_glassbeads
+af_sound_46_	                                       = detectors\art_beep1
+af_freq_46		                                       = 0.05, 2
+
+af_class_47		                                       = af_dummy_battery
+af_sound_47_	                                       = detectors\art_beep1
+af_freq_47		                                       = 0.05, 2
+
+af_class_48		                                       = af_soul
+af_sound_48_	                                       = detectors\art_beep1
+af_freq_48		                                       = 0.05, 2
+
+----------------(Rank 2)
+af_class_49		                                       = af_cristall
+af_sound_49_	                                       = detectors\art_beep1
+af_freq_49		                                       = 0.05, 2
+
+af_class_50		                                       = af_bracelet
+af_sound_50_	                                       = detectors\art_beep1
+af_freq_50		                                       = 0.05, 2
+
+af_class_51		                                       = af_ring
+af_sound_51_	                                       = detectors\art_beep1
+af_freq_51		                                       = 0.05, 2
+
+af_class_52		                                       = af_electra_moonlight
+af_sound_52_	                                       = detectors\art_beep1
+af_freq_52		                                       = 0.05, 2
+
+af_class_53		                                       = af_vyvert
+af_sound_53_	                                       = detectors\art_beep1
+af_freq_53		                                       = 0.05, 2
+
+af_class_54		                                       = af_empty
+af_sound_54_	                                       = detectors\art_beep1
+af_freq_54		                                       = 0.05, 2
+
+af_class_55		                                       = af_gravi
+af_sound_55_	                                       = detectors\art_beep1
+af_freq_55		                                       = 0.05, 2
+
+af_class_56		                                       = af_eye
+af_sound_56_	                                       = detectors\art_beep1
+af_freq_56		                                       = 0.05, 2
+
+af_class_57		                                       = af_dummy_dummy
+af_sound_57_	                                       = detectors\art_beep1
+af_freq_57		                                       = 0.05, 2
+
+af_class_58		                                       = af_fuzz_kolobok
+af_sound_58_	                                       = detectors\art_beep1
+af_freq_58		                                       = 0.05, 2
+
+----------------(Rank 3)
+af_class_59		                                       = af_fireball
+af_sound_59_		                                   = detectors\art_beep1
+af_freq_59		                                       = 0.05, 2
+
+af_class_60		                                       = af_baloon
+af_sound_60_		                                   = detectors\art_beep1
+af_freq_60		                                       = 0.05, 2
+
+af_class_61		                                       = af_electra_flash
+af_sound_61_		                                   = detectors\art_beep1
+af_freq_61		                                       = 0.05, 2
+
+af_class_62		                                       = af_black_spray
+af_sound_62_		                                   = detectors\art_beep1
+af_freq_62		                                       = 0.05, 2
+
+af_class_63		                                       = af_full_empty
+af_sound_63_		                                   = detectors\art_beep1
+af_freq_63		                                       = 0.05, 2
+
+af_class_64		                                       = af_gold_fish
+af_sound_64_		                                   = detectors\art_beep1
+af_freq_64		                                       = 0.05, 2
+
+af_class_65		                                       = af_fire
+af_sound_65_		                                   = detectors\art_beep1
+af_freq_65		                                       = 0.05, 2
+
+af_class_66		                                       = af_ice
+af_sound_66_		                                   = detectors\art_beep1
+af_freq_66		                                       = 0.05, 2
+
+af_class_67		                                       = af_glass
+af_sound_67_		                                   = detectors\art_beep1
+af_freq_67		                                       = 0.05, 2
+
+af_class_68		                                       = af_death_lamp
+af_sound_68_		                                   = detectors\art_beep1
+af_freq_68		                                       = 0.05, 2
+
+;__________________________________________ HUD parameters ____________________________________________________
+ 
+[wpn_gravigun_hud]:hud_base
+
+        item_visual                  	= anomaly_weapons\wpn_gravigun\wpn_gravigun_hud.ogf
+        attach_place_idx			= 0
+        zoom_hide_crosshair	= true					;to hide crosshair in zoom 
+
+        zoom_offset             = 0,0,0
+        zoom_rotate_x			= 0
+        zoom_rotate_y			= 0
+        zoom_rotate_time 		= 0.0001
+
+;======================== Hud Position =======================================================
+
+        item_position			= 0.0,0.0,0.0
+        item_orientation		= 0.0,0.0,0.0
+
+        orientation             	= 0, 0, 0		
+        position                	= 0.2, -0.18, 0.5 
+
+        hands_orientation                = 4.847174, 7.321119, 0.354797
+        hands_orientation_16x9           = 4.847174, 7.321119, 0.354797
+        hands_position                   = 0.002813, 0.012787, -0.038704
+        hands_position_16x9              = 0.002813, 0.012787, -0.038704
+
+        aim_hud_offset_pos               = 0.053, 0.07294, 0.070737
+        aim_hud_offset_pos_16x9          = 0.053, 0.07294, 0.070737
+        aim_hud_offset_rot               = 0.023044, 0.018242, 0
+        aim_hud_offset_rot_16x9          = 0.023044, 0.018242, 0
+		
+        lowered_hud_offset_pos           = 0.094214, 0.095001, -0.048286
+        lowered_hud_offset_pos_16x9      = 0.094214, 0.095001, -0.048286
+        lowered_hud_offset_rot           = 0.315057, -0.461651, -0.033478
+        lowered_hud_offset_rot_16x9      = 0.315057, -0.461651, -0.033478
+
+        gl_hud_offset_pos = -0.079400,-0.072000,-0.005000
+        gl_hud_offset_rot = -0.175200,0.002700,-0.020000
+        gl_hud_offset_pos_16x9 = -0.079400,-0.072000,-0.005000
+        gl_hud_offset_rot_16x9 = -0.175200,0.002700,-0.020000
+
+        lean_hud_offset_pos		= 0,0,0
+        lean_hud_offset_rot		= 0,0,0
+
+;======================== BORING =======================================================
+
+		anm_bore										   = gravigun_new_idle, idle
+		
+;======================== HIDE ==========================================================
+
+		anm_hide             							   = gravigun_new_hide, hide, 1.7
+		
+;======================== SHOW ==========================================================
+
+		anm_show										   = gravigun_new_show, show, 1.7
+		
+;======================== IDLE ==========================================================
+
+		anm_idle             							   = gravigun_new_idle, idle
+		anm_idle_moving             					   = gravigun_new_idle_moving, idle
+		
+		
+;======================== SPRINT TRANSITIONS AND PATERN ====================================================
+        
+		anm_sprint_start								   = gravigun_new_sprint_start, idle, 1.3
+        anm_idle_sprint									   = gravigun_new_sprint, idle, 1.7
+		anm_sprint_end									   = gravigun_new_sprint_end, idle, 1.1
+;----------------------------------------------------------------------------------------
+		ts_pattern_sprint_start                            = .+, anm_idle_sprint, anm_sprint_start, 1
+		ts_pattern_sprint_end                              = anm_idle_sprint, ^anm_idle.*, anm_sprint_end
+		ts_strict_sprint_end_move                          = anm_sprint_start, anm_idle_moving, anm_sprint_end
+		
+;======================== AIM TRANSITIONS ====================================================
+		
+		anm_idle_aim 									   = gravigun_new_aim, aim
+		anm_idle_aim_start 								   = gravigun_new_aim_start, aim_start
+		anm_idle_aim_end   								   = gravigun_new_aim_end, aim_end, 1.5
+	
+;======================== SHOOTS ====================================================	
+		anm_shots               = gravigun_new_shoot, shoot, 2.5
+        anm_shots_aim           = gravigun_new_shoot_aim, shoot_aim, 1.5		
+				
+;======================== AMMO CHECK =========================================================
+
+		
+;======================== OLD Anims =========================================================
+        ;anm_show				= gravigun_draw, idle
+        ;anm_hide                = gravigun_holster, idle
+        ;anm_idle                = gravigun_idle, idle
+        ;anm_idle_sprint         = gravigun_sprint, idle
+        ;anm_idle_moving         = gravigun_moving, idle
+        ;anm_shots               = gravigun_shoot, shoot
+        ;anm_reload              = gravigun_no_reload, idle
+        ;anm_idle_aim            = gravigun_no_reload, aim
+        ;anm_bore                = gravigun_no_reload, idle
+
+;_____________________________________ Parameters of the shells sprite for HUD __________________________
+
+shell_point				= 0.0,0.064,0.19
+shell_dir				= 0.0, 1.0, 0.0
+shell_bone				= wpn_body
+
+fire_point				= 0,0.051841,0.535482
+fire_bone				= wpn_body
+fire_point2				= 0.0,-0.011,0.553
+fire_bone2				= wpn_body
+
+;____________________________________________________ Addons _______________________________________________________________________________________________________
+
+[ammo_gravi]:identity_immunities
+
+        GroupControlSection	= spawn_group
+        discovery_dependency = 
+        $spawn			= "dynamics\weapons\wpn_ammo\ammo_12x76_zhekan" ; option for Level Editor
+        class			= AMMO
+        cform                   = skeleton
+        visual                  = dynamics\weapons\wpn_ammo\ammo_12x76_zhekan.ogf
+        description				= "Ãðàâè-ïóøêà"
+        $prefetch 		= 64
+
+        cost					 = 216
+
+        box_size		= 1
+
+        nv_name		= "Ãðàâè-ïóøêà"
+        inv_name_short	= "Ãðàâè-ïóøêà"
+        inv_weight		= 0.0
+
+        inv_grid_width		= 0
+        inv_grid_height		= 0
+        inv_grid_x			= 33
+        inv_grid_y			= 6
+
+        k_ap			= 0.15
+
+        k_dist			= 1
+        k_disp			= 1
+        k_hit			= 0
+        k_impulse		= 1
+        k_pierce		= 0.5
+        impair			= 1
+        buck_shot		= 0
+        tracer			= off
+        wm_size         = 0.0000001
+        explosive		= off
+

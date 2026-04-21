@@ -1,0 +1,50 @@
+local function check_scope(addon_sect, weapon_sect)
+	local valid_addons = parse_list(ini_sys, weapon_sect, "scopes")
+	for k, v in pairs(valid_addons) do
+		if (v == addon_sect) then
+			return true
+		end
+	end
+	return false
+end
+
+
+function attach_scope(scope_section, weapon_id)
+	-- Return if the addon or weapon aren't valid.
+
+    local weapon = get_object_by_id(weapon_id)
+	if not (scope_section and weapon) then 
+		return 
+	end 
+
+	-- An addon has already been attached or none can be used.
+	local parent_section = ini_sys:r_string_ex(weapon:section(),"parent_section")
+	if (not parent_section or weapon:section() ~= parent_section) then return end
+
+	-- Modified weapon does not exist and as such can't be used.
+	local child_section = (parent_section .. "_" .. scope_section)
+	if not (ini_sys:section_exist(child_section)) then return end
+
+	-- Determine whether the addon is valid for the weapon selected.
+	if not (check_scope(scope_section, weapon:section())) then
+		return
+	end
+
+	-- Create objects for the 'before' and 'after' attachment weapons.
+	local old_weapon = alife_object(weapon:id())
+	local new_weapon = old_weapon and alife_clone_weapon(old_weapon, child_section)
+
+end
+
+function actor_on_item_upgrade(obj_id, upgrade_section)
+    local upgrade_effect_section = ini_sys:r_string_ex(upgrade_section,"section") or nil
+    local scope = upgrade_effect_section and ini_sys:r_string_ex(upgrade_effect_section,"attach_scope") or nil
+    if scope then
+    
+        attach_scope(scope, obj_id)
+    end
+end
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_item_upgrade",actor_on_item_upgrade)
+end 

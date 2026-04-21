@@ -1,0 +1,136 @@
+![wpn_vz61]
+
+;======================================================================================================================================================;
+;																																					   ;
+;															     SOUNDS BY TheTazDJ																	   ;
+;																																				       ;
+;======================================================================================================================================================;
+
+;---------------------------------------------------------------------SND MAIN-------------------------------------------------------------------------;
+
+snd_bore						= weapons\vz61\handling\vz61_inspect_tcwp
+snd_draw						= weapons\vz61\handling\vz61_deploy_tcwp
+snd_holster						= weapons\vz61\handling\vz61_holster_tcwp
+snd_empty						= weapons\vz61\handling\vz61_trigger_hammer_tcwp
+snd_reload     		            = weapons\vz61\handling\vz61_reload_partial_tcwp1
+snd_reload1     		        = weapons\vz61\handling\vz61_reload_partial_tcwp2
+snd_reload_misfire				= weapons\vz61\handling\vz61_unjam_tcwp1
+snd_reload_misfire1				= weapons\vz61\handling\vz61_unjam_tcwp2
+snd_reload_misfire2				= weapons\vz61\handling\vz61_unjam_tcwp3
+snd_reload_misfire3				= weapons\vz61\handling\vz61_unjam_tcwp4
+snd_reload_empty				= weapons\vz61\handling\vz61_reload_full_tcwp1
+snd_reload_empty1				= weapons\vz61\handling\vz61_reload_full_tcwp2
+snd_reload_empty2				= weapons\vz61\handling\vz61_reload_full_tcwp3
+snd_reload_empty3				= weapons\vz61\handling\vz61_reload_full_tcwp4
+snd_reload_empty4				= weapons\vz61\handling\vz61_reload_full_tcwp5
+snd_switch_mode					= weapons\vz61\handling\vz61_firemode_switch_tcwp
+snd_shoot						= wpn_vz61_snd_shoot_tcwp
+snd_shoot_actor					= wpn_vz61_snd_shoot_tcwp_actor
+snd_silncer_shot	            = wpn_vz61_tcwp_snd_silenced
+snd_silncer_shot_actor          = wpn_vz61_tcwp_snd_silenced_actor
+snd_ammo_check			        = weapons\vz61\handling\vz61_inspect_tcwp
+snd_ammo_check_empty	        = weapons\vz61\handling\vz61_inspect_tcwp
+snd_ammo_check_jammed           = weapons\vz61\handling\vz61_inspect_tcwp
+
+scripted_snd_sprint_end			= weapons\vz61\handling\vz61_end_sprint_tcwp
+scripted_snd_sprint_end_empty   = weapons\vz61\handling\vz61_end_sprint_tcwp
+scripted_snd_sprint_end_jammed  = weapons\vz61\handling\vz61_end_sprint_tcwp
+
+
+;======================================================================================================================================================;
+;																																					   ;
+;															     	  LAYERS																		   ;
+;																																				       ;
+;======================================================================================================================================================;
+
+[wpn_vz61_snd_shoot_tcwp]
+snd_1_layer			                                          	  = weapons\_gunfire\mono\bizon\close_1
+snd_1_layer1			                                          = weapons\_gunfire\mono\bizon\close_2
+snd_1_layer2			                                       	  = weapons\_gunfire\mono\bizon\close_3
+snd_1_layer3			                                       	  = weapons\_gunfire\mono\bizon\close_4
+snd_2_layer			                                          	  = weapons\_gunfire\mono\bizon\Close_Distance
+snd_3_layer			                                          	  = weapons\_gunfire\mono\bizon\Medium_Distance
+snd_4_layer 			                                       	  = weapons\_shared\mono\reflectors\45\Reflector_1, 0.5
+snd_4_layer1 			                                       	  = weapons\_shared\mono\reflectors\45\Reflector_2, 0.5
+snd_4_layer2 			                                       	  = weapons\_shared\mono\reflectors\45\Reflector_3, 0.5
+snd_4_layer3			                                       	  = weapons\_shared\mono\reflectors\45\Reflector_4, 0.5
+snd_5_layer			                                          	  = weapons\_cracks\mono\Crack_far\Crack_1
+snd_5_layer1			                                          = weapons\_cracks\mono\Crack_far\Crack_6
+snd_5_layer2			                                          = weapons\_cracks\mono\Crack_far\Crack_9
+snd_6_layer			                                          	  = weapons\_shared\mono\smg45\Far_1
+snd_6_layer1			                                          = weapons\_shared\mono\smg45\Far_2
+snd_7_layer			                                        	  = weapons\_shared\mono\smg45\tail_1, 0.5
+snd_7_layer1			                                       	  = weapons\_shared\mono\smg45\tail_2, 0.5
+snd_8_layer			                                          	  = weapons\_shared\mono\smg9\mid_smg9
+snd_9_layer														  = weapons\vz61\_shells\mono\vz61_9mm_shell_soil1
+snd_9_layer1													  = weapons\vz61\_shells\mono\vz61_9mm_shell_soil2
+snd_9_layer2													  = weapons\vz61\_shells\mono\vz61_9mm_shell_soil5
+snd_9_layer3													  = weapons\vz61\_shells\mono\vz61_9mm_shell_soil4
+snd_9_layer4													  = weapons\vz61\_shells\mono\vz61_9mm_shell_soil5
+snd_10_layer			                                          = weapons\vz61\mono\vz61_mono_close1
+snd_10_layer1			                                          = weapons\vz61\mono\vz61_mono_close2
+snd_10_layer2			                                       	  = weapons\vz61\mono\vz61_mono_close3
+snd_10_layer3			                                       	  = weapons\vz61\mono\vz61_mono_close4
+
+[wpn_vz61_snd_shoot_tcwp_actor]
+snd_1_layer			                                          	  = weapons\vz61\stereo\vz61_stereo_close1
+snd_1_layer1			                                          = weapons\vz61\stereo\vz61_stereo_close2
+snd_1_layer2			                                       	  = weapons\vz61\stereo\vz61_stereo_close3
+snd_1_layer3			                                       	  = weapons\vz61\stereo\vz61_stereo_close4
+snd_2_layer 			                                       	  = weapons\_shared\stereo\reflectors\45\Reflector_1, 0.5
+snd_2_layer1			                                       	  = weapons\_shared\stereo\reflectors\45\Reflector_2, 0.5
+snd_2_layer2 			                                       	  = weapons\_shared\stereo\reflectors\45\Reflector_3, 0.5
+snd_2_layer3			                                       	  = weapons\_shared\stereo\reflectors\45\Reflector_4, 0.5
+snd_3_layer			                                          	  = weapons\_shared\stereo\echo_1, 0.25
+snd_3_layer1			                                          = weapons\_shared\stereo\echo_2, 0.25
+snd_3_layer2			                                       	  = weapons\_shared\stereo\echo_3, 0.25
+snd_3_layer3			                                       	  = weapons\_shared\stereo\echo_4, 0.25
+snd_4_layer			                                       	 	  = weapons\_bass\bass_mid
+snd_5_layer														  = weapons\vz61\_shells\stereo\vz61_9mm_shell_soil1
+snd_5_layer1													  = weapons\vz61\_shells\stereo\vz61_9mm_shell_soil2
+snd_5_layer2													  = weapons\vz61\_shells\stereo\vz61_9mm_shell_soil5
+snd_5_layer3													  = weapons\vz61\_shells\stereo\vz61_9mm_shell_soil4
+snd_5_layer4													  = weapons\vz61\_shells\stereo\vz61_9mm_shell_soil5
+
+[wpn_vz61_tcwp_snd_silenced]
+snd_1_layer			                                          	  = weapons\_sd\mono\9_2\sd_close_1
+snd_1_layer1			                                          = weapons\_sd\mono\9_2\sd_close_2
+snd_1_layer2			                                       	  = weapons\_sd\mono\9_2\sd_close_3
+snd_1_layer3			                                       	  = weapons\_sd\mono\9_2\sd_close_4
+snd_2_layer			                                          	  = weapons\_sd\mono\9_2\tail_sd_1, 0.5
+snd_2_layer1		                                              = weapons\_sd\mono\9_2\tail_sd_2, 0.5
+snd_2_layer2			                                       	  = weapons\_sd\mono\9_2\tail_sd_3, 0.5
+snd_2_layer3			                                       	  = weapons\_sd\mono\9_2\tail_sd_4, 0.5
+snd_3_layer			                                       	 	  = weapons\_bass\bass_mid_sd
+snd_4_layer			                                       	 	  = weapons\_sd\mono\Distance\9mm_distance
+snd_5_layer			                                          	  = weapons\_cracks\mono\crack_far\crack_1
+snd_5_layer1			                                          = weapons\_cracks\mono\crack_far\crack_2
+snd_5_layer2			                                       	  = weapons\_cracks\mono\crack_far\crack_3
+snd_5_layer3			                                       	  = weapons\_cracks\mono\crack_far\crack_4
+snd_6_layer														  = weapons\vz61\_shells\mono\vz61_9mm_shell_soil1
+snd_6_layer1													  = weapons\vz61\_shells\mono\vz61_9mm_shell_soil2
+snd_6_layer2													  = weapons\vz61\_shells\mono\vz61_9mm_shell_soil5
+snd_6_layer3													  = weapons\vz61\_shells\mono\vz61_9mm_shell_soil4
+snd_6_layer4													  = weapons\vz61\_shells\mono\vz61_9mm_shell_soil5
+snd_10_layer			                                          = weapons\vz61\mono\vz61_sil_mono_close1
+snd_10_layer1			                                          = weapons\vz61\mono\vz61_sil_mono_close2
+snd_10_layer2			                                       	  = weapons\vz61\mono\vz61_sil_mono_close3
+snd_10_layer3			                                       	  = weapons\vz61\mono\vz61_sil_mono_close4
+
+[wpn_vz61_tcwp_snd_silenced_actor]
+snd_1_layer			                                          	  = weapons\vz61\stereo\vz61_sil_stereo_close1
+snd_1_layer1			                                          = weapons\vz61\stereo\vz61_sil_stereo_close2
+snd_1_layer2			                                       	  = weapons\vz61\stereo\vz61_sil_stereo_close3
+snd_1_layer3			                                       	  = weapons\vz61\stereo\vz61_sil_stereo_close4
+snd_2_layer			                                          	  = weapons\vz61\_sd\stereo\9_2\tail_sd_1, 0.5
+snd_2_layer1		                                              = weapons\vz61\_sd\stereo\9_2\tail_sd_2, 0.5
+snd_2_layer2			                                       	  = weapons\vz61\_sd\stereo\9_2\tail_sd_3, 0.5
+snd_2_layer3			                                       	  = weapons\vz61\_sd\stereo\9_2\tail_sd_4, 0.5
+snd_3_layer			                                       	 	  = weapons\_bass\bass_mid_sd
+snd_4_layer														  = weapons\vz61\_shells\stereo\vz61_9mm_shell_soil1
+snd_4_layer1													  = weapons\vz61\_shells\stereo\vz61_9mm_shell_soil2
+snd_4_layer2													  = weapons\vz61\_shells\stereo\vz61_9mm_shell_soil5
+snd_4_layer3													  = weapons\vz61\_shells\stereo\vz61_9mm_shell_soil4
+snd_4_layer4													  = weapons\vz61\_shells\stereo\vz61_9mm_shell_soil5
+
+;----------------------------------------------------------------------HUD------------------------------------------------------------------------------;

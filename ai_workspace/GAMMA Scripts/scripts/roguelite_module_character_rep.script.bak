@@ -1,0 +1,162 @@
+--[[
+	Jabbers
+	16FEB2022
+	Jabbers Ironman Roguelite
+--]]
+
+local m_data = {
+    character_rep_version = 2,
+}
+
+--------------------------------
+-- Private stuff and things
+--------------------------------
+local function degrade(name, current_value, restored_value, percent)
+    local value = restored_value
+    local loss = value * roguelite_manager_mcm.get_config("character_rep_penalty_percent", 0.02)
+
+    value = value - loss
+
+    if value < 0 then
+        value = 0
+    end
+
+    if value < current_value then
+        roguelite_manager.debug_write(name.." "..tostring(value).." not set for the player as it is below the starting "..name.." of "..tostring(current_value)..".")
+        return current_value
+    end
+
+    return value
+end
+
+local function restore_prior_state_actor_rep_v1(data)
+    if not data.character_rep then
+        roguelite_manager.debug_write("No player reputation was recorded.")
+        return
+    end
+
+    local rept = degrade("Reputation", db.actor:character_reputation(), data.character_rep, roguelite_manager_mcm.get_config("character_rep_penalty_percent", 0.02))
+
+    db.actor:set_character_reputation(rept)
+    
+    game_statistics.actor_miscellaneous.actual_rept = rept
+    game_statistics.check_for_reputation_change(true)
+end
+
+local function restore_prior_state_actor_rep_v2(data)
+    local rept = degrade("Reputation", db.actor:character_reputation(), data.character_rep, roguelite_manager_mcm.get_config("character_rep_penalty_percent", 0.02))
+    local rank = degrade("Rank", db.actor:character_rank(), data.character_rank, roguelite_manager_mcm.get_config("character_rank_penalty_percent", 0.02))
+
+    db.actor:set_character_reputation(rept)
+    db.actor:set_character_rank(rank)
+
+    game_statistics.actor_miscellaneous.actual_rept = rept
+    game_statistics.actor_miscellaneous.actual_rank = rank
+
+    game_statistics.check_for_reputation_change(true)
+    game_statistics.check_for_rank_change(true)
+end
+
+--------------------------------
+-- Game Callbacks
+--------------------------------
+
+function roguelite_load_state(save_data)
+    if roguelite_manager_mcm.get_config("is_character_rep_restore_enabled", true) then
+        if save_data.character_rep_version == 1 then
+            restore_prior_state_actor_rep_v1(save_data)
+        elseif save_data.character_rep_version == 2 then
+            restore_prior_state_actor_rep_v2(save_data)
+        end
+    end
+end
+
+function roguelite_save_state(save_data)
+    save_data.character_rep = db.actor:character_reputation()
+    save_data.character_rank = db.actor:character_rank()
+    save_data.character_rep_version = m_data.character_rep_version
+end
+
+function append_mcm_options(gr)
+    roguelite_manager.debug_write("Appending character rep module mcm options.")
+    --Charater Reputation Settings
+    table.insert(gr, { id = "line", type = "line" })
+    table.insert(gr, {
+        id = "desc_mcm",
+        type = "desc",
+        text = "ui_mcm_roguelite_character_rep_description",
+        clr = {255, 255 ,255 ,0},
+    })
+    table.insert(gr, {
+        id = "is_character_rep_restore_enabled",
+        type = "check",
+        val = 1,
+        def = true
+    })
+    table.insert(gr, {
+        id = "character_rep_penalty_percent",
+        type = "track",
+        val = 2,
+        min = 0,
+        max = 1,
+        step = 0.02,
+        def = 0.02
+    })
+    table.insert(gr, {
+        id = "character_rank_penalty_percent",
+        type = "track",
+        val = 2,
+        min = 0,
+        max = 1,
+        step = 0.02,
+        def = 0.02
+    })
+end
+
+function on_option_change()
+    local get_config = roguelite_manager_mcm.get_config
+
+    roguelite_manager.debug_write("is_character_rep_restore_enabled = "..tostring(get_config("is_character_rep_restore_enabled", true)))
+    roguelite_manager.debug_write("character_rep_penalty_percent = "..tostring(get_config("character_rep_penalty_percent", 0.02)))
+    roguelite_manager.debug_write("character_rank_penalty_percent = "..tostring(get_config("character_rank_penalty_percent", 0.02)))
+end
+
+function on_game_load()
+    if ui_mcm then
+	    on_option_change()
+    end
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_game_load", on_game_load)
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

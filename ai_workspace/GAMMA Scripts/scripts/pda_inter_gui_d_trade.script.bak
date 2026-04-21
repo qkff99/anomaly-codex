@@ -1,0 +1,393 @@
+pmain = pda_inter_gui
+local gt = game.translate_string
+local CustomPDAX = pda_inter_gui.CustomPDAX
+local pr = pda_inter_gui.pr
+
+function CustomPDAX:BuildTradeUpperMenu()
+	local xml = self.xml
+
+	self.trade_selected_category = nil
+	self.trade_selected_item_sec = nil
+	self.trade_selected_item_name = nil
+
+	-- categories
+	self.trade_category_scrollbar = xml:InitScrollView("mid_container_4:category_scrollbar", self.pda_t[4].mid_cont)
+	self.trade_category_cont = xml:InitStatic("mid_container_4:category_cont", self.trade_category_scrollbar)
+	self.trade_categories = {}
+	local cur_category_row = 0
+	for group, ar in pairs(pda_inter_x_trade.categorized_items) do
+		self.trade_categories[group] = {}
+		self.trade_categories[group].btn = xml:Init3tButton("mid_container_4:category_cont:category_btn", self.trade_category_cont)
+		self:Register(self.trade_categories[group].btn, group .. "_btn")
+
+		self.trade_categories[group].item_btns = {}
+
+		-- btn text and pos
+		self.trade_categories[group].btn:TextControl():SetText(gt("trade_category_" .. group))		-- gt here and xml ref
+
+		local el = self.trade_categories[group].btn
+		local w, h = el:GetWidth(), el:GetHeight()
+		local gap_y = 5
+		local new_pos_y = (h + gap_y) * cur_category_row
+		self.trade_categories[group].btn:SetWndPos(vector2():set(0, new_pos_y))
+		local scroll_width = self.trade_category_cont:GetWidth()
+		local def_scroll_height = self.trade_category_cont:GetHeight()
+		local cont_height = h
+		local new_scroll_height = new_pos_y + cont_height
+		if new_scroll_height < def_scroll_height then
+			new_scroll_height = def_scroll_height
+		end
+		self.trade_category_cont:SetWndSize(vector2():set(scroll_width, new_scroll_height))
+
+		-- scrollbar
+		self.trade_categories[group].trade_scrollbar = xml:InitScrollView("mid_container_4:trade_scrollbar", self.pda_t[4].mid_cont)
+		self.trade_categories[group].trade_scrollbar:Show(false)
+
+		-- scroll cont
+		self.trade_categories[group].trade_scroll_cont = xml:InitStatic("mid_container_4:trade_scroll_cont", self.trade_categories[group].trade_scrollbar)
+		self.trade_categories[group].trade_scroll_cont:SetAutoDelete(false)
+
+		cur_category_row = cur_category_row + 1
+	end
+
+	-- items
+	for group, ar in pairs(pda_inter_x_trade.categorized_items) do
+
+		local cur_row = 0
+		local cur_col = 0
+		for i = 1, #ar do
+			local item_sec = ar[i]
+
+			table.insert(self.trade_categories[group].item_btns, {})
+			local size = #self.trade_categories[group].item_btns
+
+			-- add cont
+			self.trade_categories[group].item_btns[size].cont = xml:InitStatic("mid_container_4:item_main_cont", self.trade_categories[group].trade_scroll_cont)
+			local el = self.trade_categories[group].item_btns[size].cont
+			local w, h = el:GetWidth(), el:GetHeight()
+			local gap_x, gap_y = 10, 10
+			local new_pos_x = (w + gap_x) * cur_col
+			local new_pos_y = (h + gap_y) * cur_row
+			self.trade_categories[group].item_btns[size].cont:SetWndPos(vector2():set(new_pos_x, new_pos_y))
+
+			-- add icon
+			self.trade_categories[group].item_btns[size].icon = xml:InitStatic("mid_container_4:item_main_cont:icon", self.trade_categories[group].item_btns[size].cont)
+			local icon_path = ini_sys:r_string_ex(item_sec, "icons_texture") or "ui\\ui_icon_equipment"
+			self.trade_categories[group].item_btns[size].icon:InitTexture(icon_path)
+			self.trade_categories[group].item_btns[size].icon:Show(true)
+			
+			utils_xml.set_icon(item_sec, nil, self.trade_categories[group].item_btns[size].icon, self.trade_categories[group].item_btns[size].icon)
+
+			-- add name
+			self.trade_categories[group].item_btns[size].name = xml:InitTextWnd("mid_container_4:item_main_cont:name", self.trade_categories[group].item_btns[size].cont)
+			local inv_name = ini_sys:r_string_ex(item_sec, "inv_name")
+			local ui_item_name = gt(inv_name):sub(0, 10) .. "..."
+			self.trade_categories[group].item_btns[size].name:SetText(ui_item_name)
+
+			-- string name for tooltip
+			self.trade_categories[group].item_btns[size].str_name = inv_name
+
+			-- add button
+			self.trade_categories[group].item_btns[size].btn = xml:Init3tButton("mid_container_4:item_main_cont:btn", self.trade_categories[group].item_btns[size].cont)
+			self:Register(self.trade_categories[group].item_btns[size].btn, item_sec .. "_item_btn")
+
+			-- inc column
+			cur_col = cur_col + 1
+			if cur_col == 4 then
+				cur_row = cur_row + 1
+				cur_col = 0
+			end
+		end
+
+		-- resize scroll cont
+		local scroll_width = self.trade_categories[group].trade_scroll_cont:GetWidth()
+		local def_scroll_height = self.trade_categories[group].trade_scroll_cont:GetHeight()
+		local cont_height = self.trade_categories[group].item_btns[1].cont:GetHeight()
+		local new_scroll_height = cont_height and ((cur_row+1) * (cont_height + 10)) or 0
+		if new_scroll_height < def_scroll_height then
+			new_scroll_height = def_scroll_height
+		end
+		self.trade_categories[group].trade_scroll_cont:SetWndSize(vector2():set(scroll_width, new_scroll_height))
+
+		-- add container to scroll
+		self.trade_categories[group].trade_scrollbar:Clear()
+		self.trade_categories[group].trade_scrollbar:AddWindow(self.trade_categories[group].trade_scroll_cont, true)
+		self.trade_categories[group].trade_scroll_cont:SetAutoDelete(false)
+	end
+
+	-- choosen item text
+	self.choosen_item_header = xml:InitTextWnd("mid_container_4:choosen_item_header", self.pda_t[4].mid_cont)
+	self.choosen_item = xml:InitTextWnd("mid_container_4:choosen_item", self.pda_t[4].mid_cont)
+
+	-- quantity
+	self.trade_quantity = nil
+	self.trade_quan_header = xml:InitTextWnd("mid_container_4:quantity_item_header", self.pda_t[4].mid_cont)
+	self.trade_quan_input = xml:InitEditBox("mid_container_4:quantity_item_input", self.pda_t[4].mid_cont)
+	self:Register(self.trade_quan_input, "quantity_item_input")
+
+	-- location
+	self.trade_level_table = {}
+	self.trade_selected_level = nil
+	self.trade_level_header = xml:InitTextWnd("mid_container_4:level_item_header", self.pda_t[4].mid_cont)
+	self.trade_level_list = xml:InitListBox("mid_container_4:level_item_list", self.pda_t[4].mid_cont)
+	self.trade_level_list:SetAutoDelete(true)
+	self:Register(self.trade_level_list, "level_item_list")
+	self.trade_level_img = xml:InitStatic("mid_container_4:level_item_img", self.pda_t[4].mid_cont)
+	self.trade_level_img:Show(false)
+
+	self.trade_level_table = pmain.t_to_ar_by_val(pmain.pdax_level_list, true, "k")
+
+	-- remove blacklisted levels from trade_level_table array
+	for lname, _ in pairs(pda_inter_x_trade.Delivery_blacklisted_levels) do
+		for idx, lname2 in pairs(self.trade_level_table) do
+			if lname == lname2 then
+				table.remove(self.trade_level_table, idx)
+			end
+		end
+	end
+
+	-- logo
+	self.trade_logo = xml:InitStatic("mid_container_4:trade_logo", self.pda_t[4].mid_cont)
+
+	-- tooltip
+	self.trade_tooltip = xml:InitStatic("mid_container_4:trade_tooltip", self.pda_t[4].mid_cont)
+	self.trade_tooltip:Show(false)
+
+end
+
+function CustomPDAX:InitTradeCallbacks()
+	for group, _ in pairs(pda_inter_x_trade.categorized_items) do
+		CustomPDAX["OnSelectTradeCategory_" .. group] = function(self)
+			self:OnSelectTradeCategory(group)
+		end
+		self:AddCallback(group .. "_btn", ui_events.BUTTON_CLICKED, self["OnSelectTradeCategory_" .. group], self)
+	end
+
+	for group, ar in pairs(pda_inter_x_trade.categorized_items) do
+		for i = 1, #ar do
+			local item_sec = ar[i]
+			CustomPDAX["OnSelectTradeItem_" .. item_sec] = function(self)
+				self:OnSelectTradeItem(item_sec)
+			end
+			self:AddCallback(item_sec .. "_item_btn", ui_events.BUTTON_CLICKED, self["OnSelectTradeItem_" .. item_sec], self)
+		end
+	end
+
+	self:AddCallback("level_item_list", ui_events.LIST_ITEM_SELECT, self.OnSelectTradeLevel, self)
+end
+
+class "list_item" (CUIListBoxItem)
+function list_item:__init(di) super(di)
+	self:SetTextColor(GetARGB(255, 170, 170, 170))
+	self.fn = self:GetTextItem()
+	self.fn:SetFont(GetFontLetterica18Russian())
+	self.fn:SetEllipsis(true)
+	self:SetWndSize		(vector2():set(201,21))
+
+	self.fn:SetWndPos(vector2():set(0,0))
+	self.fn:SetWndSize	(vector2():set(201,21))
+	--self.fn:SetText		(gt(GUI.table_map_raid[di]))
+	--self.map_id = GUI.table_map_raid[di]
+end
+
+function list_item:__finalize()
+end
+
+function CustomPDAX:ResetTradeMenu()
+	-- reset vars and choosen text
+	self.trade_selected_category = nil
+	self.trade_selected_item_sec = nil
+	self.trade_selected_item_name = nil
+
+	-- hide all item lists
+	for group, t in pairs(self.trade_categories) do
+		self.trade_categories[group].trade_scrollbar:Show(false)
+	end
+
+	-- reset choosen text
+	self.choosen_item:SetText("")
+
+	-- reset quantity input
+	self.trade_quantity = nil
+	self.trade_quan_input:SetText("")
+
+	-- reset level list and image
+	self.trade_selected_level = nil
+	self.trade_level_list:RemoveAll()
+
+	for i = 1, #self.trade_level_table do
+		local _itm = list_item(i)
+		_itm.fn:SetText		(gt(self.trade_level_table[i]))
+		_itm.trade_id = self.trade_level_table[i]
+		self.trade_level_list:AddExistingItem(_itm)
+	end
+
+	--self.trade_level_list:SetText("")
+	self.trade_level_img:Show(false)
+
+end
+
+function CustomPDAX:OnClickSendTrade()
+	pr("trade conditions__ sec: %s || name: %s || level: %s || amount: %s", self.trade_selected_item_sec, self.trade_selected_item_name, self.trade_selected_level, self.trade_quantity)
+
+	pmain.pda_msg_states[self.cur_tree].state = 5
+
+	-- store everything
+	pmain.pda_msg_states[self.cur_tree].name = self.trade_selected_item_name
+	pmain.pda_msg_states[self.cur_tree].section = self.trade_selected_item_sec
+	pmain.pda_msg_states[self.cur_tree].quantity = self.trade_quantity
+	pmain.pda_msg_states[self.cur_tree].level = self.trade_selected_level
+
+	-- set active message
+	local item_name = self.trade_selected_item_name
+	self.active_text:SetText(gt("pda_cur_active") .. "    " .. gt("pda_delivery_ordering") .. " " .. (gt(item_name)))
+
+	-- disable buttons of ALL big menus till cancelled/failed
+	self:UpdMenuButtons()
+
+	-- find and store potential traders
+	pda_inter_x_trade.find_traders()
+end
+
+function CustomPDAX:OnClickExecTrade(num)
+	local traders_t = pda_inter_x_trade.Trade_available_messages
+
+	-- check if actor has enough money
+	local price = pda_inter_x_trade.Trade_available_messages[num].price
+	local has_enough_money = db.actor:money() > price
+
+	if has_enough_money then
+
+		-- hide bottom containers
+		self:ResetLowerMenus()
+
+		-- set state to 0
+		pmain.pda_msg_states[4].state = 0
+
+		-- take actor money
+		db.actor:give_money(-price)
+
+		-- update money text
+		self:UpdMoneyText()
+
+		-- reset active message
+		self.active_text:SetText(gt("pda_cur_active") .. "    " .. gt("pda_cur_active_none"))
+
+		-- send message with accepted order and save stash+item+time
+		pda_inter_x_trade.setup_order(num)
+
+		-- clear tables
+		pda_inter_x_trade.clear_trade_tables()
+
+	end
+
+end
+
+function CustomPDAX:OnSelectTradeCategory(group)
+	-- reset vars and choosen text
+	self.trade_selected_category = nil
+	self.trade_selected_item_sec = nil
+	self.trade_selected_item_name = nil
+
+	-- hide all item lists
+	for gr, t in pairs(self.trade_categories) do
+		self.trade_categories[gr].trade_scrollbar:Show(false)
+	end
+
+	-- reset choosen item text
+	self.choosen_item:SetText("")
+
+	-- set new selected category
+	self.trade_selected_category = group
+
+	-- show group's item list
+	self.trade_categories[group].trade_scrollbar:Show(true)
+
+end
+
+function CustomPDAX:OnSelectTradeItem(item_sec)
+	self.trade_selected_item_name = ini_sys:r_string_ex(item_sec, "inv_name")
+	self.trade_selected_item_sec = item_sec
+
+	-- set choosen item text
+	self.choosen_item:SetText(gt(self.trade_selected_item_name))
+end
+
+function CustomPDAX:OnSelectTradeLevel()
+	--self.trade_selected_level = self.trade_level_table[self.trade_level_list:CurrentID()] OLD
+	self.trade_selected_level = self.trade_level_list:GetSelectedItem().trade_id
+
+	--local level_map = pmain.pdax_level_list[self.trade_selected_level] OLD
+	local level_map = pmain.pdax_level_list[self.trade_selected_level]
+
+	-- map
+	self.trade_level_img:InitTexture("encyclopedia_locations_" .. level_map[2] .. "_image")
+	self.trade_level_img:Show(false) -- was true
+
+end
+
+function CustomPDAX:UpdTradeLowerMenu()
+	local trade_t = pda_inter_x_trade.Trade_available_messages
+
+	-- reset menu first
+	self:ResetLowerMenus()
+
+	for i = 1, #trade_t do
+
+		-- show character container
+		if not (self.bottom[i].big:IsShown()) then
+			self.bottom[i].big:Show(true)
+		end
+
+		-- update icon
+		self.bottom[i].icon:InitTexture(trade_t[i].icon)
+
+		-- update description
+		local def_clr = strformat("%c[%s,%s,%s,%s]", 255, 190, 190, 190)
+		local name_clr = trade_t[i].name_color and strformat("%c[%s,%s,%s,%s]", 255, 0, 255, 0) or def_clr
+		local name = gt("st_mm_new_game_name")
+		local reputation = gt("ui_st_reputation")
+		local rep_clr = pmain.val_to_clr(trade_t[i].reputation, "red_to_green", -2000, 2000)
+		local rep_to_name = gt(utils_obj.get_reputation_name(trade_t[i].reputation))
+		local dist_clr = pmain.val_to_clr(trade_t[i].distance, "red_to_green", 9600, 1)
+		local dist = round_idp(trade_t[i].distance / 1000, 1)
+
+		local name_str = name .. " " .. name_clr .. trade_t[i].name .. "\\n"
+		local reputation_str = reputation .. ": " .. rep_clr .. rep_to_name .. "\\n"
+		local delivery_str = def_clr .. gt("pda_delivery_time") .. ": " .. math.ceil(trade_t[i].delivery_time / 3600) .. gt("pda_delivery_h") .. "\\n" .. "(" .. dist_clr .. dist .. def_clr .. gt("pda_delivery_km") .. ")"
+
+		self.bottom[i].descr:SetText(name_str .. (trade_t[i].name_color and "" or reputation_str) .. delivery_str)
+
+		-- update button
+		self.bottom[i].btn:TextControl():SetText(gt("pda_order_btn_text") .. " " .. trade_t[i].price .. "  RU")
+
+	end
+
+end
+
+function CustomPDAX:TradeUpdate()
+	-- Trade Send button conditions and tooltip
+	if self.cur_tree == 4 then
+
+		-- send btn conds
+		local quantity = tonumber(self.trade_quan_input:GetText())
+		if self.trade_selected_item_sec and self.trade_selected_item_name and self.trade_selected_level and (quantity and type(quantity) == "number") then
+			self.trade_quantity = quantity
+			self.send_btn:Enable(true)
+		else
+			self.send_btn:Enable(false)
+		end
+
+		-- tooltip
+		self.trade_tooltip:Show(false)
+
+		if self.trade_selected_category then
+			for idx, t in ipairs(self.trade_categories[self.trade_selected_category].item_btns) do
+				if t.icon and t.icon:IsCursorOverWindow() then
+					self.trade_tooltip:Show(true)
+					self.trade_tooltip:TextControl():SetText(gt(t.str_name))
+				end
+			end
+		end
+	end
+end

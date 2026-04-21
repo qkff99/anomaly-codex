@@ -1,0 +1,9 @@
+SetActiveSubdialog = pda.set_active_subdialog
+
+pda.set_active_subdialog = function(section)
+    if smr_amain_mcm.get_config("smr_enabled") and smr_amain_mcm.get_config("glitched_pda") then
+		return ui_pda_glitched_tab.get_ui()
+	end
+
+	return SetActiveSubdialog(section)
+end

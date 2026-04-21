@@ -1,0 +1,50 @@
+
+-- base_return_items = nil
+-- if zzz_workshop_return_items then
+
+-- 	base_return_items = zzz_workshop_return_items.return_items
+-- 	zzz_workshop_return_items.return_items = function()
+
+-- 		local stash_id = zzz_workshop_return_items.stash_id
+-- 		local item_ids = zzz_workshop_return_items.item_ids
+
+-- 		if stash_id == nil then return end
+
+-- 		local m_data = alife_storage_manager.get_state()
+
+-- 		local stash_obj = get_object_by_id(stash_id)
+-- 		if stash_obj == nil then return end
+
+-- 		for i, id in ipairs(item_ids) do
+-- 			local item_obj = get_object_by_id(id)
+-- 			if item_obj then
+-- 				db.actor:transfer_item(item_obj, stash_obj)
+-- 			end
+-- 		end
+
+-- 		zone_keeper.LogItems(stash_id, {"i_part"})
+
+-- 		item_ids = {}
+-- 		stash_id = nil
+-- 	end
+-- end
+
+-- inventory_close = ui_inventory.UIInventory.Close
+-- function ui_inventory.UIInventory:Close()
+-- 	zone_keeper.printdebug("mode %s", self.mode)
+-- 	zone_keeper.printdebug("npc_id %s", self.npc_id)
+-- 	zone_keeper.printdebug("npc_name %s", self.npc_name)
+-- 	if self.npc_is_box then
+-- 		local m_data = alife_storage_manager.get_state()
+-- 		printdebug("inventory is a stash")
+-- 		for workshop_id,v in pairs(m_data.workshop_stashes) do
+-- 			printdebug("workshop id %s", workshop_id)
+-- 			local stash_id = ui_furniture_workshop.GetStash(workshop_id)
+-- 			if stash_id == self.npc_id then
+-- 				zone_keeper.LogItems(stash_id, {"i_part"})
+-- 				break
+-- 			end
+-- 		end
+-- 	end
+-- 	inventory_close(self)
+-- end

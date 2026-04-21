@@ -1,0 +1,2290 @@
+local HUI_RANGE_DEFAULT = 100
+
+local function mcm_get(key)
+	if ui_mcm and ui_mcm.get then
+		return ui_mcm.get(key)
+	end
+	return nil
+end
+
+local function read_hui_setting_number(key, default)
+	if not (ini_file and type(ini_file) == "function") then
+		return default
+	end
+	local ini = ini_file("hui\\hui.ltx")
+	if not ini then
+		return default
+	end
+	if ini.section_exist and not ini:section_exist("settings") then
+		return default
+	end
+	if ini.line_exist and not ini:line_exist("settings", key) then
+		return default
+	end
+	if ini.r_float then
+		local v = ini:r_float("settings", key)
+		if v ~= nil then
+			return v
+		end
+	end
+	return default
+end
+
+local function read_hui_setting_bool(key, default)
+	if not (ini_file and type(ini_file) == "function") then
+		return default
+	end
+	local ini = ini_file("hui\\hui.ltx")
+	if not ini then
+		return default
+	end
+	if ini.section_exist and not ini:section_exist("settings") then
+		return default
+	end
+	if ini.line_exist and not ini:line_exist("settings", key) then
+		return default
+	end
+	if ini.r_bool then
+		local ok, v = pcall(function()
+			return ini:r_bool("settings", key)
+		end)
+		if ok and v ~= nil then
+			return v
+		end
+	end
+	if ini.r_string then
+		local ok, v = pcall(function()
+			return ini:r_string("settings", key)
+		end)
+		if ok and v ~= nil then
+			local s = tostring(v):lower()
+			if s == "1" or s == "true" or s == "yes" or s == "on" then
+				return true
+			end
+			if s == "0" or s == "false" or s == "no" or s == "off" then
+				return false
+			end
+		end
+	end
+	if ini.r_float then
+		local v = ini:r_float("settings", key)
+		if v ~= nil then
+			return v ~= 0
+		end
+	end
+	return default
+end
+
+local function hui_as_bool(v, default)
+	if v == nil then
+		return default
+	end
+	if type(v) == "boolean" then
+		return v
+	end
+	if type(v) == "number" then
+		return v ~= 0
+	end
+	local s = tostring(v):lower()
+	if s == "1" or s == "true" or s == "yes" or s == "on" then
+		return true
+	end
+	if s == "0" or s == "false" or s == "no" or s == "off" then
+		return false
+	end
+	return default
+end
+
+local function hui_read_enabled()
+	return hui_as_bool(mcm_get("hui/enable"), read_hui_setting_bool("enable", true))
+end
+
+local hui_enabled = hui_read_enabled()
+
+local MARKER_W = 140
+local MARKER_H = 44
+local HEAD_Y_OFFSET_BIAS = mcm_get("hui/head_y_offset") or read_hui_setting_number("head_y_offset", 0.2)
+local FOV_FACTOR_MIN = mcm_get("hui/fov_factor_min") or read_hui_setting_number("fov_factor_min", 0.1)
+local FOV_FACTOR_MAX = mcm_get("hui/fov_factor_max") or read_hui_setting_number("fov_factor_max", 2)
+local FOV_COMP_WEIGHT = mcm_get("hui/fov_comp_weight") or read_hui_setting_number("fov_comp_weight", 1.3)
+local HP_BAR_W = mcm_get("hui/hp_bar_w") or read_hui_setting_number("hp_bar_w", 70)
+local HP_BAR_MIN_W = mcm_get("hui/hp_bar_min_w") or read_hui_setting_number("hp_bar_min_w", 5)
+local HP_BAR_MAX_W = mcm_get("hui/hp_bar_max_w") or read_hui_setting_number("hp_bar_max_w", 50)
+local HP_BAR_OFFSET_X = mcm_get("hui/hp_bar_offset_x") or read_hui_setting_number("hp_bar_offset_x", 0)
+local HP_BAR_OFFSET_Y = mcm_get("hui/hp_bar_offset_y") or read_hui_setting_number("hp_bar_offset_y", 0)
+local hp_bar_symbolic = mcm_get("hui/hp_bar_symbolic")
+if hp_bar_symbolic == nil then
+	hp_bar_symbolic = read_hui_setting_bool("hp_bar_symbolic", false)
+end
+local hp_bar_symbol_style = mcm_get("hui/hp_bar_symbol_style") or read_hui_setting_number("hp_bar_symbol_style", 1)
+local hp_bar_symbol_len = mcm_get("hui/hp_bar_symbol_len") or read_hui_setting_number("hp_bar_symbol_len", 10)
+local hp_bar_symbol_step_px = mcm_get("hui/hp_bar_symbol_step_px") or read_hui_setting_number("hp_bar_symbol_step_px", 6)
+local hide_hp_full = mcm_get("hui/hide_hp_full")
+if hide_hp_full == nil then
+	hide_hp_full = read_hui_setting_bool("hide_hp_full", true)
+end
+
+local hui_range = mcm_get("hui/range") or read_hui_setting_number("range", 500)
+local hui_scale = 1
+local hui_ypos = 0
+local show_distance = mcm_get("hui/show_distance")
+if show_distance == nil then
+	show_distance = read_hui_setting_bool("show_distance", true)
+end
+local show_name = mcm_get("hui/show_name")
+if show_name == nil then
+	show_name = read_hui_setting_bool("show_name", true)
+end
+local show_mode = mcm_get("hui/show_mode") or read_hui_setting_number("show_mode", 2)
+local require_los = mcm_get("hui/require_los")
+if require_los == nil then
+	require_los = read_hui_setting_bool("require_los", true)
+end
+local show_faction = mcm_get("hui/show_faction")
+if show_faction == nil then
+	show_faction = read_hui_setting_bool("show_faction", true)
+end
+local use_crosshair_radius = mcm_get("hui/use_crosshair_radius")
+if use_crosshair_radius == nil then
+	use_crosshair_radius = read_hui_setting_bool("use_crosshair_radius", false)
+end
+local crosshair_select_mode = mcm_get("hui/crosshair_select_mode") or read_hui_setting_number("crosshair_select_mode", 1)
+local crosshair_radius_px = mcm_get("hui/crosshair_radius_px") or read_hui_setting_number("crosshair_radius_px", 35)
+local crosshair_radius_m = mcm_get("hui/crosshair_radius_m") or read_hui_setting_number("crosshair_radius_m", 2)
+local crosshair_only_best = mcm_get("hui/crosshair_only_best")
+if crosshair_only_best == nil then
+	crosshair_only_best = read_hui_setting_bool("crosshair_only_best", true)
+end
+
+local function hui_normalize_update_ms(v)
+	v = tonumber(v) or 17
+	if v < 0 then
+		v = 0
+	elseif v > 1000 then
+		v = 1000
+	end
+	return math.floor(v)
+end
+
+local hui_update_ms = hui_normalize_update_ms(mcm_get("hui/update_ms") or read_hui_setting_number("update_ms", 17))
+local function hui_normalize_jitter_mode(v)
+	v = tonumber(v) or 0
+	if v < 0 then
+		v = 0
+	elseif v > 3 then
+		v = 3
+	end
+	return math.floor(v)
+end
+
+local function hui_normalize_deadzone_px(v)
+	v = tonumber(v) or 2
+	if v < 0 then
+		v = 0
+	elseif v > 20 then
+		v = 20
+	end
+	return math.floor(v)
+end
+
+local function hui_normalize_tau_ms(v)
+	v = tonumber(v) or 120
+	if v < 0 then
+		v = 0
+	elseif v > 2000 then
+		v = 2000
+	end
+	return math.floor(v)
+end
+
+local function hui_normalize_max_step_px(v)
+	v = tonumber(v) or 0
+	if v < 0 then
+		v = 0
+	elseif v > 200 then
+		v = 200
+	end
+	return math.floor(v)
+end
+
+local function hui_normalize_anchor_mode(v)
+	v = tonumber(v) or 1
+	if v < 1 then
+		v = 1
+	elseif v > 4 then
+		v = 4
+	end
+	return math.floor(v)
+end
+
+local function hui_normalize_lerp_factor(v)
+	v = tonumber(v) or 0.3
+	if v < 0.01 then
+		v = 0.01
+	elseif v > 1 then
+		v = 1
+	end
+	return v
+end
+
+local hui_jitter_mode = hui_normalize_jitter_mode(mcm_get("hui/jitter_mode") or read_hui_setting_number("jitter_mode", 0))
+local hui_jitter_deadzone_px = hui_normalize_deadzone_px(mcm_get("hui/jitter_deadzone_px") or read_hui_setting_number("jitter_deadzone_px", 2))
+local hui_jitter_tau_ms = hui_normalize_tau_ms(mcm_get("hui/jitter_tau_ms") or read_hui_setting_number("jitter_tau_ms", 120))
+local hui_jitter_max_step_px = hui_normalize_max_step_px(mcm_get("hui/jitter_max_step_px") or read_hui_setting_number("jitter_max_step_px", 0))
+local hui_anchor_mode = hui_normalize_anchor_mode(mcm_get("hui/anchor_mode") or read_hui_setting_number("anchor_mode", 1))
+local hui_lerp_factor = hui_normalize_lerp_factor(mcm_get("hui/lerp_factor") or read_hui_setting_number("lerp_factor", 0.3))
+local hui_last_pick_ms = nil
+local hui_last_ui_ms = nil
+local hui_pick_accum_ms = 0
+local hui_ui_accum_ms = 0
+
+local detect_enable = mcm_get("hui/detect_enable")
+if detect_enable == nil then
+	detect_enable = read_hui_setting_bool("detect_enable", false)
+end
+local detect_delay_sec = mcm_get("hui/detect_delay_sec") or read_hui_setting_number("detect_delay_sec", 3)
+if detect_delay_sec < 1 then
+	detect_delay_sec = 1
+elseif detect_delay_sec > 10 then
+	detect_delay_sec = 10
+end
+local detect_instant_dist = mcm_get("hui/detect_instant_dist") or read_hui_setting_number("detect_instant_dist", 5)
+
+local HUI_DETECTING_TEXT = "ui_mcm_hui_detecting"
+
+local detected_npcs = {}
+local detect_timers = {}
+local detecting_color_state = {}
+local detecting_color_timer = 0
+local hui_ui_last_real_time = 0
+
+local function hui_get_time_ms()
+	if type(time_continual) == "function" then
+		local ok, v = pcall(time_continual)
+		if ok and v ~= nil then
+			return v
+		end
+	end
+	if type(time_global) == "function" then
+		local ok, v = pcall(time_global)
+		if ok and v ~= nil then
+			return v
+		end
+	end
+	if device then
+		local dev = nil
+		if type(device) == "function" then
+			local ok, v = pcall(function()
+				return device()
+			end)
+			if ok then
+				dev = v
+			end
+		else
+			dev = device
+		end
+		if dev and dev.time_global then
+			local ok, v = pcall(function()
+				return dev:time_global()
+			end)
+			if ok and v ~= nil then
+				return v
+			end
+		end
+	end
+	if os and os.clock then
+		local ok, v = pcall(os.clock)
+		if ok and v ~= nil then
+			return math.floor(v * 1000)
+		end
+	end
+	return nil
+end
+
+local function hui_get_device_obj()
+	if not device then
+		return nil
+	end
+	if type(device) == "function" then
+		local ok, v = pcall(function()
+			return device()
+		end)
+		if ok then
+			return v
+		end
+		return nil
+	end
+	return device
+end
+
+local hui_check_object_seen_non_nil = false
+local function hui_level_check_object(obj)
+	if not (level and level.check_object) then
+		return nil
+	end
+	local ok, v = pcall(function()
+		return level.check_object(obj)
+	end)
+	if not ok then
+		return nil
+	end
+	if v == nil then
+		if hui_check_object_seen_non_nil then
+			return false
+		end
+		return nil
+	end
+	hui_check_object_seen_non_nil = true
+	if type(v) == "boolean" then
+		return v
+	end
+	if type(v) == "number" then
+		return v ~= 0
+	end
+	if type(v) == "string" then
+		local s = tostring(v):lower()
+		if s == "1" or s == "true" or s == "yes" or s == "on" then
+			return true
+		end
+		if s == "0" or s == "false" or s == "no" or s == "off" then
+			return false
+		end
+		return nil
+	end
+	return nil
+end
+
+local function hui_get_dt_ms(delta)
+	local d = tonumber(delta)
+	if d and d > 0 then
+		if d <= 1 then
+			return d * 1000
+		end
+		return d
+	end
+
+	local dev = hui_get_device_obj()
+	if not dev then
+		return nil
+	end
+
+	local fdt = dev.f_time_delta
+	if type(fdt) ~= "number" then
+		fdt = tonumber(fdt)
+	end
+	if fdt and fdt > 0 then
+		return fdt * 1000
+	end
+
+	local dt = dev.time_delta
+	if type(dt) ~= "number" then
+		dt = tonumber(dt)
+	end
+	if dt and dt > 0 then
+		if dt <= 1 then
+			return dt * 1000
+		end
+		return dt
+	end
+
+	return nil
+end
+
+local function hui_should_tick(accum_ms, last_ms, delta, update_ms)
+	if not update_ms or update_ms <= 0 then
+		return true, accum_ms, last_ms
+	end
+
+	local dt_ms = hui_get_dt_ms(delta)
+	if dt_ms then
+		accum_ms = accum_ms + dt_ms
+		if accum_ms < update_ms then
+			return false, accum_ms, last_ms
+		end
+		accum_ms = accum_ms - update_ms
+		return true, accum_ms, last_ms
+	end
+
+	local now = hui_get_time_ms()
+	if now and last_ms and (now - last_ms) < update_ms then
+		return false, accum_ms, last_ms
+	end
+	return true, accum_ms, now or last_ms
+end
+
+local hui_debug = (read_hui_setting_number("debug", 0) or 0) >= 1
+local hui_debug_raw_x = nil
+local hui_debug_raw_y = nil
+local hui_debug_mode = nil
+local hui_debug_sw = nil
+local hui_debug_sh = nil
+
+local target_storage = {}
+local target_dist
+local target_name
+local target_faction
+local target_community
+local target_relation
+local fov_ref = nil
+
+local hui_monster_kind_to_loc_id = {
+	dog = "encyclopedia_mutants_blind_dog",
+	bloodsucker = "encyclopedia_mutants_bloodsucker",
+	boar = "encyclopedia_mutants_boar",
+	burer = "encyclopedia_mutants_burer",
+	cat = "encyclopedia_mutants_cat",
+	chimera = "encyclopedia_mutants_chimera",
+	controller = "encyclopedia_mutants_controller",
+	bird = "encyclopedia_mutants_crow",
+	flesh = "encyclopedia_mutants_flesh",
+	fracture = "encyclopedia_mutants_fracture",
+	pseudodog = "encyclopedia_mutants_pseudodog",
+	giant = "encyclopedia_mutants_pseudogiant",
+	snork = "encyclopedia_mutants_snork",
+	tushkano = "encyclopedia_mutants_tushkano",
+	zombie = "encyclopedia_mutants_zombie",
+	SM_KARLIK = "encyclopedia_mutants_karlik",
+	SM_LURKER = "encyclopedia_mutants_lurker",
+	SM_POLTER_G = "encyclopedia_mutants_poltergeist",
+	SM_PYRO_G = "encyclopedia_mutants_pyrogeist",
+	SM_PSEUDO_G = "encyclopedia_mutants_pseudogeist",
+	SM_PSYSUCKER = "encyclopedia_mutants_psysucker",
+}
+
+local function hui_get_obj_section(obj)
+	if not obj then
+		return nil
+	end
+	if type(obj.section) == "function" then
+		local ok, v = pcall(function()
+			return obj:section()
+		end)
+		if ok and v and v ~= "" then
+			return v
+		end
+	end
+	if type(obj.section_name) == "function" then
+		local ok, v = pcall(function()
+			return obj:section_name()
+		end)
+		if ok and v and v ~= "" then
+			return v
+		end
+	end
+	if type(obj.section_name) == "string" and obj.section_name ~= "" then
+		return obj.section_name
+	end
+	if type(obj.section) == "string" and obj.section ~= "" then
+		return obj.section
+	end
+	return nil
+end
+
+local function hui_ini_sys()
+	if ini_sys then
+		return ini_sys
+	end
+	if system_ini and type(system_ini) == "function" then
+		return system_ini()
+	end
+	return nil
+end
+
+local function hui_read_sec_param(sec, key)
+	if not sec or sec == "" or not key or key == "" then
+		return nil
+	end
+	if SYS_GetParam then
+		local ok, v = pcall(function()
+			return SYS_GetParam(0, sec, key)
+		end)
+		if ok and v and v ~= "" then
+			return v
+		end
+	end
+	if system_ini and type(system_ini) == "function" then
+		local ini = system_ini()
+		if ini and ini.r_string then
+			if ini.line_exist then
+				local ok, exists = pcall(function()
+					return ini:line_exist(sec, key)
+				end)
+				if ok and not exists then
+					return nil
+				end
+			end
+			local ok, v = pcall(function()
+				return ini:r_string(sec, key)
+			end)
+			if ok and v and v ~= "" then
+				return v
+			end
+		end
+	end
+	return nil
+end
+
+local function hui_read_sec_param_ex(sec, key)
+	local ini = hui_ini_sys()
+	if ini and ini.r_string_ex then
+		local ok, v = pcall(function()
+			return ini:r_string_ex(sec, key)
+		end)
+		if ok and v and v ~= "" then
+			return v
+		end
+	end
+	return hui_read_sec_param(sec, key)
+end
+
+local function hui_translate_string(id)
+	if not id or id == "" then
+		return nil
+	end
+	if game and game.translate_string then
+		local ok, tr = pcall(function()
+			return game.translate_string(id)
+		end)
+		if ok and tr and tr ~= "" and tr ~= id then
+			return tr
+		end
+	end
+	return nil
+end
+
+local function hui_is_probably_loc_id(s)
+	if type(s) ~= "string" or s == "" then
+		return false
+	end
+	if string.find(s, " ", 1, true) then
+		return false
+	end
+	if string.find(s, "\\", 1, true) or string.find(s, "/", 1, true) then
+		return false
+	end
+	if string.sub(s, 1, 3) == "st_" then
+		return true
+	end
+	if string.sub(s, 1, 3) == "ui_" then
+		return true
+	end
+	if string.sub(s, 1, 13) == "encyclopedia_" then
+		return true
+	end
+	if string.find(s, "mutants_", 1, true) or string.find(s, "monster_", 1, true) then
+		return true
+	end
+	return false
+end
+
+local function hui_get_mutant_loc_id_by_section(sec)
+	if not sec or sec == "" then
+		return nil
+	end
+	if string and string.find then
+		if string.find(sec, "rotan", 1, true) then
+			return "encyclopedia_mutants_rat"
+		end
+		if string.find(sec, "psy_dog", 1, true) then
+			return "encyclopedia_mutants_psydog"
+		end
+	end
+	local what = hui_read_sec_param_ex(sec, "kind") or hui_read_sec_param_ex(sec, "species")
+	if not what or what == "" then
+		return nil
+	end
+	local loc_id = hui_monster_kind_to_loc_id[what]
+	if loc_id and loc_id ~= "" then
+		return loc_id
+	end
+	local guess = "encyclopedia_mutants_" .. tostring(what)
+	if hui_translate_string(guess) then
+		return guess
+	end
+	return nil
+end
+
+local function GetMutantName(obj)
+	if not obj then
+		return nil
+	end
+	local sec = hui_get_obj_section(obj)
+	if not sec or sec == "" then
+		return nil
+	end
+	local inv_name = hui_read_sec_param_ex(sec, "inv_name") or hui_read_sec_param_ex(sec, "inv_name_short") or hui_read_sec_param_ex(sec, "name")
+	if inv_name and inv_name ~= "" then
+		local tr = hui_translate_string(inv_name)
+		if tr then
+			return tr
+		end
+		if not hui_is_probably_loc_id(inv_name) then
+			return inv_name
+		end
+	end
+	local loc_id = hui_get_mutant_loc_id_by_section(sec)
+	if loc_id and loc_id ~= "" then
+		local tr = hui_translate_string(loc_id)
+		if tr then
+			return tr
+		end
+	end
+	if obj.character_name then
+		local ok, v = pcall(function()
+			return obj:character_name()
+		end)
+		if ok and v and v ~= "" and v ~= sec then
+			return v
+		end
+	end
+	return sec
+end
+
+local function get_obj_screen_pos(obj)
+	local pos = utils_obj.safe_bone_pos(obj, "bip01_head") or obj:position()
+	local vec = pos and game.world2ui(vector():set(pos.x, pos.y, pos.z), false)
+	if (vec and (vec.x ~= -9999) and (vec.y ~= 0)) then
+		return vec
+	end
+	return nil
+end
+
+local function hui_dyn_scale_by_dist(dist)
+	return 1
+end
+
+local function hui_get_current_fov()
+	if device and type(device) == "function" then
+		local dev = device()
+		if dev and dev.fov ~= nil then
+			return dev.fov
+		end
+	end
+	if db and db.actor and db.actor.fov then
+		local ok, v = pcall(function()
+			return db.actor:fov()
+		end)
+		if ok and v ~= nil then
+			return v
+		end
+	end
+	return nil
+end
+
+local function hui_get_fov_factor()
+	local fov = hui_get_current_fov()
+	if not fov then
+		return 1
+	end
+	if fov_ref == nil then
+		fov_ref = fov
+	end
+	if fov > fov_ref then
+		fov_ref = fov
+	end
+	if fov_ref < 1 then
+		return 1
+	end
+	local k = fov / fov_ref
+	if k < FOV_FACTOR_MIN then
+		k = FOV_FACTOR_MIN
+	elseif k > FOV_FACTOR_MAX then
+		k = FOV_FACTOR_MAX
+	end
+
+	-- Apply weight: 0 = no compensation, 1 = full compensation, >1 = over-compensation
+	if FOV_COMP_WEIGHT ~= 1 then
+		k = 1.0 + (k - 1.0) * FOV_COMP_WEIGHT
+	end
+
+	return k
+end
+
+local function hui_head_y_offset_by_dist(dist)
+	local near_dist = 1
+	local far_dist = 100
+	local near_off = 0.2
+	local far_off = -1
+
+	if not dist or dist <= near_dist then
+		return near_off
+	end
+	if dist >= far_dist then
+		return far_off
+	end
+
+	local t = (dist - near_dist) / (far_dist - near_dist)
+	return near_off + ((far_off - near_off) * t)
+end
+
+local function hui_dyn_alpha_by_dist(dist)
+	local dist_near = read_hui_setting_number("dyn_dist_near", 2)
+	local dist_far = read_hui_setting_number("dyn_dist_far", 400)
+	local a_near = read_hui_setting_number("dyn_alpha_near", 255)
+	local a_far = read_hui_setting_number("dyn_alpha_far", 70)
+
+	dist_near = math.max(dist_near, 0.01)
+	dist_far = math.max(dist_far, dist_near + 0.01)
+
+	if not dist or dist <= dist_near then
+		return a_near
+	end
+	if dist >= dist_far then
+		return a_far
+	end
+
+	local t = (dist - dist_near) / (dist_far - dist_near)
+	if t < 0 then
+		t = 0
+	elseif t > 1 then
+		t = 1
+	end
+
+	return a_near + ((a_far - a_near) * t)
+end
+
+local function hui_get_hp_color(hp)
+	local low_hp_threshold = 0.01
+	if hp >= 1.0 then
+		return 0, 255, 0
+	end
+	if hp <= low_hp_threshold then
+		return 255, 0, 0
+	end
+	local t = (hp - low_hp_threshold) / (1.0 - low_hp_threshold)
+	if t < 0 then
+		t = 0
+	elseif t > 1 then
+		t = 1
+	end
+	local r = 255 + ((0 - 255) * t)
+	local g = 0 + ((255 - 0) * t)
+	return math.floor(r + 0.5), math.floor(g + 0.5), 0
+end
+
+local function hui_get_hp_symbol_char(style)
+	if style == 2 then
+		return "I"
+	end
+	if style == 3 then
+		return "#"
+	end
+	return "|"
+end
+
+local function hui_get_hp_symbol_max()
+	local max = tonumber(hp_bar_symbol_len) or 10
+	if max < 1 then
+		max = 1
+	elseif max > 50 then
+		max = 50
+	end
+	return math.floor(max + 0.5)
+end
+
+local function hui_get_hp_symbol_step_px()
+	local v = tonumber(hp_bar_symbol_step_px) or 6
+	if v < 0.5 then
+		v = 0.5
+	elseif v > 200 then
+		v = 200
+	end
+	return v
+end
+
+local function hui_get_text_font()
+	if GetFontLetterica16Russian then
+		return GetFontLetterica16Russian()
+	end
+	if GetFontMedium then
+		return GetFontMedium()
+	end
+	if GetFontSmall then
+		return GetFontSmall()
+	end
+	return nil
+end
+
+local function hui_get_sub_font()
+	return hui_get_text_font()
+end
+
+local function hui_apply_text_style(wnd, a, r, g, b, font)
+	if not wnd then
+		return
+	end
+	if font and wnd.SetFont then
+		wnd:SetFont(font)
+	end
+	if wnd.SetTextColor then
+		wnd:SetTextColor(GetARGB(a, r, g, b))
+	end
+end
+
+local function hui_apply_texture_alpha(wnd, a)
+	if wnd and wnd.SetTextureColor then
+		wnd:SetTextureColor(GetARGB(a, 255, 255, 255))
+	end
+end
+
+local function hui_apply_progress_style(wnd)
+	if not wnd then
+		return
+	end
+	if wnd.UseColor then
+		wnd:UseColor(false)
+	end
+	if wnd.ShowBackground then
+		wnd:ShowBackground(true)
+	end
+end
+
+local function hui_apply_layout(ele, s)
+	local w = MARKER_W
+	local h = MARKER_H
+	local root_sz = vector2():set(w, h)
+	ele.marker:SetWndSize(root_sz)
+	ele.marker_zoom:SetWndSize(root_sz)
+
+	ele.text1:SetWndPos(vector2():set(0, -16))
+	ele.text1_zoom:SetWndPos(vector2():set(0, -16))
+	ele.text1:SetWndSize(vector2():set(w, 16))
+	ele.text1_zoom:SetWndSize(vector2():set(w, 16))
+	if ele.text1_sh and ele.text1_sh_zoom then
+		ele.text1_sh:SetWndPos(vector2():set(1, -15))
+		ele.text1_sh_zoom:SetWndPos(vector2():set(1, -15))
+		ele.text1_sh:SetWndSize(vector2():set(w, 16))
+		ele.text1_sh_zoom:SetWndSize(vector2():set(w, 16))
+	end
+
+	ele.text2:SetWndPos(vector2():set(0, 0))
+	ele.text2_zoom:SetWndPos(vector2():set(0, 0))
+	ele.text2:SetWndSize(vector2():set(w, 16))
+	ele.text2_zoom:SetWndSize(vector2():set(w, 16))
+	if ele.text2_sh and ele.text2_sh_zoom then
+		ele.text2_sh:SetWndPos(vector2():set(1, 1))
+		ele.text2_sh_zoom:SetWndPos(vector2():set(1, 1))
+		ele.text2_sh:SetWndSize(vector2():set(w, 16))
+		ele.text2_sh_zoom:SetWndSize(vector2():set(w, 16))
+	end
+
+	ele.text3:SetWndPos(vector2():set(0, 14))
+	ele.text3_zoom:SetWndPos(vector2():set(0, 14))
+	ele.text3:SetWndSize(vector2():set(w, 14))
+	ele.text3_zoom:SetWndSize(vector2():set(w, 14))
+	if ele.text3_sh and ele.text3_sh_zoom then
+		ele.text3_sh:SetWndPos(vector2():set(1, 15))
+		ele.text3_sh_zoom:SetWndPos(vector2():set(1, 15))
+		ele.text3_sh:SetWndSize(vector2():set(w, 14))
+		ele.text3_sh_zoom:SetWndSize(vector2():set(w, 14))
+	end
+
+	local hp_w = HP_BAR_W * s
+	if hp_w < HP_BAR_MIN_W then
+		hp_w = HP_BAR_MIN_W
+	elseif hp_w > HP_BAR_MAX_W then
+		hp_w = HP_BAR_MAX_W
+	end
+	local hp_h = 5
+	local hp_x = (w - hp_w) * 0.5 + (HP_BAR_OFFSET_X * s)
+	local hp_y = 30 + (HP_BAR_OFFSET_Y * s)
+	ele.hp_w = hp_w
+	ele.hp_h = hp_h
+	ele.hp:SetWndPos(vector2():set(hp_x, hp_y))
+	ele.hp_zoom:SetWndPos(vector2():set(hp_x, hp_y))
+	ele.hp_bg:SetWndPos(vector2():set(hp_x, hp_y))
+	ele.hp_bg_zoom:SetWndPos(vector2():set(hp_x, hp_y))
+	if ele.hp_shadow and ele.hp_shadow_zoom then
+		ele.hp_shadow:SetWndPos(vector2():set(hp_x + 1, hp_y + 1))
+		ele.hp_shadow_zoom:SetWndPos(vector2():set(hp_x + 1, hp_y + 1))
+		ele.hp_shadow:SetWndSize(vector2():set(hp_w, hp_h))
+		ele.hp_shadow_zoom:SetWndSize(vector2():set(hp_w, hp_h))
+	end
+	ele.hp:SetWndSize(vector2():set(hp_w, hp_h))
+	ele.hp_zoom:SetWndSize(vector2():set(hp_w, hp_h))
+
+	local hp_sym_h = 16
+	local hp_sym_y = hp_y - math.floor(((hp_sym_h - hp_h) * 0.5) + 0.5)
+	ele.hp_sym_h = hp_sym_h
+	ele.hp_sym_y = hp_sym_y
+end
+
+local function hui_get_name_rgb_by_relation(rel)
+	if game_object and rel ~= nil then
+		if game_object.enemy ~= nil and rel == game_object.enemy then
+			return 255, 80, 80
+		end
+		if game_object.friend ~= nil and rel == game_object.friend then
+			return 80, 255, 80
+		end
+	end
+	return 220, 200, 150
+end
+
+local function hui_get_faction_rgb_by_community(comm)
+	if not comm then
+		return 180, 180, 180
+	end
+	if comm == "stalker" then
+		return 255, 255, 0
+	end
+	if comm == "bandit" then
+		return 115, 70, 30
+	end
+	if comm == "csky" then
+		return 0, 200, 255
+	end
+	if comm == "dolg" then
+		return 255, 100, 100
+	end
+	if comm == "freedom" then
+		return 135, 240, 110
+	end
+	if comm == "killer" then
+		return 50, 100, 200
+	end
+	if comm == "army" then
+		return 90, 120, 60
+	end
+	if comm == "ecolog" then
+		return 230, 140, 10
+	end
+	if comm == "monolith" then
+		return 150, 40, 200
+	end
+	if comm == "renegade" or comm == "renegades" then
+		return 150, 30, 30
+	end
+	if comm == "greh" or comm == "sin" then
+		return 200, 30, 0
+	end
+	if comm == "isg" or comm == "unisg" then
+		return 0, 135, 60
+	end
+	if comm == "zombied" or comm == "zombies" then
+		return 0, 0, 0
+	end
+	if comm == "trader" then
+		return 255, 255, 255
+	end
+	return 180, 180, 180
+end
+
+local function hui_apply_style(ele, s, dist, rel, comm)
+	local a = hui_dyn_alpha_by_dist(dist)
+
+	hui_apply_texture_alpha(ele.marker, a)
+	hui_apply_texture_alpha(ele.marker_zoom, a)
+	if ele.hp_bg and ele.hp_bg_zoom then
+		hui_apply_texture_alpha(ele.hp_bg, a)
+		hui_apply_texture_alpha(ele.hp_bg_zoom, a)
+		if ele.hp_bg.SetTextureColor then
+			ele.hp_bg:SetTextureColor(GetARGB(a, 25, 25, 25))
+		end
+		if ele.hp_bg_zoom.SetTextureColor then
+			ele.hp_bg_zoom:SetTextureColor(GetARGB(a, 25, 25, 25))
+		end
+	end
+	if ele.hp_shadow and ele.hp_shadow_zoom then
+		hui_apply_texture_alpha(ele.hp_shadow, a)
+		hui_apply_texture_alpha(ele.hp_shadow_zoom, a)
+		if ele.hp_shadow.SetTextureColor then
+			ele.hp_shadow:SetTextureColor(GetARGB(a, 0, 0, 0))
+		end
+		if ele.hp_shadow_zoom.SetTextureColor then
+			ele.hp_shadow_zoom:SetTextureColor(GetARGB(a, 0, 0, 0))
+		end
+	end
+	hui_apply_texture_alpha(ele.hp, a)
+	hui_apply_texture_alpha(ele.hp_zoom, a)
+
+	local name_font = hui_get_text_font()
+	local sub_font = hui_get_sub_font()
+	local nr, ng, nb = hui_get_name_rgb_by_relation(rel)
+	local fr, fg, fb = hui_get_faction_rgb_by_community(comm)
+	if ele.text1_sh and ele.text1_sh_zoom then
+		hui_apply_text_style(ele.text1_sh, a, 0, 0, 0, name_font)
+		hui_apply_text_style(ele.text1_sh_zoom, a, 0, 0, 0, name_font)
+	end
+	if ele.text2_sh and ele.text2_sh_zoom then
+		hui_apply_text_style(ele.text2_sh, a, 0, 0, 0, name_font)
+		hui_apply_text_style(ele.text2_sh_zoom, a, 0, 0, 0, name_font)
+	end
+	if ele.text3_sh and ele.text3_sh_zoom then
+		hui_apply_text_style(ele.text3_sh, a, 0, 0, 0, sub_font)
+		hui_apply_text_style(ele.text3_sh_zoom, a, 0, 0, 0, sub_font)
+	end
+	if ele.text1 and ele.text1_zoom then
+		hui_apply_text_style(ele.text1, a, 255, 127, 0, name_font)
+		hui_apply_text_style(ele.text1_zoom, a, 255, 127, 0, name_font)
+	end
+	hui_apply_text_style(ele.text2, a, nr, ng, nb, name_font)
+	hui_apply_text_style(ele.text2_zoom, a, nr, ng, nb, name_font)
+	hui_apply_text_style(ele.text3, a, fr, fg, fb, sub_font)
+	hui_apply_text_style(ele.text3_zoom, a, fr, fg, fb, sub_font)
+end
+
+local function hui_world2ui_px(pos)
+	if not pos then
+		return nil
+	end
+	local vec = game.world2ui(vector():set(pos.x, pos.y, pos.z), false)
+	if not (vec and (vec.x ~= -9999) and (vec.y ~= 0)) then
+		return nil
+	end
+
+	local sw = 1024
+	local sh = 768
+	if device and type(device) == "function" then
+		local dev = device()
+		if dev and dev.width and dev.height then
+			sw = dev.width
+			sh = dev.height
+		end
+	end
+
+	local x = vec.x
+	local y = vec.y
+	hui_debug_raw_x = x
+	hui_debug_raw_y = y
+	hui_debug_mode = "raw"
+	hui_debug_sw = sw
+	hui_debug_sh = sh
+
+	if x >= 0 and x <= 1.5 and y >= 0 and y <= 1.5 then
+		hui_debug_mode = "01"
+		x = x * sw
+		y = y * sh
+	elseif x >= -1.5 and x <= 1.5 and y >= -1.5 and y <= 1.5 then
+		hui_debug_mode = "11"
+		x = (x + 1) * 0.5 * sw
+		y = (y + 1) * 0.5 * sh
+	elseif x > -sw and x < sw and y > -sh and y < sh and (x < 0 or y < 0) then
+		hui_debug_mode = "center"
+		x = x + (sw * 0.5)
+		y = y + (sh * 0.5)
+	else
+		hui_debug_mode = "px"
+	end
+
+	return vector2():set(x, y)
+end
+
+local function hui_is_target_allowed(npc)
+	if (npc:clsid() == clsid.crow) then
+		return nil
+	end
+
+	if not (IsStalker(npc) or IsMonster(npc)) then
+		return nil
+	end
+
+	if not npc:alive() then
+		return nil
+	end
+
+	if IsStalker(npc) and show_mode == 1 and npc:relation(db.actor) < game_object.enemy then
+		return nil
+	end
+
+	local dist = math.sqrt(npc:position():distance_to_sqr(db.actor:position()))
+	if dist > hui_range then
+		return nil
+	end
+
+	if require_los then
+		if level and level.check_object then
+			local vis = hui_level_check_object(npc)
+			if vis == false then
+				return nil
+			end
+			if vis == nil and not db.actor:see(npc) then
+				return nil
+			end
+		else
+			if not db.actor:see(npc) then
+				return nil
+			end
+		end
+	end
+
+	return dist
+end
+
+local function hui_set_target(npc)
+	local dist = hui_is_target_allowed(npc)
+	if not dist then
+		return false
+	end
+
+	target_dist = dist
+	target_faction = nil
+	target_community = nil
+	target_relation = nil
+	if IsMonster(npc) then
+		target_name = GetMutantName(npc) or "???"
+		target_relation = game_object and game_object.enemy or nil
+	elseif IsStalker(npc) then
+		target_name = npc:character_name()
+		target_community = character_community(npc)
+		target_faction = target_community and game.translate_string(target_community) or nil
+		if npc.relation and db and db.actor then
+			local ok, rel = pcall(function()
+				return npc:relation(db.actor)
+			end)
+			if ok then
+				target_relation = rel
+			end
+		end
+	else
+		target_name = "???"
+	end
+
+	return true
+end
+
+local function hui_pick_target()
+	return level.get_target_obj and level.get_target_obj() or nil
+
+end
+
+local function hui_pick_targets_in_crosshair()
+	local out = {}
+	if not (db and db.actor and db.actor:alive()) then
+		return out
+	end
+	if not (level and (level.get_target_obj or level.iterate_nearest)) then
+		return out
+	end
+
+	local block_dist = nil
+	if require_los and level and level.get_target_dist then
+		local ok, v = pcall(function()
+			return level.get_target_dist()
+		end)
+		if ok and v ~= nil then
+			local n = tonumber(v)
+			if n and n > 0 then
+				block_dist = n
+			end
+		end
+	end
+
+	local sel_mode = tonumber(crosshair_select_mode) or 1
+	if sel_mode < 1 then
+		sel_mode = 1
+	elseif sel_mode > 2 then
+		sel_mode = 2
+	end
+
+	if sel_mode == 2 then
+		local actor = db and db.actor or nil
+		local actor_id = nil
+		if actor and actor.id then
+			local ok, v = pcall(function()
+				return actor:id()
+			end)
+			if ok and v ~= nil then
+				actor_id = v
+			end
+		end
+
+		local function get_obj_id(obj)
+			if not (obj and obj.id) then
+				return nil
+			end
+			local ok, v = pcall(function()
+				return obj:id()
+			end)
+			if ok then
+				return v
+			end
+			return nil
+		end
+
+		local function base_ok(npc)
+			if actor_id and get_obj_id(npc) == actor_id then
+				return nil
+			end
+			if (npc:clsid() == clsid.crow) then
+				return nil
+			end
+			if not (IsStalker(npc) or IsMonster(npc)) then
+				return nil
+			end
+			if not npc:alive() then
+				return nil
+			end
+			if IsStalker(npc) and show_mode == 1 and npc:relation(db.actor) < game_object.enemy then
+				return nil
+			end
+			local dist = math.sqrt(npc:position():distance_to_sqr(db.actor:position()))
+			if dist > hui_range then
+				return nil
+			end
+			return dist
+		end
+
+		local radius_m = tonumber(crosshair_radius_m) or 0
+		if radius_m <= 0 then
+			local direct = level.get_target_obj and level.get_target_obj() or nil
+			if direct then
+				if actor_id and get_obj_id(direct) == actor_id then
+					return out
+				end
+				local dist = base_ok(direct)
+				if dist and (not block_dist or dist <= (block_dist + 0.5)) then
+				local ok, id = pcall(function()
+					return direct:id()
+				end)
+				if ok and id then
+					out[id] = true
+				end
+				end
+			end
+			return out
+		end
+
+		local dev = hui_get_device_obj()
+		if not (dev and dev.cam_pos and dev.cam_dir) then
+			return out
+		end
+
+		local origin = dev.cam_pos
+		local dir_n = vector():set(dev.cam_dir)
+		local dir_len2 = dir_n:dotproduct(dir_n)
+		if not dir_len2 or dir_len2 <= 0 then
+			return out
+		end
+		dir_n:mul(1 / math.sqrt(dir_len2))
+
+		local r2 = radius_m * radius_m
+		local best_id = nil
+		local best_d2 = nil
+		local best_t = nil
+
+		local v_to = vector()
+		local v_closest = vector()
+
+		local function get_obj_anchor_pos(obj)
+			if hui_anchor_mode == 2 then
+				return utils_obj.safe_bone_pos(obj, "bip01_neck") or obj:position()
+			elseif hui_anchor_mode == 3 then
+				return utils_obj.safe_bone_pos(obj, "bip01_spine") or obj:position()
+			elseif hui_anchor_mode == 4 then
+				return obj:position()
+			end
+			return utils_obj.safe_bone_pos(obj, "bip01_head") or obj:position()
+		end
+
+		local function consider_world(obj)
+			if require_los then
+				if level and level.check_object then
+					local vis = hui_level_check_object(obj)
+					if vis == false then
+						return
+					end
+				else
+					if not db.actor:see(obj) then
+						return
+					end
+				end
+			end
+
+			local bone = get_obj_anchor_pos(obj)
+			if not bone then
+				return
+			end
+
+			v_to:set(bone)
+			v_to:sub(origin)
+			local t = v_to:dotproduct(dir_n)
+			if t < 0 then
+				return
+			end
+			if t > hui_range then
+				return
+			end
+
+			v_closest:mad(origin, dir_n, t)
+			local d2 = bone:distance_to_sqr(v_closest)
+			if d2 > r2 then
+				return
+			end
+
+			local ok, id = pcall(function()
+				return obj:id()
+			end)
+			if not (ok and id) then
+				return
+			end
+
+			if crosshair_only_best then
+				if best_d2 == nil or d2 < best_d2 or (d2 == best_d2 and (best_t == nil or t < best_t)) then
+					best_d2 = d2
+					best_t = t
+					best_id = id
+				end
+			else
+				out[id] = true
+			end
+		end
+
+		local direct = level.get_target_obj and level.get_target_obj() or nil
+		if direct then
+			if actor_id and get_obj_id(direct) == actor_id then
+				direct = nil
+			end
+		end
+		if direct then
+			local dist = base_ok(direct)
+			if dist and (not block_dist or dist <= (block_dist + 0.5)) then
+			consider_world(direct)
+			end
+		end
+
+		if level.iterate_nearest then
+			local actor_pos = db.actor:position()
+			pcall(level.iterate_nearest, actor_pos, hui_range, function(obj)
+				if not obj then
+					return false
+				end
+				if actor_id and get_obj_id(obj) == actor_id then
+					return false
+				end
+				local dist = base_ok(obj)
+				if not dist then
+					return false
+				end
+				if block_dist and dist > (block_dist + 0.5) then
+					return false
+				end
+				consider_world(obj)
+				return false
+			end)
+		end
+
+		if crosshair_only_best and best_id ~= nil then
+			out[best_id] = true
+		end
+
+		return out
+	end
+
+	local radius = tonumber(crosshair_radius_px) or 0
+	if radius < 1 then
+		local direct = level.get_target_obj and level.get_target_obj() or nil
+		if direct and hui_is_target_allowed(direct) then
+			local ok, id = pcall(function()
+				return direct:id()
+			end)
+			if ok and id then
+				out[id] = true
+			end
+		end
+		return out
+	end
+
+	local center_x = 512
+	local center_y = 384
+	local radius2 = radius * radius
+
+	local best_id = nil
+	local best_d2 = nil
+
+	local function get_obj_ui_pos(obj)
+		local pos = utils_obj.safe_bone_pos(obj, "bip01_head") or obj:position()
+		return hui_world2ui_px(pos)
+	end
+
+	local function consider(obj, vec)
+		if not (obj and vec and vec.x and vec.y) then
+			return
+		end
+		local dx = vec.x - center_x
+		local dy = vec.y - center_y
+		local d2 = (dx * dx) + (dy * dy)
+		if d2 > radius2 then
+			return
+		end
+		local ok, id = pcall(function()
+			return obj:id()
+		end)
+		if not (ok and id) then
+			return
+		end
+		if crosshair_only_best then
+			if best_d2 == nil or d2 < best_d2 then
+				best_d2 = d2
+				best_id = id
+			end
+		else
+			out[id] = true
+		end
+	end
+
+	local direct = level.get_target_obj and level.get_target_obj() or nil
+	if direct then
+		local dist = hui_is_target_allowed(direct)
+		if dist and block_dist and dist > (block_dist + 0.5) then
+			direct = nil
+		end
+	end
+	if direct and hui_is_target_allowed(direct) then
+		if require_los and level and level.check_object then
+			local vis = hui_level_check_object(direct)
+			if vis == false then
+				direct = nil
+			end
+		end
+	end
+	if direct then
+		consider(direct, get_obj_ui_pos(direct))
+	end
+
+	if level.iterate_nearest then
+		local actor_pos = db.actor:position()
+		pcall(level.iterate_nearest, actor_pos, hui_range, function(obj)
+			if not obj then
+				return false
+			end
+			local dist = hui_is_target_allowed(obj)
+			if not dist then
+				return false
+			end
+			if block_dist and dist > (block_dist + 0.5) then
+				return false
+			end
+			if require_los and level and level.check_object then
+				local vis = hui_level_check_object(obj)
+				if vis == false then
+					return false
+				end
+			end
+			consider(obj, get_obj_ui_pos(obj))
+			return false
+		end)
+	end
+
+	if crosshair_only_best and best_id ~= nil then
+		out[best_id] = true
+	end
+
+	return out
+end
+
+function hui_actor_on_update(delta)
+	hui_enabled = hui_read_enabled()
+	if not hui_enabled then
+		return
+	end
+
+	local ok, accum, last = hui_should_tick(hui_pick_accum_ms, hui_last_pick_ms, delta, hui_update_ms)
+	hui_pick_accum_ms = accum
+	hui_last_pick_ms = last
+	if not ok then
+		return
+	end
+
+	local current_time_ms = hui_get_time_ms()
+	local current_time_sec = current_time_ms / 1000
+	for obj_id, start_time in pairs(detect_timers) do
+		if current_time_sec >= start_time + detect_delay_sec then
+			detected_npcs[obj_id] = true
+			detect_timers[obj_id] = nil
+			detecting_color_state[obj_id] = nil
+		end
+	end
+
+	for id,_ in pairs(target_storage) do
+		target_storage[id] = nil
+	end
+
+	if use_crosshair_radius then
+		local targets = hui_pick_targets_in_crosshair()
+		for id,_ in pairs(targets) do
+			target_storage[id] = true
+			if detect_enable then
+				local st = db.storage[id]
+				if st and st.object and not detected_npcs[id] then
+					local dist = math.sqrt(st.object:position():distance_to_sqr(db.actor:position()))
+					if dist <= detect_instant_dist then
+						detected_npcs[id] = true
+					elseif not detect_timers[id] then
+						detect_timers[id] = hui_get_time_ms() / 1000
+						detecting_color_state[id] = {timer = 0, state = 1}
+					end
+				end
+			end
+		end
+	else
+		local obj = hui_pick_target()
+		if obj and hui_set_target(obj) then
+			target_storage[obj:id()] = true
+			if detect_enable then
+				local obj_id = obj:id()
+				if not detected_npcs[obj_id] then
+					local dist = math.sqrt(obj:position():distance_to_sqr(db.actor:position()))
+					if dist <= detect_instant_dist then
+						detected_npcs[obj_id] = true
+					elseif not detect_timers[obj_id] then
+						detect_timers[obj_id] = hui_get_time_ms() / 1000
+						detecting_color_state[obj_id] = {timer = 0, state = 1}
+					end
+				end
+			end
+		end
+	end
+
+	for obj_id, start_time in pairs(detect_timers) do
+		if not target_storage[obj_id] then
+			detect_timers[obj_id] = nil
+			detecting_color_state[obj_id] = nil
+		end
+	end
+
+	hui_ui_ensure()
+end
+
+local HUI_UI = nil
+
+function hui_ui_ensure()
+	if not hui_enabled then
+		return
+	end
+
+	if (HUI_UI == nil) then
+		HUI_UI = hui_ui()
+		get_hud():AddDialogToRender(HUI_UI)
+	end
+end
+
+local function hui_ui_remove()
+	if (HUI_UI ~= nil) then
+		get_hud():RemoveDialogToRender(HUI_UI)
+		HUI_UI = nil
+	end
+end
+
+local function hui_ui_update()
+	if (HUI_UI ~= nil) then
+		local current_time = hui_get_time_ms()
+		local delta_ms = current_time - hui_ui_last_real_time
+		hui_ui_last_real_time = current_time
+		HUI_UI:Update(delta_ms / 1000)
+	end
+end
+
+class "hui_ui" (CUIScriptWnd)
+
+function hui_ui:__init() super()
+	self:InitControls()
+end
+
+function hui_ui:__finalize()
+end
+
+function hui_ui:InitControls()
+	self:SetAutoDelete(true)
+	self:SetWndRect(Frect():set(0,0,1024,768))
+	self.xml = CScriptXmlInit()
+	self.xml:ParseFile("ui_hui_marker.xml")
+	self.ele = {}
+
+end
+
+function hui_ui:Update(delta)
+	local ok, accum, last = hui_should_tick(hui_ui_accum_ms, hui_last_ui_ms, delta, hui_update_ms)
+	hui_ui_accum_ms = accum
+	hui_last_ui_ms = last
+	if not ok then
+		return
+	end
+	
+	local current_time = hui_get_time_ms()
+	for id, timer in pairs(detect_timers) do
+		if not detecting_color_state[id] then
+			detecting_color_state[id] = {timer = current_time, state = 1}
+		else
+			if current_time - detecting_color_state[id].timer >= 50 then
+				detecting_color_state[id].timer = current_time
+				local state = detecting_color_state[id].state
+				if state == 1 then
+					state = 2
+				elseif state == 2 then
+					state = 3
+				else
+					state = 1
+				end
+				detecting_color_state[id].state = state
+			end
+		end
+	end
+	
+	local zoom_mode = axr_main.weapon_is_zoomed
+	CUIScriptWnd.Update(self)
+	for id,_ in pairs(target_storage) do
+		local st = db.storage[id]
+		if (st and st.object and hui_set_target(st.object)) then
+			if (self.ele[id] == nil) then
+				self.ele[id] = {}
+				self.ele[id].marker = self.xml:InitStatic("marker",self)
+				self.ele[id].marker_zoom = self.xml:InitStatic("marker_zoom",self)
+				self.ele[id].hp_shadow = self.xml:InitStatic("marker:hp_shadow", self.ele[id].marker)
+				self.ele[id].hp_shadow_zoom = self.xml:InitStatic("marker_zoom:hp_shadow", self.ele[id].marker_zoom)
+				self.ele[id].hp_bg = self.xml:InitStatic("marker:hp_bg", self.ele[id].marker)
+				self.ele[id].hp_bg_zoom = self.xml:InitStatic("marker_zoom:hp_bg", self.ele[id].marker_zoom)
+				self.ele[id].hp = self.xml:InitStatic("marker:hp", self.ele[id].marker)
+				self.ele[id].hp_zoom = self.xml:InitStatic("marker_zoom:hp", self.ele[id].marker_zoom)
+				if hp_bar_symbolic then
+					local max = hui_get_hp_symbol_max()
+					local ch = hui_get_hp_symbol_char(tonumber(hp_bar_symbol_style) or 1)
+					self.ele[id].hp_sym_seg_max = max
+					self.ele[id].hp_sym_segs = {}
+					self.ele[id].hp_sym_segs_zoom = {}
+					self.ele[id].hp_sym_sh_segs = {}
+					self.ele[id].hp_sym_sh_segs_zoom = {}
+					for i = 1, max do
+						local sh = self.xml:InitTextWnd("marker:hp_sym_sh", self.ele[id].marker)
+						local shz = self.xml:InitTextWnd("marker_zoom:hp_sym_sh", self.ele[id].marker_zoom)
+						local fill = self.xml:InitTextWnd("marker:hp_sym", self.ele[id].marker)
+						local fillz = self.xml:InitTextWnd("marker_zoom:hp_sym", self.ele[id].marker_zoom)
+						sh:SetText(ch)
+						shz:SetText(ch)
+						fill:SetText(ch)
+						fillz:SetText(ch)
+						self.ele[id].hp_sym_sh_segs[i] = sh
+						self.ele[id].hp_sym_sh_segs_zoom[i] = shz
+						self.ele[id].hp_sym_segs[i] = fill
+						self.ele[id].hp_sym_segs_zoom[i] = fillz
+					end
+				end
+				self.ele[id].text1_sh = self.xml:InitTextWnd("marker:st_dist_sh",self.ele[id].marker)
+				self.ele[id].text1_sh_zoom = self.xml:InitTextWnd("marker_zoom:st_dist_sh",self.ele[id].marker_zoom)
+				self.ele[id].text1 = self.xml:InitTextWnd("marker:st_dist",self.ele[id].marker)
+				self.ele[id].text1_zoom = self.xml:InitTextWnd("marker_zoom:st_dist",self.ele[id].marker_zoom)
+				self.ele[id].text2_sh = self.xml:InitTextWnd("marker:npc_name_sh",self.ele[id].marker)
+				self.ele[id].text2_sh_zoom = self.xml:InitTextWnd("marker_zoom:npc_name_sh",self.ele[id].marker_zoom)
+				self.ele[id].text2 = self.xml:InitTextWnd("marker:npc_name",self.ele[id].marker)
+				self.ele[id].text2_zoom = self.xml:InitTextWnd("marker_zoom:npc_name",self.ele[id].marker_zoom)
+				self.ele[id].text3_sh = self.xml:InitTextWnd("marker:npc_faction_sh",self.ele[id].marker)
+				self.ele[id].text3_sh_zoom = self.xml:InitTextWnd("marker_zoom:npc_faction_sh",self.ele[id].marker_zoom)
+				self.ele[id].text3 = self.xml:InitTextWnd("marker:npc_faction",self.ele[id].marker)
+				self.ele[id].text3_zoom = self.xml:InitTextWnd("marker_zoom:npc_faction",self.ele[id].marker_zoom)
+			end
+			
+			local vec = self:GetScreenCoordinates(st.object, target_dist, self.ele[id], delta)
+
+			if vec then
+				local dyn_s = 1
+				hui_apply_layout(self.ele[id], dyn_s)
+				hui_apply_style(self.ele[id], dyn_s, target_dist, target_relation, target_community)
+				if detect_timers[id] and self.ele[id] and self.ele[id].text2 and detecting_color_state[id] then
+					local state = detecting_color_state[id].state
+					local r, g, b
+					if state == 1 then
+						r, g, b = 120, 120, 120
+					elseif state == 2 then
+						r, g, b = 150, 150, 150
+					else
+						r, g, b = 180, 180, 180
+					end
+					local name_font = hui_get_text_font()
+					local a = hui_dyn_alpha_by_dist(target_dist)
+					hui_apply_text_style(self.ele[id].text2, a, r, g, b, name_font)
+					hui_apply_text_style(self.ele[id].text2_zoom, a, r, g, b, name_font)
+				end
+				self.ele[id].marker:SetWndPos(vec)
+				self.ele[id].marker_zoom:SetWndPos(vec)
+				local hp = nil
+				if st.object.health ~= nil then
+					if type(st.object.health) == "function" then
+						hp = st.object:health()
+					elseif type(st.object.health) == "number" then
+						hp = st.object.health
+					end
+				end
+				if hp == nil then
+					hp = 1
+				end
+				if hp < 0 then
+					hp = 0
+				elseif hp > 1 then
+					hp = 1
+				end
+				local hide_full = hide_hp_full and hp >= 0.999
+				local hp_visible = not hide_full and not detect_timers[id]
+				if hp_bar_symbolic and self.ele[id].hp_sym_segs then
+					self.ele[id].hp_shadow:Show(false)
+					self.ele[id].hp_shadow_zoom:Show(false)
+					self.ele[id].hp_bg:Show(false)
+					self.ele[id].hp_bg_zoom:Show(false)
+					self.ele[id].hp:Show(false)
+					self.ele[id].hp_zoom:Show(false)
+					local max = self.ele[id].hp_sym_seg_max or #self.ele[id].hp_sym_segs
+					local filled = math.floor((max * hp) + 0.5)
+					if filled < 0 then
+						filled = 0
+					elseif filled > max then
+						filled = max
+					end
+					local hp_w = self.ele[id].hp_w or HP_BAR_W
+					local hp_h = self.ele[id].hp_h or 5
+					local sym_h = self.ele[id].hp_sym_h or 16
+					local w = MARKER_W
+					local step = hui_get_hp_symbol_step_px() * dyn_s
+					local hp_x = (w - hp_w) * 0.5 + (HP_BAR_OFFSET_X * dyn_s)
+					local hp_y = 30 + (HP_BAR_OFFSET_Y * dyn_s)
+					local sym_y = hp_y - math.floor(((sym_h - hp_h) * 0.5) + 0.5)
+					local center_x = hp_x + (hp_w * 0.5)
+					local span = (max - 1) * step
+					local start_x = center_x - (span * 0.5)
+					local hp_r, hp_g, hp_b = hui_get_hp_color(hp)
+					for i = 1, max do
+						local seg_center_x = start_x + ((i - 1) * step)
+						local seg_x = math.floor((seg_center_x - (sym_h * 0.5)) + 0.5)
+						local sh = self.ele[id].hp_sym_sh_segs[i]
+						local shz = self.ele[id].hp_sym_sh_segs_zoom[i]
+						local fill = self.ele[id].hp_sym_segs[i]
+						local fillz = self.ele[id].hp_sym_segs_zoom[i]
+						if hp_visible then
+							sh:SetWndPos(vector2():set(seg_x + 1, sym_y + 1))
+							shz:SetWndPos(vector2():set(seg_x + 1, sym_y + 1))
+							fill:SetWndPos(vector2():set(seg_x, sym_y))
+							fillz:SetWndPos(vector2():set(seg_x, sym_y))
+							sh:SetWndSize(vector2():set(sym_h, sym_h))
+							shz:SetWndSize(vector2():set(sym_h, sym_h))
+							fill:SetWndSize(vector2():set(sym_h, sym_h))
+							fillz:SetWndSize(vector2():set(sym_h, sym_h))
+							sh:Show(true)
+							shz:Show(true)
+							if sh.SetTextColor then
+								sh:SetTextColor(GetARGB(160, 0, 0, 0))
+							end
+							if shz.SetTextColor then
+								shz:SetTextColor(GetARGB(160, 0, 0, 0))
+							end
+							local is_fill = i <= filled
+							fill:Show(is_fill)
+							fillz:Show(is_fill)
+							if is_fill then
+								if fill.SetTextColor then
+									fill:SetTextColor(GetARGB(255, hp_r, hp_g, hp_b))
+								end
+								if fillz.SetTextColor then
+									fillz:SetTextColor(GetARGB(255, hp_r, hp_g, hp_b))
+								end
+							end
+						else
+							sh:Show(false)
+							shz:Show(false)
+							fill:Show(false)
+							fillz:Show(false)
+						end
+					end
+				else
+					if self.ele[id].hp_sym_segs then
+						local max = self.ele[id].hp_sym_seg_max or #self.ele[id].hp_sym_segs
+						for i = 1, max do
+							self.ele[id].hp_sym_sh_segs[i]:Show(false)
+							self.ele[id].hp_sym_sh_segs_zoom[i]:Show(false)
+							self.ele[id].hp_sym_segs[i]:Show(false)
+							self.ele[id].hp_sym_segs_zoom[i]:Show(false)
+						end
+					end
+					self.ele[id].hp_shadow:Show(hp_visible)
+					self.ele[id].hp_shadow_zoom:Show(hp_visible)
+					self.ele[id].hp_bg:Show(hp_visible)
+					self.ele[id].hp_bg_zoom:Show(hp_visible)
+					self.ele[id].hp:Show(hp_visible)
+					self.ele[id].hp_zoom:Show(hp_visible)
+					if hp_visible then
+						if self.ele[id].hp_shadow.SetTextureColor then
+							self.ele[id].hp_shadow:SetTextureColor(GetARGB(160, 0, 0, 0))
+						end
+						if self.ele[id].hp_shadow_zoom.SetTextureColor then
+							self.ele[id].hp_shadow_zoom:SetTextureColor(GetARGB(160, 0, 0, 0))
+						end
+						local hp_r, hp_g, hp_b = hui_get_hp_color(hp)
+						if self.ele[id].hp.SetTextureColor then
+							self.ele[id].hp:SetTextureColor(GetARGB(255, hp_r, hp_g, hp_b))
+						end
+						if self.ele[id].hp_zoom.SetTextureColor then
+							self.ele[id].hp_zoom:SetTextureColor(GetARGB(255, hp_r, hp_g, hp_b))
+						end
+						local hp_w = self.ele[id].hp_w or HP_BAR_W
+						local hp_h = self.ele[id].hp_h or 5
+						local fill_w = math.floor((hp_w * hp) + 0.5)
+						local w = MARKER_W
+						local hp_x = (w - hp_w) * 0.5 + (HP_BAR_OFFSET_X * dyn_s)
+						local hp_y = 30 + (HP_BAR_OFFSET_Y * dyn_s)
+						self.ele[id].hp:SetWndPos(vector2():set(hp_x, hp_y))
+						self.ele[id].hp_zoom:SetWndPos(vector2():set(hp_x, hp_y))
+						self.ele[id].hp_bg:SetWndPos(vector2():set(hp_x, hp_y))
+						self.ele[id].hp_bg_zoom:SetWndPos(vector2():set(hp_x, hp_y))
+						self.ele[id].hp_shadow:SetWndPos(vector2():set(hp_x + 1, hp_y + 1))
+						self.ele[id].hp_shadow_zoom:SetWndPos(vector2():set(hp_x + 1, hp_y + 1))
+						self.ele[id].hp_shadow:SetWndSize(vector2():set(hp_w, hp_h))
+						self.ele[id].hp_shadow_zoom:SetWndSize(vector2():set(hp_w, hp_h))
+						self.ele[id].hp_bg:SetWndSize(vector2():set(hp_w, hp_h))
+						self.ele[id].hp_bg_zoom:SetWndSize(vector2():set(hp_w, hp_h))
+						self.ele[id].hp:SetWndSize(vector2():set(fill_w, hp_h))
+						self.ele[id].hp_zoom:SetWndSize(vector2():set(fill_w, hp_h))
+					end
+				end
+
+				if show_distance and not detect_timers[id] then
+					self.ele[id].text1_sh:Show(true)
+					self.ele[id].text1_sh_zoom:Show(true)
+					self.ele[id].text1:Show(true)
+					self.ele[id].text1_zoom:Show(true)
+					local meters = math.floor(target_dist + 0.5)
+					self.ele[id].text1_sh:SetText(string.format("%i m", meters))
+					self.ele[id].text1_sh_zoom:SetText(string.format("%i m", meters))
+					self.ele[id].text1:SetText(string.format("%i m", meters))
+					self.ele[id].text1_zoom:SetText(string.format("%i m", meters))
+				else
+					self.ele[id].text1_sh:SetText("")
+					self.ele[id].text1_sh_zoom:SetText("")
+					self.ele[id].text1:SetText("")
+					self.ele[id].text1_zoom:SetText("")
+					self.ele[id].text1_sh:Show(false)
+					self.ele[id].text1_sh_zoom:Show(false)
+					self.ele[id].text1:Show(false)
+					self.ele[id].text1_zoom:Show(false)
+				end
+
+				if show_name then
+					local display_name = target_name or ""
+					if detect_timers[id] then
+						display_name = game.translate_string(HUI_DETECTING_TEXT)
+						self.ele[id].text2_sh:Show(true)
+						self.ele[id].text2_sh_zoom:Show(true)
+						self.ele[id].text2:Show(true)
+						self.ele[id].text2_zoom:Show(true)
+						self.ele[id].text2_sh:SetText(display_name)
+						self.ele[id].text2_sh_zoom:SetText(display_name)
+						self.ele[id].text2:SetText(display_name)
+						self.ele[id].text2_zoom:SetText(display_name)
+						self.ele[id].text3_sh:Show(false)
+						self.ele[id].text3_sh_zoom:Show(false)
+						self.ele[id].text3:Show(false)
+						self.ele[id].text3_zoom:Show(false)
+						self.ele[id].text2_sh:SetText(display_name)
+						self.ele[id].text2_sh_zoom:SetText(display_name)
+						self.ele[id].text2:SetText(display_name)
+						self.ele[id].text2_zoom:SetText(display_name)
+					else
+						self.ele[id].text2_sh:Show(true)
+						self.ele[id].text2_sh_zoom:Show(true)
+						self.ele[id].text2:Show(true)
+						self.ele[id].text2_zoom:Show(true)
+						if show_faction then
+							self.ele[id].text3_sh:Show(true)
+							self.ele[id].text3_sh_zoom:Show(true)
+							self.ele[id].text3:Show(true)
+							self.ele[id].text3_zoom:Show(true)
+							local faction_text = target_faction or ""
+							if faction_text ~= "" then
+								faction_text = "[" .. faction_text .. "]"
+							end
+							self.ele[id].text3_sh:SetText(faction_text)
+							self.ele[id].text3_sh_zoom:SetText(faction_text)
+							self.ele[id].text3:SetText(faction_text)
+							self.ele[id].text3_zoom:SetText(faction_text)
+						else
+							self.ele[id].text3_sh:Show(false)
+							self.ele[id].text3_sh_zoom:Show(false)
+							self.ele[id].text3:Show(false)
+							self.ele[id].text3_zoom:Show(false)
+						end
+						self.ele[id].text2_sh:SetText(display_name)
+						self.ele[id].text2_sh_zoom:SetText(display_name)
+						self.ele[id].text2:SetText(display_name)
+						self.ele[id].text2_zoom:SetText(display_name)
+					end
+				else
+					self.ele[id].text2_sh:SetText("")
+					self.ele[id].text2_sh_zoom:SetText("")
+					self.ele[id].text2:SetText("")
+					self.ele[id].text2_zoom:SetText("")
+					self.ele[id].text2_sh:Show(false)
+					self.ele[id].text2_sh_zoom:Show(false)
+					self.ele[id].text2:Show(false)
+					self.ele[id].text2_zoom:Show(false)
+					self.ele[id].text3_sh:SetText("")
+					self.ele[id].text3_sh_zoom:SetText("")
+					self.ele[id].text3:SetText("")
+					self.ele[id].text3_zoom:SetText("")
+					self.ele[id].text3_sh:Show(false)
+					self.ele[id].text3_sh_zoom:Show(false)
+					self.ele[id].text3:Show(false)
+					self.ele[id].text3_zoom:Show(false)
+				end
+
+				if zoom_mode then
+					self.ele[id].marker_zoom:Show(true)			
+					self.ele[id].marker:Show(false)	
+				else	
+					self.ele[id].marker:Show(true)	
+					self.ele[id].marker_zoom:Show(false)	
+				end	
+			else
+				self.ele[id].last_px_x = nil
+				self.ele[id].last_px_y = nil
+				self.ele[id].j3x = nil
+				self.ele[id].j3y = nil
+				self.ele[id].j3z = nil
+				self.ele[id].j2x = nil
+				self.ele[id].j2y = nil
+				self.ele[id].text1:SetText("")
+				self.ele[id].text1_zoom:SetText("")
+				self.ele[id].text2:SetText("")
+				self.ele[id].text2_zoom:SetText("")
+				self.ele[id].text3:SetText("")
+				self.ele[id].text3_zoom:SetText("")
+				self.ele[id].text1_sh:SetText("")
+				self.ele[id].text1_sh_zoom:SetText("")
+				self.ele[id].text2_sh:SetText("")
+				self.ele[id].text2_sh_zoom:SetText("")
+				self.ele[id].text3_sh:SetText("")
+				self.ele[id].text3_sh_zoom:SetText("")
+				self.ele[id].text1:Show(false)
+				self.ele[id].text1_zoom:Show(false)
+				self.ele[id].text2:Show(false)
+				self.ele[id].text2_zoom:Show(false)
+				self.ele[id].text3:Show(false)
+				self.ele[id].text3_zoom:Show(false)
+				self.ele[id].text1_sh:Show(false)
+				self.ele[id].text1_sh_zoom:Show(false)
+				self.ele[id].text2_sh:Show(false)
+				self.ele[id].text2_sh_zoom:Show(false)
+				self.ele[id].text3_sh:Show(false)
+				self.ele[id].text3_sh_zoom:Show(false)
+				self.ele[id].hp:Show(false)
+				self.ele[id].hp_zoom:Show(false)
+				self.ele[id].hp_bg:Show(false)
+				self.ele[id].hp_bg_zoom:Show(false)
+				self.ele[id].hp_shadow:Show(false)
+				self.ele[id].hp_shadow_zoom:Show(false)
+				if self.ele[id].hp_sym_segs then
+					local max = self.ele[id].hp_sym_seg_max or #self.ele[id].hp_sym_segs
+					for i = 1, max do
+						self.ele[id].hp_sym_segs[i]:Show(false)
+						self.ele[id].hp_sym_segs_zoom[i]:Show(false)
+						self.ele[id].hp_sym_sh_segs[i]:Show(false)
+						self.ele[id].hp_sym_sh_segs_zoom[i]:Show(false)
+					end
+				end
+				self.ele[id].marker:Show(false)
+				self.ele[id].marker_zoom:Show(false)
+			end
+		else
+			target_storage[id] = nil
+		end
+	end
+	
+	for id,_ in pairs(self.ele) do
+		if (target_storage[id] ~= true) then
+			self.ele[id].text1:SetText("")
+			self.ele[id].text1_zoom:SetText("")
+			self.ele[id].text2:SetText("")
+			self.ele[id].text2_zoom:SetText("")
+			self.ele[id].text3:SetText("")
+			self.ele[id].text3_zoom:SetText("")
+			self.ele[id].text1_sh:SetText("")
+			self.ele[id].text1_sh_zoom:SetText("")
+			self.ele[id].text2_sh:SetText("")
+			self.ele[id].text2_sh_zoom:SetText("")
+			self.ele[id].text3_sh:SetText("")
+			self.ele[id].text3_sh_zoom:SetText("")
+			self.ele[id].text1:Show(false)
+			self.ele[id].text1_zoom:Show(false)
+			self.ele[id].text2:Show(false)
+			self.ele[id].text2_zoom:Show(false)
+			self.ele[id].text3:Show(false)
+			self.ele[id].text3_zoom:Show(false)
+			self.ele[id].text1_sh:Show(false)
+			self.ele[id].text1_sh_zoom:Show(false)
+			self.ele[id].text2_sh:Show(false)
+			self.ele[id].text2_sh_zoom:Show(false)
+			self.ele[id].text3_sh:Show(false)
+			self.ele[id].text3_sh_zoom:Show(false)
+			self.ele[id].hp:Show(false)
+			self.ele[id].hp_zoom:Show(false)
+			self.ele[id].hp_bg:Show(false)
+			self.ele[id].hp_bg_zoom:Show(false)
+			self.ele[id].hp_shadow:Show(false)
+			self.ele[id].hp_shadow_zoom:Show(false)
+			if self.ele[id].hp_sym_segs then
+				local max = self.ele[id].hp_sym_seg_max or #self.ele[id].hp_sym_segs
+				for i = 1, max do
+					self.ele[id].hp_sym_segs[i]:Show(false)
+					self.ele[id].hp_sym_segs_zoom[i]:Show(false)
+					self.ele[id].hp_sym_sh_segs[i]:Show(false)
+					self.ele[id].hp_sym_sh_segs_zoom[i]:Show(false)
+				end
+			end
+			self.ele[id].marker:Show(false)
+			self.ele[id].marker_zoom:Show(false)
+			self.ele[id] = nil
+			detecting_color_state[id] = nil
+		end
+	end
+end
+
+function hui_ui:GetScreenCoordinates(obj, dist, ele, delta)
+	local pos = nil
+	if hui_anchor_mode == 2 then
+		pos = utils_obj.safe_bone_pos(obj, "bip01_neck")
+	elseif hui_anchor_mode == 3 then
+		pos = utils_obj.safe_bone_pos(obj, "bip01_spine2")
+	elseif hui_anchor_mode == 4 then
+		pos = obj:position()
+	else
+		pos = utils_obj.safe_bone_pos(obj, "bip01_head")
+	end
+	pos = pos or obj:position()
+	if not pos then
+		return nil
+	end
+
+	local base_off = hui_head_y_offset_by_dist(dist)
+	local fov_k = hui_get_fov_factor()
+	local off = (base_off * fov_k) + (HEAD_Y_OFFSET_BIAS or 0)
+
+	local x3 = pos.x
+	local y3 = pos.y + (off or 0)
+	local z3 = pos.z
+
+	local dt_ms = hui_get_dt_ms(delta)
+	if not dt_ms then
+		dt_ms = (hui_update_ms and hui_update_ms > 0) and hui_update_ms or 16
+	end
+
+	if hui_jitter_mode == 3 and ele then
+		local tau = hui_jitter_tau_ms or 0
+		local a = 1
+		if tau > 0 and dt_ms > 0 then
+			a = 1 - math.exp(-dt_ms / tau)
+		end
+		if ele.j3x ~= nil then
+			ele.j3x = ele.j3x + (x3 - ele.j3x) * a
+			ele.j3y = ele.j3y + (y3 - ele.j3y) * a
+			ele.j3z = ele.j3z + (z3 - ele.j3z) * a
+		else
+			ele.j3x = x3
+			ele.j3y = y3
+			ele.j3z = z3
+		end
+		x3 = ele.j3x
+		y3 = ele.j3y
+		z3 = ele.j3z
+	end
+
+	local vec = hui_world2ui_px(vector():set(x3, y3, z3))
+	if not vec then
+		return nil
+	end
+
+	local x2 = vec.x
+	local y2 = vec.y
+
+	if hui_jitter_mode == 2 and ele then
+		local tau = hui_jitter_tau_ms or 0
+		local a = 1
+		if tau > 0 and dt_ms > 0 then
+			a = 1 - math.exp(-dt_ms / tau)
+		end
+		if ele.j2x ~= nil then
+			ele.j2x = ele.j2x + (x2 - ele.j2x) * a
+			ele.j2y = ele.j2y + (y2 - ele.j2y) * a
+		else
+			ele.j2x = x2
+			ele.j2y = y2
+		end
+		x2 = ele.j2x
+		y2 = ele.j2y
+	end
+
+	local mx = x2 - (MARKER_W * 0.5)
+	local my = y2 - MARKER_H
+
+	if ele then
+		local max_step = hui_jitter_max_step_px or 0
+		if max_step > 0 and ele.last_px_x ~= nil and ele.last_px_y ~= nil then
+			local dx = mx - ele.last_px_x
+			local dy = my - ele.last_px_y
+			local d = math.sqrt((dx * dx) + (dy * dy))
+			if d > max_step and d > 0 then
+				local k = max_step / d
+				mx = ele.last_px_x + (dx * k)
+				my = ele.last_px_y + (dy * k)
+			end
+		end
+
+		local dz = (hui_jitter_mode ~= 0) and (hui_jitter_deadzone_px or 0) or 0
+		if dz > 0 and ele.last_px_x ~= nil and ele.last_px_y ~= nil then
+			local dx = mx - ele.last_px_x
+			local dy = my - ele.last_px_y
+			if dx < 0 then
+				dx = -dx
+			end
+			if dy < 0 then
+				dy = -dy
+			end
+			if dx <= dz and dy <= dz then
+				mx = ele.last_px_x
+				my = ele.last_px_y
+			end
+		end
+	end
+
+	if ele then
+		ele.target_px_x = mx
+		ele.target_px_y = my
+		if ele.cur_px_x == nil then
+			ele.cur_px_x = mx
+			ele.cur_px_y = my
+		else
+			local dx = mx - ele.cur_px_x
+			local dy = my - ele.cur_px_y
+			ele.cur_px_x = ele.cur_px_x + dx * hui_lerp_factor
+			ele.cur_px_y = ele.cur_px_y + dy * hui_lerp_factor
+		end
+		mx = ele.cur_px_x
+		my = ele.cur_px_y
+	end
+
+	mx = math.floor(mx + 0.5)
+	my = math.floor(my + 0.5)
+
+	if ele then
+		ele.last_px_x = mx
+		ele.last_px_y = my
+	end
+
+	return vector2():set(mx, my)
+end
+
+
+---------------------------------------------------------
+-- Callbacks
+---------------------------------------------------------
+local function on_option_change()
+	hui_ui_remove()
+	hui_enabled = hui_read_enabled()
+	if not hui_enabled then
+		for id,_ in pairs(target_storage) do
+			target_storage[id] = nil
+		end
+		for id,_ in pairs(detected_npcs) do
+			detected_npcs[id] = nil
+		end
+		for id,_ in pairs(detect_timers) do
+			detect_timers[id] = nil
+		end
+		for id,_ in pairs(detecting_color_state) do
+			detecting_color_state[id] = nil
+		end
+		hui_last_pick_ms = nil
+		hui_last_ui_ms = nil
+		hui_pick_accum_ms = 0
+		hui_ui_accum_ms = 0
+		return
+	end
+
+	hui_range = mcm_get("hui/range") or read_hui_setting_number("range", 500)
+	hui_scale = 1
+	hui_ypos = 0
+	HEAD_Y_OFFSET_BIAS = mcm_get("hui/head_y_offset") or read_hui_setting_number("head_y_offset", 0.2)
+	FOV_FACTOR_MIN = mcm_get("hui/fov_factor_min") or read_hui_setting_number("fov_factor_min", 0.1)
+	FOV_FACTOR_MAX = mcm_get("hui/fov_factor_max") or read_hui_setting_number("fov_factor_max", 2)
+	FOV_COMP_WEIGHT = mcm_get("hui/fov_comp_weight") or read_hui_setting_number("fov_comp_weight", 1.3)
+	HP_BAR_W = mcm_get("hui/hp_bar_w") or read_hui_setting_number("hp_bar_w", 70)
+	HP_BAR_MIN_W = mcm_get("hui/hp_bar_min_w") or read_hui_setting_number("hp_bar_min_w", 5)
+	HP_BAR_MAX_W = mcm_get("hui/hp_bar_max_w") or read_hui_setting_number("hp_bar_max_w", 50)
+	HP_BAR_OFFSET_X = mcm_get("hui/hp_bar_offset_x") or read_hui_setting_number("hp_bar_offset_x", 0)
+	HP_BAR_OFFSET_Y = mcm_get("hui/hp_bar_offset_y") or read_hui_setting_number("hp_bar_offset_y", 0)
+	hp_bar_symbolic = mcm_get("hui/hp_bar_symbolic")
+	if hp_bar_symbolic == nil then
+		hp_bar_symbolic = read_hui_setting_bool("hp_bar_symbolic", false)
+	end
+	hp_bar_symbol_style = mcm_get("hui/hp_bar_symbol_style") or read_hui_setting_number("hp_bar_symbol_style", 1)
+	hp_bar_symbol_len = mcm_get("hui/hp_bar_symbol_len") or read_hui_setting_number("hp_bar_symbol_len", 10)
+	hp_bar_symbol_step_px = mcm_get("hui/hp_bar_symbol_step_px") or read_hui_setting_number("hp_bar_symbol_step_px", 6)
+	hide_hp_full = mcm_get("hui/hide_hp_full")
+	if hide_hp_full == nil then
+		hide_hp_full = read_hui_setting_bool("hide_hp_full", true)
+	end
+	show_distance = mcm_get("hui/show_distance")
+	if show_distance == nil then
+		show_distance = read_hui_setting_bool("show_distance", true)
+	end
+	show_name = mcm_get("hui/show_name")
+	if show_name == nil then
+		show_name = read_hui_setting_bool("show_name", true)
+	end
+	show_mode = mcm_get("hui/show_mode") or read_hui_setting_number("show_mode", 2)
+	require_los = mcm_get("hui/require_los")
+	if require_los == nil then
+		require_los = read_hui_setting_bool("require_los", true)
+	end
+	show_faction = mcm_get("hui/show_faction")
+	if show_faction == nil then
+		show_faction = read_hui_setting_bool("show_faction", true)
+	end
+	use_crosshair_radius = mcm_get("hui/use_crosshair_radius")
+	if use_crosshair_radius == nil then
+		use_crosshair_radius = read_hui_setting_bool("use_crosshair_radius", false)
+	end
+	crosshair_select_mode = mcm_get("hui/crosshair_select_mode") or read_hui_setting_number("crosshair_select_mode", 1)
+	crosshair_radius_px = mcm_get("hui/crosshair_radius_px") or read_hui_setting_number("crosshair_radius_px", 35)
+	crosshair_radius_m = mcm_get("hui/crosshair_radius_m") or read_hui_setting_number("crosshair_radius_m", 2)
+	crosshair_only_best = mcm_get("hui/crosshair_only_best")
+	if crosshair_only_best == nil then
+		crosshair_only_best = read_hui_setting_bool("crosshair_only_best", true)
+	end
+	hui_update_ms = hui_normalize_update_ms(mcm_get("hui/update_ms") or read_hui_setting_number("update_ms", 17))
+	hui_jitter_mode = hui_normalize_jitter_mode(mcm_get("hui/jitter_mode") or read_hui_setting_number("jitter_mode", 0))
+	hui_jitter_deadzone_px = hui_normalize_deadzone_px(mcm_get("hui/jitter_deadzone_px") or read_hui_setting_number("jitter_deadzone_px", 2))
+	hui_jitter_tau_ms = hui_normalize_tau_ms(mcm_get("hui/jitter_tau_ms") or read_hui_setting_number("jitter_tau_ms", 120))
+	hui_jitter_max_step_px = hui_normalize_max_step_px(mcm_get("hui/jitter_max_step_px") or read_hui_setting_number("jitter_max_step_px", 0))
+	hui_anchor_mode = hui_normalize_anchor_mode(mcm_get("hui/anchor_mode") or read_hui_setting_number("anchor_mode", 1))
+	hui_lerp_factor = hui_normalize_lerp_factor(mcm_get("hui/lerp_factor") or read_hui_setting_number("lerp_factor", 0.3))
+	hui_last_pick_ms = nil
+	hui_last_ui_ms = nil
+	hui_pick_accum_ms = 0
+	hui_ui_accum_ms = 0
+	hui_ui_ensure()
+end
+
+function actor_on_first_update()
+	hui_enabled = hui_read_enabled()
+	if not hui_enabled then
+		return
+	end
+	hui_ui_ensure()
+end
+
+function actor_on_net_destroy()
+	hui_ui_remove()
+end
+
+function update_hud_on_show_hide()
+	hui_enabled = hui_read_enabled()
+	if not hui_enabled then
+		return
+	end
+	hui_ui_update()
+end
+
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_first_update",actor_on_first_update)
+	RegisterScriptCallback("actor_on_net_destroy",actor_on_net_destroy)
+	RegisterScriptCallback("GUI_on_show",update_hud_on_show_hide)
+	RegisterScriptCallback("GUI_on_hide",update_hud_on_show_hide)
+	RegisterScriptCallback("actor_on_update",hui_actor_on_update)
+	RegisterScriptCallback("on_option_change", on_option_change)
+end

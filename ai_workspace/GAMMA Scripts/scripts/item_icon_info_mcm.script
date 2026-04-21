@@ -1,0 +1,87 @@
+
+op = { id= "item_icon_info" ,gr={
+		{ id = "cond_text", sh=true, gr={
+			{ id= "title", type= "slide", link= "ui_options_slider_player", text="ui_mcm_item_icon_info_cond_text_title", size= {512,50}, spacing= 20 },
+			{id = "enable", type = "check", val = 1, def=true},
+			{id = "enable_equipped", type = "check", val = 1, def=true},
+			--[[ {id = "show_attach", type = "check", val = 1, def=true}, ]]
+			{id = "hide_bar", type = "check", val = 1, def=true},
+			{id = "hide_bg", type = "check", val = 1, def=false},
+			{id = "alt_artefact_pos", type = "list", val = 2, content={ {0,"alt_art_pos_lower_left"} , {1,"alt_art_pos_lower_right"}, {2,"alt_art_pos_top_right"}}, def=2},  
+			{id = "padding", type = "track", val = 2, min=0, max=3, step=0.25, def = 1},
+		}},
+		{ id = "part_dots", sh=true, gr={
+			{ id= "title", type= "slide", link= "ui_options_slider_player", text="ui_mcm_item_icon_info_part_dots_title", size= {512,50}, spacing= 20 },
+			{id = "enable", type = "check",  val = 1, def=true},
+			{id = "show_on_equipped", type = "check", val = 1, def=true},
+			{id = "show_on_wpn", type = "check", val = 1, def=true},
+			{id = "show_on_armor", type = "check", val = 1, def=true},
+			{id = "size_mult", type = "track", val = 2, min=0.5, max=3, step=0.1, def = 1},
+			{id = "separator_width", type = "track", val = 2, min=0.5, max=3, step=0.1, def = 1},
+			{id = "position", type = "list", val = 2, content={ {0,"part_dot_right"} , {1,"part_dot_top"}, {2,"part_dot_top_pistol"}}, def=2},  
+			{id = "wpo_mode", type = "check", val = 1, def=true},
+			{id = "wpo_green", type = "track", val = 2, min=0, max=100, step=1, def = 85},
+			{id = "wpo_yellow", type = "track", val = 2, min=0, max=100, step=1, def = 60},
+			{id = "wpo_orange", type = "track", val = 2, min=0, max=100, step=1, def = 20},
+		}},
+		{ id = "ammo_name", sh=true, gr={
+			{ id= "title", type= "slide", link= "ui_options_slider_player", text="ui_mcm_item_icon_info_ammo_name_title", size= {512,50}, spacing= 20 },
+			{id = "enable", type = "check", val = 1, def=true},
+			{id = "bad_color", type = "check", val = 1, def=false},
+			{id = "show_expl", type = "check", val = 1, def=true},
+			{id = "expl_bad_color", type = "check", val = 1, def=false},
+			{id = "padding", type = "track", val = 2, min=0, max=3, step=0.25, def = 1},
+		}},
+
+		{ id = "recipe_text", sh=true, gr={
+			{ id= "title", type= "slide", link= "ui_options_slider_player", text="ui_mcm_item_icon_info_recipe_text_title", size= {512,50}, spacing= 20 },
+			{id = "enable", type = "check", val = 1, def=true},
+			{id = "show_on_pda", type = "check", val = 1, def=false},
+			{id = "padding", type = "track", val = 2, min=0, max=3, step=0.25, def = 1},
+		}},
+
+		{ id = "mag_info", sh=true, gr={
+			{ id= "title", type= "slide", link= "ui_options_slider_player", text="ui_mcm_item_icon_info_mag_info_title", size= {512,50}, spacing= 20 },
+			{id = "enable", type = "check", val = 1, def=true},
+			{id = "show_ammo_name", type = "check", val = 1, def=true},
+			{id = "show_ammo_count", type = "check", val = 1, def=true},
+			{id = "hide_bar", type = "check", val = 1, def=true},
+			{id = "padding", type = "track", val = 2, min=0, max=3, step=0.25, def = 1},
+		}},
+
+		{ id = "money_text", sh=true, gr={
+			{ id= "title", type= "slide", link= "ui_options_slider_player", text="ui_mcm_item_icon_info_money_text_title", size= {512,50}, spacing= 20 },
+			{id = "enable", type = "check", val = 1, def=true},
+			{id = "hide_bg", type = "check", val = 1, def=false},
+			{id = "padding", type = "track", val = 2, min=0, max=3, step=0.25, def = 1},
+		}},
+		{ id = "armor_info", sh=true, gr={
+			{ id= "title", type= "slide", link= "ui_options_slider_player", text="ui_mcm_item_icon_info_armor_info_title", size= {512,50}, spacing= 20 },
+			{id = "show_patch", type = "check", val = 1, def=true},
+			{id = "show_armor_type", type = "check", val = 1, def=true},
+			{id = "show_helmet_type", type = "check", val = 1, def=true},
+		}},
+		{ id = "wpn_info", sh=true, gr={
+			{ id= "title", type= "slide", link= "ui_options_slider_player", text="ui_mcm_item_icon_info_wpn_info_title", size= {512,50}, spacing= 20 },
+			{id = "show_gun_repair_type", type = "check", val = 1, def=true},
+			{id = "show_wpn_name", type = "check", val = 1, def=true},
+			{id = "main_slots_only", type = "check", val = 1, def=true},
+			{id = "show_grenade_name", type = "check", val = 1, def=true},
+			{id = "show_melee", type = "check", val = 1, def=false},
+		}},
+		{ id = "wpn_scaling", precondition = {function() return z_scale_equipped_guns end}, output ="ui_mcm_item_icon_info_wpn_scaling_not_installed", sh=true, gr={
+			{ id= "title", type= "slide", link= "ui_options_slider_player", text="ui_mcm_item_icon_info_wpn_scaling_title", size= {512,50}, spacing= 20 },
+			{id = "enable_equip_vert_scale", type = "check", val = 1, def = true},
+			{id = "enable_equip_hor_scale", type = "check", val = 1, def = true},
+			{id = "equip_vert_padding", type = "track", val = 2, min=-16, max=32, step=1, def = 6},
+			{id = "equip_hor_padding", type = "track", val = 2, min=-16, max=32, step=1, def = 0},
+			{id = "enable_inv_scaling", type = "check", val = 1, def = true},
+			--{id = "sort_on_sil", type = "check", val = 1, def = true},
+		}},
+	}
+}
+
+function on_mcm_load()
+	return op
+end
+                        

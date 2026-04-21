@@ -1,0 +1,129 @@
+actor_effects.Hit_MaskCleaning = function ()
+    if not actor_effects.allow_animation() or not actor_effects.is_mask_on() then return end
+	if lam2.is_running() then return end
+
+	local weapon_zoomed = axr_main.weapon_is_zoomed and (not (IsPistol(db.actor:active_item(),nil)) or db.actor:active_detector())
+	local det_active = db.actor:active_detector() or nil
+    local itm_active = db.actor:active_item()
+	local anm_name = "script\\gasmask.anm"
+    local anm_speed = 0.5
+    local anm_alt_speed = 0.85
+
+	if itm_active then
+        --pick right hand hud anim based on weapon type
+		local hud = ini_sys:r_string_ex(itm_active:section(),"hud") or "hud_base"
+		local name = ini_sys:r_string_ex(hud,"gasmask_anm")
+		if (name) then
+			anm_name = name
+		else
+			local kind = ini_sys:r_string_ex(itm_active:section(),"kind") or nil
+			local class = ini_sys:r_string_ex(itm_active:section(),"class") or nil
+			if ((kind and actor_effects.lowered_anm_kinds[kind]) or (class and actor_effects.lowered_anm_classes[class])) then
+                anm_name = "liz\\headlamp\\liz_headlamp_toggle_weapon_sway.anm"
+				anm_speed = anm_alt_speed
+			end
+		end
+        --unzoom weapon (excep pistols for some reason) took as is from anomaly code
+        if not det_active and weapon_zoomed then
+            if (get_console():get_bool("wpn_aim_toggle")) then
+                level.press_action(bind_to_dik(key_bindings.kWPN_ZOOM))
+            else
+                level.release_action(bind_to_dik(key_bindings.kWPN_ZOOM))
+            end
+        end
+    end
+
+    actor_effects.mc_anm_state = 1
+    -- play hide hand anm if holding weapon
+    if itm_active then
+        local action = get_template_action_hide_hand()
+        action.hud_anm = anm_name
+        action.hud_speed = anm_speed
+        lam2.add_action(action)
+    end
+    -- play wipe mask anim
+    lam2.add_action(get_template_action_clean_mask(not det_active))
+    -- move left hand in sync with right when wipe anim ends
+    if itm_active then
+        local action = get_template_action_show_hand()
+        action.hud_anm = anm_name
+        action.hud_speed = anm_speed
+        lam2.add_action(action)
+    end
+end
+
+--- -------------------------------------------------
+--- action templates
+--- -------------------------------------------------
+
+function get_template_action_hide_hand()
+    local a = lam2.get_template_action_play_animation()
+    a.sec = "anim_mask_clean"
+    a.anm = "anm_hide_hand"
+    a.hands = 1
+    a.speed = 2.5
+    a.anm_blend = true
+    -- a.hud_anm = "script\\gasmask.anm"
+    -- a.hud_speed = 0.6
+    a.on_enter = function (self)
+        game.play_hud_anm(self.hud_anm, 0, self.hud_speed, 1, false)
+        if self.hud_fov then lam_fov_manager.set_fov(self.hud_fov) end
+        -- weapon inertia expanded patch
+        if liz_inertia_expanded then
+            liz_inertia_expanded.set_mask_flag(liz_inertia_expanded.mask_layers.anm_plays, true)
+        end
+    end
+    a.on_exit = function (self)
+        if self.hud_fov then lam_fov_manager.restore_fov() end
+        -- weapon inertia expanded patch
+        if liz_inertia_expanded then
+            liz_inertia_expanded.set_mask_flag(liz_inertia_expanded.mask_layers.anm_plays, false)
+        end
+    end
+    return a
+end
+
+function get_template_action_clean_mask(anm_blend)
+    local a = lam2.get_template_action_play_animation()
+    a.sec = "anim_mask_clean"
+    a.anm = "anm_wipe"
+    a.snd = "snd_wipe"
+    a.cam = "cam_wipe"
+    a.hands = 1
+    -- a.speed = 0.8 + math.random() * 0.2
+    a.speed = 0.9 + math.random() * 0.1
+    a.anm_blend = anm_blend
+    a.is_wiped = false
+    a.on_enter = function (self)
+        if self.hud_fov then lam_fov_manager.set_fov(self.hud_fov) end
+        -- weapon inertia expanded patch
+        if liz_inertia_expanded then
+            liz_inertia_expanded.set_mask_flag(liz_inertia_expanded.mask_layers.anm_plays, true)
+        end
+    end
+    a.on_execute = function (self, time)
+        if not self.is_wiped and time > self.duration - 0.4 then
+            self.is_wiped = true
+			level_environment.droplets_reset()
+        end
+    end
+    a.on_exit = function (self)
+	    actor_effects.mc_anm_state = 0
+        if self.hud_fov then lam_fov_manager.restore_fov() end
+        -- weapon inertia expanded patch
+        if liz_inertia_expanded then
+            liz_inertia_expanded.set_mask_flag(liz_inertia_expanded.mask_layers.anm_plays, false)
+        end
+    end
+    return a
+end
+
+function get_template_action_show_hand()
+    local a = {}
+    -- a.hud_anm = "script\\gasmask.anm"
+    -- a.hud_speed = 0.6
+    a.enter = function (self)
+        game.play_hud_anm(self.hud_anm, 2, self.hud_speed, 1, false, true)
+    end
+    return a
+end

@@ -1,0 +1,509 @@
+siski = siski or {}
+
+local type = _G.type
+local pcall = _G.pcall
+local require = _G.require
+local setmetatable = _G.setmetatable
+local tonumber = _G.tonumber
+local tostring = _G.tostring
+local time_global = _G.time_global
+local pairs = _G.pairs
+local next = _G.next
+local alife = _G.alife
+
+local function ensure_class()
+    local type = type
+    if type(siski.class) == "function" then
+        local ok, probe = pcall(siski.class, "_probe")
+        if ok and type(probe) == "table" then
+            return
+        end
+    end
+
+    if require then
+        pcall(require, "siski_oop")
+    end
+
+    local function define()
+        function siski.class(name)
+            local cls = {}
+            cls.__index = cls
+            cls.__name = name or "class"
+            function cls.new(...)
+                local self = setmetatable({}, cls)
+                if self.__init then
+                    self:__init(...)
+                end
+                return self
+            end
+            return cls
+        end
+    end
+
+    if type(siski.class) ~= "function" then
+        define()
+        return
+    end
+
+    local ok2, probe2 = pcall(siski.class, "_probe")
+    if not (ok2 and type(probe2) == "table") then
+        define()
+    end
+end
+
+ensure_class()
+
+local DebugHud = siski.class("DebugHud")
+DebugHud.__index = DebugHud
+
+local DEFAULT_SPOT_ICON = "item_kit"
+local MUTANT_SPOT_ICON = "circle_zombied"
+local LOGIC_MAX_AGE_MS = 90000
+local SPOT_CONFLICT_LOG_INTERVAL_MS = 10000
+local COMMUNITY_SPOT_TYPES = {
+    stalker = "warfare_stalker_spot",
+    bandit = "warfare_bandit_spot",
+    csky = "warfare_csky_spot",
+    army = "warfare_army_spot",
+    freedom = "warfare_freedom_spot",
+    duty = "warfare_duty_spot",
+    dolg = "warfare_duty_spot",
+    ecolog = "warfare_ecolog_spot",
+    merc = "warfare_killer_spot",
+    killer = "warfare_killer_spot",
+    monolith = "warfare_monolith_spot",
+    greh = "warfare_greh_spot",
+    renegade = "warfare_renegade_spot",
+    isg = "warfare_isg_spot",
+}
+
+local function tg()
+    return (time_global and time_global()) or 0
+end
+
+local function is_valid_server_id(id)
+    id = tonumber(id) or 0
+    return id > 0 and id ~= 65535
+end
+
+local function has_game_time()
+    return game and game.get_game_time and game.CTime
+end
+
+local function ctime_from_table(t)
+    if not (has_game_time() and t and type(t) == "table") then return nil end
+    local ok_new, ct = pcall(function() return game.CTime() end)
+    if not (ok_new and ct and ct.set) then return nil end
+    local ok_set = pcall(function()
+        ct:set(t.Y, t.M, t.D, t.h, t.m, t.s, t.ms)
+    end)
+    if not ok_set then return nil end
+    return ct
+end
+
+local function game_time_now()
+    if not has_game_time() then return nil end
+    local ok, ct = pcall(function() return game.get_game_time() end)
+    return ok and ct or nil
+end
+
+local function game_time_diff_sec(start_ct)
+    local now = game_time_now()
+    if not (now and now.diffSec and start_ct) then return nil end
+    local ok, sec = pcall(function() return now:diffSec(start_ct) end)
+    sec = ok and tonumber(sec) or nil
+    return sec
+end
+
+local function fmt_mmss(total_sec)
+    local math_floor = math.floor
+    local string_format = string.format
+    local s = tonumber(total_sec) or 0
+    if s < 0 then s = 0 end
+    local m = math_floor(s / 60)
+    local r = math_floor(s % 60)
+    return string_format("%02d:%02d", m, r)
+end
+
+local function task_type_for_display(task_type)
+    if type(task_type) ~= "string" or task_type == "" then
+        return tostring(task_type)
+    end
+
+    local lower = string.lower(task_type)
+    if lower == "smart task: control" then
+        return "SMART TASK: CONTROL"
+    end
+    if lower == "smart task: go to control" then
+        return "SMART TASK: GO TO CONTROL"
+    end
+
+    return task_type
+end
+
+function DebugHud:__init()
+    self.RUNTIME = {
+        shown = {},
+        disabled_cleared = false,
+        enabled_prev = false,
+        owned_spots_by_id = {},
+        spot_conflict_log_next_tg = 0,
+    }
+end
+
+function DebugHud:_is_enabled()
+    if not (siski.config and siski.config.get) then return false end
+    return siski.config.get("debug_hud_enabled", false) == true
+end
+
+function DebugHud:_remove_spot(id)
+    if not id then return end
+    id = tonumber(id)
+    if not id then return end
+    local spot_type = self.RUNTIME and self.RUNTIME.owned_spots_by_id and self.RUNTIME.owned_spots_by_id[id] or nil
+    if type(spot_type) ~= "string" or spot_type == "" then return end
+    if level and level.map_remove_object_spot then
+        pcall(function() level.map_remove_object_spot(id, spot_type) end)
+    end
+    if self.RUNTIME and self.RUNTIME.owned_spots_by_id then
+        self.RUNTIME.owned_spots_by_id[id] = nil
+    end
+    if self.RUNTIME and self.RUNTIME.shown then
+        self.RUNTIME.shown[id] = nil
+    end
+end
+
+function DebugHud:_warn_spot_conflict(id, spot_type)
+    local now = tg()
+    local next_tg = tonumber(self.RUNTIME and self.RUNTIME.spot_conflict_log_next_tg) or 0
+    if now < next_tg then return end
+    self.RUNTIME.spot_conflict_log_next_tg = now + SPOT_CONFLICT_LOG_INTERVAL_MS
+    if siski.log and siski.log.warn then
+        siski.log.warn("HUD", "skip non-owned map spot id=%s type=%s", tostring(id), tostring(spot_type or DEFAULT_SPOT_ICON))
+    end
+end
+
+function DebugHud:_spot_icon_for_entry(entry)
+    if type(entry) ~= "table" then
+        return DEFAULT_SPOT_ICON
+    end
+    if entry.npc_kind == "mutant" then
+        return MUTANT_SPOT_ICON
+    end
+
+    local community = type(entry.community) == "string" and entry.community or nil
+    if community and siski.config and siski.config.get_faction_alias then
+        community = siski.config.get_faction_alias(community) or community
+    end
+    if community and COMMUNITY_SPOT_TYPES[community] then
+        return COMMUNITY_SPOT_TYPES[community]
+    end
+    return DEFAULT_SPOT_ICON
+end
+
+function DebugHud:_add_spot(id, spot_type, hint)
+    if not (level and level.map_add_object_spot) then return end
+    if not id then return end
+    id = tonumber(id)
+    if not is_valid_server_id(id) then return false end
+    if type(spot_type) ~= "string" or spot_type == "" then
+        spot_type = DEFAULT_SPOT_ICON
+    end
+
+    local can_track = false
+    if alife then
+        local ok_sim, sim = pcall(function() return alife() end)
+        if ok_sim and sim then
+            local ok_obj, obj = pcall(function() return sim:object(id) end)
+            if ok_obj and obj then
+                can_track = true
+            end
+        end
+    end
+    if not can_track and level and level.object_by_id then
+        local ok_lvl, lvl_obj = pcall(function() return level.object_by_id(id) end)
+        if ok_lvl and lvl_obj then
+            can_track = true
+        end
+    end
+    if not can_track then
+        self:_remove_spot(id)
+        return false
+    end
+
+    local owned_type = self.RUNTIME and self.RUNTIME.owned_spots_by_id and self.RUNTIME.owned_spots_by_id[id] or nil
+    if type(owned_type) == "string" and owned_type ~= spot_type then
+        self:_remove_spot(id)
+        owned_type = nil
+    end
+
+    if type(owned_type) == "string" then
+        if level.map_has_object_spot then
+            local ok_has_owned, has_owned = pcall(function() return level.map_has_object_spot(id, owned_type) end)
+            if not ok_has_owned then
+                return false
+            end
+            if has_owned == 0 then
+                self.RUNTIME.owned_spots_by_id[id] = nil
+                owned_type = nil
+            end
+        end
+    end
+
+    if type(owned_type) == "string" then
+        if level.map_change_spot_hint then
+            pcall(function() level.map_change_spot_hint(id, owned_type, hint or "") end)
+        end
+        return true
+    end
+
+    if level.map_has_object_spot then
+        local ok_has, has = pcall(function() return level.map_has_object_spot(id, spot_type) end)
+        if not ok_has then
+            return false
+        end
+        if has ~= 0 then
+            self:_warn_spot_conflict(id, spot_type)
+            return false
+        end
+    end
+
+    local ok_add = pcall(function() level.map_add_object_spot(id, spot_type, hint or "") end)
+    if not ok_add then
+        return false
+    end
+    if level.map_change_spot_hint then
+        pcall(function() level.map_change_spot_hint(id, spot_type, hint or "") end)
+    end
+    if self.RUNTIME and self.RUNTIME.owned_spots_by_id then
+        self.RUNTIME.owned_spots_by_id[id] = spot_type
+    end
+    return true
+end
+
+function DebugHud:_build_hint(e)
+    local tostring = tostring
+    local string_format = string.format
+    local section = e and e.section or nil
+    local bridge_prefix = ""
+    local is_base_camper = false
+    if siski.base_filler and siski.base_filler.is_base_camper_section then
+        is_base_camper = siski.base_filler.is_base_camper_section(section) == true
+    elseif type(section) == "string" then
+        is_base_camper = string.find(section, "_sim_squad_camper_", 1, true) ~= nil
+            or string.find(section, "_base_camper_", 1, true) ~= nil
+    end
+    local camper_prefix = bridge_prefix .. (is_base_camper and "BASE_CAMPER | " or "")
+    local cur = e and e.tasks and e.tasks.current or nil
+    if not cur then
+        return string_format("SISKI: %sNO_TASK | lvl=%s | tgt=%s | smid=%s | act=%s | atid=%s | sec=%s | com=%s | ok=%s",
+            camper_prefix,
+            tostring(e and e.level or "-"),
+            tostring(e and e.scripted_target or "-"),
+            tostring(e and e.smart_id or "-"),
+            tostring(e and e.current_action or "-"),
+            tostring(e and e.assigned_target_id or "-"),
+            tostring(e and e.section or "-"),
+            tostring(e and e.community or "-"),
+            tostring(e and e.allowed == true)
+        )
+    end
+    local tgt = cur.target and tostring(cur.target) or "-"
+    local task_type = task_type_for_display(cur.type)
+    if cur.type == "REST_1H" then
+        local p = cur.params or {}
+        local left = nil
+        local started_gt = ctime_from_table(p.started_at_gt)
+        local dur_gs = tonumber(p.duration_game_sec)
+        if started_gt and dur_gs and dur_gs > 0 then
+            local elapsed = game_time_diff_sec(started_gt) or 0
+            left = dur_gs - elapsed
+        else
+            local started = tonumber(p.started_at_tg) or 0
+            local dur = tonumber(p.duration_ms) or 0
+            left = ((started + dur) - tg()) / 1000
+        end
+        return string_format("SISKI: %s%s | left=%s | lvl=%s | stgt=%s | smid=%s | act=%s | atid=%s | sec=%s | com=%s | ok=%s",
+            camper_prefix,
+            tostring(task_type),
+            fmt_mmss(left),
+            tostring(e and e.level or "-"),
+            tostring(e and e.scripted_target or "-"),
+            tostring(e and e.smart_id or "-"),
+            tostring(e and e.current_action or "-"),
+            tostring(e and e.assigned_target_id or "-"),
+            tostring(e and e.section or "-"),
+            tostring(e and e.community or "-"),
+            tostring(e and e.allowed == true)
+        )
+    end
+    return string_format("SISKI: %s%s -> %s | lvl=%s | stgt=%s | smid=%s | act=%s | atid=%s | sec=%s | com=%s | ok=%s",
+        camper_prefix,
+        tostring(task_type),
+        tgt,
+        tostring(e and e.level or "-"),
+        tostring(e and e.scripted_target or "-"),
+        tostring(e and e.smart_id or "-"),
+        tostring(e and e.current_action or "-"),
+        tostring(e and e.assigned_target_id or "-"),
+        tostring(e and e.section or "-"),
+        tostring(e and e.community or "-"),
+        tostring(e and e.allowed == true)
+    )
+end
+
+function DebugHud:_clear_all()
+    local owned = self.RUNTIME.owned_spots_by_id or {}
+    for id in pairs(owned) do
+        self:_remove_spot(id)
+    end
+    self.RUNTIME.owned_spots_by_id = {}
+    self.RUNTIME.shown = {}
+end
+
+function DebugHud:_on_load_state()
+    if not self:_is_enabled() then return end
+    self.RUNTIME.disabled_cleared = false
+    self:_clear_all()
+end
+
+function DebugHud:_on_save_state()
+    if not self:_is_enabled() then return end
+    if siski.log and siski.log.info then
+        siski.log.info("HUD", "debug_hud pre-save cleanup")
+    end
+    self:_clear_all()
+end
+
+function DebugHud:_refresh_spot_for_id(id, entry)
+    id = tonumber(id) or nil
+    if not id then
+        return false
+    end
+
+    if not self:_is_enabled() then
+        self:_remove_spot(id)
+        return false
+    end
+
+    local mem = siski.memory
+    entry = type(entry) == "table" and entry or (mem and mem.get_squad_entry and mem.get_squad_entry(id) or nil)
+    if type(entry) ~= "table" then
+        self:_remove_spot(id)
+        return false
+    end
+
+    local hint = self:_build_hint(entry)
+    local spot_type = self:_spot_icon_for_entry(entry)
+    if self:_add_spot(id, spot_type, hint) then
+        self.RUNTIME.shown[id] = true
+        return true
+    end
+    self.RUNTIME.shown[id] = nil
+    return false
+end
+
+function DebugHud:_refresh_all_from_memory(reason)
+    if not self:_is_enabled() then
+        self:_clear_all()
+        return
+    end
+
+    self.RUNTIME.disabled_cleared = false
+    local mem = siski.memory
+    local state = mem and mem.get_state and mem.get_state() or nil
+    local squads = state and state.squads or nil
+    if type(squads) ~= "table" then
+        self:_clear_all()
+        return
+    end
+
+    local seen = {}
+    for sid, entry in pairs(squads) do
+        local id = tonumber(sid) or tonumber(type(entry) == "table" and entry.squad_id) or nil
+        if id and self:_refresh_spot_for_id(id, entry) then
+            seen[id] = true
+        end
+    end
+
+    for id in pairs(self.RUNTIME.shown or {}) do
+        if not seen[id] then
+            self:_remove_spot(id)
+        end
+    end
+    self.RUNTIME.shown = seen
+end
+
+function DebugHud:_on_option_change()
+    local enabled = self:_is_enabled()
+    if not enabled then
+        self:_clear_all()
+        self.RUNTIME.disabled_cleared = true
+        self.RUNTIME.enabled_prev = false
+        return
+    end
+    if self.RUNTIME.enabled_prev ~= true then
+        self:_refresh_all_from_memory("option_enable")
+    end
+    self.RUNTIME.enabled_prev = true
+end
+
+local inst = DebugHud.new and DebugHud.new() or setmetatable({}, DebugHud)
+if not inst.RUNTIME then
+    DebugHud.__init(inst)
+end
+
+inst.on_load_state = function() return inst:_on_load_state() end
+inst.on_save_state = function() return inst:_on_save_state() end
+
+local function bus_args(payload)
+    if type(payload) ~= "table" then
+        return {}
+    end
+    return type(payload.args) == "table" and payload.args or {}
+end
+
+if siski and siski.bus and siski.bus.subscribe then
+    siski.bus.subscribe("actor_on_first_update", "siski_debug_hud", function()
+        inst.RUNTIME.enabled_prev = inst:_is_enabled() == true
+        inst:_refresh_all_from_memory("first_update")
+    end)
+    siski.bus.subscribe("load_state", "siski_debug_hud", function()
+        inst.RUNTIME.enabled_prev = inst:_is_enabled() == true
+        inst:_refresh_all_from_memory("load_state")
+    end)
+    siski.bus.subscribe("on_option_change", "siski_debug_hud", function()
+        inst:_on_option_change()
+    end)
+    siski.bus.subscribe("memory_task_changed", "siski_debug_hud", function(payload)
+        local squad_id = payload and payload.squad_id or nil
+        inst:_refresh_spot_for_id(squad_id, nil)
+    end)
+    siski.bus.subscribe("squad_on_first_update", "siski_debug_hud", function(payload)
+        local args = bus_args(payload)
+        local squad = args[1]
+        inst:_refresh_spot_for_id(squad and squad.id or nil, nil)
+    end)
+    siski.bus.subscribe("squad_on_update", "siski_debug_hud", function(payload)
+        local args = bus_args(payload)
+        local squad = args[1]
+        inst:_refresh_spot_for_id(squad and squad.id or nil, nil)
+    end)
+    siski.bus.subscribe("squad_on_after_level_change", "siski_debug_hud", function(payload)
+        local args = bus_args(payload)
+        local squad = args[1]
+        inst:_refresh_spot_for_id(squad and squad.id or nil, nil)
+    end)
+    siski.bus.subscribe("squad_on_npc_death", "siski_debug_hud", function(payload)
+        local args = bus_args(payload)
+        local squad = args[1]
+        inst:_refresh_spot_for_id(squad and squad.id or nil, nil)
+    end)
+    siski.bus.subscribe("server_entity_on_unregister", "siski_debug_hud", function(payload)
+        local args = bus_args(payload)
+        local se_obj = args[1]
+        inst:_remove_spot(se_obj and se_obj.id or nil)
+    end)
+end
+
+siski.debug_hud = inst

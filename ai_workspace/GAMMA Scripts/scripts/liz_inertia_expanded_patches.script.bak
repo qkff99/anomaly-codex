@@ -1,0 +1,132 @@
+local mc_anm_time_1 = 0
+local mc_anm_time_2 = 0
+local torch_anm_time = 0
+local anm_additional_length = 0
+
+
+--- --- --- --- --- --- --- --- --- --- --- --- --- --- --- 
+--- detecting mask whipe and torch animations
+--- --- --- --- --- --- --- --- --- --- --- --- --- --- --- 
+
+function desable_left_hand_for_seconds(start, duration)
+
+    CreateTimeEvent("liz_inertia_expanded_patches", "on_key_release_start", start, function ()
+        liz_inertia_expanded.set_mask_flag(liz_inertia_expanded.mask_layers.anm_plays, true)
+
+        CreateTimeEvent("liz_inertia_expanded_patches", "on_key_release_end", duration, function ()
+            liz_inertia_expanded.set_mask_flag(liz_inertia_expanded.mask_layers.anm_plays, false)
+            return true
+        end)
+
+        return true
+    end)
+end
+
+
+function handle_whipe_anm()
+	local det_active = db.actor:active_detector() or nil
+    if (not db.actor:active_item() and not det_active) then
+        desable_left_hand_for_seconds(0, mc_anm_time_1 + mc_anm_time_2)
+	else
+        desable_left_hand_for_seconds(0, mc_anm_time_1 + mc_anm_time_2 + anm_additional_length)
+	end
+end
+
+
+function handle_torch_anm()
+	local det_active = db.actor:active_detector() or nil
+    if (not db.actor:active_item() and not det_active) then
+        desable_left_hand_for_seconds(0, mc_anm_time_1 + torch_anm_time)
+	else
+        desable_left_hand_for_seconds(0, mc_anm_time_1 + torch_anm_time + anm_additional_length)
+	end
+end
+
+
+local originalHMC = actor_effects.Hit_MaskCleaning
+actor_effects.Hit_MaskCleaning = function ()
+    if (not actor_effects.allow_animation()) or (not actor_effects.is_mask_on()) then return end
+    handle_whipe_anm()
+    originalHMC()
+end
+
+
+local originalHTT = actor_effects.Hit_TorchToggle
+actor_effects.Hit_TorchToggle = function ()
+    if (not actor_effects.allow_animation()) or (not item_device.can_toggle_torch()) then return end
+    handle_torch_anm()
+    originalHTT()
+end
+
+
+--- --- --- --- --- --- --- --- --- --- --- --- --- --- --- 
+--- detecting weapon reload and inspect animations
+--- --- --- --- --- --- --- --- --- --- --- --- --- --- --- 
+
+local reloaded_wpn
+local function weapon_reload_tracker(anm_table, item)
+    local parent = item:parent()
+    if not parent then return end
+    if parent:id() ~= AC_ID then return end
+
+    -- reference
+    -- local states = {
+    --     eIdle,     --= 0
+    --     eShowing,  --= 1
+    --     eHiding,   --= 2
+    --     eHidden,   --= 3
+    --     eBore,     --= 4
+    --     eFire,     --= 5
+    --     eFire2,    --= 6
+    --     eReload,   --= 7
+    --     eMisfire,  --= 8
+    --     eMagEmpty, --= 9
+    --     eSwitch    --= 10
+    -- }
+
+    -- local allowed_states = {
+    --     [0] = true,
+    --     [5] = true,
+    --     [6] = true,
+    -- }
+    
+    --oh I don't like it. Might be just allow animation only on "moving" and "shoot"
+    -- if not string.find(anm_table.anm_name, "moving")
+    -- if  string.find(anm_table.anm_name, "reload") --wpn reload
+    --     or string.find(anm_table.anm_name, "open") --shotgun start reload
+    --     or string.find(anm_table.anm_name, "cartridge")  --insert bullet
+    --     or string.find(anm_table.anm_name, "close") --stop reload
+    --     or string.find(anm_table.anm_name, "bore") --inspect
+    --     or string.find(anm_table.anm_name, "hide") --weapon holster
+    --     or string.find(anm_table.anm_name, "show") --weapon draw
+    
+    --Anything that is not movement or attack will disable the crawl
+    if  not string.find(anm_table.anm_name, "moving")
+        and not string.find(anm_table.anm_name, "shot") --or "shots"?
+        and not string.find(anm_table.anm_name, "attack")
+    then
+        liz_inertia_expanded.set_mask_flag(liz_inertia_expanded.mask_layers.wpn_reload, true)
+        reloaded_wpn = item
+    elseif reloaded_wpn and reloaded_wpn:id() == item:id() then
+        reloaded_wpn = nil
+        liz_inertia_expanded.set_mask_flag(liz_inertia_expanded.mask_layers.wpn_reload, false)
+    end
+end
+if animation_common then animation_common.add_anim_mutator(weapon_reload_tracker, 6) end
+
+
+--- --- --- --- --- --- --- --- --- --- --- --- --- --- --- 
+--- callbacks
+--- --- --- --- --- --- --- --- --- --- --- --- --- --- --- 
+
+function actor_on_first_update()
+    mc_anm_time_1 = game.get_motion_length("anim_mask_clean", "anm_hide_hand", 1.5) / 1000
+    mc_anm_time_2 = game.get_motion_length("anim_mask_clean", "anm_wipe", 1) / 1000
+    torch_anm_time = game.get_motion_length("anim_headlamp", "anm_switch", 1) / 1000
+    anm_additional_length = 0.5 --0.45 --0.8
+end
+
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+end

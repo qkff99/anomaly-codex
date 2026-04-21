@@ -1,0 +1,54 @@
+--[[
+	=====================================================================
+	Addon      : Tosox Mini Mods Repo: Surge Crow Killer Fix
+	Link       : https://www.moddb.com/mods/stalker-anomaly/addons/tosox-mini-mods-repo/
+	Author     : Tosox
+	Date       : 12.04.2024
+	Last Edit  : 22.04.2024
+	=====================================================================
+--]]
+
+surge_manager_CSurgeManager_kill_crows_at_pos = surge_manager.CSurgeManager.kill_crows_at_pos
+surge_manager.CSurgeManager.kill_crows_at_pos = function(self, pos, delay)
+	local h = hit()
+	h.type = hit.fire_wound
+	h.power = 0.9
+	h.impulse = 0.0
+	h.direction = VEC_Z
+	h.draftsman = db.actor
+	h:bone("bip01_pelvis") -- Tosox: add a bone so Entity::HitSignal in the engine is executed
+	for k, id in pairs(bind_crow.crow_storage) do
+		if delay then
+			CreateTimeEvent("delay_kill_crow", id, math.random(1, 3), surge_manager.make_dead_crow, id, h)
+		else
+			local crow = level.object_by_id(id)
+			if (crow and crow:alive() and pos < crow:position().z) then
+				crow:hit(h)
+			end
+		end
+	end
+end
+
+psi_storm_manager_CPsiStormManager_kill_crows_at_pos = psi_storm_manager.CPsiStormManager.kill_crows_at_pos
+psi_storm_manager.CPsiStormManager.kill_crows_at_pos = function(self, pos)
+	-- self.crowParticles={}
+	local h = hit()
+	h.type = hit.fire_wound
+	h.power = 1.0
+	h.impulse = 0
+	h.direction = VEC_Z
+	h.draftsman = db.actor
+    h:bone("bip01_pelvis") -- Tosox: add a bone so Entity::HitSignal in the engine is executed
+	for k, v in pairs(bind_crow.crow_storage) do
+		local obj = alife_object(v)
+		if obj then
+			local crow = level.object_by_id(obj.id)
+			if (crow and crow:alive() and distance_2d(pos, crow:position()) < 25) then
+				-- crow:start_particles("crommcruac\\electrocute_crow","bip01_pelvis")
+				-- self.crowParticles[k]=particles_object("crommcruac\\electrocute_crow")
+				-- self.crowParticles[k]:play_at_pos(crow:position())
+				crow:hit(h)
+			end
+		end
+	end
+end

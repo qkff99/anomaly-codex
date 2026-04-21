@@ -1,0 +1,624 @@
+local HI = has_alife_info
+local GI = give_info
+local DI = disable_info
+local GT = game.translate_string
+
+function NI(str)
+	return not (has_alife_info(str))
+end
+
+
+local saved_dialog
+function add_dialog(p_id,id,phrase_id,cond,act)
+	if not ( saved_dialog ) then
+		return
+	end
+
+	local phrase = saved_dialog:AddPhrase(phrase_id,tostring(id),tostring(p_id),-10000)
+	if not ( phrase ) then
+		return
+	end
+
+	local phrase_script = phrase:GetPhraseScript()
+	if ( cond ) then
+		if ( type(cond) == "table" ) then
+			for key, value in pairs(cond) do
+				if (utils_data.findfunction(value,_G)) then
+					phrase_script:AddPrecondition(value)
+				else
+					printe("!ERROR dialog_manager | No such function exists '%s'",value)
+				end
+			end
+		else
+			if (utils_data.findfunction(cond,_G)) then
+				phrase_script:AddPrecondition(cond)
+			else
+				printe("!ERROR dialog_manager | No such function exists '%s'",cond)
+			end
+		end
+	end
+
+	if ( act ) then
+		if ( type(act) == "table" ) then
+			for key, value in pairs(act) do
+				if (utils_data.findfunction(value,_G)) then
+					phrase_script:AddAction(value)
+				else
+					printe("!ERROR dialog_manager | No such function exists '%s'",value)
+				end
+			end
+		else
+			if (utils_data.findfunction(act,_G)) then
+				phrase_script:AddAction(act)
+			else
+				printe("!ERROR dialog_manager | No such function exists '%s'",act)
+			end
+		end
+	end
+	return phrase_script
+end
+
+--[[----------------------------------------------------------------------------------------------------
+	General
+------------------------------------------------------------------------------------------------------]]
+function duty_girl_companion_join_dialog_con(a,b,dialog_name,pre_pid,cur_pid)
+	if (NI("duty_girl_capture_the_brirge_done")) then
+		return false
+	end
+	if (dialogs_axr_companion.is_actor_companion(a,b)) then
+		return false
+	end
+	return true
+end
+
+function duty_girl_companion_join_dialog(dialog)
+	saved_dialog = dialog
+	add_dialog("",0,"duty_girl_companion_join_0")
+	add_dialog(0,1,"duty_girl_companion_join_1","dialogs_duty_girl.duty_girl_companion_join_1_con","dialogs_axr_companion.become_actor_companion")
+	add_dialog(0,2,"duty_girl_companion_join_2","dialogs_duty_girl.duty_girl_companion_join_2_con")
+end
+
+function duty_girl_companion_join_1_con(a,b)
+	return not duty_girl_companion_join_2_con(a,b)
+end
+
+function duty_girl_companion_join_2_con(a,b)
+	local npc = get_story_object("devushka")
+	if (npc and npc:alive() and dialogs_axr_companion.is_actor_companion(db.actor,npc)) then
+		return true
+	end
+	return false
+end
+
+
+
+
+function duty_girl_companion_leave_dialog_con(a,b,dialog_name,pre_pid,cur_pid)
+	if (dialogs_axr_companion.is_actor_companion(a,b)) then
+		return true
+	end
+	return false
+end
+
+function duty_girl_companion_leave_dialog(dialog)
+    saved_dialog = dialog
+	add_dialog("",0,"duty_girl_companion_leave_0")
+	add_dialog(0,1,"duty_girl_companion_leave_1")
+	add_dialog(1,2,"duty_girl_companion_leave_2")
+	add_dialog(1,3,"duty_girl_companion_leave_3")
+	add_dialog(2,4,"duty_girl_companion_leave_4",nil,"dialogs_axr_companion.remove_companions_from_squad")
+end
+
+
+
+
+function duty_girl_actor_ask_companion_dialog_con(a,b,dialog_name,pre_pid,cur_pid)
+	local str = db.actor and character_community(db.actor) or ""
+	if (str and string.find(str,"dolg")) then
+		return false
+	end
+	return true
+end
+
+function duty_girl_actor_ask_companion_dialog(dialog)
+
+end
+
+function duty_girl_first_meet(dialog)
+	saved_dialog = dialog
+	add_dialog("",0,"duty_girl_first_meet_0")
+	add_dialog(0,1,"duty_girl_first_meet_1")
+	add_dialog(1,2,"duty_girl_first_meet_2")
+	add_dialog(2,3,"duty_girl_first_meet_3")
+	add_dialog(3,4,"duty_girl_first_meet_4")
+	add_dialog(4,5,"duty_girl_first_meet_5",nil,"dialogs_duty_girl.GI_duty_girl_first_meet")
+end
+
+--[[----------------------------------------------------------------------------------------------------
+	Quests
+------------------------------------------------------------------------------------------------------]]
+--[[----------------------------------------------------------------------------------------------------
+	duty_girl_hunting_chimera
+------------------------------------------------------------------------------------------------------]]
+function duty_girl_hunting_chimera_init_con(a,b,dialog_name,pre_pid,cur_pid)
+	if (HI("duty_girl_hunting_chimera_done") or HI("duty_girl_hunting_chimera_fail")) then
+		return false
+	end
+	return HI("duty_girl_first_meet") and NI("duty_girl_hunting_chimera_init")
+end
+function duty_girl_hunting_chimera_init(dialog)
+    saved_dialog = dialog
+	add_dialog("",0,"duty_girl_hunting_chimera_init_0")
+	add_dialog(0,1,"duty_girl_hunting_chimera_init_1",nil,"dialogs_duty_girl.duty_girl_hunting_chimera")
+end
+
+function duty_girl_hunting_chimera_move_con(a,b,dialog_name,pre_pid,cur_pid)
+	if (HI("duty_girl_hunting_chimera_done") or HI("duty_girl_hunting_chimera_fail")) then
+		return false
+	end
+	local npc = dialogs.who_is_npc(a,b)
+	return HI("duty_girl_hunting_chimera_init") and NI("duty_girl_hunting_chimera_move") and xr_conditions.npc_on_level(db.actor,npc,{"l02_garbage"})
+end
+function duty_girl_hunting_chimera_move(dialog)
+    saved_dialog = dialog
+    add_dialog("",0,"duty_girl_hunting_chimera_move_0")
+	add_dialog(0,1,"duty_girl_hunting_chimera_move_1",nil,"dialogs_duty_girl.GI_duty_girl_hunting_chimera_move")
+end
+
+function duty_girl_hunting_chimera_done_con(a,b,dialog_name,pre_pid,cur_pid)
+	if (HI("duty_girl_hunting_chimera_done") or HI("duty_girl_hunting_chimera_fail")) then
+		return false
+	end
+	return HI("duty_girl_hunting_chimera_dead") and NI("duty_girl_hunting_chimera_reward")
+end
+function duty_girl_hunting_chimera_done(dialog)
+    saved_dialog = dialog
+    add_dialog("",0,"duty_girl_hunting_chimera_done_0")
+	local action = {
+	    "dialogs_duty_girl.give_money_8000",
+		"dialogs_duty_girl.GI_duty_girl_hunting_chimera_reward",
+	}
+	add_dialog(0,1,"duty_girl_hunting_chimera_done_1",nil,action)
+end
+
+--[[----------------------------------------------------------------------------------------------------
+	duty_girl_monolith_elite
+------------------------------------------------------------------------------------------------------]]
+function duty_girl_monolith_elite_init_con(a,b,dialog_name,pre_pid,cur_pid)
+	if (HI("duty_girl_monolith_elite_done") or HI("duty_girl_monolith_elite_fail")) then
+		return false
+	end
+	local npc = dialogs.who_is_npc(a,b)
+	return HI("duty_girl_hunting_chimera_done") and NI("duty_girl_monolith_elite_init") and xr_conditions.npc_on_level(db.actor,npc,{"l05_bar"})
+end
+function duty_girl_monolith_elite_init(dialog)
+    saved_dialog = dialog
+    add_dialog("",0,"duty_girl_monolith_elite_init_0")
+	add_dialog(0,1,"duty_girl_monolith_elite_init_1",nil,"dialogs_duty_girl.duty_girl_monolith_elite")
+end
+
+function duty_girl_monolith_elite_join_con(a,b,dialog_name,pre_pid,cur_pid)
+	if (HI("duty_girl_monolith_elite_done") or HI("duty_girl_monolith_elite_fail")) then
+		return false
+	end
+	
+	local npc = dialogs.who_is_npc(a,b)
+	return HI("duty_girl_monolith_elite_init") and NI("duty_girl_monolith_elite_join") and xr_conditions.npc_on_level(db.actor,npc,{"l07_military"})
+end
+
+function duty_girl_monolith_elite_done_con(a,b,dialog_name,pre_pid,cur_pid)
+	if (HI("duty_girl_monolith_elite_done") or HI("duty_girl_monolith_elite_fail")) then
+		return false
+	end
+	
+	return HI("duty_girl_monolith_elite_dead") and NI("duty_girl_monolith_elite_reward")
+end
+
+function duty_girl_monolith_elite_done(dialog)
+    saved_dialog = dialog
+	add_dialog("",0,"duty_girl_monolith_elite_done_0")
+	local action = {
+	    "dialogs_duty_girl.give_money_12000",
+		"dialogs_duty_girl.GI_duty_girl_monolith_elite_reward",
+	}
+	add_dialog(0,1,"duty_girl_monolith_elite_done_1",nil,action)
+end
+
+--[[----------------------------------------------------------------------------------------------------
+	duty_girl_loot_stash
+------------------------------------------------------------------------------------------------------]]
+function duty_girl_loot_stash_init_con(a,b,dialog_name,pre_pid,cur_pid)
+	if (HI("duty_girl_loot_stash_done")) then
+		return false
+	end
+	
+	local npc = dialogs.who_is_npc(a,b)
+	return HI("duty_girl_monolith_elite_done") and NI("duty_girl_loot_stash_init") and xr_conditions.npc_on_level(db.actor,npc,{"l05_bar"})
+end
+function duty_girl_loot_stash_init(dialog)
+    saved_dialog = dialog
+	add_dialog("",0,"duty_girl_loot_stash_init_0")
+	add_dialog(0,1,"duty_girl_loot_stash_init_1",nil,"dialogs_duty_girl.duty_girl_loot_stash")
+	add_dialog(1,2,"duty_girl_loot_stash_init_2")
+end
+
+--[[----------------------------------------------------------------------------------------------------
+	duty_girl_capture_the_brirge
+------------------------------------------------------------------------------------------------------]]
+function duty_girl_capture_the_brirge_init_con(a,b,dialog_name,pre_pid,cur_pid)
+	if (HI("duty_girl_capture_the_brirge_done")) then
+		return false
+	end
+	local npc = dialogs.who_is_npc(a,b)
+	return HI("duty_girl_loot_stash_done") and NI("duty_girl_capture_the_brirge_init") and xr_conditions.npc_on_level(db.actor,npc,{"l05_bar"})
+end
+function duty_girl_capture_the_brirge_init(dialog)
+    saved_dialog = dialog
+    add_dialog("",0,"duty_girl_capture_the_brirge_init_0")
+	add_dialog(0,1,"duty_girl_capture_the_brirge_init_1",nil,"dialogs_duty_girl.duty_girl_capture_the_brirge")
+end
+
+function duty_girl_capture_the_brirge_join_con(a,b,dialog_name,pre_pid,cur_pid)
+	if (HI("duty_girl_capture_the_brirge_done") or HI("duty_girl_capture_the_brirge_fail")) then
+		return false
+	end
+	
+	local npc = dialogs.who_is_npc(a,b)
+	return HI("duty_girl_capture_the_brirge_init") and NI("duty_girl_capture_the_brirge_join") and xr_conditions.npc_on_level(db.actor,npc,{"l10_red_forest"})
+end
+
+function duty_girl_capture_the_brirge_done_con(a,b,dialog_name,pre_pid,cur_pid)
+	if (HI("duty_girl_capture_the_brirge_done") or HI("duty_girl_capture_the_brirge_fail")) then
+		return false
+	end
+	
+	return HI("duty_girl_capture_the_brirge_dead") and NI("duty_girl_capture_the_brirge_reward")
+end
+
+function duty_girl_capture_the_brirge_done(dialog)
+    saved_dialog = dialog
+	add_dialog("",0,"duty_girl_capture_the_brirge_done_0")
+	local action = {
+	    "dialogs_duty_girl.give_money_20000",
+		"dialogs_duty_girl.GI_duty_girl_capture_the_brirge_reward",
+	}
+	add_dialog(0,1,"duty_girl_capture_the_brirge_done_1",nil,action)
+end
+
+--[[----------------------------------------------------------------------------------------------------
+	Others
+------------------------------------------------------------------------------------------------------]]
+function red_duty_outpost_trader_concern_hostile(dialog)
+    saved_dialog = dialog
+	add_dialog("",0,"red_duty_outpost_trader_concern_hostile_0")
+	add_dialog(0,1,"red_duty_outpost_trader_concern_hostile_1")
+end
+
+function meet_guid_duty_outpost(dialog)
+    saved_dialog = dialog
+	add_dialog("",0,"meet_guid_duty_outpost_list_0")
+	add_dialog(0,1,"meet_guid_duty_outpost_list_1")
+end
+
+function travel_guid_duty_outpost(dialog)
+    saved_dialog = dialog
+	local action = {}
+	
+	add_dialog("",0,"travel_guid_duty_outpost_0")
+	add_dialog(0,1,"travel_guid_duty_outpost_1")
+	
+	action = { "dialogs_duty_girl.lost_money_1000","dialogs_mlr.l05_bar_guid" }
+	add_dialog(1,2,"travel_guid_duty_outpost_2","dialogs_duty_girl.have_money_1000",action)
+	
+	action = { "dialogs_duty_girl.lost_money_2000","dialogs_mlr.zaton_guid" }
+	add_dialog(1,3,"travel_guid_duty_outpost_3","dialogs_duty_girl.have_money_2000",action)
+	
+	action = { "dialogs_duty_girl.lost_money_3000","dialogs_mlr.garbage_guid" }
+	add_dialog(1,4,"travel_guid_duty_outpost_4","dialogs_duty_girl.have_money_3000",action)
+	
+	action = { "dialogs_duty_girl.lost_money_4000","dialogs_mlr.yantar_guid" }
+	add_dialog(1,5,"travel_guid_duty_outpost_5","dialogs_duty_girl.have_money_4000",action)
+	
+	action = { "dialogs_duty_girl.lost_money_5000","dialogs_mlr.agroprom_guid_military" }
+	add_dialog(1,6,"travel_guid_duty_outpost_6","dialogs_duty_girl.have_money_5000",action)
+	
+	action = { "dialogs_duty_girl.lost_money_6000","dialogs_mlr.escape_village_guid" }
+	add_dialog(1,7,"travel_guid_duty_outpost_7","dialogs_duty_girl.have_money_6000",action)
+	
+	action = { "dialogs_duty_girl.lost_money_6000","dialogs_mlr.marsh_guid" }
+	add_dialog(1,8,"travel_guid_duty_outpost_8","dialogs_duty_girl.have_money_6000",action)
+	add_dialog(1,9,"travel_guid_duty_outpost_9")
+end
+
+function travel_guid_duty_outpost_from_others_1(str)
+	return strformat(game.translate_string("travel_guid_duty_outpost_from_others_1"),str)
+end
+
+function travel_guid_duty_outpost_from_others_2(str)
+	return strformat(game.translate_string("travel_guid_duty_outpost_from_others_2"),str)
+end
+
+function travel_guid_duty_outpost_from_others_1000(dialog)
+    saved_dialog = dialog
+	local txt, action = "", {}
+	
+	add_dialog("",0,"travel_guid_duty_outpost_from_others_0")
+	
+	txt = travel_guid_duty_outpost_from_others_1(1000)
+	add_dialog(0,1,txt)
+	
+	txt = travel_guid_duty_outpost_from_others_2(1000)
+	action = {"dialogs_duty_girl.lost_money_1000","dialogs_duty_girl.change_lvl_to_duty_outpost"}
+	add_dialog(1,2,txt,"dialogs_duty_girl.have_money_1000",action)
+	
+	add_dialog(1,3,"travel_guid_duty_outpost_from_others_3")
+end
+
+function travel_guid_duty_outpost_from_others_2000(dialog)
+    saved_dialog = dialog
+	local txt, action = "", {}
+	
+	add_dialog("",0,"travel_guid_duty_outpost_from_others_0")
+	
+	txt = travel_guid_duty_outpost_from_others_1(2000)
+	add_dialog(0,1,txt)
+	
+	txt = travel_guid_duty_outpost_from_others_2(2000)
+	action = {"dialogs_duty_girl.lost_money_2000","dialogs_duty_girl.change_lvl_to_duty_outpost"}
+	add_dialog(1,2,txt,"dialogs_duty_girl.have_money_2000",action)
+	
+	add_dialog(1,3,"travel_guid_duty_outpost_from_others_3")
+end
+
+function travel_guid_duty_outpost_from_others_3000(dialog)
+    saved_dialog = dialog
+	local txt, action = "", {}
+	
+	add_dialog("",0,"travel_guid_duty_outpost_from_others_0")
+	
+	txt = travel_guid_duty_outpost_from_others_1(3000)
+	add_dialog(0,1,txt)
+	
+	txt = travel_guid_duty_outpost_from_others_2(3000)
+	action = {"dialogs_duty_girl.lost_money_3000","dialogs_duty_girl.change_lvl_to_duty_outpost"}
+	add_dialog(1,2,txt,"dialogs_duty_girl.have_money_3000",action)
+	
+	add_dialog(1,3,"travel_guid_duty_outpost_from_others_3")
+end
+
+function travel_guid_duty_outpost_from_others_4000(dialog)
+    saved_dialog = dialog
+	local txt, action = "", {}
+	
+	add_dialog("",0,"travel_guid_duty_outpost_from_others_0")
+	
+	txt = travel_guid_duty_outpost_from_others_1(4000)
+	add_dialog(0,1,txt)
+	
+	txt = travel_guid_duty_outpost_from_others_2(4000)
+	action = {"dialogs_duty_girl.lost_money_4000","dialogs_duty_girl.change_lvl_to_duty_outpost"}
+	add_dialog(1,2,txt,"dialogs_duty_girl.have_money_4000",action)
+	
+	add_dialog(1,3,"travel_guid_duty_outpost_from_others_3")
+end
+
+function travel_guid_duty_outpost_from_others_5000(dialog)
+    saved_dialog = dialog
+	local txt, action = "", {}
+	
+	add_dialog("",0,"travel_guid_duty_outpost_from_others_0")
+	
+	txt = travel_guid_duty_outpost_from_others_1(5000)
+	add_dialog(0,1,txt)
+	
+	txt = travel_guid_duty_outpost_from_others_2(5000)
+	action = {"dialogs_duty_girl.lost_money_5000","dialogs_duty_girl.change_lvl_to_duty_outpost"}
+	add_dialog(1,2,txt,"dialogs_duty_girl.have_money_5000",action)
+	
+	add_dialog(1,3,"travel_guid_duty_outpost_from_others_3")
+end
+
+function travel_guid_duty_outpost_from_others_6000(dialog)
+    saved_dialog = dialog
+	local txt, action = "", {}
+	
+	add_dialog("",0,"travel_guid_duty_outpost_from_others_0")
+	
+	txt = travel_guid_duty_outpost_from_others_1(6000)
+	add_dialog(0,1,txt)
+	
+	txt = travel_guid_duty_outpost_from_others_2(6000)
+	action = {"dialogs_duty_girl.lost_money_6000","dialogs_duty_girl.change_lvl_to_duty_outpost"}
+	add_dialog(1,2,txt,"dialogs_duty_girl.have_money_6000",action)
+	
+	add_dialog(1,3,"travel_guid_duty_outpost_from_others_3")
+end
+
+--[[----------------------------------------------------------------------------------------------------
+                                   Task	
+------------------------------------------------------------------------------------------------------]]
+function duty_girl_hunting_chimera()
+    task_manager.get_task_manager():give_task("duty_girl_hunting_chimera")
+end
+
+function duty_girl_monolith_elite()
+    task_manager.get_task_manager():give_task("duty_girl_monolith_elite")
+end
+
+function duty_girl_loot_stash()
+    task_manager.get_task_manager():give_task("duty_girl_loot_stash")
+end
+
+function duty_girl_capture_the_brirge()
+    task_manager.get_task_manager():give_task("duty_girl_capture_the_brirge")
+end
+
+--[[----------------------------------------------------------------------------------------------------
+	                               Info
+------------------------------------------------------------------------------------------------------]]
+function GI_duty_girl_first_meet(a,b)
+    return GI("duty_girl_first_meet")
+end
+
+function GI_duty_girl_hunting_chimera_move(a,b)
+    return GI("duty_girl_hunting_chimera_move")
+end
+
+function GI_duty_girl_hunting_chimera_reward(a,b)
+    return GI("duty_girl_hunting_chimera_reward")
+end
+
+function GI_duty_girl_monolith_elite_join(a,b)
+    return GI("duty_girl_monolith_elite_join")
+end
+
+function GI_duty_girl_monolith_elite_reward(a,b)
+    return GI("duty_girl_monolith_elite_reward")
+end
+
+function GI_duty_girl_capture_the_brirge_reward(a,b)
+    return GI("duty_girl_capture_the_brirge_reward")
+end
+
+--[[----------------------------------------------------------------------------------------------------
+	                               Phrases
+------------------------------------------------------------------------------------------------------]]
+function get_phrase_monolith_elite_join_0(a,b)
+    return NI("duty_girl_monolith_elite_supply") and 
+	       GT("duty_girl_monolith_elite_join_0") or
+		   GT("duty_girl_monolith_elite_join_2")
+end
+
+function get_phrase_monolith_elite_join_1(a,b)
+    return NI("duty_girl_monolith_elite_supply") and 
+	       GT("duty_girl_monolith_elite_join_1") or " "
+end
+
+function action_monolith_elite_join(a,b)
+    if NI("duty_girl_monolith_elite_supply") then
+	    give_item_monolith_elite_supply(a,b)
+	else
+	    GI("duty_girl_monolith_elite_join")
+		dialogs.break_dialog(a,b)
+	end
+end
+
+function get_phrase_capture_the_brirge_join_0(a,b)
+    return NI("duty_girl_capture_the_brirge_supply") and 
+	       GT("duty_girl_capture_the_brirge_join_0") or
+		   GT("duty_girl_capture_the_brirge_join_2")
+end
+
+function get_phrase_capture_the_brirge_join_1(a,b)
+    return NI("duty_girl_capture_the_brirge_supply") and 
+	       GT("duty_girl_capture_the_brirge_join_1") or " "
+end
+
+function action_capture_the_brirge_join(a,b)
+    if NI("duty_girl_capture_the_brirge_supply") then
+	    give_item_capture_the_brirge_join(a,b)
+	else
+	    GI("duty_girl_capture_the_brirge_join")
+		dialogs.break_dialog(a,b)
+	end
+end
+
+--[[----------------------------------------------------------------------------------------------------
+	                               Utilites
+------------------------------------------------------------------------------------------------------]]
+function give_money_8000(a,b)
+	return dialogs.relocate_money_to_actor(a,b,8000)
+end
+
+function give_money_12000(a,b)
+    return dialogs.relocate_money_to_actor(a,b,12000)
+end
+
+function give_money_20000(a,b)
+    return dialogs.relocate_money_to_actor(a,b,20000)
+end
+
+function have_money_1000(a,b)
+    return mlr_utils.have_money(1000)
+end
+
+function have_money_2000(a,b)
+    return mlr_utils.have_money(2000)
+end
+
+function have_money_3000(a,b)
+    return mlr_utils.have_money(3000)
+end
+
+function have_money_4000(a,b)
+    return mlr_utils.have_money(4000)
+end
+
+function have_money_5000(a,b)
+    return mlr_utils.have_money(5000)
+end
+
+function have_money_6000(a,b)
+    return mlr_utils.have_money(6000)
+end
+
+function lost_money_1000(a,b)
+    return dialogs.relocate_money_from_actor(a,b,1000)
+end
+
+function lost_money_2000(a,b)
+    return dialogs.relocate_money_from_actor(a,b,2000)
+end
+
+function lost_money_3000(a,b)
+    return dialogs.relocate_money_from_actor(a,b,3000)
+end
+
+function lost_money_4000(a,b)
+    return dialogs.relocate_money_from_actor(a,b,4000)
+end
+
+function lost_money_5000(a,b)
+    return dialogs.relocate_money_from_actor(a,b,5000)
+end
+
+function lost_money_6000(a,b)
+    return dialogs.relocate_money_from_actor(a,b,6000)
+end
+
+local function give_items(p)
+    if not(p and is_not_empty(p)) then return end
+	
+	for sec,num in pairs(p) do
+		if (sec and num) then
+			if (IsItem("ammo",sec)) then
+				alife_create_item(sec,db.actor,{ammo = num})
+			else
+				for k=1,num do
+					alife_create_item(sec,db.actor)
+				end
+			end
+			news_manager.relocate_item(db.actor,"in",sec,num)
+		end
+	end
+end
+
+function give_item_monolith_elite_supply(a,b)
+	give_items({bandage = 5, medkit_army = 3})
+	GI("duty_girl_monolith_elite_supply")
+end
+
+function give_item_capture_the_brirge_join(a,b)
+    give_items({bandage = 5, medkit_army = 3})
+	GI("duty_girl_capture_the_brirge_supply")
+end
+
+function change_lvl_to_duty_outpost(a,b)
+	if (db.actor:is_talking()) then
+		db.actor:stop_talk()
+	end
+	local smart = SIMBOARD.smarts_by_names["red_smart_terrain_bridge"]
+	if (smart) then
+		ChangeLevel(vector():set(-118,5,-256),smart.m_level_vertex_id,smart.m_game_vertex_id,vector():set(0,0,-1),true)
+	end
+end

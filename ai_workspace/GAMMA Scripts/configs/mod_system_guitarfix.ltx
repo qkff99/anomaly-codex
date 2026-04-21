@@ -1,0 +1,30 @@
+[guitar_b]:identity_immunities 
+GroupControlSection                                = spawn_group
+discovery_dependency                               =
+$spawn                                             = "food and drugs\guitar_b"
+cform                                              = skeleton
+class                                              = II_ATTCH
+kind			                                   = i_tool
+visual                                             = dynamics\devices\dev_guitar\dev_guitar.ogf
+cost                                               = 3220
+inv_name                                           = st_guitar_name
+inv_name_short                                     = st_guitar_name
+description                                        = st_guitar_descr
+inv_weight                                         = 1.5
+inv_grid_width                                     = 3
+inv_grid_height                                    = 1
+inv_grid_x                                         = 0
+inv_grid_y                                         = 3
+attach_angle_offset                                = -0.415, -1.262, 0.808
+attach_position_offset                             = -0.014, 0.010, 0.020
+attach_bone_name                                   = bip01_l_hand
+auto_attach                                        = false
+anim_item								           = true
+use1_functor         					           = itms_manager.menu_play
+use1_action_functor  					           = itms_manager.use_guitar
+use1_allow_db         					           = true
+
+tier                                               = 3
+
+![stalker]
+>attachable_items = guitar_b

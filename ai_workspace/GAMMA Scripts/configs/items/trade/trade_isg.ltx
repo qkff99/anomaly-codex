@@ -1,0 +1,141 @@
+#include "presets\trade_discounts.ltx"
+#include "presets\trade_presets.ltx"
+#include "presets\gamma_nato_preset.ltx"
+
+[trader]
+buy_condition = trade_generic_buy
+sell_condition = trade_generic_sell
+buy_supplies = {=actor_goodwill_ge(isg:2000)} supplies_5, {=heavy_pockets_functor()} supplies_5, {=actor_goodwill_ge(isg:1500)} supplies_4, {=actor_goodwill_ge(isg:1000)} supplies_3, {=actor_goodwill_ge(isg:500)} supplies_2,  supplies_1
+buy_item_condition_factor = 0.60
+buy_item_exponent = 2.25
+sell_item_exponent = 0.75
+
+discounts = discount_supplier
+
+[trade_generic_buy]:trasher,furnitures_low
+
+[trade_generic_sell]:trasher
+
+[supplies_1]:common_stock,supply_1_nato
+
+broken_detector                      = 1, 1
+flashlight_broken                    = 1, 1
+
+wpn_binoc_inv                        = 1, 1
+
+;[Ammo]
+ammo_11.43x23_fmj                    = 8, 1
+ammo_11.43x23_hydro                  = 8, 1
+ammo_9x18_ap                         = 8, 1
+ammo_9x18_fmj                        = 8, 1
+ammo_9x18_pmm                        = 8, 1
+ammo_9x19_fmj                        = 8, 1
+ammo_9x19_pbp                        = 8, 1
+ammo_9x19_ap                         = 8, 1
+ammo_7.92x33_fmj                     = 2, 1
+ammo_12x70_buck                      = 8, 1
+ammo_7.62x25_p                       = 10, 1
+ammo_7.62x25_ps                      = 10, 1
+ammo_20x70_buck                      = 8, 1
+
+cooking                              = 1, 1
+fieldcooker                          = 1, 1
+
+;[Melee]
+wpn_knife                            = 1, 1
+wpn_knife2                           = 1, 1
+
+;[Backpacks]
+itm_backpack                         = 1, 1
+kit_hunt                             = 1, 1
+
+;[Devices]
+batteries_dead                       = 5, 1
+detector_geiger                      = 2, 1
+detector_radio                       = 2, 1
+detector_simple                      = 2, 1
+device_flashlight                    = 1, 1
+device_pda_1                         = 1, 1
+device_torch_dummy                   = 1, 1
+lead_box                             = 2, 1
+
+;[Camping]
+bolts_pack                           = 2, 1
+compression_bag                      = 1, 1
+itm_actor_backpack                   = 1, 1
+itm_sleepbag                         = 1, 1
+itm_tent                             = 1, 1
+
+;[Fuels]
+kerosene                             = 2, 1
+charcoal                             = 2, 1
+explo_jerrycan_fuel                  = 1, 1
+
+[supplies_2]:supplies_1,supply_2_nato
+
+af_iam                               = 1, 1
+af_camelbak                          = 1, 1
+af_cooler                            = 1, 1
+af_frames                            = 1, 1
+af_freon                             = 1, 1
+af_grid                              = 1, 1
+af_surge                             = 1, 1
+
+ammo_12x76_zhekan                    = 8, 1
+ammo_357_hp_mag                      = 6, 1
+ammo_7.92x33_ap                      = 6, 1
+ammo_5.7x28_ss195                    = 10, 1
+
+;[Addons]
+
+;[Melee]
+wpn_knife3                           = 1, 1
+wpn_axe                              = 1, 1
+
+;[Backpacks]
+
+;[Devices]
+
+[supplies_3]:supplies_2,supply_3_nato
+
+af_aac                               = 1, 1
+
+ammo_5.56x45_ss190                   = 8, 1
+ammo_5.56x45_fmj                     = 8, 1
+ammo_5.7x28_ss190                    = 10, 1
+grenade_f1                           = 1, 1
+ied_new                              = 1, 1
+
+;[Addons]
+
+;[Melee]
+wpn_knife4                           = 1, 1
+wpn_axe3                             = 1, 1
+
+;[Backpacks]
+
+;[Devices]
+
+[supplies_4]:supplies_3,supply_4_nato
+
+ammo_12x76_dart                      = 5, 1
+ammo_5.56x45_ap                       = 6, 1
+ammo_7.62x51_fmj                     = 8, 1
+ammo_m209                            = 1, 1
+
+;[Melee]
+wpn_knife5                           = 1, 1
+
+;[Backpacks]
+
+;[Devices]
+
+[supplies_5]:supplies_4,supply_5_nato
+batteries_exo = 4,1
+af_aam                               = 1, 1
+
+ammo_7.62x51_ap                      = 8, 1
+ammo_magnum_300                      = 6, 1
+ammo_338_federal                     = 6, 1
+
+;[Backpacks]

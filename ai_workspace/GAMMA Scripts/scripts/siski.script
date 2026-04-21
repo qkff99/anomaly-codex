@@ -1,0 +1,72 @@
+siski = siski or {}
+
+siski.version = "1.0.1"
+
+local function safe_require(name)
+    local ok = pcall(require, name)
+    return ok
+end
+
+function siski.on_game_start()
+    safe_require("siski_oop")
+    safe_require("siski_switches")
+    safe_require("siski_bus")
+    safe_require("siski_timers")
+    safe_require("siski_core")
+    safe_require("siski_safe")
+    safe_require("siski_log")
+    safe_require("siski_heli_guard_patch")
+    safe_require("siski_mcm_schema")
+    safe_require("siski_config")
+    safe_require("siski_board_index")
+    safe_require("siski_npc_faction_override")
+    safe_require("siski_xr_conditions_patch")
+    safe_require("siski_memory")
+    safe_require("siski_story_psy_watchdog")
+    safe_require("siski_story_events")
+    safe_require("siski_smart_tasks")
+    safe_require("siski_trade")
+    safe_require("axr_trade_manager")
+    safe_require("siski_tasks_registry")
+    safe_require("siski_mutants")
+    safe_require("siski_base_filler")
+    safe_require("siski_dynamic_bases")
+    safe_require("siski_service_filler")
+    safe_require("siski_axr_task_patch")
+    safe_require("siski_loot")
+    safe_require("siski_loot_patch")
+    safe_require("siski_fast_trading")
+    safe_require("siski_debug_hud")
+
+    if siski.loot and siski.loot.on_game_start then
+        siski.loot.on_game_start()
+    end
+
+    if siski.loot_patch and siski.loot_patch.on_game_start then
+        siski.loot_patch.on_game_start()
+    end
+
+    if siski.fast_trading and siski.fast_trading.on_game_start then
+        siski.fast_trading.on_game_start()
+    end
+
+    if siski.npc_faction_override and siski.npc_faction_override.on_game_start then
+        siski.npc_faction_override.on_game_start()
+    end
+
+    if siski.heli_guard_patch and siski.heli_guard_patch.on_game_start then
+        siski.heli_guard_patch.on_game_start()
+    end
+
+    if siski.board_index and siski.board_index.on_game_start then
+        siski.board_index.on_game_start()
+    end
+
+    if axr_trade_manager and axr_trade_manager.on_game_start then
+        axr_trade_manager.on_game_start()
+    end
+
+    if siski.core and siski.core.on_game_start then
+        siski.core.on_game_start()
+    end
+end

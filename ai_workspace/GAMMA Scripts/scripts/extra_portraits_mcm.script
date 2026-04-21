@@ -1,0 +1,8 @@
+ui_mm_faction_select.UINewGame.PopupIcon_Callbacks = function(self)
+	for i = 1 , 407 do
+		self["OnIcon_"..tostring(i)] = function(self)
+            self:OnIconSelect(i)
+        end
+		self:AddCallback("btn_icon_" .. tostring(i), ui_events.BUTTON_CLICKED, self["OnIcon_" .. tostring(i)], self)
+	end
+end

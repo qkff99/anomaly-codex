@@ -1,0 +1,66 @@
+local get_mcm_config = autocomplete_tasks_mcm.get_config
+
+local ini_trade = ini_file([[items\trade\trade_generic.ltx]])
+
+function dbg_printf(...)
+	if not get_mcm_config("at_other", "debug") then return end
+    printf(...)
+end
+
+function has_pda(who)
+    local valid_pda_devices = {
+        ["device_pda_1"] = true,
+        ["device_pda_2"] = true,
+        ["device_pda_3"] = true,
+        ["device_pda_milspec"] = true
+    }
+
+    who = who or db.actor
+
+    for k, v in pairs(valid_pda_devices) do
+		if (who:object(k)) and (v) then
+			return true
+		end
+	end
+
+	return false
+end
+
+function get_generic_sell_discount()
+	local condlist = ini_trade:r_string_to_condlist("trader", "discounts")
+	local sec = (condlist) and (xr_logic.pick_section_from_condlist(db.actor, nil, condlist))
+	if (not sec) or (sec == "") then
+		return 1
+	end
+
+	local factor = ini_trade:r_float_ex(sec, "sell") or 1
+	local eco_factor = game_difficulties.get_eco_factor("sell") or 1
+	
+	return factor * eco_factor
+end
+
+function get_base_cost(itm)
+	local sec, amount = string.match(itm, "(.*)__([1-9])")
+    if not sec then
+        return ini_sys:r_float(itm, "cost") or 0
+    end
+
+	-- itm is a multiuse item with a defined amount
+	local max_uses = ini_sys:r_float(sec, "max_uses") or amount
+	local cost = ini_sys:r_float(sec, "cost") or 0
+	return cost * (amount / max_uses)
+end
+
+function stop_talk_squad(squad)
+	if not squad then
+		return
+	end
+
+	for k in squad:squad_members() do 
+		local npc = db.storage[k.id] and db.storage[k.id].object
+		if (npc) and (npc:is_talking()) then
+			db.actor:stop_talk()
+			npc:stop_talk()
+		end
+	end
+end

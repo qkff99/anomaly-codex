@@ -1,0 +1,137 @@
+
+<!--
+    Ledge Grabbing
+    Generated with AnomalyModCreator
+-->
+
+<?xml version="1.0" encoding="windows-1251"?>
+
+<!-- 
+	MCM
+-->
+<string_table>
+
+	<string id="ui_mcm_ledge_grabbing_title">
+		<text>Ledge Grabbing</text>
+	</string>
+
+	<string id="ui_mcm_demonized_ledge_grabbing_animationSpeedMultiplier">
+		<text>Множитель скорости анимации</text>
+	</string>
+
+	<string id="ui_mcm_menu_demonized_ledge_grabbing">
+		<text>Ledge Grabbing</text>
+	</string>
+
+	<string id="ui_mcm_demonized_ledge_grabbing_enable">
+		<text>Включить</text>
+	</string>
+
+	<string id="ui_mcm_demonized_ledge_grabbing_alternativeClimbDetection">
+		<text>Альтернативный метод обнаружения</text>
+	</string>
+
+	<string id="ui_mcm_demonized_ledge_grabbing_alternativeClimbDetection_desc">
+		<text>При альтернативном методе луч будет падать на уступы, расположенные ближе к прицелу игрока. При стандартном методе луч будет падать с фиксированной высоты</text>
+	</string>
+
+	<string id="ui_mcm_demonized_ledge_grabbing_playerWidthCheck">
+		<text>Проверка границ игрока</text>
+	</string>
+
+	<string id="ui_mcm_demonized_ledge_grabbing_playerWidthCheck_desc">
+		<text>Если эта опция включена, то выполнится дополнительный рэйкаст, чтобы проверить, поместится ли игрок на уступе. Это может ограничить возможные уступы для подъема</text>
+	</string>
+
+	<string id="ui_mcm_demonized_ledge_grabbing_unstuckCheck">
+		<text>Проверка застревания игрока</text>
+	</string>
+
+	<string id="ui_mcm_demonized_ledge_grabbing_unstuckCheck_desc">
+		<text>Если включено, то скрипт попытается передвинуть игрока, если захват уступа не был выполнен правильно</text>
+	</string>
+
+	<string id="ui_mcm_demonized_ledge_grabbing_hardcoreMode">
+		<text>Хардкорный режим</text>
+	</string>
+
+	<string id="ui_mcm_demonized_ledge_grabbing_hardcoreMode_desc">
+		<text>При включении добавляет дополнительные ограничения: \n 1. Запрещено подниматься, если вес игрока превышает 90 кг.\n 2. Запрещено подниматься, если здоровье игрока менее 60% \n 3. Увеличивает расход выносливости</text>
+	</string>
+
+	<string id="ui_mcm_demonized_ledge_grabbing_BHSMode">
+		<text>BHS интеграция</text>
+	</string>
+
+	<string id="ui_mcm_demonized_ledge_grabbing_BHSMode_desc">
+		<text>Если включить эту функцию, то при использовании Body Health System и переломе одной из рук игрока, подъем будет невозможен</text>
+	</string>
+
+	<string id="ui_mcm_demonized_ledge_grabbing_throttleCheck">
+		<text>Задержка проверки уступов</text>
+	</string>
+
+	<string id="ui_mcm_demonized_ledge_grabbing_throttleCheck_desc">
+		<text>Время между проверками в мс. Увеличьте для повышения производительности за счет снижения точности</text>
+	</string>
+
+	<string id="ui_mcm_demonized_ledge_grabbing_climbTriggerDistance">
+		<text>Расстояние срабатывания</text>
+	</string>
+	<string id="ui_mcm_demonized_ledge_grabbing_climbTriggerDistance_desc">
+		<text>Максимальное расстояние для инициирования захвата</text>
+	</string>
+
+	<string id="ui_mcm_demonized_ledge_grabbing_raySteps">
+		<text>Точность захвата</text>
+	</string>
+	<string id="ui_mcm_demonized_ledge_grabbing_raySteps_desc">
+		<text>Большее число - лучшее обнаружение и позиция для захвата с небольшим штрафом к производительности</text>
+	</string>
+
+	<string id="ui_mcm_demonized_ledge_grabbing_jumpTriggerTime">
+		<text>Время удержания клавиши для срабатывания</text>
+	</string>
+	<string id="ui_mcm_demonized_ledge_grabbing_jumpTriggerTime_desc">
+		<text>Если удерживать клавишу дольше указанного времени, будет активирован захват уступа</text>
+	</string>
+
+	<string id="ui_mcm_demonized_ledge_grabbing_soundVolume">
+		<text>Громкость звуков разгрузки</text>
+	</string>
+	<string id="ui_mcm_demonized_ledge_grabbing_gruntVolume">
+		<text>Громкость звуков персонажа</text>
+	</string>
+	<string id="ui_mcm_demonized_ledge_grabbing_gruntProbability">
+		<text>Вероятность звуков персонажа</text>
+	</string>
+	<string id="ui_mcm_demonized_ledge_grabbing_staminaDrain">
+		<text>Расход стамины</text>
+	</string>
+
+	<string id="ui_mcm_demonized_ledge_grabbing_inputMethod">
+		<text>Метод ввода</text>
+	</string>
+	<string id="ui_mcm_demonized_ledge_grabbing_keybind">
+		<text>Клавиша</text>
+	</string>
+	<string id="ui_mcm_lst_demonized_ledge_grabbing_inputMethod_jumpHold">
+		<text>Удержание клавиши</text>
+	</string>
+	<string id="ui_mcm_lst_demonized_ledge_grabbing_inputMethod_buttonPress">
+		<text>Нажатие кнопки</text>
+	</string>
+	<string id="ui_mcm_lst_demonized_ledge_grabbing_inputMethod_both">
+		<text>Оба метода</text>
+	</string>
+
+	<string id="ui_mcm_demonized_ledge_grabbing_animationRandomization">
+		<text>Рандомизация анимации</text>
+	</string>
+	<string id="ui_mcm_demonized_ledge_grabbing_animationRandomization_desc">
+		<text>Рандомизирует движение камеры</text>
+	</string>
+
+
+</string_table>
+                        

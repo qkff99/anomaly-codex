@@ -1,0 +1,112 @@
+<w font="arial_14">
+  <tooltip />
+
+  <dialog bg="idiots_square" r="8" g="8" b="8" a="208">
+    <fade width="512" a="160" />
+
+    <indexers fontSize="-1">
+      <indexer>1</indexer>
+      <indexer>2</indexer>
+      <indexer>3</indexer>
+      <indexer>4</indexer>
+      <indexer>5</indexer>
+      <indexer>6</indexer>
+      <indexer>7</indexer>
+      <indexer>8</indexer>
+      <indexer>9</indexer>
+      <indexer>10</indexer>
+    </indexers>
+
+    <container id="tabs" width="fill" height="28">
+      <tab>st_idiots_tab_all</tab>
+      <tab>1</tab>
+      <tab>2</tab>
+      <tab>3</tab>
+      <tab>4</tab>
+      <tab>5</tab>
+      <tab>6</tab>
+      <tab>7</tab>
+      <tab>8</tab>
+      <tab>9</tab>
+      <tab>10</tab>
+    </container>
+
+    <container id="titlebar" width="fill" height="fit" xpad="20" ypad="20" gap="12" yalign="c">
+      <icon width="54" height="40" />
+      <label id="title" width="240" xalign="l" fontSize="1">st_idiots_title_all</label>
+
+      <container id="actions" width="fill" height="fit" gap="3" xalign="r">
+        <action               name="add_waypoint"    size="28" compact="1" icon="idiots_icon_add_waypoint" />
+        <action               name="clear_waypoints" size="28" compact="1" icon="idiots_icon_clear_waypoints" />
+        <action group="light" name="auto"            size="28" compact="1" icon="idiots_icon_light_auto" xoff="24" />
+        <action group="light" name="off"             size="28" compact="1" icon="idiots_icon_light_off" />
+        <action group="light" name="on"              size="28" compact="1" icon="idiots_icon_light_on" />
+        <action group="speed" name="hurry"           size="28" compact="1" icon="idiots_icon_hurry" xoff="24" />
+        <action group="jobs"  name="help_wounded"    size="28" compact="1" icon="idiots_icon_wounded" />
+        <action group="jobs"  name="loot_corpses"    size="28" compact="1" icon="idiots_icon_corpses" />
+        <action group="jobs"  name="loot_items"      size="28" compact="1" icon="idiots_icon_items" />
+        <action group="jobs"  name="loot_artifacts"  size="28" compact="1" icon="idiots_icon_artifacts" />
+        <action               name="inventory"       size="28" compact="1" icon="idiots_icon_inventory" xoff="24" />
+        <action               name="reload"          size="28" compact="1" icon="idiots_icon_reload" />
+        <action               name="retreat"         size="28" compact="1" icon="idiots_icon_retreat" />
+        <action               name="unstick"         size="28" compact="1" icon="idiots_icon_unstick" />
+        <action               name="reset"           size="28" compact="1" icon="idiots_icon_resync" />
+      </container>
+    </container>
+
+    <container id="actions" xpad="20" ypad="18" tpad="2" gap="6">
+      <group gap="1">
+        <action group="movement" name="follow" width="122" height="28" xalign="c" />
+        <action group="movement" name="wait"   width="122" height="28" xalign="c" />
+        <action group="movement" name="cover"  width="122" height="28" xalign="c" />
+        <action group="movement" name="relax"  width="122" height="28" xalign="c" />
+        <action group="movement" name="patrol" width="122" height="28" xalign="c" />
+      </group>
+
+      <group gap="1">
+        <action group="formation" name="bunch"   width="122" height="28" xalign="c" />
+        <action group="formation" name="spread"  width="122" height="28" xalign="c" />
+        <action group="formation" name="line"    width="122" height="28" xalign="c" />
+        <action group="formation" name="covered" width="122" height="28" xalign="c" />
+      </group>
+
+      <group gap="1">
+        <action group="stance" name="stand" width="122" height="28" xalign="c" />
+        <action group="stance" name="sneak" width="122" height="28" xalign="c" />
+        <action group="stance" name="prone" width="122" height="28" xalign="c" />
+      </group>
+
+      <group gap="1">
+        <action group="distance" name="normal" width="122" height="28" xalign="c" />
+        <action group="distance" name="near"   width="122" height="28" xalign="c" />
+        <action group="distance" name="far"    width="122" height="28" xalign="c" />
+      </group>
+
+      <group gap="1">
+        <action group="readiness" name="attack" width="122" height="28" xalign="c" />
+        <action group="readiness" name="defend" width="122" height="28" xalign="c" />
+        <action group="readiness" name="ignore" width="122" height="28" xalign="c" />
+      </group>
+
+      <group gap="1">
+        <action group="combat" name="default"  width="122" height="28" xalign="c" />
+        <action group="combat" name="assault"  width="122" height="28" xalign="c" />
+        <action group="combat" name="support"  width="122" height="28" xalign="c" />
+        <action group="combat" name="guard"    width="122" height="28" xalign="c" />
+        <action group="combat" name="snipe"    width="122" height="28" xalign="c" />
+        <action group="combat" name="monolith" width="122" height="28" xalign="c" />
+        <action group="combat" name="camper"   width="122" height="28" xalign="c" />
+        <action group="combat" name="zombied"  width="122" height="28" xalign="c" />
+      </group>
+
+      <group gap="1">
+        <action group="weapon" name="best"    width="122" height="28" xalign="c" />
+        <action group="weapon" name="pistol"  width="122" height="28" xalign="c" />
+        <action group="weapon" name="shotgun" width="122" height="28" xalign="c" />
+        <action group="weapon" name="smg"     width="122" height="28" xalign="c" />
+        <action group="weapon" name="rifle"   width="122" height="28" xalign="c" />
+        <action group="weapon" name="sniper"  width="122" height="28" xalign="c" />
+      </group>
+    </container>
+  </dialog>
+</w>

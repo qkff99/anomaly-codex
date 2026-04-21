@@ -1,0 +1,189 @@
+-- local fov_manager = lam_fov_manager
+local mcm_allow_movement = outfit_animations_mcm.get_config("allow_movement")
+local mcm_enable_animation = outfit_animations_mcm.get_config("enable_patches")
+local mcm_enable_animation_inventory = outfit_animations_mcm.get_config("enable_patches_inventory")
+
+----------------------------------------
+--#region monkey patches
+----------------------------------------
+
+--disable animation
+local originalPIF = actor_effects.play_item_fx
+actor_effects.play_item_fx = function(name)
+    if name == "disguise_tear_patch" then return end
+    originalPIF(name)
+end
+
+
+--call animation when perform actions on patches
+local originalMPA = gameplay_disguise.menu_patch_action
+gameplay_disguise.menu_patch_action = function(obj)
+
+    local section = obj:section()
+    local comm = ini_sys:r_string_ex(section, "community")
+    if comm and (comm ~= "") and gameplay_disguise.possible_factions[comm] then
+        local id = obj:id()
+        local obj_patch = gameplay_disguise.get_patch(comm)
+        local state = se_load_var(id, obj:name(), "unpatched")
+
+        local current_outfit_id = db.actor:item_in_slot(7) and db.actor:item_in_slot(7):id() or -1
+        local is_equipped_outfit = id == current_outfit_id and true or false
+
+        if state and obj_patch then
+
+            if is_equipped_outfit then
+                if mcm_enable_animation then play_animation_apply_patch(comm) end
+            else
+                if mcm_enable_animation_inventory then play_animation_apply_patch_inventory(comm) end
+            end
+
+        elseif (state == nil) then
+
+            if is_equipped_outfit then
+                if mcm_enable_animation then play_animation_remove_patch(comm) end
+            else
+                if mcm_enable_animation_inventory then play_animation_remove_patch_inventory(comm) end
+            end
+
+        end
+    end
+
+    originalMPA(obj)
+end
+
+--#endregion
+----------------------------------------
+
+
+----------------------------------------
+--#region callbacks
+----------------------------------------
+
+function on_game_start()
+    RegisterScriptCallback("on_option_change", on_option_change)
+end
+
+function on_option_change()
+    mcm_allow_movement = outfit_animations_mcm.get_config("allow_movement")
+    mcm_enable_animation = outfit_animations_mcm.get_config("enable_patches")
+    mcm_enable_animation_inventory = outfit_animations_mcm.get_config("enable_patches_inventory")
+end
+
+--#endregion
+----------------------------------------
+
+
+----------------------------------------
+--#region public functions (sorta api i guess)
+----------------------------------------
+
+function play_animation_apply_patch(faction)
+    local section_name = get_animation_section_name("outfit_animation_patch_apply", faction)
+    play_animation(section_name)
+end
+
+function play_animation_remove_patch(faction)
+    local section_name = get_animation_section_name("outfit_animation_patch_remove", faction)
+    play_animation(section_name)
+end
+
+function play_animation_apply_patch_inventory(faction)
+    local section_name = get_animation_section_name("outfit_animation_patch_apply_inventory", faction)
+    play_animation(section_name)
+end
+
+function play_animation_remove_patch_inventory(faction)
+    local section_name = get_animation_section_name("outfit_animation_patch_remove_inventory", faction)
+    play_animation(section_name)
+end
+
+--#endregion
+----------------------------------------
+
+
+----------------------------------------
+--#region main
+------------------------------------------------------------------------------
+
+-- local anm_info = nil --it's here cuz of stalke engine magic that I don't know
+-- local cur_slot
+-- local det_active
+function play_animation(section_name)
+    local action = {
+        sec = section_name,
+        params = {
+            can_walk = mcm_allow_movement,
+            hud_fov = 0.6
+        }
+    }
+    lam.try_play_action(action)
+    -- lam.add_action_to_queue(action)
+end
+
+-- function play_animation_old(section_name)
+--     --prepare
+--     Invoke("play_patch_animation_prepare_te", 0.01, function()
+--         hide_hud_inventory()
+--         cur_slot = db.actor:active_slot()
+--         det_active = db.actor:active_detector() or nil
+--         if det_active then det_active:switch_state(2) end
+--         db.actor:activate_slot(0)
+--         if headgear_animations then headgear_animations.enable_animations = false end
+--     end)
+
+--     wait_for_free_hands(function()
+--         --play
+--         fov_manager.restore_fov()
+--         if mcm_allow_movement then game.only_allow_movekeys(true) else level.disable_input() end
+
+--         -- anm_info = select_animation(faction, is_apply_patch, is_equipped)
+--         local delay = 0.25
+--         local length = 0
+--         local anm = "anm_use"
+--         local cam = ini_sys:r_string_ex(section_name, "cam")
+--         local snd = ini_sys:r_string_ex(section_name, "snd")
+--         length = length + game.get_motion_length(section_name, anm, 1) / 1000
+--         Invoke("play_patch_animation_te", delay, function()
+--             xr_effects.play_snd(db.actor, nil, { [1] = snd })
+--             level.add_cam_effector(cam, 1300, false, "")
+--             game.play_hud_motion(2, section_name, anm, false, 1)
+--         end)
+
+--         --restore
+--         Invoke("play_patch_animation_restore_te", delay + length + 0.25, function()
+--             if mcm_allow_movement then game.only_allow_movekeys(false) else level.enable_input() end
+--             if headgear_animations then headgear_animations.enable_animations = true end
+--             db.actor:activate_slot(cur_slot or 0)
+--             if det_active then det_active:switch_state(1) end
+--         end)
+--     end)
+-- end
+
+
+function get_animation_section_name(section_name, faction)
+    return section_name .. "_" .. faction .. "_hud"
+end
+
+
+-- function wait_for_free_hands(action_to_perform)
+--     local force_timer = 0
+--     CreateTimeEvent("outfit_animations_patch", "wait_for_free_hands_te0", 0.1, function()
+--         if (db.actor:active_slot() == 0 and not db.actor:active_detector() and not enhanced_animations.used_item) or (force_timer > 5) then
+--             Invoke("wait_for_free_hands_te1", 0, action_to_perform) --i don understan y this works (ノへ￣、)
+--             return true
+--         end
+--         force_timer = force_timer + (device().time_delta / 1000)
+--         return false
+--     end)
+-- end
+
+
+-- function Invoke(name, time, action)
+--     CreateTimeEvent("outfit_animations_patch", name, time, function()
+--         action()
+--         return true
+--     end)
+-- end
+
+--#endregion
+----------------------------------------

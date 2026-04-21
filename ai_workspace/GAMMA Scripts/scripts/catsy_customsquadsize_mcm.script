@@ -1,0 +1,16 @@
+-- =======================================================================
+--[[	Custom Companion Squad Size - MCM Menu
+-- =======================================================================
+	Author: Catspaw (CatspawMods @ ModDB)
+ 	Source: https://www.moddb.com/mods/stalker-anomaly/addons/custom-companion-squad-size
+-- ===================================================================--]]
+
+function on_mcm_load()
+	op = {	 id= "customsquadsize", sh=true, gr={
+			{id = "slide_ft", type= "slide", link= "ui_options_slider_disguise", size= {512,50}, spacing= 20},
+			{id = "maxsquadsize", type = "track", val = 2, min = 0, max = 10, step = 1, def = 2},
+			{id = "maxsquadsize_folkhero", type = "track", val = 2, min = 0, max = 10, step = 1, def = 4},
+		}
+	}
+	return op
+end

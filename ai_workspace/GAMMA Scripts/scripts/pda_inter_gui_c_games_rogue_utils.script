@@ -1,0 +1,236 @@
+local gt = game.translate_string
+local CustomPDAX = pda_inter_gui.CustomPDAX
+local astar = pda_inter_gui_c_games_rogue_a_path
+local pr = pda_inter_gui.pr
+
+
+------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------- Utils -----------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+function CustomPDAX:RogueActor()
+	return self.rogue_objects[1]
+end
+
+function CustomPDAX:CellDistance(row1, col1, row2, col2)
+	return math.abs(row1-row2) + math.abs(col1-col2)
+end
+
+function CustomPDAX:SpawnRadiusAllowed(row1, col1, radius)
+	for idx, t in ipairs(self.rogue_objects) do
+		if t.spawn_radius then
+			local dist = self:CellDistance(row1, col1, t.row, t.col)
+			if dist < (t.spawn_radius + radius) then
+				return false
+			end
+		end
+	end
+	return true
+end
+
+function CustomPDAX:CellsInLine(row1, col1, row2, col2)
+	local cells_ar = {}
+
+	if row1 == row2 then
+		if col1 > col2 then
+			for col = col2 + 1, col1 - 1 do
+				cells_ar[#cells_ar + 1] = { row1, col }
+			end
+		elseif col1 < col2 then
+			for col = col1 + 1, col2 - 1 do
+				cells_ar[#cells_ar + 1] = { row1, col }
+			end
+		end
+	end
+
+	if col1 == col2 then
+		if row1 > row2 then
+			for row = row2 + 1, row1 - 1 do
+				cells_ar[#cells_ar + 1] = { row, col1 }
+			end
+		elseif row1 < row2 then
+			for row = row1 + 1, row2 - 1 do
+				cells_ar[#cells_ar + 1] = { row, col1 }
+			end
+		end
+	end
+
+	return cells_ar
+end
+
+function CustomPDAX:ObstaclesInLine(row1, col1, row2, col2)
+	local is_melee = self:CellDistance(row1, col1, row2, col2) <= 1
+	if is_melee then return end
+
+	local cells_in_line = self:CellsInLine(row1, col1, row2, col2)
+	for i = 1, #cells_in_line do
+		local cell = cells_in_line[i]
+		local terrain = self.rogue_grid[cell[1]][cell[2]].terrain
+		if terrain == 1 then
+			return true
+		end
+	end
+end
+
+function CustomPDAX:ActorPathToExit()
+	local ac = self:RogueActor()
+	for i, t in ipairs(self.rogue_objects) do
+		if t.typ == "exit" then
+			local exit_path = astar.astar_find(self.grid_h, self.grid_w, {x=ac.row, y=ac.col}, {x=t.row, y=t.col}, astar.AStarCanMoveToExit, self)
+			return exit_path
+		end
+	end
+end
+
+function CustomPDAX:PosOnExitPath(exit_path, row, col)
+	exit_path = exit_path or self:ActorPathToExit()
+	for i, p in ipairs(exit_path) do
+		if row == p.x and col == p.y then
+			return true
+		end
+	end
+end
+
+function CustomPDAX:CanMove(id, to_row, to_col)
+	-- check static
+	if self.rogue_grid[to_row][to_col].terrain ~= 0 then
+		return false		-- extra check for actor not to update grid
+	end
+
+	-- find if any alive mutant on a way
+	for idx, t in ipairs(self.rogue_objects) do
+		local alive_obj = t.status and t.status == "alive"
+		if id ~= idx and to_row == t.row and to_col == t.col and alive_obj then
+			return
+		end
+	end
+
+	-- For mutant
+	-- not aggroed and destination is outside of gulag radius
+	local t = id ~= 1 and self.rogue_objects[id]
+	if t and (not t.aggro) and self:CellDistance(t.gulag_row, t.gulag_col, to_row, to_col) > t.gulag_radius then
+		return
+	end
+
+	return true
+end
+
+function CustomPDAX:PlaySound(name)
+	local snd = sound_object("rogue_game\\" .. name)
+	snd:play_no_feedback(db.actor, 0, 0, db.actor:position(), 1.0, 1.0)
+end
+
+
+------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------- Test ----------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+function CustomPDAX:BuildTestDisplayGrid(xml)
+	if not self.rogue_debug then return end
+
+	self.rogue_test_main_grid = xml:InitStatic("rogue_test_grid", self)
+
+	local x_offset, y_offset = 12, 16
+	for row = 1, #self.rogue_grid do
+		for col = 1, #self.rogue_grid[row] do
+			self.rogue_grid[row][col].test_cell = xml:InitStatic("rogue_test_grid:rogue_test_cell", self.rogue_test_main_grid)
+			self.rogue_grid[row][col].test_cell:SetWndPos(vector2():set(x_offset*(col-1), y_offset*(row-1)))
+			self.rogue_grid[row][col].test_cell:InitTexture("rogue_cell_texture")
+			self.rogue_grid[row][col].test_cell:SetTextureColor( GetARGB(255, 70, 70, 70) )
+		end
+	end
+end
+
+function CustomPDAX:TESTTerrainDisplay()
+	if not self.rogue_debug then return end
+
+	for row = 1, #self.rogue_grid do
+		for col = 1, #self.rogue_grid[row] do
+			local terrain = self.rogue_grid[row][col].terrain
+			-- Display cells
+			if terrain == 0 then
+				self.rogue_grid[row][col].test_cell:InitTexture("rogue_cell_texture")
+				self.rogue_grid[row][col].test_cell:SetTextureColor( GetARGB(255, 70, 70, 70) )
+			end
+
+			-- Display obstacles
+			if terrain == 1 or terrain == 2 then
+				self.rogue_grid[row][col].test_cell:InitTexture("none.dds")
+				self.rogue_grid[row][col].test_cell:SetTextureColor( GetARGB(255, 10, 10, 10) )
+			end
+		end
+	end
+end
+
+function CustomPDAX:TESTObjectsDisplay()
+	if not self.rogue_debug then return end
+
+	-- display objects
+	for idx, t in pairs(self.rogue_objects) do
+		self.rogue_grid[t.row][t.col].test_cell:InitTexture("none.dds")
+
+		local clr = { 70, 70, 70 }
+		if t.typ == "actor" then
+			clr = { 0, 130, 0 }
+		elseif t.typ == "exit" then
+			clr = { 0, 0, 130 }
+		elseif t.status == "world" then
+			if t.typ == "artefact" then
+				clr = { 180, 70, 0 }
+			elseif t.typ == "medkit" then
+				clr = { 230, 90, 250 }
+			elseif t.typ == "ammo" then
+				clr = { 90, 255, 200 }
+			end
+		elseif t.typ == "mutant" then
+			clr = t.status == "alive" and { 180, 0, 0 } or { 200, 200, 200 }
+		end
+		self.rogue_grid[t.row][t.col].test_cell:SetTextureColor( GetARGB(255, clr[1], clr[2], clr[3]) )
+	end
+end
+
+function CustomPDAX:TESTDisplaySpawnRadius(mode)
+	if not self.rogue_debug then return end
+
+	for idx, t in ipairs(self.rogue_objects) do
+		-- display spawn radius
+		if mode == "spawn" and t.spawn_radius then
+			for row = t.row - t.spawn_radius, t.row + t.spawn_radius do
+				for col = t.col - t.spawn_radius, t.col + t.spawn_radius do
+					local cell_exist = self.rogue_grid[row] and self.rogue_grid[row][col]
+					local dist = self:CellDistance(row, col, t.row, t.col)
+					if cell_exist and dist <= t.spawn_radius and dist > 0 then
+						self.rogue_grid[row][col].test_cell:InitTexture("none.dds")
+						self.rogue_grid[row][col].test_cell:SetTextureColor( GetARGB(80, 200, 60, 100) )
+					end
+				end
+			end
+		end
+
+		-- display gulag radius
+		if mode == "gulag" and t.gulag_radius then
+			for row = t.gulag_row - t.gulag_radius, t.gulag_row + t.gulag_radius do
+				for col = t.gulag_col - t.gulag_radius, t.gulag_col + t.gulag_radius do
+					local cell_exist = self.rogue_grid[row] and self.rogue_grid[row][col]
+					local dist = self:CellDistance(row, col, t.gulag_row, t.gulag_col)
+					if cell_exist and dist <= t.gulag_radius and dist > 0 then
+						self.rogue_grid[row][col].test_cell:InitTexture("none.dds")
+						self.rogue_grid[row][col].test_cell:SetTextureColor( GetARGB(80, 200, 100, 60) )
+					end
+				end
+			end
+		end
+
+	end
+end
+
+function CustomPDAX:UpdateTestGrid(win, set_level)
+	if not self.rogue_debug then return end
+
+	self:RogueGenerateNewLevel(win, set_level)
+
+	for row = 1, #self.rogue_grid do
+		for col = 1, #self.rogue_grid[row] do
+			local str = self.rogue_grid[row][col].rect
+	--		self.rogue_grid[row][col].test_cell:TextControl():SetText(str)
+		end
+	end
+end

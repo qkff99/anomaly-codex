@@ -1,0 +1,156 @@
+-- PDA Interactive Economy Tracker
+-- properly accumulates money changes
+
+local gt = game.translate_string
+local math_floor = math.floor
+
+-- tracking state
+local prev_money = nil
+local today_net = 0
+local week_net = 0
+local total_net = 0
+local cur_day = 0
+local cur_week = 0
+local tmr = 0
+
+local function get_day()
+    local Y, M, D = 0, 0, 0
+    Y, M, D = game.get_game_time():get(Y, M, D, 0, 0, 0, 0)
+    return Y * 365 + M * 30 + D
+end
+
+local function get_week()
+    return math_floor(get_day() / 7)
+end
+
+local function on_update()
+    local t = time_global()
+    if t < tmr then return end
+    tmr = t + 3000
+    
+    if not db.actor then return end
+    
+    local money = db.actor:money()
+    local d = get_day()
+    local w = get_week()
+    
+    -- first run - just store current money, don't count as change
+    if prev_money == nil then
+        prev_money = money
+        cur_day = d
+        cur_week = w
+        return
+    end
+    
+    -- check for day/week reset BEFORE calculating diff
+    if d ~= cur_day then
+        today_net = 0
+        cur_day = d
+    end
+    if w ~= cur_week then
+        week_net = 0
+        cur_week = w
+    end
+    
+    -- accumulate changes
+    local diff = money - prev_money
+    if diff ~= 0 then
+        today_net = today_net + diff
+        week_net = week_net + diff
+        total_net = total_net + diff
+        prev_money = money
+    end
+end
+
+function get_economy_report()
+    if not db.actor then return "" end
+    
+    local money = db.actor:money()
+    local d = get_day()
+    local w = get_week()
+    
+    -- initialize if needed
+    if prev_money == nil then
+        prev_money = money
+        cur_day = d
+        cur_week = w
+    end
+    
+    -- check resets
+    if d ~= cur_day then
+        today_net = 0
+        cur_day = d
+    end
+    if w ~= cur_week then
+        week_net = 0
+        cur_week = w
+    end
+    
+    -- capture any pending change
+    local diff = money - prev_money
+    local display_today = today_net + diff
+    local display_week = week_net + diff
+    local display_total = total_net + diff
+    
+    -- colors
+    local cg = strformat("%c[%s,%s,%s,%s]", 255, 100, 255, 100)
+    local cr = strformat("%c[%s,%s,%s,%s]", 255, 255, 100, 100)
+    local cy = strformat("%c[%s,%s,%s,%s]", 255, 255, 255, 0)
+    local cx = strformat("%c[%s,%s,%s,%s]", 255, 140, 140, 140)
+    local cd = strformat("%c[%s,%s,%s,%s]", 255, 190, 190, 190)
+    
+    local function f(v)
+        if v == 0 then return cx .. "0" .. cd
+        elseif v > 0 then return cg .. "+" .. v .. cd
+        else return cr .. v .. cd end
+    end
+    
+    local s = cy .. "[" .. gt("pda_economy_title") .. "]" .. cd .. "  "
+    s = s .. cx .. gt("pda_economy_today") .. cd .. " " .. f(display_today)
+    s = s .. cx .. "  |  " .. cd
+    s = s .. cx .. gt("pda_economy_week") .. cd .. " " .. f(display_week)
+    s = s .. cx .. "  |  " .. cd
+    s = s .. cx .. gt("pda_economy_total") .. cd .. " " .. f(display_total) .. " RU"
+    s = s .. " \\n \\n"
+    return s
+end
+
+local function save_state(m_data)
+    if prev_money == nil then return end
+    
+    -- commit any pending diff before save
+    local money = db.actor and db.actor:money() or prev_money
+    local diff = money - prev_money
+    if diff ~= 0 then
+        today_net = today_net + diff
+        week_net = week_net + diff
+        total_net = total_net + diff
+        prev_money = money
+    end
+    
+    m_data.econ3 = {
+        pm = prev_money,
+        td = today_net,
+        wk = week_net,
+        tt = total_net,
+        cd = cur_day,
+        cw = cur_week,
+    }
+end
+
+local function load_state(m_data)
+    if m_data.econ3 then
+        prev_money = m_data.econ3.pm
+        today_net = m_data.econ3.td or 0
+        week_net = m_data.econ3.wk or 0
+        total_net = m_data.econ3.tt or 0
+        cur_day = m_data.econ3.cd or 0
+        cur_week = m_data.econ3.cw or 0
+    end
+end
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_update", on_update)
+    RegisterScriptCallback("save_state", save_state)
+    RegisterScriptCallback("load_state", load_state)
+end

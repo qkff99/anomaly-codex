@@ -1,0 +1,196 @@
+[section@squad]
+target@base = {=check_squad_section(squad_duty_girl_monolith_elite_mono)} mil_smart_terrain_2_6, mil_smart_terrain_4_5
+condlist	= {+duty_girl_monolith_elite_dead !actor_on_level(l07_military)} %=squad_self_release()%
+
+[section@logic]
+logic@monolith_1
+logic@monolith_2
+logic@monolith_3
+logic@monolith_4
+logic@monolith_5
+logic@monolith_6
+logic@monolith_7
+logic@monolith_8
+logic@monolith_9
+
+logic@duty_1
+logic@duty_2
+logic@duty_3
+logic@duty_4
+logic@duty_5
+logic@duty_6
+
+logic@duty_combat_1
+logic@duty_combat_2
+logic@duty_combat_3
+logic@duty_combat_4
+logic@duty_combat_5
+logic@duty_combat_6
+
+
+
+
+[logic@base]
+post_combat_time = 0,0
+net_spawn = pt1
+
+[logic@combat_camper]
+combat_type = camper
+
+[logic@monolith]:logic@base
+suitable = {=check_npc_name(sim_default_monolith)} true
+
+[logic@monolith_1]:logic@monolith,logic@combat_camper
+active = beh@monolith_1
+[logic@monolith_2]:logic@monolith,logic@combat_camper
+active = beh@monolith_2
+[logic@monolith_3]:logic@monolith,logic@combat_camper
+active = beh@monolith_3
+[logic@monolith_4]:logic@monolith
+active = beh@monolith_4
+[logic@monolith_5]:logic@monolith
+active = beh@monolith_5
+[logic@monolith_6]:logic@monolith
+active = beh@monolith_6
+[logic@monolith_7]:logic@monolith
+active = beh@monolith_7
+[logic@monolith_8]:logic@monolith
+active = beh@monolith_8
+[logic@monolith_9]:logic@monolith
+active = beh@monolith_9
+
+;==================================================
+[beh@base]
+dont_keep_items						= true
+gather_items_enabled				= false
+help_wounded_enabled				= false
+corpse_detection_enabled			= false
+combat_ignore_keep_when_attacked	= true
+target								= waypoint
+path_end							= loop
+walk_dist							= 0
+jog_dist							= 0
+run_anim							= patrol
+meet								= no_meet
+
+
+
+[beh@animpoint]:beh@base
+target = %=animpoint()% nil
+
+[beh@monolith]:beh@animpoint
+before_hit = task_duty_girl@monolith_elite_hit
+run_anim = rush
+combat_ignore_cond	= {-duty_girl_monolith_elite_move =enemy_squad(squad_duty_girl_monolith_elite)} true
+enemy_ignore_cond	= {-duty_girl_monolith_elite_move =enemy_squad(squad_duty_girl_monolith_elite)} true
+
+[beh@monolith_1]:beh@monolith
+pt1 = 999999,hide | pos:-58.8,-12.53,396.9 dir:180
+[beh@monolith_2]:beh@monolith
+pt1 = 999999,hide | pos:-80.5,-8.89,404.6 dir:180
+[beh@monolith_3]:beh@monolith
+pt1 = 999999,hide | pos:-123.2,-14.45,380.1 dir:180
+[beh@monolith_4]:beh@monolith
+pt1 = 999999,hide | pos:-85.4,-10.55,391.3 dir:180
+[beh@monolith_5]:beh@monolith
+pt1 = 999999,hide | pos:-87.5,-10.71,391.3 dir:180
+[beh@monolith_6]:beh@monolith
+pt1 = 999999,hide | pos:-86.1,-10.50,392.0 dir:180
+[beh@monolith_7]:beh@monolith
+pt1 = 999999,hide | pos:-72.8,-13.48,387.8 dir:180
+[beh@monolith_8]:beh@monolith
+pt1 = 999999,hide | pos:-69.3,-15.30,387.1 dir:180
+[beh@monolith_9]:beh@monolith
+pt1 = 999999,hide | pos:-71.4,-14.19,387.8 dir:180
+
+
+
+
+[logic@duty]:logic@base,logic@combat_camper
+suitable = {-duty_girl_monolith_elite_move =check_npc_name(sim_default_duty)} true
+
+[logic@duty_1]:logic@duty
+active = beh@duty_1
+[logic@duty_2]:logic@duty
+active = beh@duty_2
+[logic@duty_3]:logic@duty
+active = beh@duty_3
+[logic@duty_4]:logic@duty
+active = beh@duty_4
+[logic@duty_5]:logic@duty
+active = beh@duty_5
+[logic@duty_6]:logic@duty
+active = beh@duty_6
+
+
+[logic@duty_combat]:logic@base
+suitable = {+duty_girl_monolith_elite_move =check_npc_name(sim_default_duty)} true
+
+[logic@duty_combat_1]:logic@duty_combat
+active = {-duty_girl_monolith_elite_dead} beh@duty_combat_1, beh@duty_guard_1
+[logic@duty_combat_2]:logic@duty_combat
+active = {-duty_girl_monolith_elite_dead} beh@duty_combat_2, beh@duty_guard_2
+[logic@duty_combat_3]:logic@duty_combat
+active = {-duty_girl_monolith_elite_dead} beh@duty_combat_3, beh@duty_guard_3
+[logic@duty_combat_4]:logic@duty_combat
+active = {-duty_girl_monolith_elite_dead} beh@duty_combat_4, beh@duty_guard_4
+[logic@duty_combat_5]:logic@duty_combat
+active = {-duty_girl_monolith_elite_dead} beh@duty_combat_5, beh@duty_guard_5
+[logic@duty_combat_6]:logic@duty_combat
+active = {-duty_girl_monolith_elite_dead} beh@duty_combat_6, beh@duty_guard_6
+
+
+[beh@duty]:beh@animpoint
+before_hit = task_duty_girl@monolith_elite_hit
+run_anim = rush
+combat_ignore_cond	= {+duty_girl_monolith_elite_move} true
+enemy_ignore_cond	= {+duty_girl_monolith_elite_move} true
+
+[beh@duty_1]:beh@duty
+pt1 = 999999,salut	| pos:-93.8,-20.71,221.2 dir:180
+[beh@duty_2]:beh@duty
+pt1 = 999999,salut	| pos:-92.4,-20.58,221.2 dir:180
+[beh@duty_3]:beh@duty
+pt1 = 999999,salut	| pos:-91.0,-20.44,221.2 dir:180
+[beh@duty_4]:beh@duty
+pt1 = 999999,hide	| pos:-97.3,-20.09,226.1 dir:0
+[beh@duty_5]:beh@duty
+pt1 = 999999,hide	| pos:-87.5,-19.15,223.3 dir:0
+[beh@duty_6]:beh@duty
+pt1 = 999999,hide	| pos:-90.3,-20.72,214.9 dir:180
+
+
+
+
+[beh@duty_combat]:beh@animpoint
+before_hit = task_duty_girl@monolith_elite_hit
+run_anim = assault
+
+[beh@duty_combat_1]:beh@duty_combat
+pt1 = 999999,hide | pos:-105.0,-9.60,327.6 dir:0
+on_info = {+duty_girl_monolith_elite_dead} beh@duty_guard_1
+[beh@duty_combat_2]:beh@duty_combat
+pt1 = 999999,hide | pos:-100.1,-10.38,329.0 dir:0
+on_info = {+duty_girl_monolith_elite_dead} beh@duty_guard_2
+[beh@duty_combat_3]:beh@duty_combat
+pt1 = 999999,hide | pos:-83.3,-15.29,329.0 dir:0
+on_info = {+duty_girl_monolith_elite_dead} beh@duty_guard_3
+[beh@duty_combat_4]:beh@duty_combat
+pt1 = 999999,hide | pos:-46.9,-16.30,340.9 dir:0
+on_info = {+duty_girl_monolith_elite_dead} beh@duty_guard_4
+[beh@duty_combat_5]:beh@duty_combat
+pt1 = 999999,hide | pos:-52.5,-17.41,322.7 dir:0
+on_info = {+duty_girl_monolith_elite_dead} beh@duty_guard_5
+[beh@duty_combat_6]:beh@duty_combat
+pt1 = 999999,hide | pos:-37.8,-13.05,332.5 dir:0
+on_info = {+duty_girl_monolith_elite_dead} beh@duty_guard_6
+
+
+
+
+[beh@duty_guard_1]:beh@monolith_1
+[beh@duty_guard_2]:beh@monolith_2
+[beh@duty_guard_3]:beh@monolith_3
+[beh@duty_guard_4]:beh@monolith_4
+[beh@duty_guard_5]:beh@monolith_5
+[beh@duty_guard_6]:beh@monolith_6

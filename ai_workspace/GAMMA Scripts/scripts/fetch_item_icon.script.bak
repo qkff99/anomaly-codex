@@ -1,0 +1,62 @@
+function on_game_start()
+	rax_icon_layers.register("fetch_item_icon", fetch_item_icon)
+end
+
+function fetch_item_icon(cell, obj, sec)
+    if not sec then return end
+    local actor = db.actor
+    if not actor then return end
+
+    local tm = task_manager.get_task_manager()
+	local task_info = tm.task_info
+    local is_task_item = false
+    local _M
+
+    for task_id,v in pairs(task_info) do
+        local status = task_info[task_id].last_check_task
+        if not (status == "complete" or status == "fail") then 
+
+            -- Fetch
+            local fetch_sec = load_var(actor, task_id.."_fetch")
+            if fetch_sec and fetch_sec == sec then
+                is_task_item = true
+                break
+            end
+
+            -- Delivery
+            delivery_table = load_var(actor, task_id)
+            if delivery_table and type(delivery_table) == "table" and delivery_table.item_1_sec and delivery_table.item_1_sec == sec then
+                is_task_item = true
+                break
+            end
+
+            -- Multi fetch
+            _M = _M or alife_storage_manager.get_state().multifetch_data
+            local required_items = _M and _M[task_id] and _M[task_id].required_items
+            if required_items then
+                for k,v in pairs(required_items) do
+                    if required_items[k].sec == sec then
+                        is_task_item = true
+                        break
+                    end
+                end
+                if is_task_item then break end
+            end
+            local optional_items = _M and _M[task_id] and _M[task_id].optional_items
+            if optional_items then
+                for k,v in pairs(optional_items) do
+                    if optional_items[k].sec == sec then
+                        is_task_item = true
+                        break
+                    end
+                end
+                if is_task_item then break end
+            end
+        end
+    end
+
+	if is_task_item then
+        local axis = utils_xml.get_item_axis(sec)
+        return {texture = "ui_inGame2_PDA_icon_Secondary_mission", x = (axis.w - 13), y = 1, w = 12, h = 12}
+	end
+end

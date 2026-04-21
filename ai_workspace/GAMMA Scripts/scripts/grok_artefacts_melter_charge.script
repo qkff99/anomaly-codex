@@ -1,0 +1,129 @@
+local d_key       = "DIK_LMENU" -- Saftey key hold (Left Alt)
+local regen_val = 3
+
+local regen_val_table = {
+["af_medusa"] = 5,
+["af_itcher"] = 5,
+["af_pin"] = 5,
+["af_dummy_glassbeads"] = 5,
+["af_night_star"] = 5,
+["af_mincer_meat"] = 5,
+["af_dummy_battery"] = 5,
+["af_electra_sparkler"] = 5,
+["af_blood"] = 5,
+["af_cristall_flower"] = 5,
+["af_soul"] = 5,
+["af_vyvert"] = 7,
+["af_empty"] = 7,
+["af_cristall"] = 7,
+["af_lobster_eyes"] = 7,
+["af_gravi"] = 7,
+["af_ring"] = 7,
+["af_electra_moonlight"] = 7,
+["af_sponge"] = 7,
+["af_bracelet"] = 7,
+["af_fuzz_kolobok"] = 7,
+["af_eye"] = 7,
+["af_dummy_dummy"] = 7,
+["af_fireball"] = 9,
+["af_fire"] = 9,
+["af_electra_flash"] = 9,
+["af_ice"] = 9,
+["af_baloon"] = 9,
+["af_glass"] = 9,
+["af_black_spray"] = 9,
+["af_gold_fish"] = 9,
+["af_full_empty"] = 9,
+}
+
+local skip = {
+["af_surge"] = true,
+["af_frames"] = true,
+["af_grid"] = true,
+["af_freon"] = true,
+["af_cooler"] = true,
+["af_kevlar"] = true,
+["af_plates"] = true,
+["af_camelbak"] = true,
+["af_surge_up"] = true,
+["af_frames_up"] = true,
+["af_grid_up"] = true,
+["af_freon_up"] = true,
+["af_cooler_up"] = true,
+["af_kevlar_up"] = true,
+["af_plates_up"] = true,
+["af_camelbak_up"] = true,
+["hide_chimera"] = true,
+["hide_pseudogiant"] = true,
+["hide_psy_dog"] = true,
+["hide_pseudodog"] = true,
+["hide_burer"] = true,
+["hide_controller"] = true,
+["hide_bloodsucker"] = true,
+["hide_psysucker"] = true,
+["hide_lurker"] = true,
+["hide_boar"] = true,
+["hide_flesh"] = true,
+}
+
+function recharge(obj, num) --reduce use of multiuse item
+	if (not obj) then return end
+
+	num = num or 3
+	if IsItem("multiuse",nil,obj) then
+		local uses = obj:get_remaining_uses()
+		if not uses then return 0 end
+		if uses >= 10 then return 0 end
+		
+		new_charges = clamp(uses + num, 0, 10)
+		obj:set_remaining_uses(new_charges)
+		--print_dbg("discharge | discharged item (%s) by %s", obj:section(), num)
+		return new_charges
+	end
+end
+
+local function on_item_drag_dropped(obj_1, obj_2, slot_from, slot_to)
+	-- Check capability
+	if not (slot_from == EDDListType.iActorBag and slot_to == EDDListType.iActorBag) then
+        return
+    end
+		
+	local sec_1 = obj_1:section()
+	local sec_2 = obj_2:section()
+	
+	if sec_1 == "itm_artefactskit" and IsArtefact(obj_2) then -- Disassemble
+		if skip[sec_2] then
+			return
+		end
+			
+		regen_val = regen_val_table[sec_2] or 1
+		regen_val = regen_val_table[sec_2] or 1
+		local should_release = recharge( obj_1 , regen_val ) or 0
+		if should_release > 0 then
+			alife_release(obj_2)
+			--level.add_cam_effector('camera_effects\\item_use_fast.anm', 9209, false,'')
+			xr_sound.set_sound_play(AC_ID,"inv_aam_open")
+			-- print_dbg("[Melter Charge] Melter charged to %s using %s (charges given: %s)", should_release, sec_2, regen_val)
+		else
+			-- print_dbg("[Melter Charge] Melter was already full charge. Returning %s...", sec_2)
+		end
+	end
+end
+
+local function on_key_press(key)
+	if (key == DIK_keys[d_key]) then
+		d_flag = true
+	end
+end
+
+local function on_key_release(key)
+	if (key == DIK_keys[d_key]) then
+		d_flag = false
+	end
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_key_press",on_key_press)
+	RegisterScriptCallback("on_key_release",on_key_release)
+	RegisterScriptCallback("ActorMenu_on_item_drag_drop",on_item_drag_dropped)
+end

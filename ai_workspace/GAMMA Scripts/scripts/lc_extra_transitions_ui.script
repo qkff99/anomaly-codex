@@ -1,0 +1,71 @@
+-- basic dynamic msg_box
+-- alundaio
+
+class "msg_box_ui" (CUIScriptWnd)
+function msg_box_ui:__init() super()
+	self:SetWndRect(Frect():set(0,0,1024,768))
+	self:SetAutoDelete(true)
+
+    self:InitCallBacks()
+    self:OnMsgCancel()
+
+	self.message_box = CUIMessageBoxEx()
+	self:Register(self.message_box, "msg_box")
+
+	self:InitCallBacks()
+	self:InitControls()
+end
+
+function msg_box_ui:Reset()
+    self.obj = nil
+end
+
+---@param obj game_object
+function msg_box_ui:SetObj(obj)
+    -- Track nearby teleport space restrictor
+    self.obj_id = obj:id()
+
+    -- Update text to indicate destination
+    local next_level = game.translate_string(lc_extra_transitions.lc_pool[obj:section()].hint or "")
+	local msg_str = game.translate_string("st_level_changer_descr")
+	local str = strformat(msg_str, next_level)
+	self.message_box:SetText(str)
+end
+
+function msg_box_ui:Show()
+    self.message_box:ShowDialog(true)
+end
+
+function msg_box_ui:__finalize()
+end
+
+function msg_box_ui:InitCallBacks()
+	self:AddCallback("msg_box",     ui_events.MESSAGE_BOX_OK_CLICKED,			self.OnMsgOk,						self)
+	self:AddCallback("msg_box",     ui_events.MESSAGE_BOX_CANCEL_CLICKED,		self.OnMsgCancel,					self)
+	self:AddCallback("msg_box",     ui_events.MESSAGE_BOX_YES_CLICKED,			self.OnMsgOk,						self)
+	self:AddCallback("msg_box",     ui_events.MESSAGE_BOX_NO_CLICKED,			self.OnMsgCancel,					self)
+end
+
+function msg_box_ui:OnMsgOk()
+    local obj = level.object_by_id(self.obj_id)
+    if not obj then return end
+
+	lc_extra_transitions.teleport_actor(db.actor, obj)
+end
+
+function msg_box_ui:OnMsgCancel()
+    -- Teleport player away from space restrictor?
+	-- Require grabbing some 'reject' position from config
+	-- See ui_sr_teleport.script
+end
+
+function msg_box_ui:InitControls()
+	self.message_box:InitMessageBox("message_box_yes_no")
+end
+
+function create_dialog()
+    local ui = msg_box_ui()
+    ui:Reset()
+    return ui
+end
+

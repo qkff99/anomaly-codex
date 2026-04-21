@@ -1,0 +1,899 @@
+siski = siski or {}
+siski.story_psy_watchdog = siski.story_psy_watchdog or {}
+
+local watchdog = siski.story_psy_watchdog
+
+local type = _G.type
+local pcall = _G.pcall
+local rawget = _G.rawget
+local tonumber = _G.tonumber
+local tostring = _G.tostring
+local pairs = _G.pairs
+local next = _G.next
+local time_global = _G.time_global
+local alife = _G.alife
+local alife_create = _G.alife_create
+local game_graph = _G.game_graph
+local db = _G.db
+local math_random = _G.math and _G.math.random or nil
+local vector = _G.vector
+local SendScriptCallback = _G.SendScriptCallback
+
+local string_find = _G.string and _G.string.find or nil
+local string_gsub = _G.string and _G.string.gsub or nil
+local string_lower = _G.string and _G.string.lower or nil
+
+local DEFAULT_PSI_LEVELS = "l10_limansk, l10_red_forest, l10_radar"
+local DEFAULT_IMMUNE_FACTIONS = "monolith, isg, greh"
+
+local SECTION_ZOMBIED_NOVICE = "zombied_sim_squad_novice"
+local SECTION_ZOMBIED_ADVANCED = "zombied_sim_squad_advanced"
+local SECTION_ZOMBIED_VETERAN = "zombied_sim_squad_veteran"
+
+local PREVALIDATED_CTX = { prevalidated = true }
+
+local MEMBER_POOL_BY_SECTION = {
+    [SECTION_ZOMBIED_NOVICE] = {
+        "sim_default_zombied_1",
+        "sim_default_zombied_1",
+        "sim_default_zombied_2",
+    },
+    [SECTION_ZOMBIED_ADVANCED] = {
+        "sim_default_zombied_2",
+        "sim_default_zombied_2",
+        "sim_default_zombied_3",
+    },
+    [SECTION_ZOMBIED_VETERAN] = {
+        "sim_default_zombied_3",
+        "sim_default_zombied_3",
+        "sim_default_zombied_4",
+    },
+}
+
+local RUNTIME = {
+    psi_levels = nil,
+    immune_factions = nil,
+    processing_by_sid = {},
+}
+
+local function tg()
+    return (time_global and time_global()) or 0
+end
+
+local function log_info(fmt, ...)
+    if siski.log and siski.log.info then
+        siski.log.info("STORY_PSY", fmt, ...)
+    end
+end
+
+local function log_warn(fmt, ...)
+    if siski.log and siski.log.warn then
+        siski.log.warn("STORY_PSY", fmt, ...)
+    end
+end
+
+local function trim(value)
+    if type(value) ~= "string" then
+        return nil
+    end
+    if string_gsub then
+        value = string_gsub(value, "^%s*(.-)%s*$", "%1")
+    end
+    if value == "" then
+        return nil
+    end
+    return value
+end
+
+local function lower_trim(value)
+    value = trim(value)
+    if not value then
+        return nil
+    end
+    if string_lower then
+        return string_lower(value)
+    end
+    return value
+end
+
+local function normalize_community(value)
+    if value == nil then
+        return nil
+    end
+    if type(value) ~= "string" then
+        value = tostring(value)
+    end
+    if siski.config and siski.config.get_faction_alias then
+        local alias = siski.config.get_faction_alias(value)
+        if alias then
+            return alias
+        end
+    end
+    return lower_trim(value)
+end
+
+local function parse_csv_set(value)
+    local out = {}
+    if type(value) ~= "string" or value == "" then
+        return out
+    end
+    for token in value:gmatch("([^,]+)") do
+        local normalized = normalize_community(token)
+        if normalized then
+            out[normalized] = true
+        end
+    end
+    return out
+end
+
+local function invalidate_runtime_caches()
+    RUNTIME.psi_levels = nil
+    RUNTIME.immune_factions = nil
+end
+
+local function get_cfg_value(key, fallback)
+    if siski.config and siski.config.get then
+        local value = siski.config.get(key, fallback)
+        if value ~= nil then
+            return value
+        end
+    end
+    return fallback
+end
+
+local function get_psi_levels()
+    if RUNTIME.psi_levels ~= nil then
+        return RUNTIME.psi_levels
+    end
+    RUNTIME.psi_levels = parse_csv_set(get_cfg_value("story_psy_watchdog_levels", DEFAULT_PSI_LEVELS))
+    return RUNTIME.psi_levels
+end
+
+local function get_immune_factions()
+    if RUNTIME.immune_factions ~= nil then
+        return RUNTIME.immune_factions
+    end
+    RUNTIME.immune_factions = parse_csv_set(get_cfg_value("story_psy_watchdog_immune_factions", DEFAULT_IMMUNE_FACTIONS))
+    return RUNTIME.immune_factions
+end
+
+local function has_alife_info_safe(info)
+    if type(info) ~= "string" or info == "" then
+        return false
+    end
+
+    local fn = rawget(_G, "has_alife_info")
+    if type(fn) == "function" then
+        local ok, has = pcall(fn, info)
+        if ok then
+            return has == true
+        end
+    end
+
+    local actor = db and db.actor or nil
+    if actor and actor.has_info then
+        local ok, has = pcall(function()
+            return actor:has_info(info)
+        end)
+        if ok then
+            return has == true
+        end
+    end
+
+    return false
+end
+
+local function normalize_alife_id(value)
+    local id = tonumber(value)
+    if not id or id <= 0 or id == 65535 then
+        return nil
+    end
+    return id
+end
+
+local function resolve_alife_object(id)
+    id = normalize_alife_id(id)
+    if not (id and alife) then
+        return nil
+    end
+    local sim = alife()
+    if not sim then
+        return nil
+    end
+    local ok, obj = pcall(function()
+        return sim:object(id)
+    end)
+    if ok then
+        return obj
+    end
+    return nil
+end
+
+local function safe_object_name(obj)
+    if not obj then
+        return nil
+    end
+    local raw_name = obj.name
+    if type(raw_name) == "string" and raw_name ~= "" then
+        return raw_name
+    end
+    local ok, name = pcall(function()
+        return obj:name()
+    end)
+    if ok and type(name) == "string" and name ~= "" then
+        return name
+    end
+    return nil
+end
+
+local function clone_position(pos)
+    if not pos then
+        return nil
+    end
+    if type(vector) == "function" then
+        local ok, cloned = pcall(function()
+            return vector():set(pos.x, pos.y, pos.z)
+        end)
+        if ok and cloned then
+            return cloned
+        end
+    end
+    return pos
+end
+
+local function safe_position(obj)
+    if siski.safe and siski.safe.safe_position then
+        return siski.safe.safe_position(obj)
+    end
+    return nil
+end
+
+local function safe_section(obj)
+    if siski.safe and siski.safe.safe_section then
+        return siski.safe.safe_section(obj)
+    end
+    return nil
+end
+
+local function safe_squad_community(obj)
+    if siski.safe and siski.safe.safe_squad_community then
+        return normalize_community(siski.safe.safe_squad_community(obj))
+    end
+    return nil
+end
+
+local function get_board()
+    if SIMBOARD then
+        return SIMBOARD
+    end
+    if sim_board and sim_board.get_sim_board then
+        local ok, board = pcall(function()
+            return sim_board.get_sim_board()
+        end)
+        if ok then
+            return board
+        end
+    end
+    return nil
+end
+
+local function now_level_name_by_gvid(gvid)
+    if not (gvid and alife and game_graph) then
+        return nil
+    end
+    local ok, res = pcall(function()
+        local gv = game_graph():vertex(gvid)
+        if not gv then
+            return nil
+        end
+        return alife():level_name(gv:level_id())
+    end)
+    if ok then
+        return res
+    end
+    return nil
+end
+
+local function resolve_smart_name_by_id(smart_id)
+    smart_id = normalize_alife_id(smart_id)
+    if not smart_id then
+        return nil
+    end
+    local board = get_board()
+    local smart = board and board.smarts and board.smarts[smart_id] and board.smarts[smart_id].smrt or nil
+    if smart then
+        return safe_object_name(smart)
+    end
+    return safe_object_name(resolve_alife_object(smart_id))
+end
+
+local function resolve_smart_object_by_id(smart_id)
+    smart_id = normalize_alife_id(smart_id)
+    if not smart_id then
+        return nil
+    end
+    local board = get_board()
+    local smart = board and board.smarts and board.smarts[smart_id] and board.smarts[smart_id].smrt or nil
+    if smart then
+        return smart
+    end
+    return resolve_alife_object(smart_id)
+end
+
+local function read_commander_id(se_squad, entry)
+    if se_squad and se_squad.commander_id then
+        local ok, cid = pcall(function()
+            return se_squad:commander_id()
+        end)
+        cid = ok and normalize_alife_id(cid) or nil
+        if cid then
+            return cid
+        end
+    end
+
+    local raw_cid = normalize_alife_id(se_squad and se_squad.commander_id or nil)
+    if raw_cid then
+        return raw_cid
+    end
+    return normalize_alife_id(entry and entry.commander_id or nil)
+end
+
+local function extract_member_candidate_id(k, v)
+    if type(v) == "table" then
+        local idv = normalize_alife_id(v.id) or normalize_alife_id(v.object_id) or normalize_alife_id(v.squad_id)
+        if idv then
+            return idv
+        end
+    end
+
+    local id = normalize_alife_id(v)
+    if id then
+        return id
+    end
+    return normalize_alife_id(k)
+end
+
+local function get_squad_member_ids(se_squad)
+    local out = {}
+    local seen = {}
+    if not se_squad then
+        return out
+    end
+
+    local function push(id)
+        id = normalize_alife_id(id)
+        if not id or seen[id] then
+            return
+        end
+        seen[id] = true
+        out[#out + 1] = id
+    end
+
+    local ok_members, a, b, c = pcall(function()
+        return se_squad:squad_members()
+    end)
+    if ok_members and a ~= nil then
+        local ok_iter = pcall(function()
+            for member in a, b, c do
+                push(extract_member_candidate_id(nil, member))
+            end
+        end)
+        if (not ok_iter) and type(a) == "table" then
+            for k, v in pairs(a) do
+                push(extract_member_candidate_id(k, v))
+            end
+        end
+    end
+
+    return out
+end
+
+local function read_member_count(se_squad)
+    if not se_squad then
+        return nil
+    end
+    local ok_count, count = pcall(function()
+        return se_squad:npc_count()
+    end)
+    count = ok_count and tonumber(count) or nil
+    if count and count > 0 then
+        return count
+    end
+
+    local ids = get_squad_member_ids(se_squad)
+    if #ids > 0 then
+        return #ids
+    end
+    return nil
+end
+
+local function pick_zombied_squad_section(source_section)
+    local value = lower_trim(source_section)
+    if type(value) ~= "string" then
+        return SECTION_ZOMBIED_ADVANCED
+    end
+    if string_find and string_find(value, "master", 1, true) then
+        return SECTION_ZOMBIED_VETERAN
+    end
+    if string_find and (string_find(value, "veteran", 1, true) or string_find(value, "expert", 1, true)) then
+        return SECTION_ZOMBIED_ADVANCED
+    end
+    if string_find and (string_find(value, "novice", 1, true) or string_find(value, "advanced", 1, true)) then
+        return SECTION_ZOMBIED_NOVICE
+    end
+    return SECTION_ZOMBIED_ADVANCED
+end
+
+local function pick_zombied_member_section(zombied_squad_section)
+    local pool = MEMBER_POOL_BY_SECTION[zombied_squad_section] or MEMBER_POOL_BY_SECTION[SECTION_ZOMBIED_ADVANCED]
+    if type(pool) ~= "table" or #pool == 0 then
+        return "sim_default_zombied_2"
+    end
+    if math_random then
+        return pool[math_random(#pool)] or pool[1]
+    end
+    return pool[1]
+end
+
+local function feature_enabled_now()
+    if siski.switches and siski.switches.story_psy_watchdog == false then
+        return false
+    end
+    if get_cfg_value("enabled", true) == false then
+        return false
+    end
+    if get_cfg_value("story_psy_watchdog_enabled", true) == false then
+        return false
+    end
+    if has_alife_info_safe("story_mode_disabled") == true then
+        return false
+    end
+    if has_alife_info_safe("bar_deactivate_radar_done") == true then
+        return false
+    end
+    return true
+end
+
+local function is_immune_faction(community)
+    community = normalize_community(community)
+    if not community then
+        return false
+    end
+    return get_immune_factions()[community] == true
+end
+
+local function is_target_level(level_name)
+    if type(level_name) ~= "string" or level_name == "" then
+        return false
+    end
+    return get_psi_levels()[level_name] == true
+end
+
+local function build_snapshot_context(se_squad, entry)
+    if not se_squad then
+        return nil
+    end
+
+    local sid = normalize_alife_id(se_squad.id)
+    local section = safe_section(se_squad) or entry and entry.section or nil
+    local community = safe_squad_community(se_squad) or normalize_community(entry and entry.community or nil)
+    local commander = resolve_alife_object(read_commander_id(se_squad, entry))
+    local position = clone_position(safe_position(se_squad) or safe_position(commander))
+    local level_vertex_id = tonumber(se_squad.m_level_vertex_id) or tonumber(commander and commander.m_level_vertex_id) or nil
+    local game_vertex_id = tonumber(se_squad.m_game_vertex_id) or tonumber(commander and commander.m_game_vertex_id) or tonumber(entry and entry.m_game_vertex_id) or nil
+    local smart_id = normalize_alife_id(se_squad.smart_id) or normalize_alife_id(entry and entry.smart_id or nil)
+    local smart_name = resolve_smart_name_by_id(smart_id) or entry and entry.scripted_target or nil
+    local level_name = type(entry and entry.level) == "string" and entry.level or now_level_name_by_gvid(game_vertex_id)
+    local member_count = read_member_count(se_squad)
+    local zombied_section = pick_zombied_squad_section(section)
+
+    if not (sid and section and community and position and level_vertex_id and game_vertex_id and level_name and member_count and member_count > 0) then
+        return nil
+    end
+
+    return {
+        sid = sid,
+        source_section = section,
+        source_community = community,
+        position = position,
+        level_vertex_id = level_vertex_id,
+        game_vertex_id = game_vertex_id,
+        level_name = level_name,
+        member_count = member_count,
+        smart_id = smart_id,
+        smart_name = smart_name,
+        zombied_squad_section = zombied_section,
+    }
+end
+
+local function create_empty_squad(section, position, level_vertex_id, game_vertex_id)
+    if type(section) ~= "string" or section == "" then
+        return nil
+    end
+    if type(alife_create) == "function" then
+        local ok, squad = pcall(function()
+            return alife_create(section, position, level_vertex_id, game_vertex_id)
+        end)
+        if ok then
+            return squad
+        end
+    end
+
+    local sim = alife and alife() or nil
+    if sim and sim.create then
+        local ok, squad = pcall(function()
+            return sim:create(section, position, level_vertex_id, game_vertex_id)
+        end)
+        if ok then
+            return squad
+        end
+    end
+
+    return nil
+end
+
+local function release_squad_safe(se_squad, reason)
+    local sid = normalize_alife_id(se_squad and se_squad.id or nil)
+    if not sid then
+        return false
+    end
+
+    local released = false
+    local rel = rawget(_G, "alife_release_id")
+    if type(rel) == "function" then
+        local ok, res = pcall(function()
+            return rel(sid, reason)
+        end)
+        if ok and res ~= false then
+            released = true
+        end
+    end
+
+    if not released and se_squad and se_squad.remove_squad then
+        local ok_remove, res_remove = pcall(function()
+            return se_squad:remove_squad()
+        end)
+        if ok_remove and res_remove ~= false then
+            released = true
+        end
+    end
+
+    if not released then
+        local sim = alife and alife() or nil
+        if sim and sim.release then
+            local ok_release, res_release = pcall(function()
+                return sim:release(se_squad, true)
+            end)
+            if ok_release and res_release ~= false then
+                released = true
+            end
+        end
+    end
+
+    if siski.memory and siski.memory.purge_squad_entry then
+        siski.memory.purge_squad_entry(sid, tostring(reason or "story_psy_release"), "story_psy_watchdog")
+    end
+
+    return released
+end
+
+local function assign_squad_to_smart(se_squad, smart_id)
+    smart_id = normalize_alife_id(smart_id)
+    if not (se_squad and smart_id) then
+        return false
+    end
+    local board = get_board()
+    if not (board and board.assign_squad_to_smart and board.smarts and board.smarts[smart_id]) then
+        return false
+    end
+    local ok = pcall(function()
+        board:assign_squad_to_smart(se_squad, smart_id)
+    end)
+    return ok == true
+end
+
+local function finalize_spawned_squad(se_squad, context)
+    if not (se_squad and context) then
+        return false
+    end
+
+    local smart_obj = nil
+    if context.smart_id then
+        assign_squad_to_smart(se_squad, context.smart_id)
+        smart_obj = resolve_smart_object_by_id(context.smart_id)
+    end
+
+    if se_squad.set_squad_relation then
+        pcall(function()
+            se_squad:set_squad_relation()
+        end)
+    end
+    if se_squad.refresh then
+        pcall(function()
+            se_squad:refresh()
+        end)
+    end
+
+    local board = get_board()
+    local member_ids = get_squad_member_ids(se_squad)
+    for i = 1, #member_ids do
+        local member = resolve_alife_object(member_ids[i])
+        if member and board and board.setup_squad_and_group then
+            pcall(function()
+                board:setup_squad_and_group(member)
+            end)
+        end
+        if member and type(SendScriptCallback) == "function" then
+            pcall(function()
+                SendScriptCallback("squad_on_npc_creation", se_squad, member, smart_obj)
+            end)
+        end
+    end
+
+    if se_squad.update then
+        pcall(function()
+            se_squad:update()
+        end)
+    end
+
+    local sid = normalize_alife_id(se_squad.id)
+    if siski.memory and siski.memory.upsert_snapshot then
+        siski.memory.upsert_snapshot(se_squad, "story_psy_watchdog_spawn")
+    end
+    if siski.memory and siski.memory.mark_dirty then
+        siski.memory.mark_dirty(sid, "task")
+    end
+
+    if siski.mutants and siski.mutants.update_squad_tasks then
+        pcall(function()
+            siski.mutants.update_squad_tasks(se_squad, PREVALIDATED_CTX)
+        end)
+    end
+
+    return true
+end
+
+local function populate_zombied_squad(se_squad, context)
+    if not (se_squad and context and tonumber(context.member_count)) then
+        return false
+    end
+
+    for _ = 1, tonumber(context.member_count) do
+        local npc_section = pick_zombied_member_section(context.zombied_squad_section)
+        local ok_add, member_id = pcall(function()
+            return se_squad:add_squad_member(
+                npc_section,
+                context.position,
+                context.level_vertex_id,
+                context.game_vertex_id
+            )
+        end)
+        if not (ok_add and normalize_alife_id(member_id)) then
+            return false
+        end
+    end
+
+    return true
+end
+
+local function candidate_should_convert(se_squad, entry)
+    if not feature_enabled_now() then
+        return false, nil
+    end
+    if not se_squad then
+        return false, nil
+    end
+
+    local sid = normalize_alife_id(se_squad.id)
+    if not sid or RUNTIME.processing_by_sid[sid] == true then
+        return false, nil
+    end
+
+    if siski.memory and siski.memory.is_protected_squad and siski.memory.is_protected_squad(se_squad) == true then
+        return false, nil
+    end
+    if siski.memory and siski.memory.upsert_snapshot then
+        entry = siski.memory.upsert_snapshot(se_squad, "story_psy_watchdog_probe") or entry
+    end
+    if type(entry) ~= "table" then
+        return false, nil
+    end
+    if entry.allowed ~= true then
+        return false, nil
+    end
+    if entry.npc_kind ~= "stalker" then
+        return false, nil
+    end
+    if is_immune_faction(entry.community) then
+        return false, nil
+    end
+    if normalize_community(entry.community) == "zombied" then
+        return false, nil
+    end
+    if is_target_level(entry.level) ~= true then
+        return false, nil
+    end
+
+    return true, entry
+end
+
+local function convert_squad_to_zombied(se_squad, entry, source)
+    local sid = normalize_alife_id(se_squad and se_squad.id or nil)
+    if not sid or RUNTIME.processing_by_sid[sid] == true then
+        return false
+    end
+
+    RUNTIME.processing_by_sid[sid] = true
+
+    local context = build_snapshot_context(se_squad, entry)
+    if not context then
+        RUNTIME.processing_by_sid[sid] = nil
+        log_warn("convert_skip sid=%s source=%s reason=invalid_snapshot", tostring(sid), tostring(source or "-"))
+        return false
+    end
+
+    local new_squad = create_empty_squad(
+        context.zombied_squad_section,
+        context.position,
+        context.level_vertex_id,
+        context.game_vertex_id
+    )
+    local new_sid = normalize_alife_id(new_squad and new_squad.id or nil)
+    if not (new_squad and new_sid) then
+        RUNTIME.processing_by_sid[sid] = nil
+        log_warn("convert_skip sid=%s source=%s reason=create_failed", tostring(sid), tostring(source or "-"))
+        return false
+    end
+
+    RUNTIME.processing_by_sid[new_sid] = true
+
+    if populate_zombied_squad(new_squad, context) ~= true then
+        release_squad_safe(new_squad, "story_psy_watchdog_spawn_failed")
+        RUNTIME.processing_by_sid[new_sid] = nil
+        RUNTIME.processing_by_sid[sid] = nil
+        log_warn("convert_skip sid=%s source=%s reason=member_spawn_failed", tostring(sid), tostring(source or "-"))
+        return false
+    end
+
+    if siski.memory and siski.memory.clear_tasks then
+        siski.memory.clear_tasks(sid)
+    end
+
+    if release_squad_safe(se_squad, "story_psy_watchdog_convert") ~= true then
+        release_squad_safe(new_squad, "story_psy_watchdog_rollback")
+        RUNTIME.processing_by_sid[new_sid] = nil
+        RUNTIME.processing_by_sid[sid] = nil
+        log_warn("convert_skip sid=%s source=%s reason=source_release_failed", tostring(sid), tostring(source or "-"))
+        return false
+    end
+
+    finalize_spawned_squad(new_squad, context)
+
+    RUNTIME.processing_by_sid[new_sid] = nil
+    RUNTIME.processing_by_sid[sid] = nil
+
+    log_info(
+        "converted sid=%s new_sid=%s level=%s smart=%s members=%s tier=%s source=%s",
+        tostring(sid),
+        tostring(new_sid),
+        tostring(context.level_name or "-"),
+        tostring(context.smart_name or "-"),
+        tostring(context.member_count or 0),
+        tostring(context.zombied_squad_section or "-"),
+        tostring(source or "-")
+    )
+
+    return true
+end
+
+local function try_process_squad(se_squad, source)
+    local should_convert, entry = candidate_should_convert(se_squad, nil)
+    if should_convert ~= true then
+        return false
+    end
+    return convert_squad_to_zombied(se_squad, entry, source)
+end
+
+local function reconcile_level_once(level_name, source)
+    if not is_target_level(level_name) then
+        return 0
+    end
+    if not (siski.memory and siski.memory.get_managed_squads_by_level) then
+        return 0
+    end
+
+    local by_level = siski.memory.get_managed_squads_by_level()
+    local bucket = by_level and by_level[level_name] or nil
+    if type(bucket) ~= "table" then
+        return 0
+    end
+
+    local sids = {}
+    for sid in pairs(bucket) do
+        local normalized = normalize_alife_id(sid)
+        if normalized then
+            sids[#sids + 1] = normalized
+        end
+    end
+
+    local converted = 0
+    for i = 1, #sids do
+        local squad = resolve_alife_object(sids[i])
+        if squad and try_process_squad(squad, source or "reconcile_level") == true then
+            converted = converted + 1
+        end
+    end
+    return converted
+end
+
+local function reconcile_all_levels(source)
+    if not feature_enabled_now() then
+        return 0
+    end
+    local converted = 0
+    for level_name in pairs(get_psi_levels()) do
+        converted = converted + reconcile_level_once(level_name, source or "reconcile_all")
+    end
+    return converted
+end
+
+local function bus_args(payload)
+    if type(payload) ~= "table" or type(payload.args) ~= "table" then
+        return {}
+    end
+    return payload.args
+end
+
+local function ensure_bus_subscriptions()
+    local bus = siski and siski.bus or nil
+    if not (type(bus) == "table" and type(bus.subscribe) == "function") then
+        return false
+    end
+
+    local function ensure(event_name, fn)
+        if type(bus.has) == "function" then
+            local ok_has, has = pcall(bus.has, event_name, "siski_story_psy_watchdog")
+            if ok_has and has == true then
+                return true
+            end
+        end
+        local ok_sub, res = pcall(bus.subscribe, event_name, "siski_story_psy_watchdog", fn)
+        return ok_sub and res ~= false
+    end
+
+    ensure("actor_on_first_update", function()
+        invalidate_runtime_caches()
+        reconcile_all_levels("actor_on_first_update")
+    end)
+
+    ensure("load_state", function()
+        invalidate_runtime_caches()
+        reconcile_all_levels("load_state")
+    end)
+
+    ensure("on_option_change", function()
+        invalidate_runtime_caches()
+        reconcile_all_levels("on_option_change")
+    end)
+
+    ensure("squad_on_after_level_change", function(payload)
+        if not feature_enabled_now() then
+            return
+        end
+        local args = bus_args(payload)
+        local squad = args[1]
+        if not squad then
+            return
+        end
+        try_process_squad(squad, "squad_on_after_level_change")
+    end)
+
+    return true
+end
+
+ensure_bus_subscriptions()
+
+watchdog.on_game_start = ensure_bus_subscriptions
+watchdog.reconcile_all_levels = reconcile_all_levels
+
+return watchdog

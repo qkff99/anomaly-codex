@@ -58,7 +58,7 @@
         ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task bugfix -Pattern 'RegisterScriptCallback|bind_object|function'",
         "py -3 .\\.skills\\stalker-modding\\scripts\\luac_tool.py check path\\to\\touched.script"
       ],
-      "reference_roots": ["workspace", "vanilla", "lua_api", "engine"],
+      "reference_roots": ["workspace", "vanilla", "gamma_scripts", "lua_api", "engine"],
       "gitmcp_queries": [
         "xray-monolith: callback or helper name"
       ],
@@ -83,7 +83,7 @@
         ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task code-review -Pattern 'save|load|update|RegisterScriptCallback'",
         "py -3 .\\.skills\\stalker-modding\\scripts\\luac_tool.py check path\\to\\touched.script"
       ],
-      "reference_roots": ["workspace", "vanilla", "lua_api"],
+      "reference_roots": ["workspace", "vanilla", "gamma_scripts", "lua_api"],
       "gitmcp_queries": [
         "xray-monolith: relevant callback or engine helper"
       ],
@@ -102,7 +102,7 @@
       "powershell_commands": [
         ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task config-tweak -Pattern 'section|id|ui_|mcm|ltx|xml'"
       ],
-      "reference_roots": ["workspace", "vanilla", "book"],
+      "reference_roots": ["workspace", "vanilla", "gamma_scripts", "book"],
       "gitmcp_queries": [
         "anomaly-modding-book: config or UI topic name"
       ],
@@ -123,7 +123,7 @@
       "powershell_commands": [
         ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task dxml-dltx -Pattern 'dxml|dltx|modxml_|on_xml_read|character_desc_general|!\\[|!!\\[|@\\[|>field|<field|!field'"
       ],
-      "reference_roots": ["workspace", "vanilla", "book"],
+      "reference_roots": ["workspace", "vanilla", "gamma_scripts", "book"],
       "gitmcp_queries": [
         "anomaly-modding-book: dxml, dltx, or differential patching topic name"
       ],
@@ -194,7 +194,7 @@
         ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task feature -Pattern 'symbol|config|callback|section'",
         "py -3 .\\.skills\\stalker-modding\\scripts\\luac_tool.py detect"
       ],
-      "reference_roots": ["workspace", "vanilla", "book", "lua_api"],
+      "reference_roots": ["workspace", "vanilla", "gamma_scripts", "book", "lua_api"],
       "gitmcp_queries": [
         "xray-monolith: relevant callback or helper",
         "anomaly-modding-book: relevant workflow or file format"
@@ -221,7 +221,7 @@
         "py -3 .\\.skills\\stalker-modding\\scripts\\log_triage.py extract path\\to\\log-or-dir --kind all",
         ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task log-triage -Pattern 'SCRIPT RUNTIME ERROR|SCRIPT SYNTAX ERROR|FATAL ERROR|stack traceback|stack trace|RegisterScriptCallback|bind_object'"
       ],
-      "reference_roots": ["workspace", "vanilla", "lua_api", "engine"],
+      "reference_roots": ["workspace", "vanilla", "gamma_scripts", "lua_api", "engine"],
       "gitmcp_queries": [
         "xray-monolith: fatal error field, callback, or helper name from the stack"
       ],
@@ -243,7 +243,7 @@
         ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task localization -Pattern 'string_table|on_localization_change|inv_name|inv_name_short|hint|text|localization'",
         "py -3 .\\.skills\\stalker-modding\\scripts\\xml_localization_tool.py inspect path\\to\\file.xml"
       ],
-      "reference_roots": ["workspace", "vanilla", "engine", "book"],
+      "reference_roots": ["workspace", "vanilla", "gamma_scripts", "engine", "book"],
       "gitmcp_queries": [
         "xray-monolith: string table, localization, or XML parsing symbol"
       ],
@@ -283,7 +283,7 @@
         "rg -n \"<<<<<<<|=======|>>>>>>>\" .",
         ".\\.skills\\stalker-modding\\scripts\\map_subsystems.ps1 ."
       ],
-      "reference_roots": ["workspace", "vanilla"],
+      "reference_roots": ["workspace", "vanilla", "gamma_scripts"],
       "gitmcp_queries": [],
       "deepwiki_questions": [
         "Which invariants would this merge most likely violate?"
@@ -306,7 +306,7 @@
         ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task refactor -Pattern 'save|load|update|callback'",
         "py -3 .\\.skills\\stalker-modding\\scripts\\luac_tool.py check path\\to\\touched.script"
       ],
-      "reference_roots": ["workspace", "vanilla", "lua_api"],
+      "reference_roots": ["workspace", "vanilla", "gamma_scripts", "lua_api"],
       "gitmcp_queries": [
         "xray-monolith: helper or callback affected by this refactor"
       ],
@@ -330,7 +330,7 @@
         "py -3 .\\.skills\\stalker-modding\\scripts\\discover_github_refs.py search --query \"anomaly addon topic\"",
         ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task reference-discovery -Pattern 'addon|modpack|github|install|lua|script|gamedata'"
       ],
-      "reference_roots": ["workspace", "vanilla", "book"],
+      "reference_roots": ["workspace", "vanilla", "gamma_scripts", "book"],
       "gitmcp_queries": [
         "stalker-gamma: addon list, install notes, custom script, or pack-specific override",
         "anomaly-modding-book: workflow or addon topic name"
@@ -353,7 +353,7 @@
       "powershell_commands": [
         ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task reverse-engineering -Pattern 'symbol|helper|section|callback'"
       ],
-      "reference_roots": ["workspace", "vanilla", "engine", "lua_api"],
+      "reference_roots": ["workspace", "vanilla", "gamma_scripts", "engine", "lua_api"],
       "gitmcp_queries": [
         "xray-monolith: symbol, helper, callback, or command name"
       ],
@@ -374,7 +374,7 @@
         ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task save-load -Pattern 'save|load|save_state|load_state|version'",
         "py -3 .\\.skills\\stalker-modding\\scripts\\luac_tool.py check path\\to\\touched.script"
       ],
-      "reference_roots": ["workspace", "vanilla", "lua_api", "engine"],
+      "reference_roots": ["workspace", "vanilla", "gamma_scripts", "lua_api", "engine"],
       "gitmcp_queries": [
         "xray-monolith: save or load related helper"
       ],
@@ -393,7 +393,7 @@
       "powershell_commands": [
         ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task tasks-story-alife -Pattern 'task|story|smart_terrain|alife|squad'"
       ],
-      "reference_roots": ["workspace", "vanilla", "book", "lua_api"],
+      "reference_roots": ["workspace", "vanilla", "gamma_scripts", "book", "lua_api"],
       "gitmcp_queries": [
         "xray-monolith: task, story, or A-Life helper",
         "anomaly-modding-book: quests or npc topic name"
@@ -435,7 +435,7 @@
       "powershell_commands": [
         ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task ui-mcm -Pattern 'on_mcm_load|ui_mcm|get_config|key_bind|ui_hook_functor|on_selection_functor|mcm_option_change|mcm_key_localization|ui_mm_menu_mcm|ui_|mcm|options|attach'"
       ],
-      "reference_roots": ["workspace", "vanilla", "mcm_repo", "book"],
+      "reference_roots": ["workspace", "vanilla", "mcm_repo", "gamma_scripts", "book"],
       "gitmcp_queries": [
         "anomaly-modding-book: mcm or UI topic name"
       ],
@@ -456,7 +456,7 @@
       "powershell_commands": [
         ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task visible-body-legs -Pattern 'legs|visible_body|freelook|ladder'"
       ],
-      "reference_roots": ["workspace", "vanilla", "engine", "lua_api", "book"],
+      "reference_roots": ["workspace", "vanilla", "gamma_scripts", "engine", "lua_api", "book"],
       "gitmcp_queries": [
         "xray-monolith: legs, visible body, freelook, or ladder helper"
       ],
@@ -477,7 +477,7 @@
         ".\\.skills\\stalker-modding\\scripts\\find_entrypoints.ps1 .",
         ".\\.skills\\stalker-modding\\scripts\\find_references.ps1 -Task weapons-hud -Pattern 'zoom|fire|reload|hud|animation'"
       ],
-      "reference_roots": ["workspace", "vanilla", "engine", "lua_api", "book"],
+      "reference_roots": ["workspace", "vanilla", "gamma_scripts", "engine", "lua_api", "book"],
       "gitmcp_queries": [
         "xray-monolith: HUD callback or helper",
         "anomaly-modding-book: HUD animations"

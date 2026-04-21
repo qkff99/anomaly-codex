@@ -1,0 +1,28 @@
+function get_parent_and_scope(wpn_section)
+  if not wpn_section then return end
+  local parent_section = ini_sys:r_string_ex(wpn_section, "parent_section")
+	local scope_section
+
+	if parent_section and parent_section ~= wpn_section then
+		scope_section = wpn_section:gsub(parent_section .. "_", "")
+	end
+	return parent_section or wpn_section, scope_section
+end
+
+function update_weight(obj)
+  if not (obj and IsWeapon(obj)) then return end
+
+  local sec = obj:section()
+  local base_sec, scope_sec = get_parent_and_scope(sec)
+  if not scope_sec then return end
+
+  local base_weight = ini_sys:r_float_ex(base_sec, "inv_weight")
+  local scope_weight = ini_sys:r_float_ex(scope_sec, "inv_weight")
+  if not (base_weight and scope_weight) then return end
+
+  obj:set_weight(base_weight+scope_weight)
+end
+
+function on_game_start()
+  RegisterScriptCallback("game_object_on_net_spawn", update_weight)
+end

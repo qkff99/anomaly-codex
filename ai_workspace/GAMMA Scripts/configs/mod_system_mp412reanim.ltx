@@ -1,0 +1,95 @@
+![wpn_mp412]
+use_aim_bullet              = false
+
+snd_reload				= $no_sound
+snd_reload_empty          = $no_sound
+
+discharge_on_misfire        = true
+has_empty_misfire           = true
+
+; Handled in script
+snd_draw				    = $no_sound
+snd_holster				    = $no_sound
+
+scripted_snd_shoot_cock              = weapons\mp412\mp412_cock
+
+scripted_snd_show				    = weapons\mp412\mp412_draw
+scripted_snd_show_empty			= weapons\mp412\mp412_draw_empty
+scripted_snd_hide				= weapons\mp412\mp412_holster
+scripted_snd_hide_empty			= weapons\mp412\mp412_holster_empty
+
+scripted_snd_reload_misfire        = weapons\mp412\mp412_misfire_dryfire
+scripted_snd_reload_misfire_empty  = weapons\mp412\mp412_misfire_empty
+scripted_snd_reload				= weapons\mp412\mp412_reload_partial
+scripted_snd_reload_empty          = weapons\mp412\mp412_reload_empty
+
+snd_ammo_check                      = weapons\mp412\mp412_ammocheck_partial
+snd_ammo_check_empty                = weapons\mp412\mp412_ammocheck_empty
+
+![wpn_mp412_hud]
+item_position               = 0, 0, 0
+item_orientation            = 0, 0, 0
+
+anm_bore                    = aoldri_mprex_inspect
+anm_bore_empty              = aoldri_mprex_inspect, empty
+
+anm_show                    = aoldri_mprex_draw, draw
+anm_show_empty              = aoldri_mprex_draw_empty, empty
+anm_hide                    = aoldri_mprex_holster, holster
+anm_hide_empty              = aoldri_mprex_holster_empty, empty
+
+anm_idle                    = aoldri_mprex_idle
+anm_idle_empty              = aoldri_mprex_idle, empty
+
+anm_idle_moving             = aoldri_mprex_walk
+anm_idle_moving_empty       = aoldri_mprex_walk, empty
+anm_idle_sprint             = aoldri_mprex_sprint
+anm_idle_sprint_empty       = aoldri_mprex_sprint, empty
+
+anm_idle_aim                = aoldri_mprex_aim
+anm_idle_aim_empty          = aoldri_mprex_aim, empty
+anm_idle_aim_moving         = aoldri_mprex_aim, idle, 0.75
+anm_idle_aim_moving_crouch  = aoldri_mprex_aim, idle, 0.7
+anm_idle_aim_moving_crouch_empty = aoldri_mprex_aim, empty, 0.7
+anm_idle_aim_moving_empty   = aoldri_mprex_aim, empty, 0.75
+
+anm_reload                  = aoldri_mprex_reload_partial, reload_partial
+anm_reload_empty            = aoldri_mprex_reload_empty, reload_empty
+anm_reload_misfire          = aoldri_mprex_misfire, misfire
+anm_reload_misfire_empty    = aoldri_mprex_misfire_noammo, misfire_noammo
+
+anm_shots                   = aoldri_mprex_shoot, shoot
+anm_shot_l                  = aoldri_mprex_shoot, shoot
+
+; Ammo Check Animations
+anm_ammo_check              = aoldri_mprex_ammocheck, ammocheck
+anm_ammo_check_empty        = aoldri_mprex_ammocheck_empty, ammocheck_empty
+
+; Transition/Intermediate Animations
+anm_walk2sprint             = aoldri_mprex_walk2sprint
+anm_walk2sprint_empty = aoldri_mprex_walk2sprint, empty
+
+anm_sprint2walk             = aoldri_mprex_sprint2walk
+anm_sprint2walk_empty       = aoldri_mprex_sprint2walk, empty
+
+anm_idle2aim             = aoldri_mprex_idle2aim
+anm_idle2aim_empty       = aoldri_mprex_idle2aim, empty
+
+; Cocking after shoot
+anm_shoot_cock             = aoldri_mprex_shoot_cock, shoot_cock
+
+; Transition Definitions
+ts_pattern_walk2sprint      = .+, anm_idle_sprint, anm_walk2sprint, 1
+
+ts_pattern_sprint2walk      = anm_idle_sprint, ^anm_idle.*, anm_sprint2walk, 1
+ts_pattern_sprint2walk_aim  = anm_walk2sprint, ^anm_idle_aim.*, anm_sprint2walk, 1
+ts_strict_sprint2walk_idle  = anm_walk2sprint, anm_idle, anm_sprint2walk
+ts_strict_sprint2walk_move  = anm_walk2sprint, anm_idle_moving, anm_sprint2walk
+
+ts_pattern_idle2aim         = ^anm_idle.*, ^anm_idle_aim$, anm_idle2aim, 1
+ts_strict_sprint2aim        = anm_idle_sprint, anm_idle_aim, anm_sprint2walk
+
+ts_strict_sprint2inspect        = anm_idle_sprint, anm_bore, anm_sprint2walk
+ts_strict_walk2sprint_inspect        = anm_walk2sprint, anm_bore, anm_sprint2walk
+
+ts_pattern_shootcock         = anm_shots, ^anm_idle.*, anm_shoot_cock, 1

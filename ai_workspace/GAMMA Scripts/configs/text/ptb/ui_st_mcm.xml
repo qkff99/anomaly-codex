@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="Windows-1252"?>
+<!-- 
+	Anomaly Mod Configuration Menu strings
+	
+-->
+
+<string_table>
+
+	<string id="ui_mcm_desc_mcm">
+		<text>Bem-vindo ao menu de configuraçöes do mod Anomaly. Por si só, o MCM näo faz nada. O MCM fornece um local para outros mods/complementos exibirem uma interface de configuraçäo. \n À esquerda vocë verá uma lista de mods/addons que usam MCM para isso.</text>
+	</string>
+	<string id="ui_mcm_desc_mcm2">
+		<text>Erros com o MCM ou travamentos com ui_mcm.script no registro säo provavelmente causados por um dos mods/complementos que usam o MCM e devem ser relatados ao autor do referido mod/complemento.</text>
+	</string>
+	<string id="ui_mm_menu_mcm">
+		<text>Menu de configuraçöes de mods</text>
+	</string>
+
+	<string id="ui_mcm_menu_mcm">
+		<text>MCM</text>
+	</string>
+	<string id="ui_mcm_menu_mcm_about">
+		<text>Acerca de</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_about_reset">
+		<text>Recarregar todos os menus</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_about_reset_desc">
+		<text>Marcar esta caixa e clicar em «Aplicar» fará com que o MCM recarregue todos os menus. Esta é uma ferramenta de depuraçäo e näo deve ser necessária em circunstäncias normais.</text>
+	</string>
+
+
+	<string id="ui_mcm_menu_mcm_log">
+		<text>Registros</text>
+	</string>
+	<string id="ui_mcm_mcm_desc_log">
+		<text>Este é um utilitário para criadores de complementos que permite mover seus logs para fora do log do raio X e do console de jogo. \n Como respeito sua preocupaçäo com atrasos e ciclos de gravaçäo em SSDs, forneci alguns controles para que vocë possa ajustar o comportamento do registro. \n Os logs receberäo o nome do script que os cria e o número de ID da sessäo MCM. Eles säo criados em appdata/logs/mcm/</text>
+	</string>
+
+	<string id="ui_mcm_mcm_mcm_log_enable">
+		<text>Ativar utilitário de log MCM</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_log_enable_desc">
+		<text>Desmarcar esta caixa impedirá que registros sejam criados ou atualizados. (Observe que as alteraçöes näo teräo efeito até que um novo jogo seja carregado)</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_log_numlogs">
+		<text>Número de registros a serem mantidos</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_log_numlogs_desc">
+		<text>Quando o número de logs criados por um script exceder esse número, os logs antigos seräo excluídos. (Observe que a exclusäo do log näo ocorrerá se o jogo travar)</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_log_continuous">
+		<text>Permitir escritura continua de archivos</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_log_continuous_desc">
+		<text>Os arquivos de log normalmente säo atualizados em lotes. Isso pode fazer com que algumas informaçöes sejam perdidas se o jogo travar. O criador de um complemento pode solicitar que vocë marque esta caixa para que seu registro seja atualizado imediatamente.</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_log_savefreq">
+		<text>Tiempo entre autoguardados de registro en milisegundos</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_log_savefreq_desc">
+		<text>Näo importa o que for inserido aqui, os registros seräo salvos ao entrar nas diversas telas da interface e ao salvar/carregar jogos.</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_log_timestamp">
+		<text>frequëncia de registro de data e hora do raio X</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_log_timestamp_desc">
+		<text>O MCM adiciona um carimbo de data ao log de raio X para facilitar a coordenaçäo de eventos entre os logs do MCM e o log de raio X. Este é o tempo mínimo entre esses carimbos de data. Se nada mais estiver sendo impresso no console, o MCM também näo imprimirá.</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_log_debug_logging2">
+		<text>Activar registros de depuración</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_log_debug_logging2_desc">
+		<text>Isso ativa os próprios logs de depuraçäo do MCM e deve ser habilitado antes de relatar bugs ao MCM. Outros mods também podem usar esta configuraçäo para ativar seus próprios registros.</text>
+	</string>
+
+
+	<string id="ui_mcm_menu_mcm_kb">
+		<text>Teclas de MCM</text>
+	</string>
+	<string id="ui_mcm_menu_mcm_kb_main">
+		<text>Principal</text>
+	</string>
+
+	<string id="ui_mcm_mcm_desc_kb">
+		<text>O mapeamento de teclas no MCM funciona como no Minecraft: clique na caixa e pressione uma tecla. Para cancelar, clique ou pressione Escape. \n Se a tecla que vocë vë näo corresponde à tecla que vocë pressionou ou o MCM parece ignorar algumas teclas, pode ser necessário modificar mcm_key_localization.ltx para que o layout do seu teclado seja refletido. \n As chaves atribuídas a mais de um mapeamento MCM ou mapeamento de mecanismo de jogo seräo destacadas em vermelho.</text>
+	</string>
+	<string id="ui_mcm_mcm_desc_kb2">
+		<text>Algumas notas sobre chaves conflitantes em vermelho: \n 1. Pode näo importar. Se as teclas forem usadas em interfaces diferentes ou se uma tecla só for ativada mantendo pressionada a tecla Shift, näo importa se a mesma tecla é usada duas vezes. \n 2. O MCM näo tem ideia do que um mod poderia estar fazendo com uma chave. Vocë precisa saber como um mod usa uma chave para saber se o conflito é relevante. \n 3. Para uma única alteraçäo pendente, a cor é atualizada corretamente; para diversas alteraçöes pendentes, talvez näo. Aplique as alteraçöes e reabra o MCM para verificar o conflito.</text>
+	</string>
+
+	<string id="ui_mcm_mcm_mcm_kb_mcm_kb_main_presstime">
+		<text>Multiplicador de espera</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_kb_mcm_kb_main_presstime_desc">
+		<text>Multiplicador aplicado ao período de toque duplo para determinar quanto tempo uma tecla deve ser pressionada para que seja considerada pressionada. Aplica-se apenas a mods que usam o MCM para identificar chaves retidas.</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_kb_mcm_kb_main_dtaptime2">
+		<text>Tempo de clique duplo</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_kb_mcm_kb_main_dtaptime2_desc">
+		<text>O tempo máximo que deve decorrer entre dois pressionamentos de uma tecla para que ela seja contada como um pressionamento duplo. Aplica-se apenas a mods que usam o MCM para identificar teclas pressionadas duas vezes. Este tempo pode afetar o atraso de entrada de alguns eventos de pressionamento de tecla única, portanto deve ser o mínimo possível.</text>
+	</string>
+
+	<string id="ui_mcm_menu_mcm_all_kb">
+		<text>Todas as chaves atribuídas</text>
+	</string>
+	<string id="ui_mcm_mcm_desc_kb_all">
+		<text>Este painel reúne todas as teclas atribuídas ao MCM em um só lugar, na mesma ordem em que os mods que as adicionam aparecem à esquerda. \nNo entanto, esta lista näo pode incluir configuraçöes adicionais do painel de mod que possam afetar o comportamento de uma tecla. \nSempre verifique o painel de mod do qual a chave atribuída foi obtida, bem como a documentaçäo desse mod.</text>
+	</string>
+	<string id="ui_mcm_mcm_desc_kb_all2">
+		<text>As alteraçöes pendentes em outros painéis näo seräo refletidas neste painel, nem os ajustes pendentes neste painel seräo refletidos em outros. \nAplica alteraçöes antes e depois de usar este painel. Näo fazer isso pode resultar em comportamento indesejado.\n \nAlgumas notas sobre as chaves conflitantes em vermelho: \n 1. Pode näo importar. Se as teclas forem usadas em interfaces diferentes ou se uma tecla só for ativada mantendo pressionada a tecla Shift, näo importa se a mesma tecla é usada duas vezes. \n 2. O MCM näo tem ideia do que um mod poderia estar fazendo com uma chave. Vocë precisa saber como um mod usa uma chave para saber se o conflito é relevante. \n 3. Para uma única alteraçäo pendente, a cor é atualizada corretamente; para diversas alteraçöes pendentes, talvez näo. Aplique as alteraçöes e reabra o MCM para verificar o conflito.</text>
+	</string>
+	<string id="ui_mcm_menu_mcm_kb_conflicts">
+		<text>Conflitos de chave atribuídos</text>
+	</string>
+	<string id="ui_mcm_mcm_desc_kb_conflicts">
+		<text>Este painel reúne todas as chaves mapeadas do MCM marcadas como conflitantes em um só lugar, classificadas por chave. \nSe uma chave aparecer apenas uma vez nesta lista, provavelmente ela colide com uma chave do mecanismo de jogo. Eles aparecem nas opçöes normais de anomalia. \nNo entanto, esta lista näo pode incluir configuraçöes adicionais do painel de mod que possam afetar o comportamento de uma tecla. \nSempre verifique o painel de mod do qual a chave atribuída foi obtida, bem como a documentaçäo desse mod.</text>
+	</string>
+
+	
+	
+	<string id="ui_mcm_mcm_kb_modifier">
+		<text>Con tecla modificadora</text>
+	</string>
+	<string id="ui_mcm_mcm_kb_modifier_desc">
+		<text>A tecla atribuída acima só será ativada se esta tecla também for mantida pressionada.</text>
+	</string>
+
+	<string id="ui_mcm_lst_mcm_kb_mod_none">
+		<text>Sin modificador</text>
+	</string>
+	<string id="ui_mcm_lst_mcm_kb_mod_ctrl">
+		<text>Ao controle</text>
+	</string>
+	<string id="ui_mcm_lst_mcm_kb_mod_shift">
+		<text>De maio.</text>
+	</string>
+	<string id="ui_mcm_lst_mcm_kb_mod_alt">
+		<text>Tudo</text>
+	</string>
+
+
+
+	
+	<string id="ui_mcm_mcm_kb_mode">
+		<text>Modo de entrada</text>
+	</string>
+	<string id="ui_mcm_mcm_kb_mode_desc">
+		<text>A tecla atribuída acima só será ativada se a tecla for pressionada desta forma.</text>
+	</string>
+	
+	<string id="ui_mcm_lst_mcm_kb_mode_press">
+		<text>Pressione uma vez</text>
+	</string>
+	<string id="ui_mcm_lst_mcm_kb_mode_dtap">
+		<text>Pressione duas vezes</text>
+	</string>
+	<string id="ui_mcm_lst_mcm_kb_mode_hold">
+		<text>pressione e segure</text>
+	</string>
+	
+
+
+
+
+
+</string_table>
+
+
+
+<!-- Translation made with Stalker Translation XML TOOL -->
+<!-- https://www.moddb.com/mods/stalker-anomaly/addons/stalker-translation-xml-tool-v12-executable-version -->

@@ -1,0 +1,191 @@
+--Protected function call to prevent crashes to desktop
+--Prints error in console if occured, otherwise proceed normally
+--Use for test only, slower than usual
+local try = try or function(func, ...)
+	local status, error_or_result = pcall(func, ...)
+	if not status then
+		printf(error_or_result)
+		return false, status, error_or_result
+	else
+		return error_or_result, status
+	end
+end
+
+local debug_enabled = true
+local function printf(str, ...)
+	if debug_enabled then
+		_G.printf("SURGE RUSH [" .. script_name() .. "]: " .. str, ...)
+	end
+end
+
+local srs = surge_rush_scheme_common
+
+actid = 198193
+evaid = 198193
+
+class "evaluator_stalker_surge_rush_outside" (property_evaluator)
+function evaluator_stalker_surge_rush_outside:__init(npc,name,storage) super (nil, name)
+	self.st = storage
+end
+
+evaluator_stalker_surge_rush_outside.evaluate = srs.get_evaluator_func(function(npc)
+	local surge_manager = surge_manager.get_surge_manager()
+	return surge_manager:pos_in_cover(npc:position())
+end)
+
+class "action_stalker_surge_rush_outside" (action_base)
+function action_stalker_surge_rush_outside:__init (npc,name,storage) super (nil,name)
+	self.st = storage
+end
+
+function action_stalker_surge_rush_outside:initialize()
+	action_base.initialize(self)
+	local npc = self.object
+	npc:set_desired_position()
+	npc:set_desired_direction()
+	self.first_update = true
+	printf("npc %s enable surge rush scheme", npc:name())
+end
+
+function action_stalker_surge_rush_outside:execute()
+	action_base.execute(self)
+	local npc = self.object
+	
+	-- ensure and enforce path type
+	if (npc:path_type() ~= game_object.level_path) then 
+		npc:set_path_type(game_object.level_path)
+	end
+
+	local params = srs.get_cover_params(npc)
+
+	if npc:level_vertex_id() == params.lvid and npc:position():distance_to_sqr(params.pos) <= (0.75 ^ 2) then
+		npc:set_desired_position()
+		-- npc:set_desired_direction()
+		npc:set_dest_level_vertex_id(npc:level_vertex_id())
+
+		-- printf("npc %s reached cover %s", npc:name(), params.lvid)
+
+		local new_state = "hide"
+		state_mgr.set_state(npc, new_state, nil, nil, nil, {
+			fast_set = true,
+			animation = true,
+		})
+		params.reached = true
+	else
+		-- Set panic state
+		local bw = npc:active_item()
+		local new_state = bw and "sprint" or "panic"
+
+		-- npc:set_sight(look.direction, vector():set(params.pos):sub(npc:position()):normalize())
+
+		state_mgr.set_state(npc, new_state, nil, nil, nil, {
+			fast_set = true,
+			animation = true,
+		})
+		npc:set_dest_level_vertex_id(params.lvid)
+	end
+
+	-- First update force movement 
+	if self.first_update then
+		npc:clear_animations()
+		npc:movement_enabled(true)
+		npc:set_movement_type(move.run)
+		npc:set_body_state(move.standing)
+		npc:set_mental_state(anim.panic)
+		self.first_update = false
+	end
+end
+
+function action_stalker_surge_rush_outside:finalize()
+    action_base.finalize(self)
+    self.first_update = true
+
+    local npc = self.object
+    printf("npc %s disable surge rush scheme", npc:name())
+    if not srs.surge_started() then
+    	srs.reset_cover_params(npc)
+    end
+    npc:clear_animations()
+	npc:movement_enabled(true)	
+end
+
+function setup_generic_scheme(npc,ini,scheme,section,stype,temp)
+	local st = xr_logic.assign_storage_and_bind(npc,ini,"stalker_surge_rush_outside",section,temp)
+end
+
+function add_to_binder(npc,ini,scheme,section,storage,temp)
+	if not npc then return end
+	local manager = npc:motivation_action_manager()
+	if not manager then return end
+	
+	if not npc:alive() or npc:section() == "actor_visual_stalker" then
+		manager:add_evaluator(evaid,property_evaluator_const(false))
+		temp.needs_configured = false
+		return 
+	end
+
+	local evaluator = evaluator_stalker_surge_rush_outside(npc,"eva_stalker_surge_rush_outside",storage)
+	temp.action = action_stalker_surge_rush_outside(npc,"act_stalker_surge_rush_outside",storage)
+	
+	if not evaluator or not temp.action then return end
+	manager:add_evaluator(evaid,evaluator)
+	
+	temp.action:add_precondition(world_property(stalker_ids.property_alive,true))
+	temp.action:add_precondition(world_property(stalker_ids.property_danger, false))
+	-- temp.action:add_precondition(world_property(stalker_ids.property_danger, true))
+	temp.action:add_precondition(world_property(evaid,true))
+	
+	temp.action:add_effect(world_property(evaid,false))
+	
+	manager:add_action(actid,temp.action)
+	
+	--xr_logic.subscribe_action_for_events(npc, storage, temp.action)
+end
+
+function configure_actions(npc,ini,scheme,section,stype,temp)
+	if not npc then return end
+	local manager = npc:motivation_action_manager()
+	if not manager or not temp.action then return end
+
+	temp.action:add_precondition(world_property(xr_evaluators_id.sidor_wounded_base,false))
+	-- temp.action:add_precondition(world_property(xr_evaluators_id.wounded_exist,false))
+
+	-- if (_G.schemes["rx_ff"]) then 
+	-- 	temp.action:add_precondition(world_property(rx_ff.evaid,false))
+	-- end
+	if (_G.schemes["gl"]) then
+		temp.action:add_precondition(world_property(rx_gl.evid_gl_reload,false))
+	end
+	-- if (_G.schemes["facer"]) then
+	-- 	temp.action:add_precondition(world_property(xrs_facer.evid_facer,false))
+	-- 	temp.action:add_precondition(world_property(xrs_facer.evid_steal_up_facer,false))
+	-- end
+
+	local action
+	local p = {xr_danger.actid, stalker_ids.action_combat_planner, stalker_ids.action_danger_planner, xr_actions_id.state_mgr + 2, xr_actions_id.alife}
+	-- local p = {xr_actions_id.alife}
+	
+	for i=1,#p do
+		--printf("ACTION_ALIFE_ID(permaban_material.configure_actions): " .. tostring(p[i]))
+		action = manager:action(p[i])
+		if (action) then
+			action:add_precondition(world_property(evaid,false))
+		else
+			printf("axr_panic: no action id p[%s]",i)
+		end
+	end
+end 
+
+function disable_generic_scheme(npc,scheme,stype)
+	local st = db.storage[npc:id()][scheme]
+	if st then
+		st.enabled = false
+	end
+end
+
+function npc_add_precondition(action)
+	if not action then return end
+	action:add_precondition(world_property(evaid,false))
+end
+
+LoadScheme("surge_rush_scheme_evaluator_outside", "stalker_surge_rush_outside", modules.stype_stalker)

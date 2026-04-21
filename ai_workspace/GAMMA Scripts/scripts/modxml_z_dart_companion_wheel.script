@@ -1,0 +1,61 @@
+local Dart   = dart_core
+local Utils  = dart_utils
+local Module = dart_module
+
+
+local mod = "companionWheel"
+
+
+function parseUIWheelCompanion(XML, config)
+  local wheel, info, health, weight =
+    XML:query("wheel")[1],
+    XML:query("info")[1],
+    XML:query("info > health")[1],
+    XML:query("info > weight")[1]
+
+  local itemSettings = {
+    scale = config.scale,
+  }
+
+  local wheelSettings = Utils.merge(itemSettings, {
+    bounds   = XML:getBounds(wheel),
+    anchor   = config.anchor,
+    offset   = config.offset,
+    safezone = config.safezone,
+  })
+
+  local infoSettings = Utils.merge(wheelSettings, {
+    bounds = XML:getBounds(info)
+  })
+
+  if wheel then
+    XML:correctElement(wheel, wheelSettings)
+    XML:safeIterate(wheel, function(child)
+      XML:correctElement(child, itemSettings)
+    end)
+  end
+
+  if info then
+    XML:correctElement(info, infoSettings)
+    XML:safeIterate(info, function(child)
+      XML:correctElement(child, itemSettings)
+    end)
+  end
+
+  if health then
+    XML:safeIterate(health, function(child)
+      XML:correctElement(child, itemSettings)
+    end)
+  end
+
+  if weight then
+    XML:safeIterate(weight, function(child)
+      XML:correctElement(child, itemSettings)
+    end)
+  end
+end
+
+
+function on_xml_read()
+  Module.registerModule(mod, "ui_wheel_companion", parseUIWheelCompanion)
+end

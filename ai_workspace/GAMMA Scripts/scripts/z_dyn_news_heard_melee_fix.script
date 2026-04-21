@@ -1,0 +1,29 @@
+--[[
+	=====================================================================
+	Addon      : Tosox Mini Mods Repo: Dynamic News Heard Melee Fix
+	Link       : https://www.moddb.com/mods/stalker-anomaly/addons/tosox-mini-mods-repo/
+	Author     : Tosox
+	Date       : 07.01.2024
+	Last Edit  : 31.01.2024
+	=====================================================================
+--]]
+
+orig_dnm_gossip_death_by_stalker = dynamic_news_manager.DynamicNewsManager.GossipDeathByStalker
+dynamic_news_manager.DynamicNewsManager.GossipDeathByStalker = function(self, victim, who, comm)
+	local cls = dynamic_news_helper.GetWeaponClass(who)
+	if cls == 6 then
+		return false
+	end
+
+	return orig_dnm_gossip_death_by_stalker(self, victim, who, comm)
+end
+
+orig_dnm_gossip_death_of_mutant = dynamic_news_manager.DynamicNewsManager.GossipDeathOfMutant
+dynamic_news_manager.DynamicNewsManager.GossipDeathOfMutant = function(self, victim, who, comm)
+	local cls = dynamic_news_helper.GetWeaponClass(who)
+	if cls == 6 then
+		return false
+	end
+
+	return orig_dnm_gossip_death_of_mutant(self, victim, who, comm)
+end

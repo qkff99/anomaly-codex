@@ -1,0 +1,209 @@
+[section@squad]
+target@1 = {!has_task(duty_girl_hunting_chimera)} nil, {+duty_girl_hunting_chimera_dead} nil, {-duty_girl_hunting_chimera_move} gar_smart_terrain_6_3, gar_smart_terrain_2_4
+target@2 = {=has_task(duty_girl_monolith_elite) !check_task_stage(duty_girl_monolith_elite:3)} mil_smart_terrain_4_5
+target@4 = {=has_task(duty_girl_capture_the_brirge) !check_task_stage(duty_girl_capture_the_brirge:3)} red_smart_terrain_5_5
+target@z = {=between_time(6:18)} bar_zastava_2, {=between_time(19:23)} bar_dolg_general, bar_dolg_bunker
+
+[section@logic]
+logic@idle
+
+logic@drink
+logic@guard
+logic@surge
+logic@sleep
+
+logic@hunt_chimera
+logic@monolith_elite
+logic@capture_the_brirge
+
+
+[beh@base]
+dont_keep_items						= true
+gather_items_enabled				= false
+help_wounded_enabled				= false
+corpse_detection_enabled			= false
+combat_ignore_keep_when_attacked	= true
+target								= waypoint
+path_end							= loop
+walk_dist							= 0
+jog_dist							= 0
+run_anim							= patrol
+meet								= meet@base
+danger_ignore						= true
+
+
+[beh@animpoint]:beh@base
+target = %=animpoint()% nil
+
+[beh@rush_at_10]
+jog_dist = 10
+jog_anim = rush
+
+
+[logic@base]
+post_combat_time	= 0,0
+level_spot			= special
+net_spawn			= pt1
+
+[logic@idle]:logic@base
+suitable	= true
+active		= beh@idle
+prior		= 0
+combat_type	= camper
+
+[logic@guard]:logic@base
+suitable	= {=npc_on_level(l05_bar) =between_time(6:18)} true
+active		= beh@guard
+prior		= 100
+
+[logic@drink]:logic@base
+suitable	= {=npc_on_level(l05_bar) =between_time(19:23)} true
+active		= beh@drink
+prior		= 100
+
+[logic@surge]:logic@base
+suitable	= {=npc_on_level(l05_bar) =surge_started} true
+active		= {=between_time(6:18)} beh@surge_1, beh@surge_2
+prior		= 400
+
+[logic@sleep]:logic@base
+suitable	= {=npc_on_level(l05_bar) =between_time(0:5)} true
+active		= beh@sleep
+prior		= 500
+
+
+
+[beh@idle]:beh@base
+target = %=script(xr_logic_ex:state_idle:guard)% nil
+meet = meet@idle
+
+[beh@guard]:beh@animpoint,beh@rush_at_10
+pt1 = 999999,guard						| pos:85.4,0.0,137.9 dir:90
+meet = meet@idle
+
+[beh@drink]:beh@animpoint,beh@rush_at_10
+pt1 = 999999,animpoint_sit_low@random	| pos:207.9,0.00,85.4 dir:135 animpoint:pos
+
+[beh@surge_1]:beh@animpoint
+pt1 = 999999,sit_ass					| pos:208.6,-0.62,114.1 dir:-90
+run_anim = rush
+[beh@surge_2]:beh@animpoint
+pt1 = 999999,sit_ass					| pos:95.2,0.091,103.6 dir:90
+run_anim = rush
+
+[beh@sleep]:beh@animpoint,beh@rush_at_10
+pt1 = 999999,sleep | pos:218.4,-5.13,123.2 dir:0
+meet = meet@sleep
+
+
+
+
+[logic@hunt_chimera]:logic@base
+suitable	= {=npc_on_level(l02_garbage) =has_task(duty_girl_hunting_chimera) -duty_girl_hunting_chimera_dead} true
+active		= {-duty_girl_hunting_chimera_move} beh@hunt_chimera_1, beh@hunt_chimera_2
+prior		= 100
+combat_type	= camper
+
+[beh@hunt_chimera_1]:beh@animpoint,beh@rush_at_10
+pt1 = 999999,use_pda	| pos:102.9,3.64,161.0 dir:45
+on_info1 = {+duty_girl_hunting_chimera_move !npc_talking} beh@hunt_chimera_2
+
+[beh@hunt_chimera_2]:beh@animpoint
+pt1 = 999999,hide_na	| pos:-235.2,0.42,11.2 dir:90
+run_anim = {=dist_to_beh(30)} sneak_run, {=dist_to_beh(60)} raid, rush
+meet = no_meet
+on_info1 = {-duty_girl_hunting_chimera_fight -duty_girl_hunting_chimera_hunt_1 =check_time_speech() =reach_beh()} %=speech(duty_girl_hunting_chimera_hunt_1:5) +duty_girl_hunting_chimera_hunt_1%
+on_info2 = {-duty_girl_hunting_chimera_fight -duty_girl_hunting_chimera_hunt_2 =check_time_speech() =reach_beh()} %=speech(duty_girl_hunting_chimera_hunt_2:5) +duty_girl_hunting_chimera_hunt_2%
+on_info3 = {-duty_girl_hunting_chimera_fight -duty_girl_hunting_chimera_hunt_3 =check_time_speech() =reach_beh()} %=speech(duty_girl_hunting_chimera_hunt_3:5) +duty_girl_hunting_chimera_hunt_3%
+
+
+
+
+[logic@monolith_elite]:logic@base
+suitable	= {=npc_on_level(l07_military) =has_task(duty_girl_monolith_elite) -duty_girl_monolith_elite_dead} true
+active		= {-duty_girl_monolith_elite_join} beh@monolith_elite_1, {-duty_girl_monolith_elite_move} beh@monolith_elite_2, beh@monolith_elite_3
+prior		= 100
+combat_type	= camper
+
+[beh@monolith_elite_1]:beh@animpoint,beh@rush_at_10
+pt1 = 999999,guard_na | pos:-92.4,-20.66,219.8 dir:0
+on_info1 = {+duty_girl_monolith_elite_join !npc_talking !has_enemy} beh@monolith_elite_2
+on_info2 = {+duty_girl_monolith_elite_move} beh@monolith_elite_3
+combat_ignore_cond	= {=enemy_squad(squad_duty_girl_monolith_elite)} true, {!fighting_dist_le(40)} true
+enemy_ignore_cond	= {=enemy_squad(squad_duty_girl_monolith_elite)} true, {!fighting_dist_le(40)} true
+
+[beh@monolith_elite_2]:beh@animpoint,beh@rush_at_10
+pt1 = 999999,guard_na | pos:-92.4,-20.66,219.8 dir:0
+meet = no_meet
+on_info1 = {-duty_girl_monolith_elite_move -duty_girl_monolith_elite_move_1 =check_time_speech() =reach_beh()} %=speech(duty_girl_monolith_elite_move_1:5) +duty_girl_monolith_elite_move_1%
+on_info2 = {-duty_girl_monolith_elite_move -duty_girl_monolith_elite_move_2 =check_time_speech() =reach_beh()} %=speech(duty_girl_monolith_elite_move_2:5) +duty_girl_monolith_elite_move_2%
+on_info3 = {-duty_girl_monolith_elite_move -duty_girl_monolith_elite_move_3 =check_time_speech() =reach_beh()} %=speech(duty_girl_monolith_elite_move_3:5) +duty_girl_monolith_elite_move_3%
+on_info4 = {-duty_girl_monolith_elite_move +duty_girl_monolith_elite_move_3} %+duty_girl_monolith_elite_move%
+on_info5 = {+duty_girl_monolith_elite_move} beh@monolith_elite_3
+combat_ignore_cond	= true
+enemy_ignore_cond	= true
+
+[beh@monolith_elite_3]:beh@animpoint
+pt1 = 999999,hide | pos:-56.0,-19.94,354.9 dir:45
+run_anim = assault
+meet = no_meet
+
+
+
+
+[logic@capture_the_brirge]:logic@base
+suitable	= {=npc_on_level(l10_red_forest) =has_task(duty_girl_capture_the_brirge) -duty_girl_capture_the_brirge_dead} true
+active		= {-duty_girl_capture_the_brirge_join} beh@capture_the_brirge_1, {-duty_girl_capture_the_brirge_move} beh@capture_the_brirge_2, beh@capture_the_brirge_3
+prior		= 100
+combat_type	= camper
+
+[beh@capture_the_brirge_1]:beh@animpoint,beh@rush_at_10
+pt1 = 999999,guard_na | pos:-15.4,-0.85,-328.3 dir:-90
+on_info1 = {+duty_girl_capture_the_brirge_join !npc_talking !has_enemy} beh@capture_the_brirge_2
+on_info2 = {+duty_girl_capture_the_brirge_move} beh@capture_the_brirge_3
+combat_ignore_cond	= {=enemy_squad(squad_duty_girl_capture_the_brirge)} true
+enemy_ignore_cond	= {=enemy_squad(squad_duty_girl_capture_the_brirge)} true
+
+[beh@capture_the_brirge_2]:beh@animpoint,beh@rush_at_10
+pt1 = 999999,guard_na | pos:-15.4,-0.85,-328.3 dir:-90
+meet = no_meet
+on_info1 = {-duty_girl_capture_the_brirge_move -duty_girl_capture_the_brirge_move_1 =check_time_speech() =reach_beh()} %=speech(duty_girl_capture_the_brirge_move_1:5) +duty_girl_capture_the_brirge_move_1%
+on_info2 = {-duty_girl_capture_the_brirge_move -duty_girl_capture_the_brirge_move_2 =check_time_speech() =reach_beh()} %=speech(duty_girl_capture_the_brirge_move_2:5) +duty_girl_capture_the_brirge_move_2%
+on_info3 = {-duty_girl_capture_the_brirge_move -duty_girl_capture_the_brirge_move_3 =check_time_speech() =reach_beh()} %=speech(duty_girl_capture_the_brirge_move_3:5) +duty_girl_capture_the_brirge_move_3%
+on_info4 = {-duty_girl_capture_the_brirge_move +duty_girl_capture_the_brirge_move_3} %+duty_girl_capture_the_brirge_move%
+on_info5 = {+duty_girl_capture_the_brirge_move} beh@capture_the_brirge_3
+combat_ignore_cond	= true
+enemy_ignore_cond	= true
+
+[beh@capture_the_brirge_3]:beh@animpoint
+pt1 = 999999,hide | pos:-106.4,0.46,-291.2 dir:-30
+run_anim = assault
+meet = no_meet
+
+
+
+
+[meet@base]
+close_snd_hello = meet_hello
+close_snd_bye   = nil
+close_anim 		= nil
+close_victim 	= nil
+close_distance  = 0
+far_anim 		= nil
+far_victim 		= nil
+far_distance 	= 0
+meet_on_talking	= false
+use				= true
+
+[meet@idle]:meet@base
+close_anim		= guard_na
+close_distance	= 3
+close_victim	= actor
+
+[meet@sleep]:meet@base
+close_snd_hello = nil
+close_anim 		= talk_default
+close_victim 	= actor
+
+
+

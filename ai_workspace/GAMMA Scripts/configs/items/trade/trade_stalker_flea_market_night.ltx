@@ -1,0 +1,174 @@
+#include "presets\trade_discounts.ltx"
+#include "presets\trade_presets.ltx"
+
+[trader]
+buy_condition                            = trade_generic_buy
+buy_item_condition_factor                = 0.20		;0.10
+buy_item_exponent = 2.25
+sell_item_exponent = 0.75
+buy_supplies                             = supplies_generic
+price_profile                            = default
+sell_condition                           = trade_generic_sell
+discounts = discount_supplier
+
+[trade_generic_buy]:trasher
+
+[trade_generic_sell]:trasher
+itm_pda_common ;NO TRADE
+itm_pda_rare ;NO TRADE 
+itm_pda_uncommon ;NO TRADE 
+
+
+[supplies_generic]
+itm_actor_backpack 	= 3, 1
+
+ammo_9x18_fmj 			= 4, 0.60
+ammo_9x18_pmm 			= 6, 0.60
+ammo_9x19_fmj 			= 4, 0.60
+ammo_9x19_pbp			= 4, 0.60
+ammo_7.62x25_p 			= 10, 0.60
+ammo_7.62x25_ps 		= 8, 0.60
+ammo_5.45x39_fmj 		= 4, 0.60
+ammo_12x76_zhekan 		= 8, 0.60
+ammo_12x70_buck 		= 8, 0.60
+ammo_vog-25			= 3, 0.60
+ammo_m209			= 3, 0.60
+ammo_og-7b			= 2, 0.60
+ammo_9x39_ap			= 2, 0.60
+ammo_9x39_pab9			= 2, 0.60
+ammo_magnum_300			= 3, 0.60
+ammo_5.45x39_fmj		= 3, 0.60
+ammo_5.45x39_ep			= 3, 0.60
+ammo_5.45x39_ap			= 3, 0.60
+ammo_5.56x45_fmj		= 3, 0.60
+ammo_5.56x45_ss190		= 3, 0.60
+ammo_5.56x45_ap			= 3, 0.60
+
+ammo_9x18_fmj_bad 		= 8, 0.50                          
+ammo_9x18_pmm_bad 		= 8, 0.50                          
+ammo_9x18_ap_bad 		= 8, 0.50
+ammo_9x19_pbp_bad		= 8, 0.50
+ammo_9x19_fmj_bad		= 8, 0.50                           
+ammo_9x19_ap_bad		= 8, 0.50
+ammo_11.43x23_hydro_bad  	= 7, 0.50                  
+ammo_11.43x23_fmj_bad   	= 8, 0.50                   
+ammo_12x70_buck_bad   		= 8, 0.50                     
+ammo_12x76_zhekan_bad   	= 8, 0.50                    
+ammo_12x76_dart_bad   		= 8, 0.50
+ammo_5.45x39_ap_bad     	= 10, 0.50                    
+ammo_5.45x39_fmj_bad		= 10, 0.50 
+ammo_5.45x39_ep_bad  		= 10, 0.50
+ammo_5.56x45_fmj_bad 		= 10, 0.50                       
+ammo_5.56x45_ss190_bad  	= 10, 0.50                    
+ammo_5.56x45_ap_bad  		= 10, 0.50
+ammo_7.62x51_fmj_bad		= 8, 0.50
+ammo_7.62x51_ap_bad		= 8, 0.50
+ammo_7.62x25_p_bad		= 8, 0.50
+ammo_7.62x25_ps_bad		= 8, 0.50
+ammo_7.62x39_ap_bad		= 8, 0.50
+ammo_7.62x39_fmj_bad		= 8, 0.50
+ammo_7.62x54_7h1_bad		= 8, 0.50
+ammo_7.62x54_7h14_bad		= 8, 0.50
+ammo_7.62x54_ap_bad 		= 8, 0.50
+ammo_7.92x33_fmj_bad		= 8, 0.50
+ammo_7.92x33_ap_bad 		= 8, 0.50
+ammo_12.7x55_fmj_bad		= 5, 0.50
+ammo_12.7x55_ap_bad		= 5, 0.50
+
+wpn_fnx45		= 1, 0.40
+wpn_fnp45		= 1, 0.40
+wpn_ak			= 1, 0.40
+wpn_bm16 		= 2, 0.40
+wpn_toz34 		= 1, 0.40
+wpn_fort 		= 3, 0.40
+wpn_mp5 		= 1, 0.40
+wpn_pm 			= 3, 0.40
+wpn_toz34_mark4 	= 1, 0.40
+wpn_bizon		= 1, 0.40
+wpn_galil		= 1, 0.40
+wpn_ace21		= 1, 0.40
+wpn_m4			= 1, 0.40
+wpn_fnx45		= 1, 0.40
+wpn_ak101		= 1, 0.40
+wpn_aug			= 1, 0.40
+wpn_m16			= 1, 0.40
+wpn_m16_acog		= 1, 0.30
+wpn_m16_eot		= 1, 0.30
+wpn_protecta		= 1, 0.40
+wpn_rg-6		= 1, 0.40
+wpn_rpg7		= 1, 0.30
+wpn_lr300		= 1, 0.30
+wpn_m249		= 1, 0.30
+wpn_k98         	= 1, 0.30
+wpn_mosin		= 1, 0.40
+wpn_svt40		= 1, 0.40
+wpn_wa2000		= 1, 0.05
+wpn_galil		= 1, 0.35
+wpn_p90			= 1, 0.30
+wpn_protecta		= 1, 0.30
+wpn_rpk			= 1, 0.40
+wpn_sks			= 1, 0.40
+wpn_ump45		= 1, 0.40
+wpn_ump45_ac10632	= 1, 0.40
+wpn_desert_eagle	= 1, 0.30
+wpn_mp412		= 1, 0.30
+
+wpn_addon_grenade_launcher		= 1, 0.70
+wpn_addon_grenade_launcher_m203		= 1, 0.70
+wpn_sil_9mm				= 1, 0.50
+wpn_sil_45				= 1, 0.50
+wpn_sil_pbs1				= 1, 0.50
+wpn_sil_pbs4				= 1, 0.50
+wpn_sil_tgp-a				= 1, 0.50
+wpn_sil_nato				= 1, 0.50
+wpn_sil_kzrzp				= 1, 0.50
+wpn_sil_atg				= 1, 0.50
+wpn_sil_aps				= 1, 0.50
+wpn_sil_9a91				= 1, 0.50
+wpn_sil_6p9				= 1, 0.50
+wpn_sil_vihr				= 1, 0.50
+wpn_sil_sr25				= 1, 0.50
+wpn_sil_gemtech				= 1, 0.50
+wpn_sil_57				= 1, 0.50
+
+medkit			= 3, 0.8
+medkit_army		= 3, 0.4
+drug_psy_blockade	= 3, 0.5
+morphine		= 3, 0.6
+
+vodka_quality		= 3, 0.60
+mineral_water		= 3, 0.60
+beer			= 3, 0.60
+vodka			= 3, 0.60
+vodka2			= 3, 0.60
+
+af_iam		= 2, 0.60
+af_aac		= 2, 0.50
+af_aam		= 2, 0.30
+
+light_repair_kit	= 1, 0.65
+medium_repair_kit	= 1, 0.50
+heavy_repair_kit	= 1, 0.40
+exo_repair_kit		= 1, 0.30
+leatherman_tool		= 1, 0.50
+
+detector_simple 	= 1, 1
+detector_advanced 	= 1, 0.6
+broken_detector		= 1, 0.9
+af_camelbak		= 1, 0.7
+
+itm_sleepbag 			= 1, 0.60
+itm_backpack 			= 2, 0.60
+box_matches      		= 3, 0.60
+explo_jerrycan_fuel_empty	= 2, 0.50
+
+bread 		= 3, 0.6
+kolbasa 	= 3, 0.6
+conserva 	= 3, 0.6
+vodka 		= 5, 0.6
+guitar_a 	= 1, 0.6
+harmonica_a 	= 2, 0.6
+energy_drink 	= 3, 0.6
+bandage 	= 5, 0.6
+antirad 	= 3, 0.6
+medkit 		= 3, 0.7

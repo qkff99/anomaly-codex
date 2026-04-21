@@ -1,0 +1,13 @@
+function actor_on_hud_animation_mark(value , name)
+	local active_item = db.actor:active_item()
+	local wpn = active_item and active_item:cast_Weapon()
+	if not wpn then return end
+	local discharge_on_misfire = SYS_GetParam(1, active_item:section(), "discharge_on_misfire", false)
+	if name ~= "misfire_discharge" or not discharge_on_misfire then return end
+
+    active_item:switch_state(5)
+end
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_hud_animation_mark",actor_on_hud_animation_mark)
+end 

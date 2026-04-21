@@ -1,0 +1,2718 @@
+--[[
+	1) first update collects all possible task givers into "all_potential_givers"
+	2) npc_on_spawn adds them to "met_givers" when we meet them online (stored)
+	3) we press "Send" button -> find_givers(num) fills up "cur_potential_givers" table with all possible targets for npc according to "met_givers" group and button number "num"
+	4) on update add_giver() function tries to pick a random npc from "cur_potential_givers" table, checks if npc didnt answer yet and chance to respond
+	5) when chance procs we check if npc already responded for this task type
+	6) check if npc is saved in "giver_active_tasks"
+		6a) if yes -> we pass all the info from "giver_active_tasks" to "Tasks_available_givers" for GUI display
+		6a) if no -> we get random target, reward, level and other info and save it to "Tasks_available_givers" and also "giver_active_tasks" (with cooldown to reset)
+	7) update lower part of GUI to show new npc
+
+	8) when NPC's box is picked we run setup_task(idx) function, where "idx" is number of clicked box
+	9) pass necessary info from "Tasks_available_givers" to "Active_pda_tasks", ResetLowerMenus(), put tracker on target etc
+	10) clear "Tasks_available_givers" and "cur_potential_givers"
+
+	11) task preconditions are done (killed target id and task type are in "Active_pda_tasks" for example)
+	12) check by the idx, target and task type we remove to find it in "giver_active_tasks" and remove this "idx" from the "giver_active_tasks" table first
+	13) remove found "idx" from 11 from Active_pda_tasks
+--]]
+
+--[[
+	new task needs to be added to:
+		- UpdTaskLowerMenu (pda_inter_gui)
+		- task_targets_check
+		- add_note
+		- cancel_task
+		- "pda_inter_gui.task_menu_btns" needs to be increased
+--]]
+
+Tasks_available_givers = {}			-- clear this (to display in GUI)
+Active_pda_tasks = {}					-- save this (tasks that we took)
+local met_givers = {}					-- save this (saves givers that come online from all_potential_givers)
+local giver_active_tasks = {}		-- save this (saves targets for givers that already responded)
+
+all_potential_givers = {}		-- first update collects all possible givers (global for banter)
+local cur_potential_givers = {}		-- clear this (gives info to givers for while task is being looked)
+local tmr
+local tmr_cd
+local tmr_tasks
+local gt = game.translate_string
+local ctime_to_t = utils_data.CTime_to_table
+local t_to_ctime = utils_data.CTime_from_table
+local cur_task_type = 0
+
+local pda_anomaly_zones = {}			-- anomaly zones
+
+-- mcm
+local respond_mult = pda_inter_mcm.get_config("task_respond_mult")
+local base_reward = pda_inter_mcm.get_config("task_base_reward")
+local task_cooldown = pda_inter_mcm.get_config("task_cooldown")		-- NPC target reset cooldown
+local goodwill_rep_mult = pda_inter_mcm.get_config("task_goodwill_mult")
+local task_giver_radius = pda_inter_mcm.get_config("task_giver_radius")
+
+local mcm_mutant_reward = pda_inter_mcm.get_config("task_mutant_reward")
+local mutant_distance = pda_inter_mcm.get_config("task_mutant_distance")
+local mcm_mutant_cd = pda_inter_mcm.get_config("task_mutant_cd")
+
+local mcm_bounty_reward = pda_inter_mcm.get_config("task_bounty_reward")
+local bounty_distance = pda_inter_mcm.get_config("task_bounty_distance")
+local mcm_bounty_cd = pda_inter_mcm.get_config("task_bounty_cd")
+
+local mcm_guide_reward = pda_inter_mcm.get_config("task_guide_reward")
+local guide_time_mult = pda_inter_mcm.get_config("task_guide_time_mult")
+local mcm_guide_cd = pda_inter_mcm.get_config("task_guide_cd")
+
+local mcm_items_reward = pda_inter_mcm.get_config("task_items_reward")
+local mcm_items_cd = pda_inter_mcm.get_config("task_items_cd")
+
+local mcm_squad_reward = pda_inter_mcm.get_config("task_squad_reward")
+local squad_distance = pda_inter_mcm.get_config("task_squad_distance")
+local mcm_squad_cd = pda_inter_mcm.get_config("task_squad_cd")
+
+local mcm_stealth_reward = pda_inter_mcm.get_config("task_stealth_reward")
+local mcm_stealth_cd = pda_inter_mcm.get_config("task_stealth_cd")
+
+local mcm_guard_reward = pda_inter_mcm.get_config("task_guard_reward")
+local mcm_guard_cd = pda_inter_mcm.get_config("task_guard_cd")
+
+local mcm_scout_reward = pda_inter_mcm.get_config("task_scout_reward")
+local mcm_scout_cd = pda_inter_mcm.get_config("task_scout_cd")
+
+local mcm_artefact_reward = pda_inter_mcm.get_config("task_artefact_reward")
+local mcm_artefact_cd = pda_inter_mcm.get_config("task_artefact_cd")
+
+local mcm_delivery_reward = pda_inter_mcm.get_config("task_delivery_reward")
+local mcm_delivery_cd = pda_inter_mcm.get_config("task_delivery_cd")
+
+local grace_period_limit = 3600 * 2
+
+local xcvb_personal_use = false		-- to get random goodwill and disable reputation gain
+
+-- 1: mutant hunt, 2: bounty, 3: guide, 4: fetch items, 5: bounty squad, 6: stealth item, 7: guard, 8: scout, 9: find artefact, 10: delivery
+local task_chance = {
+	["trader"] 			= { 1, 0.25, 0, 0.35, 0.25, 1, 0.5, 0.5, 0.5, 0.25 },
+	["barman"] 		= { 0.25, 0, 0, 0.35, 0, 0, 0, 0, 0, 0.25 },
+	["mechanic"] 	= { 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0 },
+	["medic"] 			= { 0, 0, 0, 0.2, 0, 0, 0, 0, 0, 0 },
+	["sci"] 				= { 0.25, 0, 0, 1, 0, 0, 0.5, 0, 0.75, 0.25 },
+	["stalker"]			= { 0, 0, 0.5, 0, 0, 0, 0, 0, 0, 0 },
+}
+
+-- tasks cooldown in in-game hours
+local tasks_cd = { 
+	[1] = mcm_mutant_cd, [2] = mcm_bounty_cd, [3] = mcm_guide_cd, [4] = mcm_items_cd,
+	[5] = mcm_squad_cd, [6] = mcm_stealth_cd, [7] = mcm_guard_cd, [8] = mcm_scout_cd,
+	[9] = mcm_artefact_cd, [10] = mcm_delivery_cd
+}
+
+-- icons ("main" has order of the table above)
+local task_icons = { 
+	["main"] = { "circle_target", "circle_target", "circle_small_green", "green_location", "circle_target", "green_location", "alife_presentation_smart_base_neutral", "alife_presentation_general_base_neutral", "alife_presentation_smart_default_friend", "alife_presentation_smart_resource_friend" },
+	["extra"] = { "alife_presentation_smart_base_enemy", "alife_presentation_smart_default_enemy", "alife_presentation_smart_resource_allies", "secondary_task_location", "explo_location" },
+}
+
+-- npcs here will be considered as "trader"
+local givers_extra = { "esc_2_12_stalker_fanat", "army_south_mechan_mlr", "mar_base_owl_stalker_trader" }
+
+local givers_blacklist = {		-- unless player from that faction
+	["army"] = true,
+	["monolith"] = true,
+	["greh"] = true,
+	["zombied"] = true,
+}
+
+local stashes_blacklist = {
+	["bar_arena_inventory_box_2"] = true,
+}
+
+local level_blacklist = { "l03u_agr_underground", "l04u_labx18", "l08u_brainlab", "jupiter_underground", "l10u_bunker", "labx8", "l12u_control_monolith", "l12u_sarcofag", "l13u_warlab" }
+
+local rank_to_val = {
+	["novice"] = 0.5,
+	["trainee"] = 0.5,
+	["experienced"] = 0.75,
+	["professional"] = 0.75,
+	["veteran"] = 1,
+	["expert"] = 1,
+	["master"] = 1.5,
+	["legend"] = 1.5,
+}
+
+local stealth_task_t = {		-- gameplay_disguise.set_comm(db.actor:get_actor_true_community())
+	["army"] = { "esc_smart_terrain_3_16", "agr_smart_terrain_1_6_near_2", "agr_smart_terrain_1_6" },
+	["bandit"] = { "val_smart_terrain_7_3", "val_smart_terrain_7_4", "val_smart_terrain_7_5" },
+	["csky"] = { "mar_smart_terrain_base" },
+	["dolg"] = { "bar_dolg_general" },
+	["ecolog"] = { "yan_smart_terrain_6_4" },
+	["freedom"] = { "mil_smart_terrain_7_7", "mil_smart_terrain_7_12" },
+	["killer"] = { "cit_killers" },
+	["monolith"] = { "lim_smart_terrain_9", "pri_monolith", "mlr_terrain" },
+	["stalker"] = { "esc_smart_terrain_2_12" },
+}
+
+-- "all" is for every friendly or neutral faction, "faction" is for specific faction only
+local guard_task_t = {
+	-- escape village
+	["esc_smart_terrain_2_12"] = {
+		all = { "esc_smart_terrain_4_11", "esc_smart_terrain_4_9" },
+	},
+
+	-- escape farm
+	["esc_smart_terrain_5_7"] = {
+		all = { "esc_smart_terrain_6_6", "esc_smart_terrain_6_8", "esc_smart_terrain_4_9" },
+	},
+
+	-- escape army
+	["esc_smart_terrain_3_16"] = {
+		army = { "esc_smart_terrain_2_14", "mar_smart_terrain_11_11" },
+	},
+
+	-- marsh csky base
+	["mar_smart_terrain_base"] = {
+		all = { "mar_smart_terrain_6_11", "mar_smart_terrain_8_11", "mar_smart_terrain_5_8" },
+	},
+
+	-- agroprom army base
+	["agr_smart_terrain_1_6"] = {
+		army = { "agr_smart_terrain_4_6", "agr_smart_terrain_1_3" },
+	},
+
+	-- yantar scientists
+	["yan_smart_terrain_6_4"] = {
+		all = { "yan_smart_terrain_5_5", "yan_smart_terrain_3_6" },
+	},
+
+	-- bar barman
+	["bar_visitors"] = {
+		all = { "ros_smart_killers1", "gar_smart_terrain_5_2" },
+		dolg = { "ros_smart_killers1", "gar_smart_terrain_5_2", "mil_smart_terrain_7_4" },
+	},
+
+	-- dark valley
+	["val_smart_terrain_7_4"] = {
+		bandit = { "val_smart_terrain_8_6", "val_smart_terrain_5_7", "trc_sim_2" },
+		renegade = { "val_smart_terrain_8_6", "val_smart_terrain_5_7", "trc_sim_2" },
+	},
+
+	-- warehouses
+	["mil_smart_terrain_7_10"] = {
+		all = { "mil_smart_terrain_3_8" },
+		freedom = { "mil_smart_terrain_3_8", "mil_smart_terrain_2_10" },
+	},
+
+	-- dead city
+	["cit_killers"] = {
+		killer = { "lim_smart_terrain_4", "mil_smart_terrain_2_2" },
+	},
+
+	-- pripyat
+	["pri_monolith"] = {
+		monolith = { "rad2_loner_0001", "rad_after_valley", "pri_smart_monolith_stalker3" },
+	},
+
+}
+
+local guard_dist = {
+	["esc_smart_terrain_4_11"] = 20,
+	["esc_smart_terrain_4_9"] = 15,
+	["esc_smart_terrain_6_6"] = 30,
+	["esc_smart_terrain_6_8"] = 30,
+	["esc_smart_terrain_4_9"] = 15,
+	["esc_smart_terrain_2_14"] = 20,
+	["mar_smart_terrain_11_11"] = 30,
+	["mar_smart_terrain_6_11"] = 20,
+	["mar_smart_terrain_8_11"] = 35,
+	["mar_smart_terrain_5_8"] = 20,
+	["agr_smart_terrain_4_6"] = 25,
+	["agr_smart_terrain_1_3"] = 30,
+	["yan_smart_terrain_5_5"] = 15,
+	["yan_smart_terrain_3_6"] = 25,
+	["ros_smart_killers1"] = 11,
+	["gar_smart_terrain_5_2"] = 20,
+	["mil_smart_terrain_7_4"] = 25,
+	["val_smart_terrain_8_6"] = 20,
+	["val_smart_terrain_5_7"] = 20,
+	["trc_sim_2"] = 20,
+	["mil_smart_terrain_3_8"] = 22,
+	["mil_smart_terrain_2_10"] = 20,
+	["lim_smart_terrain_4"] = 15,
+	["mil_smart_terrain_2_2"] = 25,
+	["rad2_loner_0001"] = 21,
+	["rad_after_valley"] = 21,
+	["pri_smart_monolith_stalker3"] = 21,
+}
+
+local scout_task_t = {
+	-- escape village
+	["esc_smart_terrain_2_12"] = {
+		{ "esc_smart_terrain_4_11", "esc_smart_terrain_4_9", "esc_smart_terrain_6_8" },
+		{ "esc_smart_terrain_5_12", "esc_smart_terrain_7_11", "esc_smart_terrain_8_10" },
+	},
+
+	-- escape farm
+	["esc_smart_terrain_5_7"] = {
+		{ "esc_smart_terrain_6_8", "esc_smart_terrain_8_10", "esc_smart_terrain_8_9" },
+		{ "esc_smart_terrain_6_6", "esc_smart_terrain_5_4", "esc_smart_terrain_5_2" },
+	},
+
+	-- escape army
+	["esc_smart_terrain_3_16"] = {
+		{ "esc_smart_terrain_4_13", "esc_smart_terrain_5_12", "esc_smart_terrain_6_8" },
+		{ "esc_smart_terrain_2_14", "mar_smart_terrain_11_11", "mar_smart_terrain_10_10" },
+	},
+
+	-- marsh csky base
+	["mar_smart_terrain_base"] = {
+		{ "mar_smart_terrain_5_12", "mar_smart_terrain_6_11", "mar_smart_terrain_8_11" },
+		{ "mar_smart_terrain_5_12", "mar_smart_terrain_3_10", "mar_smart_terrain_5_8" },
+	},
+
+	-- agroprom army base
+	["agr_smart_terrain_1_6"] = {
+		{ "agr_smart_terrain_1_3", "agr_smart_terrain_1_2" },
+		{ "agr_smart_terrain_4_6", "agr_smart_terrain_5_4" },
+		{ "agr_smart_terrain_5_7", "agr_smart_terrain_6_6" },
+	},
+
+	-- yantar scientists
+	["yan_smart_terrain_6_4"] = {
+		{ "yan_smart_terrain_5_5", "yan_smart_terrain_3_6", "yan_smart_terrain_1_6" },
+		{ "yan_smart_terrain_5_3", "yan_smart_terrain_6_2", "yan_smart_terrain_4_2" },
+		{ "agr_smart_terrain_1_2", "agr_smart_terrain_1_3" },
+	},
+
+	-- bar barman
+	["bar_visitors"] = {
+		{ "ros_smart_stalker1", "ros_smart_killers1", "ros_smart_poltergeist2" },
+		{ "bar_zastava_dogs_lair_2", "mil_smart_terrain_7_4", "mil_smart_terrain_4_5" },
+	},
+
+	-- dark valley
+	["val_smart_terrain_7_4"] = {
+		{ "val_smart_terrain_8_7", "val_smart_terrain_3_0", "val_smart_terrain_7_11" },
+		{ "val_smart_terrain_6_5", "val_smart_terrain_5_7", "val_smart_terrain_5_8" },
+		{ "val_smart_terrain_9_2", "trc_sim_1", "trc_sim_2" },
+	},
+
+	-- warehouses
+	["mil_smart_terrain_7_10"] = {
+		{ "mil_smart_terrain_4_5", "mil_smart_terrain_2_10", "mil_smart_terrain_4_3" },
+		{ "mil_smart_terrain_4_7", "mil_smart_terrain_2_6", "mil_smart_terrain_2_4" },
+	},
+
+	-- dead city
+	["cit_killers"] = {
+		{ "zombie_smart_ds_mlr_2", "cit_killers_2", "cit_bandits" },
+		{ "zombie_smart_ds_mlr_1", "cit_bandits_2", "cit_kanaliz1" },
+		{ "lim_smart_terrain_3", "lim_smart_terrain_4", "lim_smart_terrain_5" },
+	},
+
+	-- pripyat
+	["pri_monolith"] = {
+		{ "pri_smart_tushkano_lair1", "pri_smart_snork_lair1", "pri_smart_controler_lair1" },
+		{ "pri_smart_monolith_stalker4", "monolith_snipers_smart_1_mlr", "pri_smart_neutral_stalker1" },
+	},
+
+}
+
+local level_reward_mult = {
+	["l01_escape"]						= 0.75,
+	["k00_marsh"]						= 0.8,
+	["y04_pole"]							= 0.75,
+	["k01_darkscape"]				= 0.8,
+
+	["l02_garbage"]					= 0.8,
+	["l03_agroprom"]					= 0.9,
+	["l05_bar"]							= 0.9,
+
+	["l04_darkvalley"]					= 1,
+	["l06_rostok"]						= 1,
+	["l08_yantar"]						= 1,
+	["l07_military"]						= 1.1,
+	["k02_trucks_cemetery"]		= 1.1,
+	["l09_deadcity"]					= 1.1,
+
+	["l10_radar"]						= 1.15,
+	["l10_red_forest"]					= 1.15,
+	["l10_limansk"]						= 1.15,
+	["jupiter"]								= 1.2,
+	["zaton"]								= 1.2,
+	["l11_pripyat"]						= 1.25,
+	["pripyat"]							= 1.25,
+
+	["l11_hospital"]						= 1.25,
+	["l12_stancia"]						= 1.3,
+	["l12_stancia_2"]					= 1.3,
+	["l13_generators"]				= 1.3,
+}
+
+function actor_on_first_update()
+
+	-- collect all possible givers
+	for i = 1, 65534 do
+		local se_obj = alife_object(i)
+		local stalker_or_trader = se_obj and ( (IsStalker(se_obj) and se_obj:alive()) or IsTrader(se_obj) )
+		if stalker_or_trader and ((not givers_blacklist[se_obj:community()]) or (get_actor_true_community() == se_obj:community())) and (not axr_companions.non_task_companions[se_obj.id]) then
+
+			local sec = se_obj:section_name()
+			local trader_not_ccon = se_obj:community() == "trader" and (not string.find(sec, "warlab"))
+			local is_str_trader = string.find(sec, "_trader_")
+			local extra_trader = in_ar(givers_extra, sec)
+			local traders_main = trader_not_ccon or is_str_trader or extra_trader
+
+			if traders_main then
+				all_potential_givers[se_obj.id] = "trader"
+			elseif string.find(sec, "_barman") then
+				all_potential_givers[se_obj.id] = "barman"
+			elseif string.find(sec, "_mechanic") then
+				all_potential_givers[se_obj.id] = "mechanic"
+			elseif string.find(sec, "_medic") then
+				all_potential_givers[se_obj.id] = "medic"
+			elseif string.find(sec, "yan_stalker_sakharov") or string.find(sec, "jup_b6_scientist_nuclear_physicist") then
+				all_potential_givers[se_obj.id] = "sci"
+			elseif string.find(sec, "sim_default") then
+				all_potential_givers[se_obj.id] = "stalker"
+			end
+
+		end
+	end
+
+	-- test
+	for se_npc_id, group in pairs(all_potential_givers) do
+	--	pr("potential se_npc_id: %s || group: %s", se_npc_id, group)
+	end
+
+end
+
+function npc_on_net_spawn(npc, se_obj)
+
+	local function damn_delay()
+		if all_potential_givers[se_obj.id] and (not met_givers[se_obj.id]) then
+			pr("saving met giver id: %s || name: %s", se_obj.id, se_obj:character_name())
+			met_givers[se_obj.id] = all_potential_givers[se_obj.id]
+		end
+		return true
+	end
+	CreateTimeEvent("pda_net_spawn_delay_e_" .. se_obj.id, "pda_net_spawn_delay_a_" .. se_obj.id, 1, damn_delay)
+
+end
+
+function find_givers(num)
+	-- store the givers we already met and those who can give the task
+	for npc_id, group in pairs(met_givers) do
+		local se_npc = alife_object(npc_id)
+		local t = task_chance
+		local stalker_or_trader = se_npc and ( (IsStalker(se_npc) and se_npc:alive()) or IsTrader(se_npc) )
+		if stalker_or_trader then
+			local group_fit = t[group] and t[group][num] and t[group][num] > 0
+			local npc_comm = get_real_community(se_npc, "stalker")
+			local not_enemy_to_actor = game_relations.is_factions_friends(get_actor_true_community(), npc_comm) or game_relations.is_factions_neutrals(get_actor_true_community(), npc_comm)
+			local npc_in_radius = alife():actor() and get_distx(npc_id, alife():actor()) and get_distx(npc_id, alife():actor()) < task_giver_radius
+			if group_fit and (not cur_potential_givers[npc_id]) and (not_enemy_to_actor) and (npc_in_radius) then
+			--	pr("saving potential giver id: %s || name: %s", npc_id, se_npc:character_name())
+
+				-- get targets for mutant hunt and bounty
+				if num == 1 then
+					local targets = get_all_kill_targets(npc_id, IsMonster, mutant_distance, "squad")
+					cur_potential_givers[npc_id] = targets
+				elseif num == 2 then
+					local targets = get_all_kill_targets(npc_id, IsStalker, bounty_distance, "obj", true)
+					cur_potential_givers[npc_id] = targets
+				-- get targets for guide job
+				elseif num == 3 then
+					local npc = level.object_by_id(npc_id)
+					local squad = npc and npc:alive() and get_object_squad(npc)
+					local npc_rank = npc and ranks.get_obj_rank_name(npc)
+					local available_npc_ranks = npc_rank and (npc_rank == "novice" or npc_rank == "trainee")
+					if npc and squad and squad:npc_count() == 1 and db.actor:position():distance_to(squad.position) < 150 and available_npc_ranks then
+						local targets = get_all_smart_targets(npc_id, squad.id)
+						cur_potential_givers[npc_id] = targets
+					end
+				-- get stashes for item gathering task
+				elseif num == 4 then
+					local targets = get_all_stash_targets(npc_id)
+					cur_potential_givers[npc_id] = targets
+				-- get targets for dangerous squad
+				elseif num == 5 then
+					local targets = get_all_kill_targets(npc_id, IsStalker, squad_distance, "squad", true, "high_rank")
+					cur_potential_givers[npc_id] = targets
+				-- get all enemy stashes (saved to cur_potential_givers in function as t = { giver_stash_id, target_stash_id, en_comm })
+				elseif num == 6 then
+					local targets = get_delivery_targets(npc_id, "enemy")
+					cur_potential_givers[npc_id] = targets or {}
+				-- get guard smart sections according to task givers smart terrain
+				elseif num == 7 then
+					local dist = alife():actor() and get_distx(npc_id, alife():actor())
+					if dist and dist < 300 then
+						local targets = get_guard_targets(npc_id)
+						cur_potential_givers[npc_id] = targets
+					end
+				-- get scout smart terrains according to task givers smart terrain
+				elseif num == 8 then
+					local targets = get_scout_targets(npc_id)
+					cur_potential_givers[npc_id] = targets
+				-- get stashes for unique artefact
+				elseif num == 9 then
+					local targets = get_all_stash_targets(npc_id)
+					cur_potential_givers[npc_id] = targets
+				-- get stashes for delivery
+				elseif num == 10 then
+					local targets = get_delivery_targets(npc_id, "friend")
+					cur_potential_givers[npc_id] = targets
+				end
+
+			end
+		-- in case id gets replaced with bad one
+		else
+			met_givers[npc_id] = nil
+		end
+	end
+	pr("cur potential givers amount: %s", size_table(cur_potential_givers))
+
+	-- test
+	for npc_id, a in pairs(cur_potential_givers) do
+		pr("----------- npc_id: %s || npc name: %s ------------", npc_id, alife_object(npc_id) and alife_object(npc_id):character_name() or "nil")
+		for i = 1, #a do
+			local target = type(a[i]) ~= "string" and alife_object(a[i])
+			local target_name = target and target:name() or "nil"
+			pr("target id: %s || target name: %s", a[i], target_name)
+		end
+	end
+
+	-- set task type
+	cur_task_type = num
+
+end
+
+function setup_tasks_on_update()
+	local tg = time_global()
+	if (tmr and tg < tmr) then return end
+	tmr = tg + 1000
+
+	local state = pda_inter_gui.pda_msg_states[7] and pda_inter_gui.pda_msg_states[7].state
+	if (not state) or state ~= 5 then
+		cur_task_type = 0	-- reset task type
+		return
+	end
+
+	-- add giver for lower menu here
+	add_giver()
+
+end
+
+function add_giver()
+	if #Tasks_available_givers >= 5 then return end
+
+	local t = cur_potential_givers
+
+	local cur_time = game.get_game_time()
+
+	-- pick a random giver
+	local rnd_giver_id = size_table(t) > 0 and rnd_key_table(t)
+	if (not rnd_giver_id) then return end
+
+	-- check if npc already responded
+	for i = 1, #Tasks_available_givers do
+		if Tasks_available_givers[i].giver_id and Tasks_available_givers[i].giver_id == rnd_giver_id then
+			return
+		end
+	end
+
+	-- chance to respond based on group
+	local giver_group = all_potential_givers[rnd_giver_id]
+	local chance = giver_group and task_chance[giver_group][cur_task_type] * respond_mult
+	pr("task giver group: %s || respond chance: %s%", giver_group, chance and math.floor(chance * 100))
+	if not chance then return end
+
+	if chance < math.random() then return end
+
+	-- If giver already has this task
+	local set_new_cd
+	for idx, giver_active_t in ipairs(giver_active_tasks) do
+
+		-- randomly picked giver is in table and already has target for this task_type
+		if giver_active_t.giver_id == rnd_giver_id and giver_active_t.task_type == cur_task_type then
+			local time_diff = giver_active_t.cooldown and cur_time:diffSec(t_to_ctime(giver_active_t.cooldown))
+			local task_cd = task_cooldown * 3600
+			local real_cd = giver_active_t.new_task_cd or task_cd
+			pr("---- giver_id: %s already has this task_type: %s ----", giver_active_t.giver_id, giver_active_t.task_type)
+			pr(" cooldown left: %s", time_diff and real_cd - time_diff)
+
+			-- if its time to reset target then remove from table and generate new task
+			if time_diff and time_diff > real_cd then
+				local rem = (time_diff - real_cd) % task_cd
+				set_new_cd = math.ceil(task_cd - rem)
+				pr("! CD hits - remove")
+				pr("~ setting new cd to: %s s or %s m", set_new_cd, round(set_new_cd / 60))
+				table.remove(giver_active_tasks, idx)
+				break
+			end
+
+			-- if target and giver exist and fine then add previous info
+			if task_targets_check(giver_active_t.target_id, giver_active_t.giver_id, cur_task_type, giver_active_t.target_sec) then
+				pr("- adding previous info")
+				add_existing_giver(giver_active_t)
+			end
+
+			pr("or waiting for CD")
+			pr("-----------------")
+			-- exit this function if we adding previous info for NPC or waiting for cooldown and not showing NPC
+			return
+		end
+	end
+	pr("adding new generated task for giver")
+
+	-- pick his target (stealth task 6 and delivery task 10 are different)
+	local target_id
+	local stealth_stash_id, stealth_task_comm
+	local targets_a = t[rnd_giver_id]
+	if (not targets_a) or (#targets_a <= 0) then return end
+
+	if (cur_task_type == 6) or (cur_task_type == 10) then
+		target_id = targets_a[1]
+		stealth_stash_id = targets_a[2]
+		stealth_task_comm = targets_a[3]
+	else
+		target_id = targets_a[math.random(1, #targets_a)]
+	end
+	if not target_id then return end
+
+	-- check if target is already in active task (for 7 its npcs smart terrain id)
+	local target_is_active = target_in_active_task(target_id)
+	if target_is_active then return end
+
+	-- check for giver and target again
+	local giver_obj = alife_object(rnd_giver_id)
+		-- for guide tasks we need it to be online and still alive
+		if cur_task_type == 3 then
+			local game_giver_obj = level.object_by_id(rnd_giver_id)
+			if (not game_giver_obj) or (not game_giver_obj:alive()) then return end
+		end
+	if not giver_obj then return end
+
+	local target_obj = alife_object(target_id)
+	local target_level_id = target_obj and game_graph():vertex(target_obj.m_game_vertex_id):level_id()
+	local target_level_name = target_level_id and alife():level_name(target_level_id)
+	local target_name, target_reward = get_target_name_and_reward(target_obj, giver_obj, giver_group)		-- 3 and 4 = section; 6 = stash id; 9 = anomaly zone id
+	local new_reward = target_reward and target_reward * base_reward or 777
+	if (not target_name) or (not target_level_name) then return end
+
+	-- randomize reward and new reward a bit
+	local rnd_reward_range = math.random(85, 110) / 100
+	new_reward = math.floor(new_reward * rnd_reward_range)
+
+	-- exclude guide reward (used for guide time)
+	if cur_task_type ~= 3 then
+		target_reward = math.floor(target_reward * rnd_reward_range)
+	else
+		target_reward = (target_reward * rnd_reward_range)
+	end
+
+	-- save info and setup task according to task type
+	Tasks_available_givers[#Tasks_available_givers + 1] = {}
+	Tasks_available_givers[#Tasks_available_givers].task_type = cur_task_type
+	Tasks_available_givers[#Tasks_available_givers].giver_id = rnd_giver_id
+	Tasks_available_givers[#Tasks_available_givers].giver_name = giver_obj:character_name()
+	Tasks_available_givers[#Tasks_available_givers].giver_icon = giver_obj:character_icon()
+	Tasks_available_givers[#Tasks_available_givers].giver_comm = get_real_community(giver_obj, "stalker")
+
+	Tasks_available_givers[#Tasks_available_givers].target_id = target_id
+	Tasks_available_givers[#Tasks_available_givers].target_sec = target_obj:section_name()
+	Tasks_available_givers[#Tasks_available_givers].target_name = target_name
+	Tasks_available_givers[#Tasks_available_givers].target_level = target_level_name
+	Tasks_available_givers[#Tasks_available_givers].reward = new_reward
+
+
+	-- Change task specifics
+	-- 2 for bounty
+	if cur_task_type == 2 then
+		Tasks_available_givers[#Tasks_available_givers].target_comm = target_obj.community and target_obj:community() or ""
+	end
+
+	-- 3 for guide task
+	if cur_task_type == 3 then
+		local calc_time_sec = target_reward * 50 * 60 * 60 * guide_time_mult
+		Tasks_available_givers[#Tasks_available_givers].guide_time = math.floor(calc_time_sec) or 777
+	end
+
+	-- 4 for fetch items task (target.id = stash_id, target_name = section)
+	if cur_task_type == 4 then
+		local item_name = ini_sys:r_string_ex(target_name, "inv_name") or "nil"
+		local item_amount = get_fetch_items_amount(target_name)
+		local item_reward = math.floor(item_amount * target_reward)
+		Tasks_available_givers[#Tasks_available_givers].target_name = item_name
+		Tasks_available_givers[#Tasks_available_givers].item_sec = target_name
+		Tasks_available_givers[#Tasks_available_givers].reward = item_reward
+
+		if IsItem("multiuse", target_name) then
+			local max_uses = ini_sys:r_string_ex(target_name, "max_uses") or 1
+			Tasks_available_givers[#Tasks_available_givers].amount = item_amount * max_uses
+		else
+			Tasks_available_givers[#Tasks_available_givers].amount = item_amount
+		end
+	end
+
+	-- 5 for dangerous squad
+	if cur_task_type == 5 then
+		Tasks_available_givers[#Tasks_available_givers].target_comm = target_obj.get_squad_community and target_obj:get_squad_community() or ""
+	end
+
+	-- 6 for stealth task
+	if cur_task_type == 6 then
+		Tasks_available_givers[#Tasks_available_givers].stealth_stash_id = stealth_stash_id
+		Tasks_available_givers[#Tasks_available_givers].enemy_comm = stealth_task_comm
+	end
+
+	-- 7 for guard task (nothing)
+
+	-- 8 for scout task
+	if cur_task_type == 8 then
+		-- adding string with level names
+		local str_storage = {}
+		local smart_name = Tasks_available_givers[#Tasks_available_givers].target_name
+		local route_t = smart_name and scout_task_t[smart_name]
+		local rnd_route_idx = route_t and #route_t > 0 and math.random(1, #route_t)
+		local rnd_route = rnd_route_idx and route_t[rnd_route_idx]
+		if rnd_route then
+			for i = 1, #rnd_route do
+				local route_smart_name = rnd_route[i]
+				local route_smart = route_smart_name and SIMBOARD.smarts_by_names[route_smart_name]
+				local route_smart_level_id = route_smart and game_graph():vertex(route_smart.m_game_vertex_id):level_id()
+				local route_smart_level_name = route_smart_level_id and alife():level_name(route_smart_level_id) or "nil"
+
+				if (not in_ar(str_storage, route_smart_level_name)) then
+					table.insert(str_storage, route_smart_level_name)
+				end
+
+			end
+		end
+
+		local smart_levels_str = ""
+		for i = 1, #str_storage do
+			smart_levels_str = smart_levels_str .. (smart_levels_str == "" and "" or ", ") .. gt(str_storage[i])
+		end
+
+		Tasks_available_givers[#Tasks_available_givers].route_idx = rnd_route_idx
+		Tasks_available_givers[#Tasks_available_givers].route_levels = smart_levels_str
+	end
+
+	-- 9 for artefact task
+	if cur_task_type == 9 then
+		Tasks_available_givers[#Tasks_available_givers].anomaly_id = target_name
+
+		local anom_id = Tasks_available_givers[#Tasks_available_givers].anomaly_id
+		local anom_obj = anom_id and alife_object(anom_id)
+		local anom_level_id = anom_obj and game_graph():vertex(anom_obj.m_game_vertex_id):level_id()
+		local anom_level_name = anom_level_id and alife():level_name(anom_level_id) or "nil"
+		Tasks_available_givers[#Tasks_available_givers].anomaly_level_name = anom_level_name
+	end
+
+	-- 10 for delivery task
+	if cur_task_type == 10 then
+		Tasks_available_givers[#Tasks_available_givers].delivery_stash_from_id = stealth_stash_id		-- item spawned
+
+		local delivery_stash_id = Tasks_available_givers[#Tasks_available_givers].delivery_stash_from_id
+		local delivery_stash = delivery_stash_id and alife_object(delivery_stash_id)
+		local delivery_stash_level_id = delivery_stash and game_graph():vertex(delivery_stash.m_game_vertex_id):level_id()
+		local delivery_stash_level_name = delivery_stash_level_id and alife():level_name(delivery_stash_level_id) or "nil"
+		Tasks_available_givers[#Tasks_available_givers].delivery_stash_level_name = delivery_stash_level_name
+	end
+
+
+	-- save this task info for this giver (and add cooldown to reset)
+	giver_active_tasks[#giver_active_tasks + 1] = {}
+	giver_active_tasks[#giver_active_tasks] = dup_table(Tasks_available_givers[#Tasks_available_givers])
+	giver_active_tasks[#giver_active_tasks].cooldown = ctime_to_t(cur_time)
+	giver_active_tasks[#giver_active_tasks].new_task_cd = set_new_cd and (set_new_cd + math.random(0, 7200)) or (task_cooldown * 3600)
+
+	-- send message
+	local tasks_t = Tasks_available_givers[#Tasks_available_givers]
+	local str = gt("pda_task_respond_" .. math.random(1, 3))
+	pda_dyn_msg(str, tasks_t.giver_name, tasks_t.giver_icon, 10, "beep_1")
+
+	-- update GUI lower menu
+	pda_inter_gui.GUI:UpdTaskLowerMenu()
+
+end
+
+function add_existing_giver(t)
+	Tasks_available_givers[#Tasks_available_givers + 1] = {}
+	Tasks_available_givers[#Tasks_available_givers] = dup_table(t)
+
+	-- update level name
+	local target_obj = alife_object(Tasks_available_givers[#Tasks_available_givers].target_id)
+	local target_level_id = target_obj and game_graph():vertex(target_obj.m_game_vertex_id):level_id()
+	local target_level_name = target_level_id and alife():level_name(target_level_id)
+	if Tasks_available_givers[#Tasks_available_givers].target_level ~= target_level_name then
+		Tasks_available_givers[#Tasks_available_givers].target_level = target_level_name
+	end
+
+	-- send message
+	local tasks_t = Tasks_available_givers[#Tasks_available_givers]
+	local str = gt("pda_task_respond_" .. math.random(1, 3))
+	pda_dyn_msg(str, tasks_t.giver_name, tasks_t.giver_icon, 10, "beep_1")
+
+	-- update GUI lower menu
+	pda_inter_gui.GUI:UpdTaskLowerMenu()
+
+end
+
+function clear_task_tables()
+	iempty_table(Tasks_available_givers)
+	empty_table(cur_potential_givers)
+	cur_task_type = 0
+
+end
+
+------------ task is picked ------------
+function setup_task(idx)
+	local t = Tasks_available_givers
+	local cur_time = game.get_game_time()
+
+	-- set cooldown
+	pda_inter_gui.pda_msg_states[7].cd[cur_task_type] = ctime_to_t(cur_time)
+
+	-- send message
+	local str = gt("pda_task_accept_" .. cur_task_type)
+	pda_dyn_msg(str, t[idx].giver_name, t[idx].giver_icon, 10, "beep_2")
+
+	-- pass info
+	Active_pda_tasks[#Active_pda_tasks + 1] = {}
+	local t2 = Active_pda_tasks[#Active_pda_tasks]
+	Active_pda_tasks[#Active_pda_tasks].task_type = cur_task_type
+	Active_pda_tasks[#Active_pda_tasks].giver_id = t[idx].giver_id
+	Active_pda_tasks[#Active_pda_tasks].giver_name = t[idx].giver_name
+	Active_pda_tasks[#Active_pda_tasks].giver_icon = t[idx].giver_icon
+	Active_pda_tasks[#Active_pda_tasks].giver_comm = t[idx].giver_comm
+	Active_pda_tasks[#Active_pda_tasks].target_id = t[idx].target_id
+	Active_pda_tasks[#Active_pda_tasks].reward = t[idx].reward
+
+	Active_pda_tasks[#Active_pda_tasks].grace_period = true
+	Active_pda_tasks[#Active_pda_tasks].grace_period_time = ctime_to_t(cur_time)
+
+	-- put tracker on target
+	if level.map_has_object_spot(t2.target_id, task_icons["main"][t2.task_type]) == 0 then
+		level.map_add_object_spot_ser(t2.target_id, task_icons["main"][t2.task_type], t2.giver_name .. " " .. gt("pda_task_tracker_" .. t2.task_type))
+	end
+
+	-- Add task specifics
+	-- 1 mutant hunt
+	if Active_pda_tasks[#Active_pda_tasks].task_type == 1 then
+		local squad_size = get_squad_size(t2.target_id)
+		Active_pda_tasks[#Active_pda_tasks].squad_size = squad_size
+		Active_pda_tasks[#Active_pda_tasks].kill_count = 0
+	end
+
+	-- 3 guide
+	if Active_pda_tasks[#Active_pda_tasks].task_type == 3 then
+		local se_giver = alife_object(t2.giver_id)
+		local giver = level.object_by_id(t2.giver_id)
+		Active_pda_tasks[#Active_pda_tasks].guide_time = t[idx].guide_time
+		Active_pda_tasks[#Active_pda_tasks].start_guide_time = ctime_to_t(cur_time)
+
+		-- add giver as companion
+		dialogs_axr_companion.become_actor_companion(db.actor, giver)
+
+	end
+
+	-- 4 fetch items
+	if Active_pda_tasks[#Active_pda_tasks].task_type == 4 then
+		Active_pda_tasks[#Active_pda_tasks].item_sec = t[idx].item_sec
+		Active_pda_tasks[#Active_pda_tasks].amount = t[idx].amount
+		Active_pda_tasks[#Active_pda_tasks].in_box = 0
+	end
+
+	-- 5 dangerous squad
+	if Active_pda_tasks[#Active_pda_tasks].task_type == 5 then
+		local squad_size = get_squad_size(t2.target_id)
+		Active_pda_tasks[#Active_pda_tasks].squad_size = squad_size
+		Active_pda_tasks[#Active_pda_tasks].kill_count = 0
+	end
+
+	-- 6 stealth task
+	if Active_pda_tasks[#Active_pda_tasks].task_type == 6 then
+		Active_pda_tasks[#Active_pda_tasks].enemy_comm = t[idx].enemy_comm
+		Active_pda_tasks[#Active_pda_tasks].stealth_stash_id = t[idx].stealth_stash_id
+
+		-- add item tracker
+		if level.map_has_object_spot(t2.stealth_stash_id, task_icons["extra"][1]) == 0 then
+			level.map_add_object_spot_ser(t2.stealth_stash_id, task_icons["extra"][1], t2.giver_name .. " " .. gt("pda_task_tracker_" .. t2.task_type .. "_1"))
+		end
+
+		-- spawn item
+		local item_sec = "inter_pda_steal_" .. math.random(1, 3)
+		local stash = alife_object(t[idx].stealth_stash_id)
+		local item = stash and alife_create_item(item_sec, stash)
+		local function delay_stealth_item()
+			if item then
+				Active_pda_tasks[#Active_pda_tasks].steal_item_id = item.id
+				return true
+			end
+			return false
+		end
+		CreateTimeEvent("delay_stealth_item_e", "delay_stealth_item_a", 0, delay_stealth_item)
+	end
+
+	-- 7 guard task
+	if Active_pda_tasks[#Active_pda_tasks].task_type == 7 then
+		Active_pda_tasks[#Active_pda_tasks].s1_actor_at_target = false
+		Active_pda_tasks[#Active_pda_tasks].s1_time_start = 0
+		Active_pda_tasks[#Active_pda_tasks].s2_time_at_target = 0
+		Active_pda_tasks[#Active_pda_tasks].s2_time_hiding = 0
+		Active_pda_tasks[#Active_pda_tasks].s2_time_outside = 0
+		Active_pda_tasks[#Active_pda_tasks].s2_prev_time = ctime_to_t(cur_time)
+		local sm_name = t[idx].target_name
+		Active_pda_tasks[#Active_pda_tasks].dist = guard_dist[sm_name]
+	end
+
+	-- 8 scout task
+	if Active_pda_tasks[#Active_pda_tasks].task_type == 8 then
+		Active_pda_tasks[#Active_pda_tasks].route = {}
+
+		local npc_smart_name = t[idx].target_name
+		local npc_smart_t = npc_smart_name and scout_task_t[npc_smart_name]		-- route arrays
+
+		local picked_index = t[idx].route_idx
+		local picked_array = npc_smart_t and picked_index and npc_smart_t[picked_index]
+
+		-- get and store ids of route smarts
+		if picked_array then
+			for i = 1, #picked_array do
+				local route_smart = SIMBOARD.smarts_by_names[picked_array[i]]
+				if route_smart then
+					table.insert(Active_pda_tasks[#Active_pda_tasks].route, route_smart.id)
+
+					-- and place new trackers on them
+					if level.map_has_object_spot(route_smart.id, task_icons["main"][t2.task_type]) == 0 then
+						level.map_add_object_spot_ser(route_smart.id, task_icons["main"][t2.task_type], t2.giver_name .. " " .. gt("pda_task_tracker_" .. t2.task_type))
+					end
+
+				end
+			end
+		end
+
+		-- remove tracker from npc smart terrain
+		remove_tracker(t2.target_id)
+
+	end
+
+	-- 9 artefact task
+	if Active_pda_tasks[#Active_pda_tasks].task_type == 9 then
+		Active_pda_tasks[#Active_pda_tasks].anomaly_id = t[idx].anomaly_id
+		Active_pda_tasks[#Active_pda_tasks].anomaly_level_name = t[idx].anomaly_level_name
+
+		-- spawn item and add tracker on it
+		local anomaly_obj = alife_object(t[idx].anomaly_id)
+		local ano_pos = anomaly_obj and anomaly_obj.position
+		local item_sec = "inter_pda_artefact_" .. math.random(1, 10)
+		local item = anomaly_obj and ano_pos and alife_create(item_sec, vector():set(ano_pos.x, ano_pos.y + 1, ano_pos.z), anomaly_obj.m_level_vertex_id, anomaly_obj.m_game_vertex_id)
+		local function delay_artefact_item()
+			if item then
+				Active_pda_tasks[#Active_pda_tasks].artefact_id = item.id
+				if level.map_has_object_spot(t2.artefact_id, task_icons["extra"][2]) == 0 then
+					level.map_add_object_spot_ser(t2.artefact_id, task_icons["extra"][2], t2.giver_name .. " " .. gt("pda_task_tracker_" .. t2.task_type .. "_1"))
+				end
+				return true
+			end
+			return false
+		end
+		CreateTimeEvent("delay_artefact_item_e", "delay_artefact_item_a", 0, delay_artefact_item)
+	end
+
+	-- 10 delivery task
+	if Active_pda_tasks[#Active_pda_tasks].task_type == 10 then
+		Active_pda_tasks[#Active_pda_tasks].delivery_stash_from_id = t[idx].delivery_stash_from_id
+		Active_pda_tasks[#Active_pda_tasks].delivery_stash_level_name = t[idx].delivery_stash_level_name
+
+		-- add item tracker
+		if level.map_has_object_spot(t2.delivery_stash_from_id, task_icons["extra"][3]) == 0 then
+			level.map_add_object_spot_ser(t2.delivery_stash_from_id, task_icons["extra"][3], t2.giver_name .. " " .. gt("pda_task_tracker_" .. t2.task_type .. "_1"))
+		end
+
+		-- spawn item
+		local item_sec = "inter_pda_package_" .. math.random(1, 8)
+		local stash = alife_object(t[idx].delivery_stash_from_id)
+		local item = stash and alife_create_item(item_sec, stash)
+		local function delay_delivery_item()
+			if item then
+				Active_pda_tasks[#Active_pda_tasks].delivery_item_id = item.id
+				return true
+			end
+			return false
+		end
+		CreateTimeEvent("delay_delivery_item_e", "delay_delivery_item_a", 0, delay_delivery_item)
+	end
+
+	-- add note
+	add_note(t, idx)
+
+end
+
+function manage_cooldowns_on_update()
+	local tg = time_global()
+	if (tmr_cd and tg < tmr_cd) then return end
+	tmr_cd = tg + 5000
+
+	-- check cooldowns and update menu
+	local cur_time = game.get_game_time()
+	for i = 1, #pda_inter_gui.pda_msg_states[7].cd do
+		local pda_t = pda_inter_gui.pda_msg_states[7].cd
+	--	pr("pda_t[i]: %s", pda_t[i])
+		if (pda_t[i] == true) or ( (pda_t[i] ~= false) and tasks_cd[i] and cur_time:diffSec(t_to_ctime(pda_t[i])) > (tasks_cd[i] * 3600) ) then
+			pda_inter_gui.pda_msg_states[7].cd[i] = false
+			if pda_inter_gui.GUI then
+				pda_inter_gui.GUI:UpdTaskButtons(i)
+			end
+		end
+	end
+
+	-- check grace period of tasks
+	for idx, t in ipairs(Active_pda_tasks) do
+		if t.grace_period and t.grace_period_time and cur_time:diffSec(t_to_ctime(t.grace_period_time)) > grace_period_limit then
+			Active_pda_tasks[idx].grace_period = false
+		end
+	end
+
+end
+
+---------------------- Task manager 2 ----------------------
+function manage_tasks_on_update()
+	local tg = time_global()
+	if (tmr_tasks and tg < tmr_tasks) then return end
+	tmr_tasks = tg + 2000
+
+	for idx, t in ipairs(Active_pda_tasks) do
+
+		-- guide task
+		if t.task_type == 3 then
+
+			manage_guide_task(idx, t)
+
+		-- guard task
+		elseif t.task_type == 7 then
+
+			manage_guard_task(idx, t)
+
+		-- scout task
+		elseif t.task_type == 8 then
+
+			manage_scout_task(idx, t)
+
+		end
+
+	end
+
+end
+
+function manage_tasks_on_death(squad, se_obj, killer)
+	for idx, t in ipairs(Active_pda_tasks) do
+
+		-- check mutant hunt
+		if t.task_type == 1 then
+
+			manage_mutant_hunt_task(idx, t, squad, killer)
+
+		-- check bounty
+		elseif t.task_type == 2 then
+
+			manage_bounty_task(idx, t, se_obj, killer)
+
+		-- check dangerous squad
+		elseif t.task_type == 5 then
+
+			manage_dangerous_squad_task(idx, t, squad, killer)
+
+		end
+
+	end
+
+end
+
+function manage_tasks_on_put_in_box(box, item)
+	for idx, t in ipairs(Active_pda_tasks) do
+
+		-- fetch items
+		if t.task_type == 4 then
+
+			manage_fetch_items_task(idx, t, box, item, "put")
+
+		-- stealth item
+		elseif t.task_type == 6 then
+
+			manage_stealth_item_task(idx, t, box, item, "put")
+
+		-- artefact
+		elseif t.task_type == 9 then
+
+			manage_artefact_item_task(idx, t, box, item, "put")
+
+		-- delivery item
+		elseif t.task_type == 10 then
+
+			manage_delivery_item_task(idx, t, box, item, "put")
+
+		end
+
+	end
+
+end
+
+function manage_tasks_on_take_from_box(box, item)
+	for idx, t in ipairs(Active_pda_tasks) do
+
+		-- fetch items anti-cheat
+		if t.task_type == 4 then
+
+			manage_fetch_items_task(idx, t, box, item, "take")
+
+		end
+
+	end
+
+end
+
+function manage_tasks_on_take(item)
+	for idx, t in ipairs(Active_pda_tasks) do
+
+		-- stealth item
+		if t.task_type == 6 then
+
+			manage_stealth_item_task(idx, t, nil, item, "take")
+
+		-- artefact
+		elseif t.task_type == 9 then
+
+			manage_artefact_item_task(idx, t, nil, item, "take")
+
+		-- delivery item
+		elseif t.task_type == 10 then
+
+			manage_delivery_item_task(idx, t, nil, item, "take")
+
+		end
+
+	end
+
+end
+
+function manage_tasks_on_use(item)
+	for idx, t in ipairs(Active_pda_tasks) do
+
+		-- delivery item (fail)
+		if t.task_type == 10 then
+
+			manage_delivery_item_task(idx, t, nil, item, "use")
+
+		end
+
+	end
+
+end
+
+function manage_pda_x_on_update()
+	if not pda_inter_gui.pda_inter_bp then return end
+	pda_inter_gui.upd_pda_inter()
+end
+
+---------------------- Tasks main ----------------------
+function manage_mutant_hunt_task(idx, t, squad, killer)
+
+	-- COMPLETED (killed npc was from our squad and squad is dead)
+	if (squad.id == t.target_id) then
+
+		Active_pda_tasks[idx].squad_size = Active_pda_tasks[idx].squad_size or get_squad_size(t.target_id)		-- crash fix for current mutant tasks that do not have that field
+		Active_pda_tasks[idx].kill_count = Active_pda_tasks[idx].kill_count or 0		-- crash fix for current mutant tasks that do not have that field
+
+		if killer.id == 0 or IsAnomaly(killer) or (obj_in_squad(killer.id, squad.id)) or (level.object_by_id(killer.id) and level.object_by_id(killer.id):has_info("npcx_is_companion")) then
+			Active_pda_tasks[idx].kill_count = Active_pda_tasks[idx].kill_count + 1
+			pr("actor or companion kill")
+		end
+
+		if (squad:npc_count() <= 1) then
+			pr("- task 1 done")
+
+			local str = ""
+			-- calc reward
+			local reward_factor = Active_pda_tasks[idx].kill_count / Active_pda_tasks[idx].squad_size
+			Active_pda_tasks[idx].reward = math.floor(Active_pda_tasks[idx].reward * reward_factor)
+
+			-- if actor killed nobody
+			if Active_pda_tasks[idx].reward == 0 then
+				str = gt("pda_task_finish_none")
+			else
+				str = gt("pda_task_finish") .. " " .. Active_pda_tasks[idx].reward .. "."
+				-- reward player
+				db.actor:give_money(Active_pda_tasks[idx].reward)
+				-- increase reputation and goodwill and send reputation message
+				pda_change_goodwill(t.giver_comm, 25, 25, "pda_task_guide_completed")
+			end
+
+			-- send message
+			pda_dyn_msg(str, t.giver_name, t.giver_icon, 10, "danger")
+
+			-- clear stuff
+			remove_tracker_note_idx(idx, t)
+
+		end
+	end
+
+end
+
+function manage_bounty_task(idx, t, se_obj, killer)
+
+	-- COMPLETED (killed npc was our target)
+	if se_obj.id == t.target_id then
+		pr("- task 2 done")
+
+		-- if killer was actor
+		if killer.id == 0 or IsAnomaly(killer) or killer.id == se_obj.id or (level.object_by_id(killer.id) and level.object_by_id(killer.id):has_info("npcx_is_companion")) then
+			-- send message 1
+			local str = gt("pda_task_finish") .. " " .. t.reward .. "."
+			pda_dyn_msg(str, t.giver_name, t.giver_icon, 10, "danger")
+
+			-- reward player
+			db.actor:give_money(t.reward)
+
+			-- increase reputation and goodwill and send reputation message
+			pda_change_goodwill(t.giver_comm, 25, 25, "pda_task_guide_completed")
+
+		-- if killer wasn't actor
+		else
+			-- send message 2
+			local new_reward = math.floor(t.reward / 3)
+			local str = gt("pda_task_finish_part") .. " " .. new_reward .. "."
+			pda_dyn_msg(str, t.giver_name, t.giver_icon, 10, "danger")
+
+			-- reward player partially
+			db.actor:give_money(new_reward)
+
+		end
+
+		-- clear stuff
+		remove_tracker_note_idx(idx, t)
+
+	end
+
+end
+
+function manage_guide_task(idx, t)
+	-- check guide time
+	local cur_time = game.get_game_time()
+	if t.start_guide_time and t.guide_time and cur_time:diffSec(t_to_ctime(t.start_guide_time)) > t.guide_time then
+
+		Active_pda_tasks[idx].reward = math.floor(Active_pda_tasks[idx].reward * 0.33)
+
+		-- send timeout message
+		local str = gt("pda_task_guide_timeout")
+		pda_dyn_msg(str, t.giver_name, t.giver_icon, 10, "beep_2")
+
+		-- remove guide time
+		Active_pda_tasks[idx].start_guide_time = nil
+		Active_pda_tasks[idx].guide_time = nil
+
+	end
+
+	local giver = alife_object(t.giver_id)
+
+	-- FAILED (giver dead or dismissed)
+	if (giver and ( (not giver:alive()) or (axr_companions.non_task_companions[t.giver_id] == nil) )) or (not giver) then
+		pr("guide task, giver: %s dead or dismissed", t.giver_id)
+
+		-- decrease reputation and goodwill and send notification
+		pda_change_goodwill(t.giver_comm, -250, -500, "pda_task_guide_failed", true)
+
+		-- clear stuff
+		remove_tracker_note_idx(idx, t)
+
+	-- COMPLETED (giver near the target)
+	elseif giver and giver:alive() then
+		local target = alife_object(t.target_id)
+		local dist_to_target = target and get_distx(t.giver_id, target)
+		if dist_to_target and dist_to_target < 50 then
+			pr("guide task complete")
+
+			-- send complete message
+			local str = gt("pda_task_finish") .. " " .. t.reward .. "."
+			pda_dyn_msg(str, t.giver_name, t.giver_icon, 10, "danger")
+
+			-- increase reputation and goodwill and send reputation message
+			pda_change_goodwill(t.giver_comm, 25, 25, "pda_task_guide_completed")
+
+			-- reward player
+			db.actor:give_money(t.reward)
+
+			-- dismiss companion
+			dialogs_axr_companion.remove_companions_from_squad(db.actor, giver)
+
+			-- clear stuff
+			remove_tracker_note_idx(idx, t)
+
+		end
+	end
+
+end
+
+function manage_fetch_items_task(idx, t, box, item, mode)
+
+	if box:id() == t.target_id and (item:section() == t.item_sec or ("mp_" .. item:section() == t.item_sec)) then
+
+		-- check amount of items we put and take
+		local multiuse = IsItem("multiuse", item:section())
+		local uses = multiuse and item:get_remaining_uses()
+		if mode == "put" then
+			Active_pda_tasks[idx].in_box = Active_pda_tasks[idx].in_box + (uses or 1)
+		elseif mode == "take" then
+			Active_pda_tasks[idx].in_box = Active_pda_tasks[idx].in_box - (uses or 1)
+			if Active_pda_tasks[idx].in_box < 0 then
+				Active_pda_tasks[idx].in_box = 0
+			end
+		end
+
+		-- complete task when equal to amount and release items
+		if mode == "put" and Active_pda_tasks[idx].in_box >= t.amount then
+			pr("- task 4 done")
+
+			-- release items
+			local released = 0
+			local function release_items(box, itm)
+				if (itm:section() == t.item_sec or ("mp_" .. itm:section() == t.item_sec)) and released < t.amount then
+					local multiuse2 = IsItem("multiuse", itm:section())
+					if multiuse2 then
+						local uses2 = itm:get_remaining_uses()
+						if uses2 > t.amount - released then
+							itm:set_remaining_uses(t.amount - released)
+						else
+							alife_release(itm)
+						end
+						released = released + uses2
+					else
+						alife_release(itm)
+						released = released + 1
+					end
+				end
+			end
+			box:iterate_inventory_box(release_items, box)
+
+			-- send message
+			local str = gt("pda_task_finish") .. " " .. t.reward .. "."
+			pda_dyn_msg(str, t.giver_name, t.giver_icon, 10, "danger")
+
+			-- reward player
+			db.actor:give_money(t.reward)
+
+			-- increase reputation and goodwill and send reputation message
+			pda_change_goodwill(t.giver_comm, 25, 25, "pda_task_guide_completed")
+
+			-- clear stuff
+			remove_tracker_note_idx(idx, t)
+
+		end
+	end
+
+end
+
+function manage_dangerous_squad_task(idx, t, squad, killer)
+
+	if (squad.id == t.target_id) then
+
+		if killer.id == 0 or IsAnomaly(killer) or (obj_in_squad(killer.id, squad.id)) or (level.object_by_id(killer.id) and level.object_by_id(killer.id):has_info("npcx_is_companion")) then
+			Active_pda_tasks[idx].kill_count = Active_pda_tasks[idx].kill_count + 1
+			pr("actor or companion kill")
+		end
+
+		if (squad:npc_count() <= 1) then
+			pr("- task 5 done")
+
+			local str = ""
+			-- calc reward
+			local reward_factor = Active_pda_tasks[idx].kill_count / Active_pda_tasks[idx].squad_size
+			Active_pda_tasks[idx].reward = math.floor(Active_pda_tasks[idx].reward * reward_factor)
+
+			-- if actor killed nobody
+			if Active_pda_tasks[idx].reward == 0 then
+				str = gt("pda_task_finish_none")
+			else
+				str = gt("pda_task_finish") .. " " .. Active_pda_tasks[idx].reward .. "."
+				-- reward player
+				db.actor:give_money(Active_pda_tasks[idx].reward)
+				-- increase reputation and goodwill and send reputation message
+				pda_change_goodwill(t.giver_comm, 25, 25, "pda_task_guide_completed")
+			end
+
+			-- send message
+			pda_dyn_msg(str, t.giver_name, t.giver_icon, 10, "danger")
+
+			-- clear stuff
+			remove_tracker_note_idx(idx, t)
+
+		end
+	end
+
+end
+
+function manage_stealth_item_task(idx, t, box, item, mode)
+
+	-- take task item from the box
+	if mode == "take" and item:id() == t.steal_item_id then
+
+		remove_tracker(t.stealth_stash_id)
+
+		-- maybe send message that we took the item
+		local str = gt("pda_task_stealth_item_take")
+		pda_dyn_msg(str, t.giver_name, t.giver_icon, 5, "beep_1")
+
+	-- we put task item into a giver box
+	elseif mode == "put" and box:id() == t.target_id and item:id() == t.steal_item_id then
+		pr("- task 6 done")
+
+		-- release items
+		local function release_items(box, itm)
+			if itm:id() == t.steal_item_id then
+				alife_release(itm)
+			end
+		end
+		box:iterate_inventory_box(release_items, box)
+
+		-- reward player
+		db.actor:give_money(t.reward)
+
+		-- increase reputation and goodwill and send reputation message
+		pda_change_goodwill(t.giver_comm, 25, 25, "pda_task_guide_completed")
+
+		-- send message
+		local str = gt("pda_task_finish") .. " " .. t.reward .. "."
+		pda_dyn_msg(str, t.giver_name, t.giver_icon, 10, "danger")
+
+		-- clear stuff
+		remove_tracker_note_idx(idx, t)
+
+	end
+
+end
+
+function manage_artefact_item_task(idx, t, box, item, mode)
+
+	-- take artefact item
+	if mode == "take" and item:id() == t.artefact_id then
+
+		remove_tracker(t.artefact_id)
+
+	-- we put artefact into a giver box
+	elseif mode == "put" and box:id() == t.target_id and item:id() == t.artefact_id then
+		pr("- task 9 done")
+
+		-- release item
+		local function release_items(box, itm)
+			if itm:id() == t.artefact_id then
+				alife_release(itm)
+			end
+		end
+		box:iterate_inventory_box(release_items, box)
+
+		-- reward player
+		db.actor:give_money(t.reward)
+
+		-- increase reputation and goodwill and send reputation message
+		pda_change_goodwill(t.giver_comm, 25, 25, "pda_task_guide_completed")
+
+		-- send message
+		local str = gt("pda_task_finish") .. " " .. t.reward .. "."
+		pda_dyn_msg(str, t.giver_name, t.giver_icon, 10, "danger")
+
+		-- clear stuff
+		remove_tracker_note_idx(idx, t)
+
+	end
+
+end
+
+function manage_delivery_item_task(idx, t, box, item, mode)
+
+	-- take delivery item from the box
+	if mode == "take" and item:id() == t.delivery_item_id then
+
+		remove_tracker(t.delivery_stash_from_id)
+
+	-- we put task item into a giver box
+	elseif mode == "put" and box:id() == t.target_id and item:id() == t.delivery_item_id then
+		pr("- task 10 done")
+
+		-- release items
+		local function release_items(box, itm)
+			if itm:id() == t.delivery_item_id then
+				alife_release(itm)
+			end
+		end
+		box:iterate_inventory_box(release_items, box)
+
+		-- reward player
+		db.actor:give_money(t.reward)
+
+		-- increase reputation and goodwill and send reputation message
+		pda_change_goodwill(t.giver_comm, 25, 25, "pda_task_guide_completed")
+
+		-- send message
+		local str = gt("pda_task_finish") .. " " .. t.reward .. "."
+		pda_dyn_msg(str, t.giver_name, t.giver_icon, 10, "danger")
+
+		-- clear stuff
+		remove_tracker_note_idx(idx, t)
+
+	-- we use item
+	elseif mode == "use" and item:id() == t.delivery_item_id then
+		pr("! task 10 failed")
+
+		-- decrease reputation and goodwill and send reputation message
+		pda_change_goodwill(t.giver_comm, -100, -100, "pda_task_guide_failed", true)
+
+		-- send message
+		local str = gt("pda_task_fail_10")
+		pda_dyn_msg(str, t.giver_name, t.giver_icon, 10, "danger")
+
+		-- clear stuff
+		remove_tracker_note_idx(idx, t)
+
+	end
+
+end
+
+local hours_slept = 0
+local guard_task_active = false
+function actor_on_sleep(hrs)
+	if guard_task_active then
+		hours_slept = hrs
+	end
+end
+
+function manage_guard_task(idx, t)
+
+	local se_actor = alife():actor()	-- needs for global_position
+	if not se_actor then return end
+
+	-- check if actor slept during active guard task
+	if not guard_task_active then
+		guard_task_active = true
+	end
+
+	local dist = get_distx(t.target_id, se_actor)
+	local reward_per_sec = t.reward / 3600
+
+	pr("--- guide task ---")
+	pr("actor_at_target: %s || time_left: %s", t.s1_actor_at_target, 1200 - t.s1_time_start)
+	pr("hide_left: %s || outside_left: %s || total_in: %s (game_sec)", 30 - t.s2_time_hiding, 60 - t.s2_time_outside, t.s2_time_at_target)
+
+	-- Stage 1 (actor go to target):
+	-- set if actor is at target
+	if not t.s1_actor_at_target then
+		if dist and dist < t.dist + 5 then
+			Active_pda_tasks[idx].s1_actor_at_target = true
+			local str = gt("pda_task_guard_at_warning")
+			pda_dyn_msg(str, t.giver_name, t.giver_icon, 10, "beep_1")		-- arrives to target message
+		end
+	end
+
+	-- (if actor isnt at target yet) start timer to let player get to the target
+	if not Active_pda_tasks[idx].s1_actor_at_target then
+		Active_pda_tasks[idx].s1_time_start = Active_pda_tasks[idx].s1_time_start + 2
+
+		-- finish task if time to get to the target expired
+		if Active_pda_tasks[idx].s1_time_start > 1200 then		-- 20 minutes to get to the target
+			local str = gt("pda_task_guard_fail")
+			pda_dyn_msg(str, t.giver_name, t.giver_icon, 10, "danger")		-- fail message
+			remove_tracker_note_idx(idx, t)
+			guard_task_active = false
+		end
+
+		return		-- dont go to stage 2 yet
+	end
+
+
+	-- Stage 2 (actor is at target):
+	local surge = surge_manager and surge_manager.is_loaded() and surge_manager.is_started()
+	local psi_storm = psi_storm_manager and psi_storm_manager.is_loaded() and psi_storm_manager.is_started()
+	local surge_psi_started = surge or psi_storm
+
+	-- stop task if emission started
+	if surge_psi_started then
+		Active_pda_tasks[idx].s2_time_hiding = 0
+		Active_pda_tasks[idx].s2_time_outside = 0
+		return
+	end
+
+	-- if actor went to sleep finish without reward
+	if hours_slept > 0 then
+		hours_slept = 0
+		local str = gt("pda_task_guard_fail")
+		pda_dyn_msg(str, t.giver_name, t.giver_icon, 10, "danger")		-- fail message
+		remove_tracker_note_idx(idx, t)
+		guard_task_active = false
+		return
+	end
+
+	-- if actor is inside radius
+	if dist and dist <= t.dist then
+
+		-- reset time outside
+		Active_pda_tasks[idx].s2_time_outside = 0
+		-- increase time inside (doubled at night)
+		local hrs = level.get_time_hours() + level.get_time_minutes() / 60
+		local is_night = hrs < 5 or hrs > 20
+
+		local cur_time = game.get_game_time()
+		Active_pda_tasks[idx].s2_prev_time = Active_pda_tasks[idx].s2_prev_time or ctime_to_t(cur_time)
+		local time_diff = cur_time:diffSec(t_to_ctime(Active_pda_tasks[idx].s2_prev_time))
+		Active_pda_tasks[idx].s2_prev_time = ctime_to_t(cur_time)
+
+		Active_pda_tasks[idx].s2_time_at_target = math.floor(Active_pda_tasks[idx].s2_time_at_target + time_diff * (is_night and 2 or 1))
+
+		-- reset hiding time if actor not hiding
+		if (not GetEvent("current_safe_cover")) then
+			Active_pda_tasks[idx].s2_time_hiding = 0
+
+		-- if actor hiding
+		else
+			-- increase time hiding
+			Active_pda_tasks[idx].s2_time_hiding = Active_pda_tasks[idx].s2_time_hiding + 2
+			-- send warning message for hiding
+			if Active_pda_tasks[idx].s2_time_hiding == 8 or Active_pda_tasks[idx].s2_time_hiding == 20 then
+				local str = gt("pda_task_guard_hide_warning")
+				pda_dyn_msg(str, t.giver_name, t.giver_icon, 7, "danger")		-- hide warning message
+			-- finish task if actor hiding for too long
+			elseif Active_pda_tasks[idx].s2_time_hiding > 30 then
+				local reward = math.ceil(reward_per_sec * Active_pda_tasks[idx].s2_time_at_target)
+				db.actor:give_money(reward)
+				local str = gt("pda_task_guard_finish") .. " " .. reward .. "."
+				pda_dyn_msg(str, t.giver_name, t.giver_icon, 10, "beep_1")					-- finish message
+				remove_tracker_note_idx(idx, t)
+				guard_task_active = false
+				return
+			end
+		end
+
+	-- if actor outside radius
+	elseif dist and dist > t.dist then
+
+		-- increase time outside
+		Active_pda_tasks[idx].s2_time_outside = Active_pda_tasks[idx].s2_time_outside + 2
+		-- send message to return back if time == 6 or 20
+		if Active_pda_tasks[idx].s2_time_outside == 6 or Active_pda_tasks[idx].s2_time_outside == 20 then
+			local str = gt("pda_task_guard_outside_warning_" .. Active_pda_tasks[idx].s2_time_outside)
+			pda_dyn_msg(str, t.giver_name, t.giver_icon, 7, "danger")		-- outside warning message
+
+		-- finish task if time outside > 60
+		elseif Active_pda_tasks[idx].s2_time_outside > 60 then
+			local reward = math.ceil(reward_per_sec * Active_pda_tasks[idx].s2_time_at_target)
+			db.actor:give_money(reward)
+			local str = gt("pda_task_guard_finish") .. " " .. reward .. "."
+			pda_dyn_msg(str, t.giver_name, t.giver_icon, 10, "beep_1")						-- finish message
+			remove_tracker_note_idx(idx, t)
+			guard_task_active = false
+			return
+		end
+
+	end
+
+end
+
+function manage_scout_task(idx, t)
+
+	local se_actor = alife():actor()	-- needs for global_position
+	if not se_actor then return end
+
+	-- reward player
+	if #t.route <= 0 then
+		db.actor:give_money(t.reward)
+		local str = gt("pda_task_scout_finish") .. " " .. t.reward .. "."
+		pda_dyn_msg(str, t.giver_name, t.giver_icon, 10, "beep_1")						-- finish message
+		remove_tracker_note_idx(idx, t)
+		return
+	end
+
+	for i, smart_id in ipairs(Active_pda_tasks[idx].route) do
+		local dist = get_distx(smart_id, se_actor)
+		if dist and dist < 30 then
+
+			-- send msg
+			news_manager.send_tip(db.actor, gt("pda_task_guard_scouted"), 0, nil, 3500)
+
+			-- remove tracker
+			remove_tracker(smart_id)
+
+			-- delete from array
+			table.remove(Active_pda_tasks[idx].route, i)
+
+		end
+	end
+
+end
+
+---------------------- Tasks Cancel ----------------------
+function cancel_task(idx)
+
+	local t = Active_pda_tasks[idx]
+	if not t then return end
+
+	-- guide task
+	if t.task_type == 3 then
+		-- remove companion
+		local giver = alife_object(t.giver_id)
+		if giver and giver:alive() then
+			dialogs_axr_companion.remove_companions_from_squad(db.actor, giver)
+		end
+
+	-- steal item task
+	elseif t.task_type == 6 then
+		-- remove tracker from steal stash
+		remove_tracker(t.stealth_stash_id)
+		-- release quest item
+		local quest_itm = alife_object(t.steal_item_id)
+		if quest_itm then
+			alife_release(quest_itm)
+		end
+
+	-- scout task
+	elseif t.task_type == 8 then
+		-- remove trackers from route smarts
+		for i = 1, #t.route do
+			remove_tracker(t.route[i])
+		end
+
+	-- artefact task
+	elseif t.task_type == 9 then
+		-- remove tracker from artefact
+		remove_tracker(t.artefact_id)
+		-- release quest item
+		local quest_itm = alife_object(t.artefact_id)
+		if quest_itm then
+			alife_release(quest_itm)
+		end
+
+	-- delivery task
+	elseif t.task_type == 10 then
+		-- remove tracker from delivery stash
+		remove_tracker(t.delivery_stash_from_id)
+		-- release quest item
+		local quest_itm = alife_object(t.delivery_item_id)
+		if quest_itm then
+			alife_release(quest_itm)
+		end
+
+	end
+
+	-- decrease goodwill
+	if not t.grace_period then
+		pda_change_goodwill(t.giver_comm, -50, -50, "pda_task_guide_failed", true)
+	end
+
+	-- clear stuff
+	remove_tracker_note_idx(idx, t)
+
+end
+
+---------------- misc --------------
+function get_all_kill_targets(npc_id, is_func, radius, param, enemy, rank)
+	local t = {}
+
+	for i = 1, 65534 do
+		local se_obj = alife_object(i)
+		if se_obj and is_func(se_obj) and se_obj:alive() and obj_not_in_lab(se_obj) then
+
+			if param == "obj" then
+				-- single target
+				if (not in_ar(t, se_obj.id)) then
+					local obj_sec = se_obj:section_name()
+					local get_dist = get_distx(npc_id, se_obj)
+					if get_dist and get_dist < radius and string.find(obj_sec, "sim_default") then
+						if enemy then
+							local obj_comm = get_real_community(se_obj, "stalker")
+							local giver_comm = alife_object(npc_id) and get_real_community(alife_object(npc_id), "stalker")
+							local are_enemies = obj_comm and giver_comm and game_relations.is_factions_enemies(obj_comm, giver_comm)
+							if are_enemies then
+								t[#t + 1] = se_obj.id
+							end
+						else
+							t[#t + 1] = se_obj.id
+						end
+					end
+				end
+
+			elseif param == "squad" then
+				-- squads
+				local squad = get_object_squad(se_obj)
+				if squad and (not in_ar(t, squad.id)) then
+					local squad_sec = squad:section_name()
+					local get_dist = get_distx(npc_id, squad)
+					if get_dist and get_dist < radius and (string.find(squad_sec, "sim_squad") or string.find(squad_sec, "simulation_")) then
+						if enemy then		-- dangerous squads
+							local squad_comm = squad:get_squad_community()
+							local giver_comm = alife_object(npc_id) and get_real_community(alife_object(npc_id), "stalker")
+							local are_enemies = squad_comm and giver_comm and game_relations.is_factions_enemies(squad_comm, giver_comm)
+							if are_enemies then
+								t[#t + 1] = squad.id
+							end
+						else		-- mutants
+							local squad_cur_level_id = game_graph():vertex(squad.m_game_vertex_id):level_id()
+							local squad_target_id = squad.assigned_target_id
+							local assigned_level_id = squad_target_id and alife_object(squad_target_id) and game_graph():vertex(alife_object(squad_target_id).m_game_vertex_id):level_id()
+							if assigned_level_id and squad_cur_level_id == assigned_level_id then		-- do only for mutants that arent assigned to another level
+								t[#t + 1] = squad.id
+							end
+						end
+					end
+				end
+
+			end
+		end
+	end
+
+	if rank == "high_rank" then
+		local high_rank_t = {}
+
+		for i = 1, #t do
+			local squad = alife_object(t[i])
+			local avg_rank = 0
+
+			if squad and squad.commander_id and squad:get_squad_community() ~= "zombied" then
+				for member in squad:squad_members() do
+					local se_member = alife_object(member.id)
+					if se_member and se_member:alive() then
+						local se_member_rank = ranks.get_se_obj_rank_name(se_member)
+						avg_rank = avg_rank + (se_member_rank and rank_to_val[se_member_rank] or 0)
+					end
+				end
+			end
+
+			if avg_rank > 3 then
+				high_rank_t[#high_rank_t + 1] = squad.id
+			end
+		end
+
+		return high_rank_t
+	end
+
+	return t
+end
+
+function get_all_smart_targets(npc_id, squad_id)
+	local t = {}
+	local npc = level.object_by_id(npc_id)
+	local squad = alife_object(squad_id)
+	local squad_pos = squad and squad.position
+	local squad_faction = squad.player_id
+
+	for i = 1, 65534 do
+		local smart = alife_object(i)
+		if smart and (smart:clsid() == clsid.smart_terrain) and obj_not_in_lab(smart) then
+			local dist_to = squad_pos:distance_to(smart.position)
+			local sim_avail = simulation_objects.available_by_id[smart.id] and simulation_objects.available_by_id[smart.id] == true
+			local smart_props = smart.props[squad_faction] and smart.props[squad_faction] > 0
+			if dist_to > 500 and dist_to < 3000 and sim_avail and smart_props then
+				t[#t + 1] = smart.id
+			end
+		end
+	end
+
+	return t
+end
+
+function get_all_stash_targets(npc_id)
+	local t = {}
+	local se_npc = alife_object(npc_id)
+	local se_npc_pos = se_npc.position
+
+	for i = 1, 65534 do
+		local stash = alife_object(i)
+		if stash and IsInvbox(stash) and obj_not_in_lab(stash) then
+			local dist_to = get_distx(npc_id, stash)
+			local stash_wo_alive_parent = stash.parent_id and ( stash.parent_id == 65535 or (alife_object(stash.parent_id) and (not alife_object(stash.parent_id).alive)) )
+			local stash_in_blacklist = stash:name() and stashes_blacklist[stash:name()]
+			if stash_wo_alive_parent and dist_to and dist_to > 1 and dist_to < 50 and (not stash_in_blacklist) then
+				t[#t + 1] = stash.id
+			end
+		end
+	end
+
+	return t
+end
+
+function get_delivery_targets(npc_id, mode)
+	local npc_comm = get_real_community(alife_object(npc_id), "stalker")
+
+	-- find all enemies or friends to this community
+	local comms = {}
+	for comm, smart_t in pairs(stealth_task_t) do
+		local enemies_with_npc = game_relations.is_factions_enemies(npc_comm, comm)
+		local enemies_with_actor = game_relations.is_factions_enemies(get_actor_true_community(), comm)
+		local enemy_mode = (mode == "enemy") and (enemies_with_npc) and (enemies_with_actor)
+		local friend_mode = (mode == "friend") and (not enemies_with_npc) and (not enemies_with_actor) and (comm ~= npc_comm)
+		if (enemy_mode) or (friend_mode) then
+			comms[#comms + 1] = comm
+		end
+	end
+	if #comms <= 0 then return end
+
+	-- get random comm and its smarts from stealth_task_t
+	local rnd_comm = comms[math.random(1, #comms)]
+	local rnd_smart_t = rnd_comm and stealth_task_t[rnd_comm]
+	if not rnd_smart_t then return end
+
+	-- pick random smart
+	local rnd_smart_name = rnd_smart_t[math.random(1, #rnd_smart_t)]
+	local rnd_smart = rnd_smart_name and SIMBOARD.smarts_by_names[rnd_smart_name]
+	if not rnd_smart then return end
+
+	-- pick all the stashes around this smart
+	local stashes_t = {}
+	for i = 1, 65534 do
+		local stash = alife_object(i)
+		if stash and IsInvbox(stash) and obj_not_in_lab(stash) then
+			local dist_to = get_distx(rnd_smart.id, stash)
+			local stash_wo_alive_parent = stash.parent_id and ( stash.parent_id == 65535 or (alife_object(stash.parent_id) and (not alife_object(stash.parent_id).alive)) )
+			local stash_in_blacklist = stash:name() and stashes_blacklist[stash:name()]
+			if stash_wo_alive_parent and dist_to and dist_to > 1 and dist_to < 40 and (not stash_in_blacklist) then
+				-- for delivery check if stash far away from giver
+				if mode == "friend" then
+					local dist_from_giver_to_stash = get_distx(npc_id, stash)
+					if dist_from_giver_to_stash and dist_from_giver_to_stash > 250 then
+						stashes_t[#stashes_t + 1] = stash.id
+					end
+				-- for steal item
+				else
+					stashes_t[#stashes_t + 1] = stash.id
+				end
+			end
+		end
+	end
+
+	-- pick random stash
+	local rnd_stash_id = stashes_t[math.random(1, #stashes_t)]
+	if not rnd_stash_id then return end
+
+	-- get giver stash
+	local giver_stashes = get_all_stash_targets(npc_id)
+	local rnd_giver_stash_id = #giver_stashes > 0 and giver_stashes[math.random(1, #giver_stashes)]
+	if not rnd_giver_stash_id then return end
+
+	if mode == "enemy" then
+		return { rnd_giver_stash_id, rnd_stash_id, rnd_comm }
+	elseif mode == "friend" then
+		local rnd_stash = alife_object(rnd_stash_id)
+		local rnd_stash_level_id = rnd_stash and game_graph():vertex(rnd_stash.m_game_vertex_id):level_id()
+		local rnd_stash_level_name = rnd_stash_level_id and alife():level_name(rnd_stash_level_id)
+		if rnd_stash_level_name then
+			return { rnd_stash_id, rnd_giver_stash_id, rnd_stash_level_name }
+		end
+	end
+end
+
+function get_guard_targets(npc_id)
+	local t = {}
+
+	-- get npc smart terrain
+	local se_npc = alife_object(npc_id)
+	local smart_id = se_npc and se_npc.alive and se_npc:alive() and se_npc.m_smart_terrain_id
+	local smart = smart_id and smart_id ~= 65535 and alife_object(smart_id)
+	local smart_name = smart and smart.name and smart:name()
+	local picked_t = smart_name and guard_task_t[smart_name]
+	if (not picked_t) then return end
+
+	-- pick targets array for our faction
+	local ac_comm = get_actor_true_community()
+	local targets_a = picked_t[ac_comm] or picked_t["all"]
+	if (not targets_a) then return end
+
+	-- fill up t with possible smart target ids
+	for sname, sm in pairs(SIMBOARD.smarts_by_names) do
+		for i = 1, #targets_a do
+			if sname == targets_a[i] then
+				local picked_smart_id = sm.id
+				t[#t + 1] = picked_smart_id
+			end
+		end
+	end
+
+	return t
+end
+
+function get_scout_targets(npc_id)
+	local t = {}
+
+	-- get npc smart terrain
+	local se_npc = alife_object(npc_id)
+	local smart_id = se_npc and se_npc.alive and se_npc:alive() and se_npc.m_smart_terrain_id
+	local smart = smart_id and smart_id ~= 65535 and alife_object(smart_id)
+	local smart_name = smart and smart.name and smart:name()
+	local npc_in_table = smart_name and scout_task_t[smart_name]
+	if (not npc_in_table) then return end
+
+	for sname, sm in pairs(SIMBOARD.smarts_by_names) do
+		if sname == smart_name then
+			t[#t + 1] = sm.id
+		end
+	end
+
+	return t
+end
+
+
+function add_note(t, idx)
+
+	local blue_clr = strformat("%c[%s,%s,%s,%s]", 255, 0, 140, 180)
+	local white_clr_str = strformat("%c[%s,%s,%s,%s]", 255, 255, 255, 255)
+	local yel_clr_str = strformat("%c[%s,%s,%s,%s]", 255, 255, 255, 0)
+	local def_clr_str = strformat("%c[%s,%s,%s,%s]", 255, 190, 190, 190)
+
+	local cur_time = game.get_game_time()
+	local cur_d = cur_time:dateToString(game.CTime.DateToDay)
+	local cur_min = cur_time:timeToString(game.CTime.TimeToMinutes)
+
+	-- descr
+	local target_str1, target_str2 = "<nil>", "<nil>"
+	local giver_name = white_clr_str .. t[idx].giver_name
+
+	if cur_task_type == 1 or cur_task_type == 2 then
+		local target_comm = t[idx].target_comm and ( " (" .. (t[idx].target_comm == "trader" and gt("st_ui_pda_legend_trader") or gt("st_faction_" .. t[idx].target_comm)) .. ")") or ""
+		target_str1 = t[idx].target_name and (yel_clr_str .. gt(t[idx].target_name) .. def_clr_str .. target_comm)
+		target_str2 = t[idx].target_level and (white_clr_str .. gt(t[idx].target_level) .. def_clr_str)
+	elseif cur_task_type == 3 then
+		target_str1 = t[idx].target_level and (yel_clr_str .. gt(t[idx].target_level) .. def_clr_str)
+		target_str2 = t[idx].guide_time and (yel_clr_str .. math.floor(t[idx].guide_time / 3600) .. def_clr_str)
+	elseif cur_task_type == 4 then
+		target_str1 = t[idx].amount and (yel_clr_str .. gt(t[idx].amount) .. def_clr_str)
+		target_str2 = t[idx].target_name and (yel_clr_str .. gt(t[idx].target_name) .. def_clr_str)
+	elseif cur_task_type == 5 then
+		target_str1 = t[idx].target_name and (yel_clr_str .. gt(t[idx].target_name) .. def_clr_str)
+		target_str2 = t[idx].target_level and (white_clr_str .. gt(t[idx].target_level) .. def_clr_str)
+	elseif cur_task_type == 6 then
+		target_str1 = t[idx].enemy_comm and (yel_clr_str .. gt("st_faction_" .. t[idx].enemy_comm) .. def_clr_str)
+		target_str2 = ""
+	elseif cur_task_type == 7 then
+		local sm_name = "st_" .. t[idx].target_name .. "_name"
+		target_str1 = sm_name and (yel_clr_str .. gt(sm_name) .. def_clr_str)
+	elseif cur_task_type == 8 then
+		target_str1 = t[idx].route_levels and (yel_clr_str .. t[idx].route_levels .. def_clr_str)
+		target_str2 = ""
+	elseif cur_task_type == 9 then
+		target_str1 = t[idx].anomaly_level_name and (yel_clr_str .. gt(t[idx].anomaly_level_name) .. def_clr_str)
+		target_str2 = ""
+	elseif cur_task_type == 10 then
+		target_str1 = t[idx].delivery_stash_level_name and (yel_clr_str .. gt(t[idx].delivery_stash_level_name) .. def_clr_str)
+		target_str2 = t[idx].target_level and (yel_clr_str .. gt(t[idx].target_level) .. def_clr_str)
+	end
+
+	local task_desc = def_clr_str .. strformat(gt("pda_task_desc_" .. cur_task_type), target_str1, target_str2)
+	local reward = white_clr_str .. gt("pda_task_reward") .. " " .. t[idx].reward
+
+	if cur_task_type == 7 then
+		reward = reward .. " " .. gt("pda_task_reward_hour")
+	end
+
+	local str_to_add = giver_name .. ": " .. task_desc .. " " .. reward
+
+	-- string note for active tasks
+	Active_pda_tasks[#Active_pda_tasks].notes = str_to_add
+
+	-- upd notes gui
+	if pda_inter_gui.GUI then
+		pda_inter_gui.GUI:UpdNotesTasks()
+		pda_inter_gui.GUI:UpdMenuButtons()
+	end
+
+end
+
+function remove_tracker(id)
+	for k, v in pairs(task_icons) do
+		for i = 1, #v do
+			if level.map_has_object_spot(id, task_icons[k][i]) ~= 0 then
+				level.map_remove_object_spot(id, task_icons[k][i])
+			end
+		end
+	end
+end
+
+function remove_tracker_note_idx(idx, t)
+	-- remove tracker
+	remove_tracker(t.target_id)
+
+	-- remove from table
+	table.remove(Active_pda_tasks, idx)
+
+	-- update active tasks gui
+	if pda_inter_gui.GUI then
+		pda_inter_gui.GUI:UpdNotesTasks()
+		pda_inter_gui.GUI:UpdMenuButtons()
+	end
+
+
+end
+
+---------------- utils --------------
+function get_distx(obj_id, target)		-- need server object and target
+	local se_obj = alife_object(obj_id)
+	if (not se_obj) or (not target) then return end
+
+	-- additional checks for possible offset error
+	local se_obj_p = se_obj.position
+	local target_p = target.position
+	if (not se_obj_p) or (not target_p) then return end
+
+	local se_obj_lid = game_graph():vertex(se_obj.m_game_vertex_id):level_id()
+	local target_lid = game_graph():vertex(target.m_game_vertex_id):level_id()
+	if (not se_obj_lid) or (not global_position.level_offsets[se_obj_lid]) then return end
+	if (not target_lid) or (not global_position.level_offsets[target_lid]) then return end
+
+	-- this can sometimes be nil for whatever reason
+	local se_obj_pos = global_position.from(se_obj_p, se_obj_lid)
+	local target_pos = global_position.from(target_p, target_lid)
+	if (not se_obj_pos) or (not target_pos) then return end
+
+	local dist_between = se_obj_pos:distance_to_xz(target_pos)
+	dist_between = dist_between < 1 and 1 or dist_between
+
+	return dist_between
+end
+
+function target_in_active_task(id)
+	for idx, t in pairs(Active_pda_tasks) do
+		if t.target_id == id then
+			return true
+		end
+	end
+
+	return false
+end
+
+function in_ar(t, val)
+	for i = 1, #t do
+		if t[i] == val then
+			return true
+		end
+	end
+
+	return false
+end
+
+function rnd_key_table(t)		-- for 1.5.1
+	local check = t and type(t) == "table"
+	if not check then
+		return
+	end
+	local n = {}
+	for k,v in pairs(t) do
+		n[#n+1] = k
+	end
+	return #n > 0 and n[math.random(#n)] or nil
+end
+
+local strings = {
+	tushkano = { "encyclopedia_mutants_tushkano", 0.15 },
+	flesh = { "encyclopedia_mutants_flesh", 0.3 },
+	zombie = { "encyclopedia_mutants_zombie", 0.4 },
+	dog = { "encyclopedia_mutants_blind_dog", 0.45 },
+	boar = { "encyclopedia_mutants_boar", 0.6 },
+	cat = { "encyclopedia_mutants_cat", 0.7 },
+	fracture = { "encyclopedia_mutants_fracture", 0.7 },
+	pseudodog = { "encyclopedia_mutants_pseudodog", 0.85 },
+	SM_LURKER = { "encyclopedia_mutants_lurker", 1 },
+	snork = { "encyclopedia_mutants_snork", 1.25 },
+	SM_POLTER_G	= { "encyclopedia_mutants_poltergeist", 1.25 },
+	SM_PYRO_G = { "encyclopedia_mutants_pyrogeist", 1.3 },
+	SM_PSEUDO_G	= { "encyclopedia_mutants_pseudogeist", 1.4 },
+	SM_KARLIK = { "encyclopedia_mutants_karlik", 1.5 },
+	burer = { "encyclopedia_mutants_burer", 1.75 },
+	bloodsucker = { "encyclopedia_mutants_bloodsucker", 2 },
+	SM_PSYSUCKER = { "encyclopedia_mutants_psysucker", 2 },
+	chimera = { "encyclopedia_mutants_chimera", 2.25 },
+	controller = { "encyclopedia_mutants_controller", 2.25 },
+	giant = { "encyclopedia_mutants_pseudogiant", 2.5 },
+
+	bird = { "encyclopedia_mutants_crow", 1},
+}
+
+function get_target_name_and_reward(target, giver, group)	-- need server objects
+	if not target then return end
+
+	-- for mutants
+	if cur_task_type == 1 then
+		if target.commander_id then
+			for member in target:squad_members() do
+				local npc = alife_object(member.id)
+				if npc then
+					local str = ini_sys:r_string_ex(npc:section_name(), "kind") or ini_sys:r_string_ex(npc:section_name(), "species") or nil
+					if str and strings[str] then
+						return strings[str][1], strings[str][2] and strings[str][2] * mcm_mutant_reward * get_level_reward_mult(target.id)
+					end
+				end
+			end
+		end
+	-- for bounty
+	elseif cur_task_type == 2 then
+		local obj_name = target:character_name()
+		local obj_rank_name = ranks.get_se_obj_rank_name(target)
+		local obj_rank = rank_to_val[obj_rank_name]
+		return obj_name, obj_rank and obj_rank * mcm_bounty_reward * get_level_reward_mult(target.id)
+	-- for guide
+	elseif cur_task_type == 3 then
+		local smart_name = "st_" .. target:name() .. "_name"
+		local dist_to_smart = get_distx(giver.id, target)
+		local norm_dist = dist_to_smart and normalize(dist_to_smart, 1, 9600)
+		local guide_reward = norm_dist and norm_dist * 2.5
+		return smart_name, guide_reward and guide_reward * mcm_guide_reward * get_level_reward_mult(target.id)
+	-- for fetch items (according to giver group)
+	elseif cur_task_type == 4 then
+		local fetch_items = get_fetch_item_sections(group)
+		if fetch_items and size_table(fetch_items) > 0 then
+			local rnd_item_sec = rnd_key_table(fetch_items)
+			local rnd_item_price = fetch_items[rnd_item_sec]
+			local price_factor = group == "trader" and 0.8 or 1
+			return rnd_item_sec, rnd_item_price and rnd_item_price * price_factor * mcm_items_reward
+		end
+	-- for dangerous squad
+	elseif cur_task_type == 5 then
+		local squad_comm = target:get_squad_community()
+		local squad_rank = 0
+		if target.commander_id then
+			for member in target:squad_members() do
+				local se_member = alife_object(member.id)
+				if se_member and se_member:alive() then
+					local se_member_rank = ranks.get_se_obj_rank_name(se_member)
+					squad_rank = squad_rank + (se_member_rank and rank_to_val[se_member_rank] or 0)
+				end
+			end
+		end
+		return squad_comm, squad_rank and squad_rank * 0.6 * mcm_squad_reward * get_level_reward_mult(target.id)
+	-- for stealth task
+	elseif cur_task_type == 6 then
+		return target.id, 0.9 * mcm_stealth_reward
+	-- for guard task
+	elseif cur_task_type == 7 then
+		local smart_name = target:name()
+		return smart_name, 0.05 * mcm_guard_reward * get_level_reward_mult(target.id)
+	-- for scout task
+	elseif cur_task_type == 8 then
+		local smart_name = target:name()
+		return smart_name, 0.3 * mcm_scout_reward * get_level_reward_mult(target.id)
+	-- for artefact task
+	elseif cur_task_type == 9 then
+		local anomaly_id = get_anomaly_zone_id(giver.id)
+		local rnd_price = math.random(400, 500) / 1000
+		return anomaly_id, rnd_price * mcm_artefact_reward * get_level_reward_mult(anomaly_id)
+	-- for delivery task
+	elseif cur_task_type == 10 then
+		local dist_to = get_distx(giver.id, target)
+		return target.id, (dist_to / 6000) * mcm_delivery_reward * get_level_reward_mult(target.id)
+	end
+
+
+	return
+end
+
+function get_level_reward_mult(target_id)
+	local target = alife_object(target_id)
+	local target_level_id = target and game_graph():vertex(target.m_game_vertex_id):level_id()
+	local target_level_name = target_level_id and alife():level_name(target_level_id)
+
+	local reward = 1
+	if target_level_name and level_reward_mult[target_level_name] then
+		reward = level_reward_mult[target_level_name]
+	end
+
+	return reward
+end
+
+function get_fetch_item_sections(group)
+
+	-- trader group (everything with lesser price)
+	if group == "trader" then
+		local trader_items = {}
+		trader_items[#trader_items + 1] = get_mutant_part_sections("sci")
+		trader_items[#trader_items + 1] = get_mutant_part_sections("barman")
+		trader_items[#trader_items + 1] = get_artefact_sections()
+		trader_items[#trader_items + 1] = get_medicine_sections()
+		trader_items[#trader_items + 1] = get_repair_sections()
+		return trader_items[math.random(1, #trader_items)]
+	-- sci group (mutant parts, artefacts)
+	elseif group == "sci" then
+		local mutant_parts = get_mutant_part_sections(group)
+		local artefacts = get_artefact_sections()
+		return math.random(3) < 3 and mutant_parts or artefacts
+	-- barman group (mutant meat)
+	elseif group == "barman" then
+		return get_mutant_part_sections(group)
+	-- mechanic group (repair items)
+	elseif group == "mechanic" then
+		return get_repair_sections()
+	-- medic group (medicine)
+	elseif group == "medic" then
+		return get_medicine_sections()
+	end
+
+end
+
+function get_mutant_part_sections(group)
+	local mutant_parts = {}
+
+	ini_sys:section_for_each(function(section)
+		local is_mutant_part = string.find(section, "mutant_part") and (not string.find(section, "general")) and (not string.find(section, "mp_"))
+		local kind = ini_sys:r_string_ex(section, "kind") or ""
+		local kind_fits = (group == "sci" and kind == "i_mutant_part") or (group == "barman" and kind == "i_mutant_raw")
+		if is_mutant_part and kind_fits and (not mutant_parts[section]) then
+			local price = ini_sys:r_float_ex(section, "cost") or 777
+			mutant_parts[section] = price
+		end
+	end)
+
+	return mutant_parts
+end
+
+function get_artefact_sections()
+	local artefacts = {}
+
+	for sec, _ in pairs(pda_inter_gui.pdax_artefact_list) do
+		local price = ini_sys:r_float_ex(sec, "cost") or 777
+		artefacts[sec] = price
+	end
+
+	return artefacts
+end
+
+function get_repair_sections()
+	local repair_items = {}
+
+	ini_sys:section_for_each(function(section)
+		local is_mutant_part = (not string.find(section, "tch_repair"))
+		local kind = ini_sys:r_string_ex(section, "kind") or ""
+		if kind == "i_repair" and (not string.find(section, "tch_repair")) and (not string.find(section, "mp_")) and (not repair_items[section]) then
+			local price = ini_sys:r_float_ex(section, "cost") or 777
+			repair_items[section] = price
+		end
+	end)
+
+	return repair_items
+end
+
+function get_medicine_sections()
+	local medical_items = {}
+
+	ini_sys:section_for_each(function(section)
+		local kind = ini_sys:r_string_ex(section, "kind") or ""
+		if kind == "i_medical" and (not string.find(section, "mp_")) and (not string.find(section, "_script")) and (not medical_items[section]) then
+			local price = ini_sys:r_float_ex(section, "cost") or 777
+			medical_items[section] = price
+		end
+	end)
+
+	return medical_items
+end
+
+function get_fetch_items_amount(section)
+	local amnt_t = {
+		["i_mutant_part"] = true,
+		["i_mutant_raw"] = true,
+		["i_repair"] = true,
+		["i_medical"] = true,
+	}
+
+	local item_kind = ini_sys:r_string_ex(section, "kind") or ""
+	-- for artefact amount
+	if not amnt_t[item_kind] then
+		return 1
+	end
+
+	local item_tier = ini_sys:r_float_ex(section, "tier") or 2
+	local item_amount = 5 - item_tier + math.random(2)
+
+	return item_amount
+end
+
+
+-- stolen from trader injector
+local furniture = {
+    ["esc_m_trader"] = true,
+    ["red_m_lesnik"] = true
+}
+
+local blacklisted_comms = {
+    ["trader"] = true,
+    ["monster"] = true
+}
+
+function get_real_community(se_obj, default)
+
+	if se_obj.name and se_obj:name() and furniture[se_obj:name()] then
+		return default
+	end
+	local community = se_obj.community and se_obj:community()
+	if (not community) then return default end
+	if not blacklisted_comms[community] then
+		return community
+	end
+	local squad_community = get_object_squad(se_obj) and get_object_squad(se_obj):get_squad_community()
+	if not blacklisted_comms[squad_community] then
+		return squad_community
+	else
+		return default
+	end
+end
+
+function get_anomaly_zone_id(giver_id)
+	local se_giver = alife_object(giver_id)
+	if not se_giver then return end
+
+	local zones_t = dup_table(pda_anomaly_zones)
+
+	-- exclude zones outside of radius
+	for level_id, t in pairs(zones_t) do
+		for obj_id, _ in pairs(t) do
+			local dist = get_distx(obj_id, se_giver)
+			if dist and (dist < 700 or dist > 2000) then
+				zones_t[level_id][obj_id] = nil
+			end
+		end
+	end
+
+	-- remove level if its empty
+	for level_id, t in pairs(zones_t) do
+		if is_empty(t) then
+			zones_t[level_id] = nil
+		end
+	end
+
+	-- debug check
+	for level_id, t in pairs(zones_t) do
+		for obj_id, _ in pairs(t) do
+	--		level.map_add_object_spot_ser(obj_id, "anom_zone", "")
+		end
+	end
+
+	-- return random key
+	local rnd_level = rnd_key_table(zones_t)
+	local rnd_zone_id = rnd_level and rnd_key_table(zones_t[rnd_level])
+
+	return rnd_zone_id
+end
+
+function first_update_fill_anomaly_zones()
+	if pda_anomaly_zones and (not is_empty(pda_anomaly_zones)) then
+		return
+	end
+
+	local zone_gvid_blacklist = { 1709, 567, 292, 5318, 5332, 5324, 5320, 1628, 2005, 5152 }	-- half of it are for Meadow
+
+	local function get_nearest_anoms_amount(obj_id, zones_t, level_id, dist)
+		local se_obj = alife_object(obj_id)
+		if not se_obj then return end
+
+		local amount = 0
+		for anom_id, t in pairs(zones_t[level_id]) do
+			local anom = (anom_id ~= se_obj.id) and alife_object(anom_id)
+			local se_obj_p = se_obj.position
+			local target_p = anom and anom.position
+			if (se_obj_p and global_position.level_offsets[level_id] and target_p and global_position.level_offsets[level_id]) then
+				local se_obj_from = global_position.from(se_obj_p, level_id)
+				local target_from = global_position.from(target_p, level_id)
+				local dist_between = se_obj_from and target_from and se_obj_from:distance_to_xz(target_from)
+				if dist_between and dist_between < dist then
+					amount = amount + 1
+				end
+			end
+		end
+
+		return amount
+	end
+
+	-- save all zone_mine by level id
+	for i = 1, 65534 do
+		local se_obj = alife_object(i)
+		if se_obj and se_obj:section_name() and string.find(se_obj:section_name(), "zone_mine") and (not string.find(se_obj:section_name(), "_soc")) then
+			local level_id = game_graph():vertex(se_obj.m_game_vertex_id):level_id()
+			if level_id and level_id < 50 and obj_not_in_lab(se_obj) then		-- nil is 50 something iirc
+				pda_anomaly_zones[level_id] = pda_anomaly_zones[level_id] or {}
+				pda_anomaly_zones[level_id][se_obj.id] = se_obj.m_game_vertex_id
+			end
+		end
+	end
+
+	-- remove zones that do not have more than 6 zone_mine around
+	for level_id, t in pairs(pda_anomaly_zones) do
+		for obj_id, _ in pairs(t) do
+			local nearest_amount = get_nearest_anoms_amount(obj_id, pda_anomaly_zones, level_id, 20)		-- best 20
+			if nearest_amount and nearest_amount < 4 then		-- best 4
+				pda_anomaly_zones[level_id][obj_id] = nil
+			end
+		end
+	end
+
+	-- leave only one gvid for each (or remove blacklisted)
+	for level_id, t in pairs(pda_anomaly_zones) do
+		for obj_id, gvid in pairs(t) do
+
+			for obj_id2, gvid2 in pairs(pda_anomaly_zones[level_id]) do
+				if (obj_id2 ~= obj_id and gvid == gvid2) or (in_ar(zone_gvid_blacklist, gvid2)) then
+					pda_anomaly_zones[level_id][obj_id2] = nil
+				end
+			end
+
+		end
+	end
+
+	-- place trackers for left zone_mine
+	for level_id, t in pairs(pda_anomaly_zones) do
+		for obj_id, gvid in pairs(t) do
+		--	level.map_add_object_spot_ser(obj_id, "anom_zone", "")		-- "anom_zone"	"circle_small_green"
+		end
+	end
+
+end
+
+function task_targets_check(obj_id, giver_id, task_type, obj_sec)
+	local se_obj = alife_object(obj_id)
+	local se_giver = alife_object(giver_id)
+	if (not se_obj) or (not task_type) then return end
+	if (not se_giver) or (not se_giver:alive()) then return end
+
+	-- first check if saved section name is same as stored one (in case id check fails)
+	if obj_sec and obj_sec ~= se_obj:section_name() then return end
+
+	-- check if squad still exist, its mutant squad and npc_count > 0
+	if task_type == 1 then
+		local squad_sec = se_obj:section_name()
+		if squad_sec and string.find(squad_sec, "simulation_") and se_obj:npc_count() > 0 then
+			return true
+		end
+
+	-- check if obj still exist, is stalker and is alive
+	elseif task_type == 2 then
+		if IsStalker(se_obj) and se_obj:alive() then
+			return true
+		end
+
+	-- check if target is smart, obj is game obj and dist < 150
+	elseif task_type == 3 then
+		local is_smart = se_obj:clsid() == clsid.smart_terrain
+		local npc = level.object_by_id(giver_id)
+		local ac_pos = db.actor:position()
+		local npc_pos = npc and npc:position()
+		if is_smart and npc_pos and ac_pos:distance_to(npc_pos) < 150 then
+			local squad = get_object_squad(npc)
+			local npc_rank = ranks.get_obj_rank_name(npc)
+			local available_npc_ranks = npc_rank and (npc_rank == "novice" or npc_rank == "trainee")
+			if squad and available_npc_ranks then
+				return true
+			end
+		end
+
+	-- check if target is stash
+	elseif task_type == 4 or task_type == 6 or task_type == 9 or task_type == 10 then
+		if IsInvbox(se_obj) then
+			return true
+		end
+
+	-- check if squad still alive
+	elseif task_type == 5 then
+		local squad = alife_object(obj_id)
+		if squad and squad.commander_id and squad:npc_count() > 0 then
+			return true
+		end
+
+	-- check if target is smart
+	elseif task_type == 7 or task_type == 8 then
+		if se_obj:clsid() == clsid.smart_terrain then
+			return true
+		end
+
+	end
+
+	return
+end
+
+function obj_not_in_lab(se_obj)
+	local target_level_id = se_obj and game_graph():vertex(se_obj.m_game_vertex_id):level_id()
+	if not target_level_id then return end
+
+	local target_level_name = target_level_id and alife():level_name(target_level_id)
+	if not ( in_ar(level_blacklist, target_level_name) ) then
+		return true
+	end
+
+	return false
+end
+
+function get_squad_size(squad_id)
+	local squad = alife_object(squad_id)
+	local squad_size = 0
+	if squad and squad.commander_id then
+		for member in squad:squad_members() do
+			local se_member = alife_object(member.id)
+			if se_member and se_member:alive() then
+				squad_size = squad_size + 1
+			end
+		end
+	end
+
+	return squad_size
+end
+
+function obj_in_squad(obj_id, squad_id)
+	local squad = alife_object(squad_id)
+	if squad and squad.commander_id then
+		for member in squad:squad_members() do
+			local se_member = alife_object(member.id)
+			if se_member.id == obj_id then
+				return true
+			end
+		end
+	end
+
+	return false
+end
+
+function pda_use_package(obj)
+	local ini_manager = ini_file("items\\settings\\itms_manager.ltx")
+
+	local sec = obj:section()
+	local num = ""
+	string.gsub(sec, "%d+", function(e) num = num .. e end)
+
+	local new_sec = num and type(tonumber(num)) == "number" and ("quest_package_" .. num)
+	local content = ini_manager:r_string_ex("package_content", new_sec)
+	if not content then return end
+
+	local t = str_explode(content,",")
+	local pick = {}
+	for i=1,#t do
+		if (#pick < 6) and (math.random(100) < 50) then
+			pick[#pick+1] = t[i]
+		end
+	end
+	pick = #pick > 1 and pick or {t[1],t[2],t[3],t[4]}
+	
+	utils_item.delay_event(pick, {obj:id()}, "package_content", true, 5)
+end
+
+function pda_dyn_msg(str, name, icon, ttl, snd)
+	if not ttl then ttl = 10 end
+	if not snd then snd = "beep_1" end
+
+	local def_clr = strformat("%c[%s,%s,%s,%s]", 255, 190, 190, 190)
+	local inc_clr = strformat("%c[%s,%s,%s,%s]", 255, 0, 140, 180)
+	local msg = inc_clr .. gt("pda_private_msg") .. " " .. def_clr .. str
+	dynamic_news_helper.send_tip(msg, name, nil, ttl, icon, snd, "npc")
+
+end
+
+function pda_change_goodwill(comm, goodwill, reputation, str, wo_mcm)
+	if not comm then return end
+	if (not wo_mcm and goodwill_rep_mult <= 0) then return end
+
+	local gw = wo_mcm and goodwill or goodwill * goodwill_rep_mult
+	local reput = wo_mcm and reputation or reputation * goodwill_rep_mult
+
+	-- xcvb personal, disable reputation gain but keep reputation decrease from failed tasks AND make goodwill gain random
+	if xcvb_personal_use then
+		if gw and gw > 0 then
+			local random_range = math.random(5, 10) / 10
+			gw = gw * random_range
+		end
+
+		relation_registry.change_community_goodwill(comm, 0, math.ceil(gw))
+
+		if reput and reput < 0 then
+			db.actor:change_character_reputation(math.ceil(reput))
+		end
+	-----
+	else
+		relation_registry.change_community_goodwill(comm, 0, math.ceil(gw))
+		db.actor:change_character_reputation(math.ceil(reput))
+	end
+
+	local sender_comm = comm == "trader" and gt("st_ui_pda_legend_trader") or gt("st_faction_" .. comm)
+	news_manager.send_tip(db.actor, string.format(gt(str), sender_comm), 0, nil, 7500)
+
+end
+
+function save_state(m_data)
+	m_data.Active_pda_tasks = Active_pda_tasks
+	m_data.met_givers = met_givers
+	m_data.giver_active_tasks = giver_active_tasks
+
+	-- anomaly zones
+	m_data.pda_anomaly_zones = pda_anomaly_zones
+end
+
+function load_state(m_data)
+	Active_pda_tasks = m_data.Active_pda_tasks or {}
+	met_givers = m_data.met_givers or {}
+	giver_active_tasks = m_data.giver_active_tasks or {}
+
+	-- anomaly zones
+	pda_anomaly_zones = m_data.pda_anomaly_zones or {}
+end
+
+function pr(...)
+	if not pda_inter_gui.Custom_PDA_debug then return end
+	printf(...)
+end
+
+function on_option_change()
+	respond_mult = pda_inter_mcm.get_config("task_respond_mult")
+	base_reward = pda_inter_mcm.get_config("task_base_reward")
+	task_cooldown = pda_inter_mcm.get_config("task_cooldown")
+	goodwill_rep_mult = pda_inter_mcm.get_config("task_goodwill_mult")
+	task_giver_radius = pda_inter_mcm.get_config("task_giver_radius")
+
+	mcm_mutant_reward = pda_inter_mcm.get_config("task_mutant_reward")
+	mutant_distance = pda_inter_mcm.get_config("task_mutant_distance")
+	mcm_mutant_cd = pda_inter_mcm.get_config("task_mutant_cd")
+
+	mcm_bounty_reward = pda_inter_mcm.get_config("task_bounty_reward")
+	bounty_distance = pda_inter_mcm.get_config("task_bounty_distance")
+	mcm_bounty_cd = pda_inter_mcm.get_config("task_bounty_cd")
+
+	mcm_guide_reward = pda_inter_mcm.get_config("task_guide_reward")
+	guide_time_mult = pda_inter_mcm.get_config("task_guide_time_mult")
+	mcm_guide_cd = pda_inter_mcm.get_config("task_guide_cd")
+
+	mcm_items_reward = pda_inter_mcm.get_config("task_items_reward")
+	mcm_items_cd = pda_inter_mcm.get_config("task_items_cd")
+
+	mcm_squad_reward = pda_inter_mcm.get_config("task_squad_reward")
+	squad_distance = pda_inter_mcm.get_config("task_squad_distance")
+	mcm_squad_cd = pda_inter_mcm.get_config("task_squad_cd")
+
+	mcm_stealth_reward = pda_inter_mcm.get_config("task_stealth_reward")
+	mcm_stealth_cd = pda_inter_mcm.get_config("task_stealth_cd")
+
+	mcm_guard_reward = pda_inter_mcm.get_config("task_guard_reward")
+	mcm_guard_cd = pda_inter_mcm.get_config("task_guard_cd")
+
+	mcm_scout_reward = pda_inter_mcm.get_config("task_scout_reward")
+	mcm_scout_cd = pda_inter_mcm.get_config("task_scout_cd")
+
+	mcm_artefact_reward = pda_inter_mcm.get_config("task_artefact_reward")
+	mcm_artefact_cd = pda_inter_mcm.get_config("task_artefact_cd")
+
+	mcm_delivery_reward = pda_inter_mcm.get_config("task_delivery_reward")
+	mcm_delivery_cd = pda_inter_mcm.get_config("task_delivery_cd")
+
+end
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+	RegisterScriptCallback("npc_on_net_spawn", npc_on_net_spawn)
+	RegisterScriptCallback("actor_on_update", setup_tasks_on_update)
+	RegisterScriptCallback("actor_on_update", manage_cooldowns_on_update)
+	RegisterScriptCallback("actor_on_update", manage_tasks_on_update)
+	RegisterScriptCallback("actor_on_update", manage_pda_x_on_update)
+	RegisterScriptCallback("actor_on_item_put_in_box", manage_tasks_on_put_in_box)
+	RegisterScriptCallback("actor_on_item_take_from_box", manage_tasks_on_take_from_box)
+	RegisterScriptCallback("actor_on_item_take", manage_tasks_on_take)
+	RegisterScriptCallback("squad_on_npc_death", manage_tasks_on_death)
+	RegisterScriptCallback("actor_on_item_use", manage_tasks_on_use)
+	RegisterScriptCallback("actor_on_sleep", actor_on_sleep)
+	RegisterScriptCallback("actor_on_first_update", first_update_fill_anomaly_zones)
+	RegisterScriptCallback("save_state", save_state)
+	RegisterScriptCallback("load_state", load_state)
+	RegisterScriptCallback("on_option_change", on_option_change)
+end

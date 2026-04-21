@@ -1,0 +1,55 @@
+local icon_state = headgear_animations_mcm.get_config("icon_state")
+
+function on_game_start()
+    actor_status.add_indicator("Gasmask", {
+        index = 0, --14,
+        typ="state",
+        functor={"actor_status_gasmask", "get_gasmask_status", true},
+        icon="ui\\headgear_indicator\\StatusGasmask.dds",
+        background="ui\\headgear_indicator\\bg1.dds",
+        anim_icon=false,
+        anim_bk=false,
+    })
+
+    RegisterScriptCallback("on_option_change", on_option_change)
+end
+
+
+function on_option_change()
+    icon_state = headgear_animations_mcm.get_config("icon_state")
+end
+
+
+function get_gasmask_status(visual)
+    if visual then
+        if icon_state == 0 then
+            return 0
+        elseif icon_state == 1 then
+            if not is_have_helmet() then
+                return 0
+            else
+                return 1
+            end
+        elseif icon_state == 2 then
+            if is_have_helmet() then
+                return 0
+            else
+                return 1
+            end
+        end
+    end
+end
+
+
+function is_have_helmet()
+    local o_helm = db.actor:item_in_slot(12)
+    if o_helm then return true end
+
+    local o_outfit = db.actor:item_in_slot(7)     --:cast_CustomOutfit()
+    if o_outfit then
+        local c_outfit = o_outfit:cast_CustomOutfit()
+        if not c_outfit.bIsHelmetAvaliable then return true end
+    end
+
+    return false
+end

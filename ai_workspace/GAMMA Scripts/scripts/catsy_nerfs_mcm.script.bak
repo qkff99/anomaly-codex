@@ -1,0 +1,156 @@
+--[[ New Extensible RF Sources
+	MCM initialization script
+	Author: Catspaw (CatspawMods @ ModDB)
+	Source: https://www.moddb.com/mods/stalker-anomaly/addons/new-extensible-rf-sources/
+
+	Tweaked for redistribution with Devices of Anomaly Redone
+--]]
+
+item_radio.load_me 	 = function() end
+ui_rf_widget.load_me = function() end
+
+function on_mcm_load()
+	-- Trap if another addon has overwritten item_radio.script
+	local nerfs_installed = item_radio and item_radio.script_version
+	local dar_installed = (dar_rf_noise ~= nil)
+	local headerstring = nerfs_installed and "header" or "loadfailed"
+	local headercolor = nerfs_installed and {220,220,220,220} or {255,255,0,0}
+	local headerimg = dar_installed and "ui_mcm_nerfs_main_headerimg_new" or "ui_mcm_nerfs_main_headerimg"
+
+	op = {	 id= "nerfs", gr={
+			{ id = "nerfmain", sh=true, gr={
+					{id = "headerimg", type = "slide", link = headerimg, size = {512,235}, spacing = 0},
+					{id = "header1", type = "desc", clr = headercolor, text = "ui_mcm_nerfs_nerfmain_"..headerstring.."1"},
+					{id = "header2", type = "desc", clr = headercolor, text = "ui_mcm_nerfs_nerfmain_"..headerstring.."2"},
+					{id = "max_freq", type = "track", val = 2, min = 300, max = 999, step = 1, def = 300},
+					{id = "enable_rrfr", type = "check", val = 1, def = false},
+					{id = "use_mwheel", type = "check", val = 1, def = true},
+					{id = "binaries", type = "desc", text = "ui_mcm_nerfs_nerfmain_binaries"},
+					{id = "header3", type = "desc", text = "ui_mcm_nerfs_scrolldown"},
+					{id = "debuglogs", type = "check", val = 1, def = false},
+				},
+			},
+			{ id = "nerfpresets", sh=true, gr={
+					{id = "headerimg", type = "slide", link = "ui_mcm_nerfs_presets_headerimg", size = {512,50}, spacing = 20},
+					{id = "header1", type = "desc", clr = {255,255,255,0}, text = "ui_mcm_nerfpresets_header1"},
+					{id = "header2", type = "desc", clr = {255,200,200,200}, text = "ui_mcm_nerfpresets_header2"},
+					{id = "preset1_freq", type = "input", val = 2, min = 1, max = 999, def = 1},
+	                {id = "kb_preset1", type = "key_bind", val = 2, def = DIK_keys.DIK_1},
+	                {id = "mk_preset1", type = ui_mcm.kb_mod_radio, val = 2, def = 3, hint = "mcm_kb_modifier", 
+		                content = { 
+		                    {0,"mcm_kb_mod_none"}, 
+		                    {1,"mcm_kb_mod_shift"}, 
+		                    {2,"mcm_kb_mod_ctrl"}, 
+		                    {3,"mcm_kb_mod_alt"}
+		                }},
+					{id = "preset2_freq", type = "input", val = 2, min = 1, max = 999, def = 145},
+	                {id = "kb_preset2", type = "key_bind", val = 2, def = DIK_keys.DIK_2},
+	                {id = "mk_preset2", type = ui_mcm.kb_mod_radio, val = 2, def = 3, hint = "mcm_kb_modifier", 
+		                content = { 
+		                    {0,"mcm_kb_mod_none"}, 
+		                    {1,"mcm_kb_mod_shift"}, 
+		                    {2,"mcm_kb_mod_ctrl"}, 
+		                    {3,"mcm_kb_mod_alt"}
+		                }},
+					{id = "preset3_freq", type = "input", val = 2, min = 1, max = 999, def = 300},
+	                {id = "kb_preset3", type = "key_bind", val = 2, def = DIK_keys.DIK_3},
+	                {id = "mk_preset3", type = ui_mcm.kb_mod_radio, val = 2, def = 3, hint = "mcm_kb_modifier", 
+		                content = { 
+		                    {0,"mcm_kb_mod_none"}, 
+		                    {1,"mcm_kb_mod_shift"}, 
+		                    {2,"mcm_kb_mod_ctrl"}, 
+		                    {3,"mcm_kb_mod_alt"}
+		                }},
+					{id = "preset4_freq", type = "input", val = 2, min = 1, max = 999, def = 400},
+	                {id = "kb_preset4", type = "key_bind", val = 2, def = DIK_keys.DIK_4},
+	                {id = "mk_preset4", type = ui_mcm.kb_mod_radio, val = 2, def = 3, hint = "mcm_kb_modifier", 
+		                content = { 
+		                    {0,"mcm_kb_mod_none"}, 
+		                    {1,"mcm_kb_mod_shift"}, 
+		                    {2,"mcm_kb_mod_ctrl"}, 
+		                    {3,"mcm_kb_mod_alt"}
+		                }},
+					{id = "preset5_freq", type = "input", val = 2, min = 1, max = 999, def = 500},
+	                {id = "kb_preset5", type = "key_bind", val = 2, def = DIK_keys.DIK_5},
+	                {id = "mk_preset5", type = ui_mcm.kb_mod_radio, val = 2, def = 3, hint = "mcm_kb_modifier", 
+		                content = { 
+		                    {0,"mcm_kb_mod_none"}, 
+		                    {1,"mcm_kb_mod_shift"}, 
+		                    {2,"mcm_kb_mod_ctrl"}, 
+		                    {3,"mcm_kb_mod_alt"}
+		                }},
+					{id = "preset6_freq", type = "input", val = 2, min = 1, max = 999, def = 762},
+	                {id = "kb_preset6", type = "key_bind", val = 2, def = DIK_keys.DIK_6},
+	                {id = "mk_preset6", type = ui_mcm.kb_mod_radio, val = 2, def = 3, hint = "mcm_kb_modifier", 
+		                content = { 
+		                    {0,"mcm_kb_mod_none"}, 
+		                    {1,"mcm_kb_mod_shift"}, 
+		                    {2,"mcm_kb_mod_ctrl"}, 
+		                    {3,"mcm_kb_mod_alt"}
+		                }},
+					{id = "preset7_freq", type = "input", val = 2, min = 1, max = 999, def = 810},
+	                {id = "kb_preset7", type = "key_bind", val = 2, def = DIK_keys.DIK_7},
+	                {id = "mk_preset7", type = ui_mcm.kb_mod_radio, val = 2, def = 3, hint = "mcm_kb_modifier", 
+		                content = { 
+		                    {0,"mcm_kb_mod_none"}, 
+		                    {1,"mcm_kb_mod_shift"}, 
+		                    {2,"mcm_kb_mod_ctrl"}, 
+		                    {3,"mcm_kb_mod_alt"}
+		                }},
+					{id = "preset8_freq", type = "input", val = 2, min = 1, max = 999, def = 869},
+	                {id = "kb_preset8", type = "key_bind", val = 2, def = DIK_keys.DIK_8},
+	                {id = "mk_preset8", type = ui_mcm.kb_mod_radio, val = 2, def = 3, hint = "mcm_kb_modifier", 
+		                content = { 
+		                    {0,"mcm_kb_mod_none"}, 
+		                    {1,"mcm_kb_mod_shift"}, 
+		                    {2,"mcm_kb_mod_ctrl"}, 
+		                    {3,"mcm_kb_mod_alt"}
+		                }},
+					{id = "preset9_freq", type = "input", val = 2, min = 1, max = 999, def = 915},
+	                {id = "kb_preset9", type = "key_bind", val = 2, def = DIK_keys.DIK_9},
+	                {id = "mk_preset9", type = ui_mcm.kb_mod_radio, val = 2, def = 3, hint = "mcm_kb_modifier", 
+		                content = { 
+		                    {0,"mcm_kb_mod_none"}, 
+		                    {1,"mcm_kb_mod_shift"}, 
+		                    {2,"mcm_kb_mod_ctrl"}, 
+		                    {3,"mcm_kb_mod_alt"}
+		                }},
+				},
+			},
+		},
+	}
+	local widgetmenu =
+			{ id = "nerfwidget", sh=true, gr={
+					{id = "headerimg", type = "slide", link = "ui_mcm_nerfs_widget_headerimg", size = {512,288}, spacing = 20},
+					{id = "header", type = "desc", text = "ui_mcm_nerfs_nerfwidget_header1"},
+					{id = "show", type = "check", val = 1, def = false},
+					{id = "header", type = "desc", text = "ui_mcm_nerfs_nerfwidget_headerxy"},
+					{id = "pos_x", type = "input", val = 2, min = 0, max = 1024, def = 491},
+					{id = "pos_y", type = "input", val = 2, min = 0, max = 768, def = 670},
+					{id = "header", type = "desc", text = "ui_mcm_nerfs_scrolldown"},
+					{id = "header", type = "desc", text = "ui_mcm_nerfs_nerfwidget_lo_header"},
+					{id = "lo_a", type = "input", val = 2, min = 0, max = 255, def = 255, hint = "nerfs_nerfwidget_clr_a"},
+					{id = "lo_r", type = "input", val = 2, min = 0, max = 255, def = 50, hint = "nerfs_nerfwidget_clr_r"},
+					{id = "lo_g", type = "input", val = 2, min = 0, max = 255, def = 50, hint = "nerfs_nerfwidget_clr_g"},
+					{id = "lo_b", type = "input", val = 2, min = 0, max = 255, def = 50, hint = "nerfs_nerfwidget_clr_b"},
+					{id = "header", type = "desc", text = "ui_mcm_nerfs_nerfwidget_hi_header"},
+					{id = "hi_a", type = "input", val = 2, min = 0, max = 255, def = 255, hint = "nerfs_nerfwidget_clr_a"},
+					{id = "hi_r", type = "input", val = 2, min = 0, max = 255, def = 50, hint = "nerfs_nerfwidget_clr_r"},
+					{id = "hi_g", type = "input", val = 2, min = 0, max = 255, def = 250, hint = "nerfs_nerfwidget_clr_g"},
+					{id = "hi_b", type = "input", val = 2, min = 0, max = 255, def = 50, hint = "nerfs_nerfwidget_clr_b"},
+					{id = "header", type = "desc", text = "ui_mcm_nerfs_nerfwidget_em_header"},
+					{id = "em_a", type = "input", val = 2, min = 0, max = 255, def = 128, hint = "nerfs_nerfwidget_clr_a"},
+					{id = "em_r", type = "input", val = 2, min = 0, max = 255, def = 200, hint = "nerfs_nerfwidget_clr_r"},
+					{id = "em_g", type = "input", val = 2, min = 0, max = 255, def = 0, hint = "nerfs_nerfwidget_clr_g"},
+					{id = "em_b", type = "input", val = 2, min = 0, max = 255, def = 0, hint = "nerfs_nerfwidget_clr_b"},
+
+				},
+			}
+
+	if ui_rf_widget then
+		-- Add the accessibility widget menu if that script is present
+		table.insert(op.gr,widgetmenu)
+	end
+	return op
+end
+

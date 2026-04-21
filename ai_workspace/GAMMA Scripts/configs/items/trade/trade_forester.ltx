@@ -1,0 +1,145 @@
+#include "presets\trade_discounts.ltx"
+#include "presets\trade_presets.ltx"
+
+[trader]
+buy_condition = trade_generic_buy 
+sell_condition = trade_generic_sell
+buy_supplies = {=actor_goodwill_ge(stalker:1000)} supplies_3, {=heavy_pockets_functor()} supplies_3, {=actor_goodwill_ge(stalker:500)} supplies_2,  supplies_1
+buy_item_condition_factor = 0.50
+buy_item_exponent = 1.75
+sell_item_exponent = 0.75
+
+discounts = discount_forester
+
+[trade_generic_buy]: trasher
+itm_pda_common                           ;NO TRADE
+itm_pda_rare                             ;NO TRADE
+itm_pda_uncommon                         ;NO TRADE
+pri_a25_explosive_charge_item            ;NO TRADE
+
+[trade_generic_sell]:
+
+[supplies_1]:common_stock		
+swiss_knife             = 1, 1
+ball_hammer             = 2, 1
+duct_tape               = 2, 1
+grease                  = 2, 1
+steel_wool		= 3, 1
+sharpening_stones	= 1, 1
+leatherman_tool         = 1, 1
+rasp_tool               = 1, 1
+ramrod_tool             = 1, 1
+sewing_thread           = 3, 1
+heavy_sewing_thread     = 1, 1
+itm_tent		= 1, 1
+grooming		= 1, 1
+itm_backpack		= 3, 1
+batteries_dead		= 5, 1
+
+meat_tushkano		= 6, 1
+meat_dog		= 6, 1
+meat_pseudodog		= 4, 1
+meat_flesh		= 4, 1
+meat_boar		= 4, 1
+meat_bloodsucker	= 2, 1
+meat_snork		= 4, 1
+meat_chimera		= 1, 1
+meat_lurker		= 1, 1
+meat_psysucker		= 1, 1
+meat_tushkano_b		= 3, 0.7
+meat_dog_b              = 3, 0.7
+meat_pseudodog_b        = 2, 0.7
+meat_flesh_b            = 2, 0.7
+meat_boar_b             = 3, 0.7
+meat_bloodsucker_b      = 1, 0.7
+meat_snork_b            = 2, 0.7
+meat_chimera_b          = 1, 0.7
+meat_lurker_b           = 1, 0.7
+meat_psysucker_b        = 1, 0.7
+meat_tushkano_a         = 1, 0.3
+meat_dog_a              = 1, 0.3
+meat_pseudodog_a        = 1, 0.3
+meat_flesh_a            = 1, 0.3
+meat_boar_a             = 1, 0.3
+meat_bloodsucker_a      = 1, 0.3
+meat_snork_a            = 1, 0.3
+meat_chimera_a          = 1, 0.3
+meat_lurker_a           = 1, 0.3
+meat_psysucker_a        = 1, 0.3
+
+bandage			= 5, 1
+medkit			= 2, 1
+survival_kit		= 1, 1
+tea			= 2, 1
+vodka			= 2, 1
+vodka2			= 2, 1
+
+hide_psy_dog		= 2, 0.50
+hide_pseudodog		= 2, 0.50
+hide_boar		= 2, 0.50
+hide_flesh		= 2, 0.50
+hide_lurker		= 2, 0.50
+
+shovel_old		= 1, 0.50
+shovel_mili		= 1, 0.50
+beadspread		= 1, 0.50
+walkie			= 1, 0.50
+cards			= 1, 0.50
+boots			= 1, 0.50
+headlamp		= 1, 0.50
+mirror			= 1, 0.50
+rope			= 1, 0.50
+radio			= 1, 0.50
+radio2			= 1, 0.50
+
+;[shotguns]
+wpn_bm16		= 1, 1
+wpn_remington870	= 1, 1
+wpn_winchester1300	= 1, 1
+wpn_fort500		= 1, 1
+wpn_mossberg590		= 1, 1
+wpn_mp133		= 1, 1
+wpn_sks			= 1, 1
+wpn_spas12		= 1, 0.65
+wpn_mp153		= 1, 0.65
+
+ammo_12x70_buck		= 14, 0.85
+ammo_12x76_dart		= 10, 0.85
+ammo_11.43x23_hydro	= 3, 0.85
+ammo_12x76_zhekan	= 10, 0.85
+
+upgr_o_1_carry		= 1, 1
+upgr_o_1_durability	= 1, 1
+upgr_w_1_reliability	= 1, 1
+upgr_w_1_recoil		= 1, 1
+
+wpn_knife		= 1, 0.75
+wpn_knife2		= 1, 0.75
+wpn_knife3		= 1, 0.75
+
+
+[supplies_2]:supplies_1		
+upgr_o_2_carry		= 1, 1
+upgr_o_2_durability	= 1, 1
+upgr_w_2_reliability	= 1, 1
+upgr_w_2_recoil		= 1, 1
+
+itm_ammokit		= 1, 1
+
+wpn_knife4		= 1, 0.75
+wpn_knife5		= 1, 0.75
+
+ghillie_outfit		= 1, 0.50
+
+
+[supplies_3]:supplies_2		
+upgr_o_3_carry		= 1, 0.75
+upgr_o_3_durability	= 1, 0.75
+upgr_w_3_reliability	= 1, 0.75
+upgr_w_3_recoil		= 1, 0.75
+
+wpn_axe			= 1, 0.75
+wpn_axe2		= 1, 0.75
+wpn_axe3		= 1, 0.75
+
+

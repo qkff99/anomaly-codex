@@ -1,0 +1,200 @@
+--[[
+=======================================================================================
+    DevTools UI - Common Module
+    
+    Shared UI utilities, colors, and format helpers used by all UI modules.
+    Loads first alphabetically among UI modules.
+=======================================================================================
+--]]
+
+-- ============================================================================
+-- SHARED UI STATE CONTAINER
+-- ============================================================================
+
+devtools_ui_common = devtools_ui_common or {}
+local U = devtools_ui_common
+
+-- ============================================================================
+-- PRE-COMPUTED COLORS (performance optimization - avoids fcolor() allocations)
+-- ============================================================================
+
+-- Timing colors (for Avg/Max columns)
+U.TIMING_COLOR_GREEN = fcolor():set(0.4, 1, 0.4, 1)
+U.TIMING_COLOR_YELLOW = fcolor():set(1, 1, 0.4, 1)
+U.TIMING_COLOR_ORANGE = fcolor():set(1, 0.7, 0.3, 1)
+U.TIMING_COLOR_RED = fcolor():set(1, 0.4, 0.4, 1)
+
+-- Module palette colors
+U.MODULE_PALETTE = {
+	fcolor():set(0.5, 0.8, 1, 1), -- Light blue
+	fcolor():set(1, 0.8, 0.5, 1), -- Orange
+	fcolor():set(0.5, 1, 0.5, 1), -- Green
+	fcolor():set(1, 0.5, 0.8, 1), -- Pink
+	fcolor():set(0.8, 0.8, 0.5, 1), -- Yellow
+	fcolor():set(0.8, 0.5, 1, 1), -- Purple
+	fcolor():set(0.5, 1, 0.8, 1), -- Cyan
+	fcolor():set(1, 0.6, 0.6, 1), -- Salmon
+}
+
+-- Default/utility colors
+U.COLOR_WHITE = fcolor():set(1, 1, 1, 1)
+U.COLOR_GRAY = fcolor():set(0.5, 0.5, 0.5, 1)
+
+-- ============================================================================
+-- FORMAT HELPERS
+-- ============================================================================
+
+-- Compact number formatting (reduces string allocations) - DEFAULT for performance
+function U.format_compact(ms)
+	if ms == nil then
+		return "N/A"
+	end
+	if ms >= 100 then
+		return string.format("%.0f", ms)
+	elseif ms >= 10 then
+		return string.format("%.1f", ms)
+	else
+		return string.format("%.2f", ms)
+	end
+end
+
+-- High precision number formatting (6 decimal places) - for detailed analysis
+function U.format_precise(ms)
+	if ms == nil then
+		return "N/A"
+	end
+	return string.format("%.6f", ms)
+end
+
+-- ============================================================================
+-- MODULE COLOR MANAGEMENT
+-- ============================================================================
+
+U.module_colors = {} -- Auto-assigned colors (can be overridden)
+U.custom_module_colors = {} -- User-defined custom colors (persisted in presets)
+U.color_index = 0
+
+function U.get_module_color_by_index(index)
+	return U.MODULE_PALETTE[((index - 1) % #U.MODULE_PALETTE) + 1]
+end
+
+function U.sync_module_colors(wrapped_modules)
+	-- Only auto-assign colors for modules that don't have custom colors
+	U.module_colors = {}
+	U.color_index = 0
+	for i, module_name in ipairs(wrapped_modules) do
+		-- If module has a custom color, use it; otherwise auto-assign
+		if U.custom_module_colors[module_name] then
+			U.module_colors[module_name] = U.custom_module_colors[module_name]
+		else
+			U.color_index = U.color_index + 1
+			U.module_colors[module_name] = U.get_module_color_by_index(U.color_index)
+		end
+	end
+end
+
+function U.get_module_color(func_name)
+	local module_name = func_name:match("^([^%.]+)%.")
+	if not module_name then
+		return U.COLOR_WHITE
+	end
+
+	-- Check custom colors first, then auto-assigned, then assign new
+	if U.custom_module_colors[module_name] then
+		return U.custom_module_colors[module_name]
+	elseif U.module_colors[module_name] then
+		return U.module_colors[module_name]
+	else
+		U.color_index = U.color_index + 1
+		local color = U.get_module_color_by_index(U.color_index)
+		U.module_colors[module_name] = color
+		return color
+	end
+end
+
+function U.get_module_color_by_name(module_name)
+	-- Check custom colors first, then auto-assigned
+	if U.custom_module_colors[module_name] then
+		return U.custom_module_colors[module_name]
+	end
+	return U.module_colors[module_name] or U.COLOR_WHITE
+end
+
+-- Set a custom color for a module (r, g, b values 0.0-1.0)
+function U.set_module_color(module_name, r, g, b)
+	if not module_name or type(module_name) ~= "string" then
+		return false
+	end
+	if not r or not g or not b then
+		return false
+	end
+	U.custom_module_colors[module_name] = fcolor():set(r, g, b, 1)
+	-- Update current color assignment if module is already wrapped
+	if U.module_colors[module_name] then
+		U.module_colors[module_name] = U.custom_module_colors[module_name]
+	end
+	return true
+end
+
+-- Remove custom color for a module (revert to auto-assigned)
+function U.clear_module_color(module_name)
+	if U.custom_module_colors[module_name] then
+		U.custom_module_colors[module_name] = nil
+		-- Re-sync to get auto-assigned color
+		local wrapped_modules = {}
+		if devtools_profiler and type(devtools_profiler.get_wrapped_modules) == "function" then
+			wrapped_modules = devtools_profiler.get_wrapped_modules() or {}
+		end
+		if #wrapped_modules > 0 then
+			U.sync_module_colors(wrapped_modules)
+		end
+		return true
+	end
+	return false
+end
+
+-- Get custom color assignments (for saving to presets)
+function U.get_custom_module_colors()
+	local colors = {}
+	for module_name, color in pairs(U.custom_module_colors) do
+		-- Convert fcolor to table {r, g, b}
+		colors[module_name] = {color.r, color.g, color.b}
+	end
+	return colors
+end
+
+-- Set custom color assignments (for loading from presets)
+function U.set_custom_module_colors(colors)
+	if not colors or type(colors) ~= "table" then
+		return false
+	end
+	U.custom_module_colors = {}
+	for module_name, rgb in pairs(colors) do
+		if type(rgb) == "table" and #rgb >= 3 then
+			U.custom_module_colors[module_name] = fcolor():set(rgb[1], rgb[2], rgb[3], 1)
+		end
+	end
+	-- Re-sync to apply custom colors
+	local wrapped_modules = {}
+	if devtools_profiler and type(devtools_profiler.get_wrapped_modules) == "function" then
+		wrapped_modules = devtools_profiler.get_wrapped_modules() or {}
+	end
+	if #wrapped_modules > 0 then
+		U.sync_module_colors(wrapped_modules)
+	end
+	return true
+end
+
+function U.get_timing_color(ms)
+	if not ms then
+		return U.TIMING_COLOR_RED
+	elseif ms < 1 then
+		return U.TIMING_COLOR_GREEN
+	elseif ms < 5 then
+		return U.TIMING_COLOR_YELLOW
+	elseif ms < 20 then
+		return U.TIMING_COLOR_ORANGE
+	else
+		return U.TIMING_COLOR_RED
+	end
+end

@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+
+    <!-- MCM Menu Title -->
+    <string id="ui_mcm_fair_autocomplete_title">
+        <text>Fair Autocomplete</text>
+    </string>
+    
+    <string id="ui_mcm_menu_fair_autocomplete">
+        <text>Fair Autocomplete</text>
+    </string>
+    
+    <!-- General Settings -->
+    <string id="ui_mcm_fair_autocomplete_enable">
+        <text>Enable Autocomplete</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_enable_desc">
+        <text>Enables the main autocomplete logic. Tasks will only autocomplete if YOU killed the targets.</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_pda_check">
+        <text>Enable PDA Check</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_pda_check_desc">
+        <text>Only autocomplete tasks if the player has a PDA</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_require_player_kill">
+        <text>Require Player/Companion Kills</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_require_player_kill_desc">
+        <text>Tasks only autocomplete if you or your companions killed the targets</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_companion_kills_count">
+        <text>Companion Kills Count</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_companion_kills_count_desc">
+        <text>Kills made by your companions count towards task completion</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_count_assists">
+        <text>Count Assists (Hits)</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_count_assists_desc">
+        <text>If you or your companions hit a target before it died, count it even if someone else got the killing blow</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_max_kill_distance">
+        <text>Maximum Kill Distance (0=disabled)</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_max_kill_distance_desc">
+        <text>Maximum distance from actor when target dies. Set to 0 to disable distance checking. Default: 0 (disabled)</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_require_same_level">
+        <text>Require Same Level</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_require_same_level_desc">
+        <text>Target must die on the same level as the player for the kill to count</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_cancel_if_stolen">
+        <text>Cancel Stolen Tasks</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_cancel_if_stolen_desc">
+        <text>Cancel tasks without penalty if someone else killed your target</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_check_interval">
+        <text>Check Interval (seconds)</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_check_interval_desc">
+        <text>How often to check for task completion. Lower = more responsive but slightly more CPU usage</text>
+    </string>
+    
+    <!-- Task Types Headers -->
+    <string id="ui_mcm_fair_autocomplete_task_types_header">
+        <text>--- General Task Types ---</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_special_tasks_header">
+        <text>--- Special Task Types ---</text>
+    </string>
+    
+    <!-- General Task Types -->
+    <string id="ui_mcm_fair_autocomplete_assault">
+        <text>Camp Assault Tasks</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_assault_desc">
+        <text>Eliminate mutants or enemy stalkers at a location</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_bounty">
+        <text>Bounty Tasks</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_bounty_desc">
+        <text>Eliminate a specific stalker</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_mutant_hunt">
+        <text>Mutant Hunt Tasks</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_mutant_hunt_desc">
+        <text>Hunt and eliminate mutants (Hunter tasks)</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_hostage">
+        <text>Hostage Tasks</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_hostage_desc">
+        <text>Eliminate enemy stalkers and save the hostage</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_spy_extract">
+        <text>Spy Extraction Tasks</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_spy_extract_desc">
+        <text>Eliminate an enemy squad and extract the spy</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_fate">
+        <text>Fate Tasks</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_fate_desc">
+        <text>"Lost Signal", "Investigate the Scouts' Location", "Trace the Emergency Signal" and "Find the Missing Duty Soldier"</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_scripted">
+        <text>Scripted Tasks</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_scripted_desc">
+        <text>"Recover Sidorovich's shipment" and "Recover the detector prototype"</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_retrieve">
+        <text>Retrieve Tasks</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_retrieve_desc">
+        <text>Search a given stash and return a specific item from it</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_measurements">
+        <text>Measure Tasks</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_measurements_desc">
+        <text>Take measurements in an anomaly field</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_scanner">
+        <text>Place Scanner Tasks</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_scanner_desc">
+        <text>"Scanning Field" and "Plant the Scanner Near the Symbiont Anomaly"</text>
+    </string>
+    
+    <!-- Special Task Types -->
+    <string id="ui_mcm_fair_autocomplete_snitch">
+        <text>Task "Toppers"</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_snitch_desc">
+        <text>Kill top-ranked stalkers from faction lists</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_spring_clean">
+        <text>Task "Secure The Base"</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_spring_clean_desc">
+        <text>Clear mutants from faction base areas</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_defense">
+        <text>Task "Defend the pump station"</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_defense_desc">
+        <text>Hold-the-ground defense tasks from Petrenko</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_destroy_btrs">
+        <text>Task "Why We Can't Have Nice Things"</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_destroy_btrs_desc">
+        <text>Destroy military vehicles</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_research_hunt">
+        <text>Task "Semenov Research Hunt"</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_research_hunt_desc">
+        <text>Hunt specific mutants for Semenov's research</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_recover_tracker">
+        <text>Task "Recover the Tracking Device"</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_recover_tracker_desc">
+        <text>Kill mutants with tracking devices attached</text>
+    </string>
+    
+    <!-- Kill Requirement -->
+    <string id="ui_mcm_fair_autocomplete_kill_requirement">
+        <text>Assault Kill Requirement</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_kill_requirement_desc">
+        <text>How many enemies you must kill for assault tasks to autocomplete</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_kill_req_one">
+        <text>At Least One Enemy</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_kill_req_half">
+        <text>At Least Half</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_kill_req_all">
+        <text>All Enemies</text>
+    </string>
+    
+    <!-- Rewards -->
+    <string id="ui_mcm_fair_autocomplete_compensate_item_rewards">
+        <text>Replace Items with Money</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_compensate_item_rewards_desc">
+        <text>When enabled, item rewards from autocompleted tasks will be removed from your inventory and replaced with their money value. When disabled, you receive the items normally.</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_compensation_coefficient">
+        <text>Compensation Coefficient</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_compensation_coefficient_desc">
+        <text>1.0 = The base cost of the item. Lower values give less money.</text>
+    </string>
+    
+    <!-- UI Options -->
+    <string id="ui_mcm_fair_autocomplete_show_target_info">
+        <text>Show Extended Target Info</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_show_target_info_desc">
+        <text>Display detailed information about task targets when accepting tasks</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_show_stolen_message">
+        <text>Show Stolen Task Message</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_show_stolen_message_desc">
+        <text>Show a PDA message when a task is cancelled because someone else killed your target</text>
+    </string>
+    
+    <!-- Advanced -->
+    <string id="ui_mcm_fair_autocomplete_whitelist">
+        <text>Whitelist</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_whitelist_desc">
+        <text>Comma-separated task IDs that will always autocomplete (e.g. "task_id_1,task_id_2")</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_blacklist">
+        <text>Blacklist</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_blacklist_desc">
+        <text>Comma-separated task IDs that will never autocomplete</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_debug">
+        <text>Enable Debug Logs</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_debug_desc">
+        <text>Only useful for modders. Prints detailed information to the console.</text>
+    </string>
+    
+    <!-- In-game Messages -->
+    <string id="st_fa_task_stolen_msg_1">
+        <text>Someone did the job for you, nothing personal.</text>
+    </string>
+    
+    <string id="st_fa_task_stolen_msg_2">
+        <text>Task was completed by someone else... well, it happens.</text>
+    </string>
+    
+    <string id="st_fa_task_stolen_msg_3">
+        <text>The Zone giveth, the Zone taketh away. Come back another time!</text>
+    </string>
+    
+    <string id="st_fa_task_autocomplete_msg">
+        <text>Task completed automatically.</text>
+    </string>
+    
+    <string id="st_fa_target_info">
+        <text>Target Information</text>
+    </string>
+
+</string_table>

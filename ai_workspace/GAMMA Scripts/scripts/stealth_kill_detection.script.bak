@@ -1,0 +1,130 @@
+-- ======================================================================
+--[[	Silent kill script detection and callback
+-- ======================================================================
+	Author: Catspaw (CatspawMods @ ModDB)
+	Source: https://www.moddb.com/members/catspawmods/addons
+	https://www.youtube.com/channel/UCtG8fiWPUZEzWlkUn60btAw
+-- ===================================================================--]]
+script_version 				= "1.0"
+release_date            	= 20240603
+--[[======================================================================
+	The vanilla gameplay_silent_kills script makes a kill "silent" by 
+	intercepting the hit before it happens, canceling the hit, and then
+	killing the target without sending an npc_on_death_callback.
+
+	Unfortunately, this breaks a wide variety of scripts which rely on 
+	that callback to know when an NPC has died. The fix in this script:
+
+	1. Detects when a silent kill has happened, and sends an 
+		npc_on_death_callback with the killer listed as the actor's 
+		weapon 	rather than the actor themselves. NPCs will not	aggro the 
+		weapon and the game will not hold the actor responsible.
+
+	2. Adds a new callback to support stealth gameplay:
+		npc_on_silent_kill_callback(victim, killer, weapon, was_melee)
+		Params: <game_object>, <game_object>, <game_object>, <boolean>
+
+	3. Adds a new gameplay statistic for "stealth_kills" and increments
+		that stat. Right now this is for script use only; it is not yet 
+		exposed in the player's UI.
+
+	All three features can be disabled using the flags below.
+
+	Scripts can register the new callback like any other in order to trap
+	stealth kill events. The script also exposes the ID of the last NPC 
+	who	was stealth-killed by the actor, for use by other scripts.
+-- ===================================================================--]]
+
+if AddScriptCallback then
+	AddScriptCallback("npc_on_silent_kill_callback")
+else
+	printf("! ERROR: AddScriptCallback is not supported, you need to upgrade your version of Anomaly!")
+end
+
+local victim_id		= nil
+local killer_id		= nil
+local stat_id 		= "silent_kills"
+local logprefix 	= "<SKD> "
+debuglogs 			= false
+test_callbacks 		= false
+send_on_death_cb 	= true
+send_on_skill_cb 	= true
+add_statistic 		= true
+last_s_killed 		= nil
+
+function dl(logtext, ...)
+    -- Debug logging - to disable, set debuglogs to false
+    if logtext and debuglogs then 
+        printf(logprefix..logtext, ...)
+    end
+end
+
+function trigger_stealth_kill_callback(was_melee)
+	if add_statistic then
+		local stats 	= game_statistics.actor_statistics
+		if not stats[stat_id] then
+			stats[stat_id] = {count = 0, rank = 5, rept = 0}
+			dl("No entry exists in game_statistics for %s, adding it", stat_id)
+		end
+		game_statistics.increment_statistic(stat_id)
+		dl("Incrementing %s: rank change = %s, rep change = %s", stat_id, stats[stat_id].rank, stats[stat_id].rept)
+	end
+
+	local st 		= db.storage
+	local victim 	= st[victim_id] and st[victim_id].object or level.object_by_id(victim_id)
+	local killer 	= st[killer_id] and st[killer_id].object or level.object_by_id(killer_id)
+	local weapon	= db.actor:active_item()
+	last_s_killed 	= killer_id
+	victim_id 		= nil
+	killer_id 		= nil
+	if not (victim and killer and weapon) then return end
+
+	if debuglogs then
+		printf("Stealth kill detection: Triggering stealth kill callbacks (melee = %s) for victim %s", was_melee, victim_id)
+	end
+	if send_on_death_cb then
+		SendScriptCallback("npc_on_death_callback", victim, weapon)
+	end
+	if AddScriptCallback and send_on_skill_cb then
+		SendScriptCallback("npc_on_silent_kill_callback", victim, killer, weapon, was_melee)
+	end
+end
+
+local stealth_hit_check = gameplay_silent_kills.npc_on_before_hit
+function gameplay_silent_kills.npc_on_before_hit(npc, shit, bone_id, flags)
+	victim_id	= npc and npc:id()
+	killer_id	= shit and shit.draftsman and shit.draftsman:id()
+	if not (victim_id and killer_id) then return end
+	if (killer_id ~= 0) then return end
+	if debuglogs then
+		printf("Stealth kill detection: Checking actor hit on %s (%s)", npc:name(), victim_id)
+	end
+	stealth_hit_check(npc, shit, bone_id, flags)
+end
+
+local log_stealth_event = gameplay_silent_kills.pr
+function gameplay_silent_kills.pr(...)
+	local logmsg = strformat(...)
+	local was_melee = logmsg:find("stealth stabbed") and true or false
+	if was_melee or logmsg:find("stealth shot") then
+		trigger_stealth_kill_callback(was_melee)
+	end
+	log_stealth_event(...)
+end
+
+function npc_on_death_callback_test(victim, killer)
+	printf("npc_on_death_callback fired for kill: victim %s (%s) | killer %s (%s)",victim and victim:name(),victim and victim:id(),killer and killer:name(),killer and killer:id())
+end
+
+function npc_on_silent_kill_callback_test(victim, killer, weapon, was_melee)
+	printf("npc_on_silent_kill_callback fired for stealth kill: victim %s (%s) | killer %s (%s) | weapon %s | melee: %s",victim and victim:name(),victim and victim:id(),killer and killer:name(),killer and killer:id(),weapon and weapon:name(), was_melee)
+end
+
+function on_game_start()
+	if test_callbacks then
+		RegisterScriptCallback("npc_on_death_callback", npc_on_death_callback_test)
+		if AddScriptCallback then
+			RegisterScriptCallback("npc_on_silent_kill_callback", npc_on_silent_kill_callback_test)
+		end
+	end
+end

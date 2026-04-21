@@ -1,0 +1,29 @@
+; Anomaly-native rx_gl settings
+
+[main]
+enabled = true
+runtime_log_enabled = false
+check_period = 2500
+forbidden_factions = zombied
+forbidden_npcs = none
+min_dist = 10
+max_dist = 75
+aim_time_ms = 250
+successful_shot_cooldown_ms = 5000
+projectile_particles = weapons\rpg_trail_01, weapons\rpg_trail_00, _samples_particles_\flash_light, static\net_baspda_blue, weapons\light_signal
+launch_particle = weapons\rpg_trail_00
+impact_sound = weapons\explo\frage_grenade_explotion\frage_grenade_01
+projectile_speed = 26
+projectile_min_flight_ms = 350
+projectile_arc_height_min = 1.5
+projectile_arc_height_max = 9
+impact_fx_ttl_ms = 4000
+
+; legacy no-op keys kept for backward compatibility with older rx_gl revisions
+; legacy alias for successful_shot_cooldown_ms
+repose_time_ms = 15000
+reload_safe_dist = 20
+reload_cover_min = 0.45
+fire_timeout = 2200
+switch_timeout = 1200
+friendly_radius_padding = 2

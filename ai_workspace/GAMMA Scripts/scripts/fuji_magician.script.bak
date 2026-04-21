@@ -1,0 +1,150 @@
+local simm
+local level_vertex_id = level.vertex_id
+local level_vertex_position = level.vertex_position
+
+local random = math.random
+
+--//// SETTINGS ////
+local teleport_chance = 6
+local player_only = true
+local min_rank = 0
+--//////////////////
+
+function one_in(num)
+	local result = random(1,num)
+
+	if (result == 1) then 
+		return true 
+	end
+
+	return false
+end
+
+--  ////////////////////////
+-- //// TELEPORT DODGE ////
+--////////////////////////
+
+function teleport_dodge(npc)
+	simm = alife()
+	local st = db.storage[npc:id()] and db.storage[npc:id()].object
+	if(st and st:alive()) then
+		local pre_pos = st:position()
+
+		local post_pos = teleport_offset_random(pre_pos)
+
+		if((pre_pos.x ~= post_pos.x) and (pre_pos.y ~= post_pos.y) and (pre_pos.z ~= post_pos.z)) then
+			local fx = particles_object("anomaly2\\effects\\gravi_flash_00")
+			fx:play_at_pos(npc:position())
+			local fx = particles_object("monsters\\effects\\bloodsucker_trail")
+			fx:play_at_pos(npc:position())
+			local fx = particles_object("monsters\\effects\\polter_trails_02")
+			fx:play_at_pos(npc:position())
+			play_sound_at_pos("anomaly\\anomaly_gravy_hit1", 1.0, 1.0, npc, pre_pos)
+
+			printf("[Fuji] Teleport: Move NPC")
+			st:set_npc_position(post_pos)
+ 
+			local fx = particles_object("anomaly2\\effects\\gravi_flash_00")
+			fx:play_at_pos(npc:position())
+			local fx = particles_object("monsters\\effects\\bloodsucker_trail")
+			fx:play_at_pos(npc:position())
+			local fx = particles_object("monsters\\effects\\polter_trails_02")
+			fx:play_at_pos(npc:position())
+			
+			play_sound_at_pos("anomaly\\anomaly_gravy_hit1", 1.0, 1.0, npc, post_pos)
+		end
+	end
+end
+
+function teleport_offset_random(oldpos)
+	local min_radius = 1
+	local max_radius = 3
+	local int_radius = max_radius - min_radius
+
+	local pos = vector():set(0,0,0)
+
+  --Get random x offset
+	local off_x = min_radius + (int_radius * random(0.0,1.0))
+	if(random(0.0,1.0) <= 0.5) then
+		off_x = -(off_x)
+	end
+	local pos_x = oldpos.x + off_x
+  
+  --Get random y offset
+	local off_y = min_radius + (int_radius * random(0.0,1.0))
+	if(random(0.0,1.0) <= 0.5) then
+		off_y = -(off_y)
+	end
+	local pos_y = oldpos.y + off_y
+
+  --Get random z offset
+	local off_z = min_radius + (int_radius * random(0.0,1.0))
+	if(random(0.0,1.0) <= 0.5) then
+		off_z = -(off_z)
+	end
+	local pos_z = oldpos.z + off_z
+
+	--local pos_z = oldpos.z
+
+	pos = vector():set(pos_x, pos_y, pos_z)
+	local lvid = level_vertex_id(pos)
+
+	if(lvid < 4294967295) then
+		pos = level_vertex_position(lvid)
+	else
+		pos = oldpos
+	end
+	return pos
+end
+
+function play_sound_at_pos(snd, volume, frequency, obj, pos)
+	if not snd then
+		printf("snd is nil")
+		return
+	end
+	local snd = xr_sound.get_safe_sound_object(snd)
+	if snd then
+		if obj and obj:id() ~= AC_ID then
+			snd:play_at_pos(obj, pos, 0, sound_object.s3d)
+		else
+			snd:play(obj, 0, sound_object.s2d)
+		end
+		snd.volume = volume or 1
+		snd.frequency = frequency or 1
+		return snd
+	end
+end
+
+function npc_on_before_hit(npc,shit,bone_id,flags)
+	if (not npc) then
+		return
+	end
+
+	if (IsWounded(npc)) then
+		return
+	end
+
+	if(player_only) then
+		if shit.draftsman:id() ~= db.actor:id() then
+			return
+		end
+	end
+
+	if one_in(teleport_chance) then
+		local npc_comm = character_community(npc)
+
+		if npc_comm then
+			if( npc_comm == "isg") then
+				shit.power = 0
+				teleport_dodge(npc)
+				flags.ret_value = false
+			end
+		end
+	end
+end
+
+function on_game_start()
+  RegisterScriptCallback("npc_on_before_hit",npc_on_before_hit)
+end
+
+

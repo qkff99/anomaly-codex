@@ -1,0 +1,169 @@
+<!-- 
+	Anomaly Mod Configuration Menu strings
+	
+-->
+
+<string_table>
+
+	<string id="ui_mcm_desc_mcm">
+		<text>Bienvenido al menú de configuración de mods de Anomaly. Por su cuenta, el MCM no hace nada. El MCM proporciona un lugar para que otros mods/addons muestren una interfaz de configuración. \nA la izquierda verás una lista de mods/addons que usan MCM para ello.</text>
+	</string>
+	<string id="ui_mcm_desc_mcm2">
+		<text>Los errores con el MCM o los bloqueos con ui_mcm.script en el registro son causados muy probablemente por uno de los mods/addons que usan el MCM y deben ser comunicados al autor de dicho mod/addon.</text>
+	</string>
+	<string id="ui_mm_menu_mcm">
+		<text>Menú de config. de mods</text>
+	</string>
+
+	<string id="ui_mcm_menu_mcm">
+		<text>MCM</text>
+	</string>
+	<string id="ui_mcm_menu_mcm_about">
+		<text>Acerca de</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_about_reset">
+		<text>Recargar todos los menús</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_about_reset_desc">
+		<text>Marcar esta casilla y darle a «Aplicar» hará que el MCM recargue todos los menús. Esta es una herramienta de depuración y no debería ser necesaria en circunstancias normales.</text>
+	</string>
+
+
+	<string id="ui_mcm_menu_mcm_log">
+		<text>Registros</text>
+	</string>
+	<string id="ui_mcm_mcm_desc_log">
+		<text>Esta es una utilidad para los creadores de addons que les permite mover sus registros fuera del xray log y la consola del juego. \nComo respeto tu preocupación por el lag y los ciclos de escritura en SSD, te he proporcionado algunos controles para que puedas ajustar cómo se comporta el registro. \nLos registros recibirán el nombre del script que los crea y el número de identificación de la sesión del MCM. Se crean en appdata/logs/mcm/</text>
+	</string>
+
+	<string id="ui_mcm_mcm_mcm_log_enable">
+		<text>Activar utilidad de registros del MCM</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_log_enable_desc">
+		<text>Desmarcar esta casilla impedirá que se creen o actualicen los registros. (Nótese que los cambios no surtirán efecto hasta que se cargue una nueva partida)</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_log_numlogs">
+		<text>Cantidad de registros que conservar</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_log_numlogs_desc">
+		<text>Cuando la cantidad de registros creados por un script supere esta cifra, se eliminarán los antiguos registros. (Nótese que la eliminación de registros no se producirá si el juego se cae)</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_log_continuous">
+		<text>Permitir escritura continua de archivos</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_log_continuous_desc">
+		<text>Los archivos de registro se suelen actualizar en tanda. Esto puede hacer que se pierda algo de información si el juego se cae. Puede que el creador de un addon te pida que marques esta casilla para que su registro se actualice inmediatamente.</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_log_savefreq">
+		<text>Tiempo entre autoguardados de registro en milisegundos</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_log_savefreq_desc">
+		<text>No importa lo que se introduzca aquí, los registros se guardarán al entrar en las distintas pantallas de la interfaz y al guardar/cargar partidas.</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_log_timestamp">
+		<text>Frecuencia de marcas de fecha del xray log</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_log_timestamp_desc">
+		<text>El MCM añade una marca de fecha al xray log para que sea más fácil coordinar los sucesos entre los registros del MCM y el xray log. Este es el tiempo mínimo entre dichas marcas de fecha. Si no se está imprimiendo nada más a la consola, el MCM tampoco lo hará.</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_log_debug_logging2">
+		<text>Activar registros de depuración</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_log_debug_logging2_desc">
+		<text>Esto activa los propios registros de depuración del MCM y debería activarse antes de informar de bugs con el MCM. Otros mods también pueden usar este ajuste para activar sus propios registros.</text>
+	</string>
+
+
+	<string id="ui_mcm_menu_mcm_kb">
+		<text>Teclas del MCM</text>
+	</string>
+	<string id="ui_mcm_menu_mcm_kb_main">
+		<text>Principal</text>
+	</string>
+
+	<string id="ui_mcm_mcm_desc_kb">
+		<text>La asignación de teclas en el MCM funciona como en Minecraft: haz clic en la casilla y pulsa una tecla. Para cancelar, haz clic o pulsa Escape. \nSi la tecla que ves no corresponde con la tecla que has pulsado o el MCM parece ignorar algunas teclas, seguramente tengas que modificar mcm_key_localization.ltx para que tu distribución del teclado se vea reflejada. \nLas teclas asignadas a más de una asignación del MCM o a una asignación del motor del juego estarán resaltadas en rojo.</text>
+	</string>
+	<string id="ui_mcm_mcm_desc_kb2">
+		<text>Algunas notas sobre las teclas conflictivas en rojo: \n1. Puede que no importe. Si las teclas se usan en distintas interfaces o si una tecla solo se activa al mantener pulsado Mayús., entonces no importa que se use la misma tecla dos veces. \n2. El MCM no tiene ni idea de qué puede estar haciendo un mod con una tecla. TÚ tienes que saber cómo usa un mod una tecla para saber si el conflicto es relevante. \n3. Para un solo cambio pendiente, el color se actualiza correctamente, para varios cambios pendientes, puede que no. Aplica los cambios y vuelve a abrir el MCM para verificar el conflicto.</text>
+	</string>
+
+	<string id="ui_mcm_mcm_mcm_kb_mcm_kb_main_presstime">
+		<text>Multiplicador de mantener pulsado</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_kb_mcm_kb_main_presstime_desc">
+		<text>Multiplicador aplicado al plazo de pulsar dos veces para determinar cuánto tiempo tiene que mantenerse pulsada una tecla para que cuente como que se está manteniendo pulsada. Solo se aplica a los mods que usan el MCM para identificar teclas mantenidas.</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_kb_mcm_kb_main_dtaptime2">
+		<text>Plazo de pulsar dos veces</text>
+	</string>
+	<string id="ui_mcm_mcm_mcm_kb_mcm_kb_main_dtaptime2_desc">
+		<text>El tiempo máximo que debe transcurrir entre dos pulsaciones de una tecla para que cuente como doble pulsación. Solo se aplica a los mods que usan el MCM para identificar teclas pulsadas dos veces. Este tiempo puede afectar al retardo de entrada de algunos eventos de pulsación de una sola tecla, por lo que debe ser lo mínimo posible.</text>
+	</string>
+
+	<string id="ui_mcm_menu_mcm_all_kb">
+		<text>Todas las teclas asignadas</text>
+	</string>
+	<string id="ui_mcm_mcm_desc_kb_all">
+		<text>Este panel reúne todas las teclas asignadas del MCM en un solo lugar, en el mismo orden en que aparecen a la izquierda los mods que los añaden. \nSin embargo, esta lista no puede incluir ajustes adicionales del panel de mods que puedan afectar a cómo se comporta una tecla. \nRevisa siempre el panel del mod de donde se sacó la tecla asignada, así como la documentación de ese mod.</text>
+	</string>
+	<string id="ui_mcm_mcm_desc_kb_all2">
+		<text>Los cambios pendientes en otros paneles no se verán reflejados en este panel, ni los ajustes pendientes en este panel se verán reflejados en otros. \nAplica los cambios antes y después de usar este panel. No hacerlo podría dar lugar a un comportamiento indeseado. \n \nAlgunas notas sobre las teclas conflictivas en rojo: \n1. Puede que no importe. Si las teclas se usan en distintas interfaces o si una tecla solo se activa al mantener pulsado Mayús., entonces no importa que se use la misma tecla dos veces. \n2. El MCM no tiene ni idea de qué puede estar haciendo un mod con una tecla. TÚ tienes que saber cómo usa un mod una tecla para saber si el conflicto es relevante. \n3. Para un solo cambio pendiente, el color se actualiza correctamente, para varios cambios pendientes, puede que no. Aplica los cambios y vuelve a abrir el MCM para verificar el conflicto.</text>
+	</string>
+	<string id="ui_mcm_menu_mcm_kb_conflicts">
+		<text>Conflictos de teclas asignadas</text>
+	</string>
+	<string id="ui_mcm_mcm_desc_kb_conflicts">
+		<text>Este panel reúne todas las teclas asignadas del MCM marcadas como conflictivas en un solo lugar, clasificadas por tecla. \nSi una tecla aparece solo una vez en esta lista, seguramente choque con una tecla del motor del juego. Estas aparecen en las opciones normales de Anomaly. \nSin embargo, esta lista no puede incluir ajustes adicionales del panel de mods que puedan afectar a cómo se comporta una tecla. \nRevisa siempre el panel del mod de donde se sacó la tecla asignada, así como la documentación de ese mod.</text>
+	</string>
+
+	
+	
+	<string id="ui_mcm_mcm_kb_modifier">
+		<text>Con tecla modificadora</text>
+	</string>
+	<string id="ui_mcm_mcm_kb_modifier_desc">
+		<text>La tecla asignada de arriba solo se activará si también se mantiene pulsada esta tecla.</text>
+	</string>
+
+	<string id="ui_mcm_lst_mcm_kb_mod_none">
+		<text>Sin modificador</text>
+	</string>
+	<string id="ui_mcm_lst_mcm_kb_mod_ctrl">
+		<text>Control</text>
+	</string>
+	<string id="ui_mcm_lst_mcm_kb_mod_shift">
+		<text>Mayús.</text>
+	</string>
+	<string id="ui_mcm_lst_mcm_kb_mod_alt">
+		<text>Alt</text>
+	</string>
+
+
+
+	
+	<string id="ui_mcm_mcm_kb_mode">
+		<text>Modo de entrada</text>
+	</string>
+	<string id="ui_mcm_mcm_kb_mode_desc">
+		<text>La tecla asignada de arriba solo se activará si la tecla se pulsa de esta forma.</text>
+	</string>
+	
+	<string id="ui_mcm_lst_mcm_kb_mode_press">
+		<text>Pulsar una vez</text>
+	</string>
+	<string id="ui_mcm_lst_mcm_kb_mode_dtap">
+		<text>Pulsar dos veces</text>
+	</string>
+	<string id="ui_mcm_lst_mcm_kb_mode_hold">
+		<text>Mantener pulsado</text>
+	</string>
+	
+
+
+
+
+
+</string_table>
+
+

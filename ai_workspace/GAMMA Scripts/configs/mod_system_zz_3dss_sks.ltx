@@ -1,0 +1,40 @@
+![wpn_sks_b]
+parent_section				 = wpn_sks_b
+
+scopes						 = wpn_addon_scope_pu
+scopes_sect                  =
+scope_status                 = 0
+
+lewd_lens_hide_enabled       = true		
+lewd_lens_hide_bone          = lens
+lewd_lens_hide_delays        = 0.1,0
+lewd_lens_hide_aim_mode      = true, false, false
+
+![wpn_sks_b_hud]
+item_visual                              = dynamics\weapons\wpn_sks_b\wpn_sks_b_hud.ogf
+	
+!![scope_sks_b]
+
+[wpn_sks_b_wpn_addon_scope_pu]:wpn_sks_b
+hud				= wpn_sks_b_wpn_addon_scope_pu_hud
+
+1icon_layer                              = pu_x
+1icon_layer_x                            = 62
+1icon_layer_y                            = -27
+
+		scope_status					 = 1
+        scope_texture                    =
+		scope_zoom_factor                = 34.3
+		use_alt_aim_hud                  = true
+
+[wpn_sks_b_wpn_addon_scope_pu_hud]:wpn_sks_b_hud
+        item_visual                 =  dynamics\weapons\wpn_sks_b\wpn_sks_b_pu_hud.ogf
+        aim_hud_offset_pos               = -0.065852, 0.0093, -0.010223
+        aim_hud_offset_pos_16x9          = -0.065852, 0.0093, -0.010223
+        aim_hud_offset_rot               = 0.014207, -0.014912, 0
+        aim_hud_offset_rot_16x9          = 0.014207, -0.014912, 0
+		
+        aim_hud_offset_alt_pos           = -0.068955, 0.025866, 0
+        aim_hud_offset_alt_pos_16x9      = -0.068955, 0.025866, 0
+        aim_hud_offset_alt_rot           = 0.007242, -0.011254, 0
+        aim_hud_offset_alt_rot_16x9      = 0.007242, -0.011254, 0

@@ -1,0 +1,74 @@
+class "TimedQueue" 
+
+function TimedQueue:__init(max_count, expiriation_ms)
+    self.data = {}
+    self.first = 0
+    self.last = -1
+    self.max_count = max_count
+    self.expiriation_ms = expiriation_ms
+end
+
+function TimedQueue:Clear()
+    self.data = {}
+    self.first = 0
+    self.last = -1
+    --soulslike.debug("TimedQueue:Clear")
+end
+
+function TimedQueue:Enqueue(value)
+    value.__cached_time = time_global()
+    self.last = self.last + 1
+    self.data[self.last] = value
+    --soulslike.debug("TimedQueue:Enqueue")
+end
+
+function TimedQueue:Dequeue()
+    local result
+    if (self.first > self.last) then
+        result = nil
+    else
+        result = self.data[self.first]
+        self.data[self.first] = nil
+        self.first = self.first + 1
+    end
+    --soulslike.debug("TimedQueue:Dequeue")
+    return result
+end
+
+function TimedQueue:Peek()
+    local result
+    if (self.first > self.last) then
+        result = nil
+    else
+        result = self.data[self.first]
+    end
+    return result
+end
+
+
+function TimedQueue:Values()
+    --soulslike.debug("TimedQueue:Values")
+    --soulslike.debug(self.data)
+    local values = {}
+    for _,v in pairs(self.data) do
+        if v then
+            table.insert(values, v)
+        end
+    end
+    return values
+end
+
+function TimedQueue:Invalidate()  
+    while true do
+        local next = self:Peek()
+        if next == nil then 
+            break
+        end
+        if next.__cached_time + self.expiriation_ms < time_global() then
+            --soulslike.debug("TimedQueue:Dequeue_time")
+            self:Dequeue()
+        else
+            break;
+        end
+    end
+end

@@ -1,0 +1,215 @@
+-- Class that has inventories of nearby player stashes as well as own inventory
+class "OwnerAggregate"
+function OwnerAggregate:__init(radius)
+	self.objects = {db.actor}
+	self.radius = radius or (ui_mcm and ui_mcm.get("craft_from_stashes/range")) or 10
+	self.is_owner_aggregate = true
+
+	self:AddObjects()
+	self:SanitizeObjects()
+	self:AggregateAmmo()
+end
+OwnerAggregate.is_owner_aggregate = true
+
+function OwnerAggregate:AddObjects()
+	local m_data = alife_storage_manager.get_state()
+	level.iterate_nearest(db.actor:position(), self.radius, function(obj)
+		if m_data.player_created_stashes and m_data.player_created_stashes[obj:id()] then
+			self.objects[#self.objects+1] = obj
+
+		-- Utjan's Anomalous Stash
+		elseif anomalous_stash and anomalous_stash.anom_stashes[obj:id()] and anomalous_stash.hidden_stash and level.object_by_id(anomalous_stash.hidden_stash) then
+			self.objects[#self.objects+1] = level.object_by_id(anomalous_stash.hidden_stash)
+		end
+	end)
+end
+
+function OwnerAggregate:SanitizeObjects()
+	for i = #self.objects, 1, -1 do
+		local v = self.objects[i]
+		if not (v:cast_InventoryOwner() or v:cast_InventoryBox()) then
+			table.remove(self.objects, i)
+		end
+	end
+end
+
+function OwnerAggregate:object(sec)
+	for i, v in ipairs(self.objects) do
+		local obj = v:object(sec)
+		if obj then
+			return obj
+		end
+	end
+end
+
+function OwnerAggregate:iterate_inventory(func)
+	local done = false
+	local wrapperFunc = function(...)
+		if func(...) then
+			done = true
+			return true
+		end
+	end
+	for i, v in ipairs(self.objects) do
+		local object = v:cast_InventoryOwner()
+		if object then
+			v:iterate_inventory(wrapperFunc)
+		end
+		if done then return end
+
+		local invBox = v:cast_InventoryBox()
+		if invBox then
+			v:iterate_inventory_box(wrapperFunc)
+		end
+		if done then return end
+	end
+end
+
+function OwnerAggregate:AggregateAmmo()
+	local ammoObjectsBySection = {}
+	self:iterate_inventory(function(_, obj)
+		if IsAmmo(obj) and alife_object(obj:id()) and obj:ammo_get_count() < obj:ammo_box_size() then
+			local sec = obj:section()
+			ammoObjectsBySection[sec] = ammoObjectsBySection[sec] or {}
+			ammoObjectsBySection[sec][#ammoObjectsBySection[sec]+1] = obj
+		end	
+	end)
+
+	for sec, objects in pairs(ammoObjectsBySection) do
+		table.sort(objects, function(a, b) return a:ammo_get_count() > b:ammo_get_count() end)
+		local indexToAddAmmo = 1
+		local currentIndex = #objects
+		while currentIndex > indexToAddAmmo do
+			local curObj = objects[currentIndex]
+			local targetObj = objects[indexToAddAmmo]
+
+			local ammoNeededToAdd = targetObj:ammo_box_size() - targetObj:ammo_get_count()
+			local ammoPossibleToAdd = curObj:ammo_get_count()
+			local ammoToAdd = math.min(ammoNeededToAdd, ammoPossibleToAdd)
+			local ammoResult = targetObj:ammo_get_count() + ammoToAdd
+
+			targetObj:ammo_set_count(ammoResult)
+
+			if ammoToAdd == ammoPossibleToAdd then
+				alife_release_id(curObj:id())
+				currentIndex = currentIndex - 1
+			else
+				curObj:ammo_set_count(curObj:ammo_get_count() - ammoToAdd)
+			end
+
+			if ammoResult == targetObj:ammo_box_size() then
+				indexToAddAmmo = indexToAddAmmo + 1
+			end
+		end
+	end
+end
+
+function OwnerAggregate:collect_amount(section, mode)
+-- mode 0: count item as 1
+-- mode 1: can count item uses, but not ammo count
+
+	local amount = {}
+	local is_multi = IsItem("multiuse",section)
+	local is_ammo = IsItem("ammo",section)
+	
+	local function itr(temp, obj)
+		if (obj:section() == section) then
+			if (mode == 0) then
+				amount[obj:id()] = 1
+			elseif is_multi then
+				amount[obj:id()] = obj:get_remaining_uses()
+			elseif is_ammo and (mode ~= 1) then
+				amount[obj:id()] = obj:ammo_get_count()
+			else
+				amount[obj:id()] = 1
+			end
+		end
+	end
+	self:iterate_inventory(itr)
+	
+	return amount
+end
+
+ui_workshop.OwnerAggregate = OwnerAggregate
+
+-- Hacks
+function injectDb(scriptName)
+	if not _G[scriptName] then
+		-- printf("script %s doesn't exist", scriptName)
+		return
+	end
+	
+	-- Get original "db" namespace (ie original db.actor)
+	local script_db = _G[scriptName]["db"]
+
+	-- If OwnerAggregate has an overriden function then use that, otherwise use default db.actor
+	local function a_get(t,k)
+	    -- printf("%s RAX META a_get k = %s", scriptName, k)
+	    local o = OwnerAggregate[k] and OwnerAggregate() or script_db.actor
+	    if type(o[k]) == "function" then
+    		return function(_,...) return o[k](o, ...) end
+    	else
+    		return o[k]
+    	end
+	end
+
+	-- If db.actor is requested, replace it with lua table with a_get in metatable (see above)
+	local function d_get(t,k)
+	    -- printf("%s RAX META d_get k = %s", scriptName, k)
+	    if k == "actor" then
+	        return setmetatable({}, {
+	        	__index = a_get
+	    	})
+	    else
+	        return script_db[k]
+	    end
+	end
+
+	-- Replace db namespace with lua table with d_get in metatable (see above)
+	_G[scriptName]["db"] = setmetatable({}, {
+		__index = d_get
+	})
+
+	-- For functions that expect original db.actor instead of lua table stuff, send original db.actor, basically revert of behaviour
+	local alife_create_item = _G[scriptName].alife_create_item
+	_G[scriptName].alife_create_item = function(section, obj, t)
+		if (type(obj.id) == "function" and obj:id() == AC_ID) or (obj.id == AC_ID) then
+			-- printf("%s RAX META alife_create_item", scriptName)
+			return alife_create_item(section, db.actor, t)
+		end
+		return alife_create_item(section, obj, t)
+	end
+end
+
+-- Vanilla
+injectDb("ui_workshop")
+injectDb("item_cooking")
+injectDb("item_repair")
+
+-- Keep Crafting Window Open
+injectDb("zz_item_cooking_keep_crafting_window_open")
+injectDb("zz_item_repair_keep_crafting_window_open")
+
+-- Multiuse fix
+injectDb("zz_ui_workshop_crafting_multiuse")
+
+-- Utjan QOL Bundle
+injectDb("craft_use_low_cond")
+
+-- Banjaji
+injectDb("ui_workshop_monkeypatch_Banjaji_CSI")
+
+-- Gamma
+injectDb("z_monkey_toolkit_workshop")
+injectDb("zzz_timsi_ui_workshop")
+injectDb("zzzz_serious_ui_workshop")
+
+-- Monkeys
+utils_item_collect_amount = utils_item.collect_amount
+utils_item.collect_amount = function(npc, section, mode)
+	if npc.is_owner_aggregate then
+		-- printf("is_owner_aggregate collect_amount")
+		return OwnerAggregate():collect_amount(section, mode)
+	end
+	return utils_item_collect_amount(npc, section, mode)
+end

@@ -1,0 +1,52 @@
+
+
+------------------------ NV goggles operating sound --------------------------
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_update", check_nv_state)
+end
+
+local snd_loop
+local snd_long_loop
+local nv_state
+local iTimer
+
+snd_loop = nil
+snd_long_loop = sound_object("interface\\inv_nv_loop")
+nv_state = false
+iTimer = nil
+
+function check_nv_state()
+	if (not nv_state) and item_device.is_nv_active() then
+		--snd_long_loop:stop()
+		if snd_loop then
+			snd_loop:stop()
+		end
+		snd_loop = sound_object("interface\\inv_nv_loop_start")
+		snd_loop:play(db.actor, 0, sound_object.s2d)
+		nv_state = true
+		iTimer = time_global() + 8000
+		local function check_timer()
+			if iTimer and (iTimer < time_global()) then
+				iTimer = nil
+				return true
+			end
+		end
+		level.add_call(check_timer, play_long_loop)
+		return
+	elseif nv_state and (not item_device.is_nv_active()) then
+		snd_loop:stop()	
+		snd_long_loop:stop()
+		snd_loop = sound_object("interface\\inv_nv_loop_end")
+		snd_loop:play(db.actor, 0, sound_object.s2d)
+		iTimer = nil
+		nv_state = false
+		return
+	end
+end
+
+function play_long_loop()
+	if nv_state then
+		snd_long_loop:play(db.actor, 0, sound_object.s2d + sound_object.looped)
+	end
+end

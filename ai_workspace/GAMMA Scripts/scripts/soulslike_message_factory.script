@@ -1,0 +1,183 @@
+local function rescuer_initial_msg_factory() 
+    local messages = {
+        "st_soulslike_rescuer_initial_1",
+        "st_soulslike_rescuer_initial_2",
+        "st_soulslike_rescuer_initial_3",
+        "st_soulslike_rescuer_initial_4",
+        "st_soulslike_rescuer_initial_5",
+    }
+
+    return game.translate_string(messages[math.random(#messages)])
+end
+
+local function rescuer_eat_drink_msg_factory() 
+    local messages = {
+        "st_soulslike_rescuer_food_1",
+        "st_soulslike_rescuer_food_2",
+        "st_soulslike_rescuer_food_3",
+        "st_soulslike_rescuer_food_4",
+        "st_soulslike_rescuer_food_5",
+    }
+
+    return game.translate_string(messages[math.random(#messages)])
+end
+
+local function rescuer_pda_marker_msg_factory()
+    local messages = {
+        "st_soulslike_rescuer_pda_1",
+        "st_soulslike_rescuer_pda_2",
+        "st_soulslike_rescuer_pda_3",
+        "st_soulslike_rescuer_pda_4",
+        "st_soulslike_rescuer_pda_5",
+    }
+
+    return game.translate_string(messages[math.random(#messages)])
+end
+
+local function rescuer_used_items_msg_factory()
+    local messages = {
+        "st_soulslike_rescuer_used_items_1",
+        "st_soulslike_rescuer_used_items_2",
+        "st_soulslike_rescuer_used_items_3",
+        "st_soulslike_rescuer_used_items_4",
+        "st_soulslike_rescuer_used_items_5",
+    }
+
+    return game.translate_string(messages[math.random(#messages)])
+end
+
+local function rescuer_stay_safe_msg_factory()
+    local messages = {
+        "st_soulslike_rescuer_stay_safe_1",
+        "st_soulslike_rescuer_stay_safe_2",
+        "st_soulslike_rescuer_stay_safe_3",
+        "st_soulslike_rescuer_stay_safe_4",
+        "st_soulslike_rescuer_stay_safe_5",
+    }
+
+    return game.translate_string(messages[math.random(#messages)])
+end
+
+local function rescuer_moster_looter_msg_factory(enemy_name, enemy_comm)
+    local messages = {
+        "st_soulslike_rescuer_monster_looter_1",
+        "st_soulslike_rescuer_monster_looter_2",
+        "st_soulslike_rescuer_monster_looter_3",
+        "st_soulslike_rescuer_monster_looter_4",
+        "st_soulslike_rescuer_monster_looter_5",
+    }
+    
+    return game.translate_string(messages[math.random(#messages)])
+end
+
+local function rescuer_enemy_looter_msg_factory(enemy_name, enemy_comm)
+    local messages = {
+        "st_soulslike_rescuer_enemy_looter_1",
+        "st_soulslike_rescuer_enemy_looter_2",
+        "st_soulslike_rescuer_enemy_looter_3",
+        "st_soulslike_rescuer_enemy_looter_4",
+        "st_soulslike_rescuer_enemy_looter_5",
+    }
+    
+    return strformat(game.translate_string(messages[math.random(#messages)]), enemy_comm, enemy_name)
+end
+
+local function rescuer_enemy_looter_tarkov_looter_msg_factory(enemy_name, enemy_comm)
+    local messages = {
+        "st_soulslike_rescuer_enemy_tarkov_looter_1",
+        "st_soulslike_rescuer_enemy_tarkov_looter_2",
+        "st_soulslike_rescuer_enemy_tarkov_looter_3",
+        "st_soulslike_rescuer_enemy_tarkov_looter_4",
+        "st_soulslike_rescuer_enemy_tarkov_looter_5",
+    }
+    
+    return strformat(game.translate_string(messages[math.random(#messages)]), enemy_comm, enemy_name)
+end
+
+local function rescuer_enemy_radio_freq_msg_factory(freq)
+    local messages = {
+        "st_soulslike_rescuer_radio_freq_1",
+        "st_soulslike_rescuer_radio_freq_2",
+        "st_soulslike_rescuer_radio_freq_3",
+        "st_soulslike_rescuer_radio_freq_4",
+        "st_soulslike_rescuer_radio_freq_5",
+    }
+    
+    return strformat(game.translate_string(messages[math.random(#messages)]), freq)
+end
+
+local function rescuer_hidden_stash_msg_factory()
+    local messages = {
+        "st_soulslike_hidden_stash_1",
+        "st_soulslike_hidden_stash_2",
+        "st_soulslike_hidden_stash_3",
+        "st_soulslike_hidden_stash_4",
+        "st_soulslike_hidden_stash_5",
+    }
+    
+    return game.translate_string(messages[math.random(#messages)])
+end
+
+local function recuer_indoor_msg_factory(level_name)
+    local messages = {
+        "st_soulslike_rescuer_indoor_1",
+        "st_soulslike_rescuer_indoor_2",
+        "st_soulslike_rescuer_indoor_3",
+        "st_soulslike_rescuer_indoor_4",
+        "st_soulslike_rescuer_indoor_5",
+    }
+    
+    return strformat(game.translate_string(messages[math.random(#messages)]), level_name)
+end
+
+function create(rescuer, params)
+    if rescuer then
+        local msg = params.player_died_indoor 
+            and recuer_indoor_msg_factory(params.level_name) 
+            or rescuer_initial_msg_factory()
+
+        local looter = params.enemy
+        
+        if params.gave_food_or_water then
+            msg = msg.." "..rescuer_eat_drink_msg_factory()
+        end
+        if looter then
+            if looter.tarkov_experience then
+                --TODO: Make message factory for this 
+                msg = msg.." "..rescuer_enemy_looter_tarkov_looter_msg_factory(looter.name, looter.community) 
+            else
+                msg = msg.." "..rescuer_enemy_looter_msg_factory(looter.name, looter.community) 
+            end
+        end
+        if params.has_pda_marker then
+            msg = msg.." "..rescuer_pda_marker_msg_factory()
+        end
+        if params.has_stash_pda_marker then
+            msg = msg.." "..rescuer_hidden_stash_msg_factory()
+        end
+        if params.radio_freq then
+            msg = msg.." "..rescuer_enemy_radio_freq_msg_factory(params.radio_freq)
+        end
+        if params.items_were_lost then
+            if params.looter_type == soulslike.entity_type.Monster then
+                msg = msg.." "..rescuer_moster_looter_msg_factory() 
+            else
+                msg = msg.." "..rescuer_used_items_msg_factory()     
+            end       
+        end
+        msg = msg.." "..rescuer_stay_safe_msg_factory()
+        return msg
+    else
+        local msg = game.translate_string("st_soulslike_rescuer_initial_generic")
+        if params.gave_food_or_water then
+            msg = msg.." "..game.translate_string("st_soulslike_rescuer_food_generic")
+        end
+        if params.has_pda_marker or params.has_stash_pda_marker or params.has_multi_stash_pda_marker then
+            msg = msg.." " ..game.translate_string("st_soulslike_rescuer_pda_generic")
+        end
+        if params.radio_freq then
+            msg = msg.." "..game.translate_string(strformat("st_soulslike_rescuer_radio_generic", params.radio_freq))
+        end
+        return msg
+    end  
+end

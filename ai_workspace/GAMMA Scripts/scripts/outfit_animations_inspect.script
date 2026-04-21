@@ -1,0 +1,140 @@
+local keybind = outfit_animations_mcm.get_config("keybind")
+local modifier = outfit_animations_mcm.get_config("modifier")
+local mode = outfit_animations_mcm.get_config("mode")
+local mcm_allow_movement = outfit_animations_mcm.get_config("allow_movement")
+
+local mcm_keybinds = ui_mcm and ui_mcm.key_hold
+-- local fov_manager = lam_fov_manager
+
+----------------------------------------
+--#region callbacks
+----------------------------------------
+
+function on_game_start()
+    RegisterScriptCallback("on_option_change", on_option_change)
+    RegisterScriptCallback("on_key_hold", on_key_hold)
+    RegisterScriptCallback("on_key_press", on_key_press)
+end
+
+
+function on_option_change()
+    keybind = outfit_animations_mcm.get_config("keybind")
+    modifier = outfit_animations_mcm.get_config("modifier")
+    mode = outfit_animations_mcm.get_config("mode")
+    mcm_allow_movement = outfit_animations_mcm.get_config("allow_movement")
+end
+
+
+function on_key_hold(key)
+    if mcm_keybinds and (key == keybind) and (mode == 2) and ui_mcm.get_mod_key(modifier) and ui_mcm.key_hold("liz_outfit_animations", key) then
+		--do stuff on hold
+        play_animation()
+	end	
+end
+
+
+function on_key_press(key)
+    if key ~= keybind then return end
+    if (not mcm_keybinds) then
+        -- do stuff for non mcm users
+        play_animation()
+        return
+    end
+
+    if (mode == 0) and ui_mcm.get_mod_key(modifier) then
+        ui_mcm.simple_press("liz_outfit_animations", key, play_animation)
+    end
+
+    if (mode == 1) and ui_mcm.get_mod_key(modifier) and ui_mcm.double_tap("liz_outfit_animations", key) then
+        -- do stuff for double tap
+        play_animation()
+        return
+    end
+end
+
+--#endregion
+----------------------------------------
+
+
+----------------------------------------
+--#region main
+----------------------------------------
+
+function play_animation()
+    local action = {
+        sec = "outfit_animation_inspect_hud",
+        anm = "anm_equip",
+        params = {
+            can_walk = mcm_allow_movement
+        }
+    }
+    lam.try_play_action(action)
+end
+
+-- local cur_slot
+-- local det_active
+-- function play_animation()
+--     --safety chekcs
+--     if not db.actor:alive() then return end
+--     if has_alife_info("bar_arena_fight") then return end
+--     --prepare
+-- 	hide_hud_inventory()
+--     cur_slot = db.actor:active_slot()
+-- 	det_active = db.actor:active_detector() or nil
+-- 	if det_active then det_active:switch_state(2) end
+-- 	db.actor:activate_slot(0)
+
+-- 	wait_for_free_hands(function()
+--         --play
+--         fov_manager.restore_fov()
+--         if mcm_allow_movement then game.only_allow_movekeys(true) else level.disable_input() end
+
+--         local delay = 0.25
+--         local m_section = "outfit_animation_inspect_hud"
+--         local anm = "anm_equip"
+--         local cam = ini_sys:r_string_ex(m_section, "cam")
+--         local snd = ini_sys:r_string_ex(m_section, "snd")
+--         local length = 0
+--         length = length + game.get_motion_length(m_section, anm, 1) / 1000
+--         Invoke("play_outfti_inspect_animation_te1", delay, function()
+--             xr_effects.play_snd(db.actor, nil, {[1] = snd})
+--             level.add_cam_effector(cam, 1300, false, "")
+--             game.play_hud_motion(2, m_section, anm, false, 1)
+--         end)
+
+--         --restore
+--         Invoke("play_outfti_inspect_animation_te2", length + delay + 0.25, function()
+--             if mcm_allow_movement then game.only_allow_movekeys(false) else level.enable_input() end
+--             db.actor:activate_slot(cur_slot or 0)
+--             if det_active then det_active:switch_state(1) end
+-- 		end)
+-- 	end)
+-- end
+
+
+----------------------------------------
+-- helper functions
+----------------------------------------
+
+-- function wait_for_free_hands(action_to_perform)
+-- 	local force_timer = 0
+-- 	CreateTimeEvent("outfit_animations_inspect", "wait_for_free_hands_te0", 0.1, function()
+-- 		if (db.actor:active_slot() == 0 and not db.actor:active_detector() and not enhanced_animations.used_item) or (force_timer > 5) then
+-- 			Invoke("wait_for_free_hands_te1", 0, action_to_perform) --i don understan y this works (ノへ￣、)
+-- 			return true
+--         end
+-- 		force_timer = force_timer + (device().time_delta/1000)
+-- 		return false
+-- 	end)
+-- end
+
+
+-- function Invoke(name, time, action)
+-- 	CreateTimeEvent("outfit_animations_inspect", name, time, function()
+-- 		action()
+-- 		return true
+-- 	end)
+-- end
+
+--#endregion
+----------------------------------------

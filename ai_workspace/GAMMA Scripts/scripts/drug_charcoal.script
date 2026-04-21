@@ -1,0 +1,85 @@
+--[[
+	=====================================================================
+	Addon        : Activated Charcoal
+	Link:        : https://www.moddb.com/mods/stalker-anomaly/addons/dltx-activated-charcoal/
+	Author       : Tosox
+	Credits      : Igigog, Arti, Demonized
+	Last Edit    : 10.10.2025
+	=====================================================================
+--]]
+
+ADDITIONAL_TRADERS = {
+	["yan_stalker_sakharov"] = true, -- Sakharov
+	["jup_b6_scientist_nuclear_physicist"] = true -- Professor Hermann
+}
+
+-- Inject item into traders
+trader_autoinject_update = trader_autoinject.update
+trader_autoinject.update = function(npc)
+	trader_autoinject_update(npc)
+
+	local is_possible_seller = trader_autoinject.get_trader_type(npc) == trader_autoinject.MEDIC
+	is_possible_seller = is_possible_seller or ADDITIONAL_TRADERS[npc:section()]
+	if is_possible_seller then
+		local trader_restock_amount = drug_charcoal_mcm.get_config("trader_restock_amount")
+		trader_autoinject.spawn_items(npc, { ["drug_charcoal"] = trader_restock_amount }, true)
+	end
+end
+
+BODY_LOOT_CHANCE = {
+	["novice"] = 0.1,
+	["trainee"] = 0.1,
+	["experienced"] = 0.08,
+	["professional"] = 0.07,
+	["veteran"] = 0.07,
+	["expert"] = 0.06,
+	["master"] = 0.05,
+	["legend"] = 0.05
+}
+
+-- Inject item into corpses
+death_manager_spawn_cosmetics = death_manager.spawn_cosmetics
+death_manager.spawn_cosmetics = function(npc, npc_id, npc_comm, npc_rank, visual, rand_condition)
+	death_manager_spawn_cosmetics(npc, npc_id, npc_comm, npc_rank, visual, rand_condition)
+
+	local max_uses = SYS_GetParam(2, "drug_charcoal", "max_uses", 1)
+	local do_uses = math.random(max_uses)
+	local loot_coefficient = drug_charcoal_mcm.get_config("loot_coefficient")
+	local chance = (BODY_LOOT_CHANCE[npc_rank] or 0.05) * loot_coefficient
+
+	if math.random() < chance then
+		alife_create_item("drug_charcoal", npc, { ["uses"] = do_uses })
+	end
+end
+
+-- Inject item into new game loadout
+-- Check drug_charcoal_mcm.script
+
+-- Inject recipe into workshop
+function add_recipe()
+	if aa_load_recipes_Banjaji_CSI then
+		aa_load_recipes_Banjaji_CSI.add_new_recipe("st_ui_craft_medical", {
+			["identificator"] = "drug_charcoal",
+			["results"] = {
+				["drug_charcoal"] = 5
+			},
+			["notes"] = {
+				["recipe_drug_0"] = 1
+			},
+			["tools"] = {
+				["itm_drugkit"] = 1
+			},
+			["components"] = {
+				["charcoal"] = 1,
+				["flask"] = 2,
+				["jar"] = 1
+			}
+		})
+	else
+		workshop_autoinject.add_new_recipe(5, "drug_charcoal", "4, recipe_drug_0, charcoal, 1, flask, 2, jar, 1")
+	end
+end
+
+function on_game_start()
+	add_recipe()
+end

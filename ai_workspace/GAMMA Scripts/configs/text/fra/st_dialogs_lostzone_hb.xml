@@ -1,0 +1,638 @@
+<?xml version="1.0" encoding="windows-1252"?>
+
+<string_table>
+
+<!--
+F.R.I.T.E.S | Thundard
+Dernière révision : 24 novembre 2025
+-->
+
+<!--
+CHAÎNES DE TEXTE POUR LOST TO THE ZONE : HOLLOW BOUNDARIES - TÂCHES
+Anomaly 1.5 - Lost to the Zone : Hollow Boundaries
+
+Fait par : Tronex
+Dernière révision : 10 septembre 2019
+-->
+
+<!-- Messages -->
+<string id="st_msg_hb_isg_dushman_intel">
+<text>Dushman vient de m'envoyer un bip. Je suppose que ça veut dire qu'il t'a donné les infos. Je me suis installé dans une zone que les locaux appellent Jupiter. Arrive vivant, je t'enverrai bientôt nos coordonnées précises.</text>
+</string>
+<string id="st_msg_hb_isg_tech_goodluck">
+<text>Bonne chance là-bas, les gars.</text>
+</string>
+<string id="st_msg_hb_isg_breakthrough">
+<text>Soldats, les Souterrains de Jupiter sont maintenant sécurisés et sous contrôle. Envoyez les coordonnées aux membres de votre escouade et attendez de nouveaux ordres.</text>
+</string>
+<string id="st_msg_hb_isg_petray">
+<text>Je savais que je ne devais pas te faire confiance.</text>
+</string>
+
+<!-- Dynamic ISG stash news -->
+<string id="st_dyn_news_isg_stash_1">
+<text>$name à l'appareil. J'ai planqué quelques provisions pour les situations d'urgence à $location. Voici les coordonnées, assure-toi que le message parvienne aux soldats qui en ont besoin.</text>
+</string>
+<string id="st_dyn_news_isg_stash_2">
+<text>J'espère que vos missions se passent bien. Je veux informer nos gars d'une planque que j'ai planquée à $location. Vous y trouverez des provisions et autres bricoles. J'espère que l'un de vous pourra en faire bon usage. $name terminé.</text>
+</string>
+<string id="st_dyn_news_isg_stash_3">
+<text>Euh... Ici $name. Je suis arrivé à $location. Putain de mutants partout... Bref, j'ai laissé une planque ici pour les prochaines visites, au cas où. Voici les coordonnées, si jamais vous êtes dans la merde jusqu'au cou.</text>
+</string>
+
+<!-- Main Dialog -->
+<string id="hb_hernandez_ds_start_dialog_0">
+<text>Soldat ?</text>
+</string>
+
+<string id="hb_hernandez_ds_intro_dialog_0">
+<text>Alors, on y est arrivé finalement. Quelle est la suite, commandant ?</text>
+</string>
+<string id="hb_hernandez_ds_intro_dialog_1">
+<text>On a eu de la chance de passer le périmètre de l'armée ukrainienne sans se faire repérer. Toutes les autres unités spéciales de l'UNISG sont aussi entrées dans la Zone avec succès et s'installent aux points de contrôle convenus comme prévu. Pendant que le reste de l'escouade va les rejoindre, j'ai besoin de toi pour une mission spéciale. Va voir un type connu sous le nom de "Dushman". C'est l'intermédiaire principal entre les mercenaires et leurs clients extérieurs. Des questions ?</text>
+</string>
+
+<string id="hb_hernandez_about_dushman_dialog_0">
+<text>Pourquoi est-ce que je dois voir ce "Dushman" ?</text>
+</string>
+<string id="hb_hernandez_about_dushman_dialog_1">
+<text>Des infos. Les mercenaires sont ici depuis longtemps et ont établi des cartes et des notes qui nous seront très utiles. Il est vital d'obtenir ces connaissances, car elles aideront à réduire les risques lors des expéditions de longue durée au coeur de la Zone, et elles nous indiqueront aussi où nous avons le plus de chances de trouver ce pour quoi on est venu.</text>
+</string>
+<string id="hb_hernandez_about_dushman_dialog_2">
+<text>Et il va juste nous remettre toutes ces infos ?</text>
+</string>
+<string id="hb_hernandez_about_dushman_dialog_3">
+<text>En gros, oui. L'ONU a déjà payé une fortune pour ces informations. Va le voir, et il sera plus qu'heureux de te transmettre une copie de ce qu'il sait sur la Zone.</text>
+</string>
+<string id="hb_hernandez_about_dushman_dialog_4">
+<text>Il n'aurait pas pu nous envoyer ces infos par voie numérique ?</text>
+</string>
+<string id="hb_hernandez_about_dushman_dialog_5">
+<text>Les mercenaires aiment vendre leurs informations au prix fort. Toute information envoyée par un réseau devient plus facile à voler ou à copier. Les informations plus faciles à voler ou copier se vendent moins cher. Comme tu t'en doutes, ils ne se soucient pas vraiment de nous faciliter les choses, et on n'a pas vraiment le choix.</text>
+</string>
+
+<string id="hb_hernandez_about_darkscape_dialog_0">
+<text>Je pourrai te retrouver ici si j'ai besoin de toi ?</text>
+</string>
+<string id="hb_hernandez_about_darkscape_dialog_1">
+<text>Non, le reste de l'escouade doit continuer d'avancer. Une fois que tu auras récupéré les infos de Dushman, je te donnerai notre nouvelle position ainsi que de nouveaux ordres.</text>
+</string>
+
+<string id="hb_hernandez_about_isg_groups_dialog_0">
+<text>Pourquoi travaillons-nous en si petits groupes ?</text>
+</string>
+<string id="hb_hernandez_about_isg_groups_dialog_1">
+<text>Pour l'instant, il est impératif de ne pas attirer trop d'attention. C'est plus facile de passer inaperçu en voyageant en petites escouades. Inutile de te dire que ce serait une catastrophe opérationnelle et politique si le gouvernement ukrainien découvrait nos unités spéciales. Cependant, même s'ils nous découvrent, notre dispersion et notre tactique de l'ombre nous rendront difficiles à cerner complètement, ce qui nous laissera assez de temps pour sauver la mission si ça tourne mal.</text>
+</string>
+
+<string id="hb_hernandez_about_disguise_dialog_0">
+<text>Quelle est notre attitude vis-à-vis des locaux ?</text>
+</string>
+<string id="hb_hernandez_about_disguise_dialog_1">
+<text>Ils savent que nos unités officielles mènent des recherches dans la Zone, mais ils ne doivent pas connaître notre mission secrète. Beaucoup d'entre eux essaieraient de nous voler, de nous attaquer, ou au moins de nous dénoncer à cause de "différences idéologiques" de toute façon, et il faut que notre mission spéciale reste secrète. Si quelqu'un d'autre qu'un mercenaire te voit, il doit être éliminé. Aucun témoin.</text>
+</string>
+<string id="hb_hernandez_about_disguise_dialog_2">
+<text>Tu penses que les locaux nous dénonceraient au SSU ?</text>
+</string>
+<string id="hb_hernandez_about_disguise_dialog_3">
+<text>Exactement, même de manière indirecte. Entre les stalkers lambda qui travaillent pour des courtiers en informations, les Écologistes qui envoient des rapports à leurs supérieurs gouvernementaux, et des factions comme le Devoir qui vont répéter ça aux Spetsnaz, il y a des yeux et des oreilles partout. Si ne serait-ce qu'un seul révèle que l'UNISG explore des zones officiellement interdites, toute notre opération est compromise.</text>
+</string>
+<string id="hb_hernandez_about_disguise_dialog_4">
+<text>Et comment je vais traverser les zones les plus peuplées ? Un massacre attirerait aussi l'attention, non ?</text>
+</string>
+<string id="hb_hernandez_about_disguise_dialog_5">
+<text>Le taux de mortalité dans la Zone est extrêmement élevé, et de nombreux stalkers disparaissent sans laisser de trace chaque jour. Mais tu marques un point. Ce serait probablement une bonne idée d'obtenir une sorte de déguisement, pour pouvoir passer pour un local en traversant les grands camps de stalkers. Bien que risquée en soi, c'est clairement bien plus pratique.</text>
+</string>
+
+<string id="hb_hernandez_about_mercs_dialog_0">
+<text>Comment sait-on que Dushman et ses mercenaires sont fiables ?</text>
+</string>
+<string id="hb_hernandez_about_mercs_dialog_1">
+<text>La relation entre l'ONU et les mercenaires n'a jamais été très claire. Mais non seulement on leur a payé une fortune pour les infos, mais ils ont aussi la promesse d'une somme encore plus importante si notre opération réussit. On a, en quelque sorte, acheté leur silence, et pour l'instant, c'est dans leur intérêt de nous voir réussir. Cela dit, je ne serais pas surpris qu'ils se retournent contre nous à la première occasion, alors reste sur tes gardes.</text>
+</string>
+
+<string id="hb_hernandez_about_operation_dialog_0">
+<text>Quel est notre objectif opérationnel global ?</text>
+</string>
+<string id="hb_hernandez_about_operation_dialog_1">
+<text>La mission de l'UNISG est double : premièrement, il y a de véritables équipes scientifiques qui mènent des recherches générales sur la Zone. Deuxièmement, il y a des équipes des forces spéciales destinées à pénétrer dans les anciens laboratoires pour y récupérer des documents qui pourraient mieux éclairer la véritable nature de la Zone. On soupçonne qu'elle soit d'origine humaine, et si on peut le confirmer, on pourra justifier des investigations plus profondes et plus ouvertes. Toi et moi faisons partie du second groupe.</text>
+</string>
+
+<string id="hb_hernandez_about_operation_more_dialog_0">
+<text>Que peux-tu m'apprendre d'autre sur l'opération de l'UNISG dans la Zone ?</text>
+</string>
+<string id="hb_hernandez_about_operation_more_dialog_1">
+<text>D'après ce que j'ai entendu, ce n'est pas la première opération internationale dans la Zone. Notre groupe prédécesseur, simplement appelé "ISG", était assez actif à l'époque. Ils étaient des chercheurs environnementaux sponsorisés par l'ONU, contrairement aux Écologistes qui opèrent sur ordre du gouvernement ukrainien. Mais ils ont dû se dissoudre peu après la Deuxième Émission, en septembre 2011, à cause de pertes immenses.</text>
+</string>
+<string id="hb_hernandez_about_operation_more_dialog_2">
+<text>Et qu'est-il arrivé après la dissolution de l'ISG ?</text>
+</string>
+<string id="hb_hernandez_about_operation_more_dialog_3">
+<text>Peu ont survécu, et la plupart ont choisi de quitter la Zone. Certains, cependant, ont rejoint les mercenaires ou les Écologistes, ou ont choisi de continuer seuls comme membres de la Liberté ou stalkers indépendants.
+\nQuelques membres ont vaillamment poursuivi leur mission d'origine, mais leur nombre a continué de diminuer. En résumé, il semblait que les yeux et les oreilles de l'ONU dans la Zone étaient définitivement fermés.</text>
+</string>
+<string id="hb_hernandez_about_operation_more_dialog_4">
+<text>Et pourtant, nous voilà.</text>
+</string>
+<string id="hb_hernandez_about_operation_more_dialog_5">
+<text>En effet. Quelques irréductibles de l'ISG ont continué de demander discrètement du soutien à l'ONU au fil des ans, mais ils ont été largement ignorés. Cela a changé récemment, après qu'une Émission massive ait été aperçue de Londres. Tous les anciens membres identifiés ont soit été utilisés comme espions dans leurs nouvelles factions, soit rappelés de la Zone par l'ONU pour former le noyau scientifique de l'UNISG. Mes gars et moi ne sommes que des soldats, comme la plupart des opérateurs de l'UNISG aujourd'hui, d'ailleurs.</text>
+</string>
+<string id="hb_hernandez_about_operation_more_dialog_6">
+<text>On dirait que l'ancien ISG est bien différent du nouveau.</text>
+</string>
+<string id="hb_hernandez_about_operation_more_dialog_7">
+<text>L'ancien était composé principalement de scientifiques, et opérait avec la bénédiction et la permission complètes de l'Ukraine. Mais avec cette permission venait une supervision, des interférences, de la censure. Nous avons des raisons de penser que la vérité complète sur la Zone était cachée à nos anciens chercheurs, au détriment potentiel du monde entier ! Cette fois, nous arrivons avec nos propres ressources, nos propres gardes. L'ONU a fourni tous nos fonds, afin que nous puissions découvrir la vérité entière par nous-mêmes.</text>
+</string>
+
+<string id="hb_hernandez_ds_break_dialog_0">
+<text>Plus de questions, Commandant. Je suis prêt à y aller.</text>
+</string>
+<string id="hb_hernandez_ds_break_dialog_1">
+<text>Bien. Quand tu verras Dushman, donne-lui la phrase de code pour les informations : "Still remember blue ocean in this dying world."
+\nJe marquerai sa position sur ton PDA, ainsi que le chemin pour y aller.</text>
+</string>
+<string id="hb_hernandez_ds_break_dialog_2">
+<text>C'est une phrase de chanson de Firelake ?</text>
+</string>
+<string id="hb_hernandez_ds_break_dialog_3">
+<text>...oui. Maintenant, file.</text>
+</string>
+<string id="hb_hernandez_ds_break_dialog_4">
+<text>Ciao.</text>
+</string>
+
+<string id="hb_dushman_isg_intel_dialog_0">
+<text>Le Major Hernandez m'envoie récupérer des infos auprès de toi.</text>
+</string>
+<string id="hb_dushman_isg_intel_dialog_1">
+<text>Très bien. C'est quoi la phrase de passe ?</text>
+</string>
+<string id="hb_dushman_isg_intel_dialog_2">
+<text>"Still remember blue ocean in this dying world."</text>
+</string>
+<string id="hb_dushman_isg_intel_dialog_3">
+<text>Espérons que ça ne devienne jamais qu'un souvenir. Voici toutes les informations demandées par l'ONU.</text>
+</string>
+<string id="hb_dushman_isg_intel_dialog_4">
+<text>Merci.</text>
+</string>
+<string id="hb_dushman_isg_intel_dialog_5">
+<text>Avant que tu partes, je sais que la paie des boulots gouvernementaux peut être franchement merdique. Si tu veux jamais te faire du vrai fric et que tu peux rester discret, passe me voir - nous, les mercenaires, on a toujours plein de boulots à faire. Des boulots très lucratifs, payés par des entreprises.</text>
+</string>
+<string id="hb_dushman_isg_intel_dialog_6">
+<text>Je retiens.</text>
+</string>
+<string id="hb_dushman_isg_intel_dialog_7">
+<text>Bien. Je ne voudrais pas que tu te sentes coincé dans ton boulot actuel. Tout le monde n'a pas envie de crever pour la connerie d'un politicien. Pourquoi bosser pour eux alors que tu peux bosser pour toi ?</text>
+</string>
+<string id="hb_dushman_isg_intel_dialog_8">
+<text>Cette opération nous dépasse tous, Dushman. Si on se recroise, j'espère que ce sera pour de bonnes raisons.</text>
+</string>
+
+<string id="drx_isg_cit_killers_merc_trader_stalker_game_start_dialog_1_0">
+<text>Alors, tu m'as proposé un boulot. Ça m'intéresse.</text>
+</string>
+<string id="drx_isg_cit_killers_merc_trader_stalker_game_start_dialog_1_1">
+<text>Content de l'entendre. Un employeur veut qu'on fasse un boulot sérieux. Même moi, je ne pourrais pas te dire exactement qui, quoi ou où il est. Juste qu'il a de la thune, et beaucoup. Quoi qu'il en soit, cet employeur nous a demandé de rendre service à une liste de "parties intéressées". Ton PDA sera mis à jour avec leurs détails le moment venu. Reste vigilant et surveille tes arrières là-bas. La Zone peut être très lucrative, mais c'est aussi un enfer vivant, et rien de ce que j'ai vu jusqu'ici ne m'a convaincu du contraire.</text>
+</string>
+<string id="hb_hernandez_jup_start_dialog_0">
+<text>Ah, t'es pas mort. Bien.</text>
+</string>
+
+<string id="hb_hernandez_jup_dushman_intel_0">
+<text>Ah, t'es pas mort. Bien.</text>
+</string>
+<string id="hb_hernandez_jup_dushman_intel_1">
+<text>J'ai aussi les infos.</text>
+</string>
+<string id="hb_hernandez_jup_dushman_intel_2">
+<text>Encore mieux. Comme tu peux le voir, on a trouvé un bon abri ici, mais il est encore trop exposé. On aimerait explorer les catacombes en dessous pour voir si c'est habitable, mais la dernière escouade qu'on a envoyée a cessé tout contact et n'est jamais revenue. C'est ma faute, j'ai été trop pressé. Avant d'envoyer qui que ce soit d'autre, il faut qu'on fouille l'usine juste en haut de la colline pour trouver quoi que ce soit qui puisse nous donner des indices sur l'agencement des catacombes.</text>
+</string>
+
+<string id="hb_hernandez_about_jup_factory_dialog_0">
+<text>Qu'est-ce qui te fait penser qu'on va trouver quelque chose d'utile dans cette usine au-dessus ?</text>
+</string>
+<string id="hb_hernandez_about_jup_factory_dialog_1">
+<text>Comme tu peux le voir, on a une escouade supplémentaire avec nous maintenant. Quand on les a trouvés, ils ont rapporté qu'ils enquêtaient sur l'usine de Jupiter et qu'ils avaient trouvé une mallette scellée pleine de documents, de plans d'étage, d'agencements de bâtiments et autres.
+\nIls ont dû battre en retraite rapidement pour éviter d'être repérés par un peloton militaire arrivé à l'improviste. La mallette est restée sur place et doit être récupérée.</text>
+</string>
+
+<string id="hb_hernandez_about_jup_factory_enter_dialog_0">
+<text>Comment on aborde l'usine ?</text>
+</string>
+<string id="hb_hernandez_about_jup_factory_enter_dialog_1">
+<text>Avec précaution. D'après les rapports, il pourrait y avoir un peloton de soldats ukrainiens qui rôdent là-haut. Ils doivent être éliminés aussi vite et silencieusement que possible.</text>
+</string>
+
+<string id="hb_hernandez_search_jup_factory_dialog_0">
+<text>Je suis prêt à aider à fouiller l'usine.</text>
+</string>
+<string id="hb_hernandez_search_jup_factory_dialog_1">
+<text>Bien. Prends une escouade sous ton commandement. Récupère les documents et élimine tout témoin qui pourrait se trouver dans le bâtiment à ton arrivée. Pendant ce temps, je me penche sur les infos que tu as ramenées de Dushman. Rompez.</text>
+</string>
+<string id="hb_hernandez_search_jup_factory_dialog_2">
+<text>Bien, monsieur.</text>
+</string>
+
+<string id="hb_hernandez_found_jupiter_documents_dialog_0">
+<text>Voilà la mallette. Tous les témoins présents ont été éliminés.</text>
+</string>
+<string id="hb_hernandez_found_jupiter_documents_dialog_1">
+<text>Ok, voyons voir... hmm - ah ! Voilà. "Passage souterrain de Pripyat", aussi appelé par les locaux "Souterrains de Jupiter". Le plan semble assez simple. Toutefois, selon les documents de Dushman, ça ressemble exactement au genre d'endroit que les mutants adoreraient. Sombre, humide, un peu étroit par endroits. Hm. Voilà pourquoi notre dernière escouade n'en est pas revenue. Cela dit, le plan montre aussi de grands espaces cavernaux là-dessous... Et d'après le manifeste de réquisition entre l'usine et le passage, il y a des documents là-dessous qui auraient dû être évacués en 1986 puis en 2006... mais qui n'en sont jamais sortis dans les deux cas. Intéressant, non ?</text>
+</string>
+<string id="hb_hernandez_found_jupiter_documents_dialog_2">
+<text>Quel est le plan, monsieur ?</text>
+</string>
+<string id="hb_hernandez_found_jupiter_documents_dialog_3">
+<text>On fouille l'endroit ensemble, on trouve les documents laissés là et on s'installe dans un des espaces les plus grands. Je doute qu'on ait beaucoup de visiteurs là-dessous, donc ce sera parfait pour nous. T'es prêt à descendre maintenant ?</text>
+</string>
+<string id="hb_hernandez_found_jupiter_documents_dialog_4">
+<text>Très bien, allons-y.</text>
+</string>
+<string id="hb_hernandez_found_jupiter_documents_dialog_41">
+<text>Bien. On y va tous ensemble. Couvrez-vous mutuellement, assurez-vous de toujours savoir où se trouve votre binôme. Certains d'entre vous ont peut-être déjà croisé des mutants, mais j'ai entendu dire que ceux du dessous sont d'un tout autre genre de saloperies. Alors accrochez-vous, videz-vous la tête et restez vigilants. Tu prends la tête.</text>
+</string>
+<string id="hb_hernandez_found_jupiter_documents_dialog_42">
+<text>Oui, monsieur.</text>
+</string>
+<string id="hb_hernandez_found_jupiter_documents_dialog_5">
+<text>Attends, j'ai besoin d'une minute pour reprendre mon souffle.</text>
+</string>
+<string id="hb_hernandez_found_jupiter_documents_dialog_51">
+<text>D'accord, mais plus on reste en surface, plus on risque de se faire repérer.</text>
+</string>
+
+<string id="hb_hernandez_start_jup_u_breakthrough_dialog_0">
+<text>Je suis prêt à sécuriser le souterrain.</text>
+</string>
+<string id="hb_hernandez_start_jup_u_breakthrough_dialog_1">
+<text>Bien. On y va tous ensemble. Couvrez-vous mutuellement, assurez-vous de toujours savoir où se trouve votre binôme. Certains d'entre vous ont peut-être déjà croisé des mutants, mais j'ai entendu dire que ceux du dessous sont d'un tout autre genre de saloperies. Alors accrochez-vous, videz-vous la tête et restez vigilants. Tu prends la tête.</text>
+</string>
+<string id="hb_hernandez_start_jup_u_breakthrough_dialog_2">
+<text>Oui, monsieur.</text>
+</string>
+
+<string id="hb_hernandez_found_jup_u_documents_dialog_0">
+<text>Monsieur. Ce doivent être les documents mentionnés dans le manifeste.</text>
+</string>
+<string id="hb_hernandez_found_jup_u_documents_dialog_1">
+<text>C'est... c'est incroyable. Ça, à lui seul, pourrait aider l'ONU à justifier une enquête ouverte et publique sur la Zone d'Exclusion. Mais il faut en trouver plus. Les preuves doivent être irréfutables. Je vais contacter les autres escouades itinérantes de l'UNISG pour leur dire qu'on a établi une base centrale solide d'où elles pourront opérer. Rien de mieux que d'être juste sous Pripyat, hein ?</text>
+</string>
+<string id="hb_hernandez_found_jup_u_documents_dialog_2">
+<text>On va bientôt pouvoir sortir de l'ombre, alors ?</text>
+</string>
+<string id="hb_hernandez_found_jup_u_documents_dialog_3">
+<text>Pas encore, mais bientôt. Il reste encore de la préparation. J'ai peut-être mentionné que, si on est là, c'est aussi pour localiser et fouiller les anciens labos dispersés dans la Zone. Grâce aux infos que tu as ramenées de Dushman, c'est désormais possible. Ses notes disent que beaucoup de ces labos ont déjà été fouillés. Cependant, les documents déjà récupérés ont ensuite mystérieusement disparu ; probablement le SSU qui colmate ses fuites. Les notes indiquent aussi que très peu de ceux qui entrent dans les labos en ressortent, et que, de ce fait, il est fort probable qu'ils contiennent encore beaucoup des preuves qu'on recherche. Vu ce qu'on a trouvé dans ce passage souterrain, c'est un pari qu'on devrait clairement prendre.</text>
+</string>
+
+<string id="hb_hernandez_about_evidence_dialog_0">
+<text>Quel genre de preuves on recherche ?</text>
+</string>
+<string id="hb_hernandez_about_evidence_dialog_1">
+<text>Littéralement tout document que tu trouveras dans ces labos, tu le prends. Ne laisse rien de côté. Il est possible que beaucoup des phénomènes de la Zone aient pour origine les recherches menées dans ces labos. En d'autres termes, il est possible que cet "accident" écologique soit en réalité le résultat d'armes de destruction massive conçues délibérément et en violation de la Convention de Genève. On a besoin de tout ce qui peut aider à le prouver.
+\nIdéalement, il faut qu'on quitte ce trou à rats avec une masse écrasante de preuves que le contenu de la Zone représente un risque réel pour la sécurité internationale. Un risque trop grand pour qu'un bled d'Europe de l'Est puisse y faire face.
+\nCela forcera l'Ukraine à laisser l'ONU avoir carte blanche sur Tchernobyl et ses secrets... et peut-être même à transférer le monopole national du commerce des artefacts à de nouvelles mains...</text>
+</string>
+<string id="hb_hernandez_about_evidence_dialog_2">
+<text>Ça semble plutôt crapuleux.</text>
+</string>
+<string id="hb_hernandez_about_evidence_dialog_21">
+<text>Crapuleux ou pas, c'est notre boulot, et on ira jusqu'au bout.</text>
+</string>
+<string id="hb_hernandez_about_evidence_dialog_3">
+<text>Je suis d'accord. La Zone pourrait menacer le monde entier. Son confinement ne devrait pas être du ressort d'un seul État.</text>
+</string>
+<string id="hb_hernandez_about_evidence_dialog_31">
+<text>Content que tu sois d'accord.</text>
+</string>
+<string id="hb_hernandez_about_evidence_dialog_4">
+<text>À ton avis, l'ONU se soucie vraiment de protéger le public ou juste de s'approprier le commerce des artefacts ?</text>
+</string>
+<string id="hb_hernandez_about_evidence_dialog_41">
+<text>Ce n'est pas à moi de commenter. Ni à toi.</text>
+</string>
+
+<string id="hb_hernandez_search_labs_dialog_0">
+<text>Qui on envoie pour enquêter dans ces labos ?</text>
+</string>
+<string id="hb_hernandez_search_labs_dialog_1">
+<text>Je pense que tu seras notre meilleur candidat. Tu as prouvé ta compétence non seulement au combat, mais aussi dans la gestion des locaux et la survie en mission indépendante. Et tout ça sans alerter le SSU. Mais avant que tu partes, prends ça.</text>
+</string>
+<string id="hb_hernandez_search_labs_dialog_2">
+<text>Qu'est-ce que c'est ?</text>
+</string>
+<string id="hb_hernandez_search_labs_dialog_3">
+<text>Un de nos espions infiltrés chez les Écologistes a réussi à nous envoyer les plans d'un... euh... "appareil de protection psy".</text>
+</string>
+<string id="hb_hernandez_search_labs_dialog_4">
+<text>Quoi, contre le contrôle mental ?</text>
+</string>
+<string id="hb_hernandez_search_labs_dialog_5">
+<text>Exactement. Je te jure, plus tu en apprends sur cet endroit, plus il ressemble à une saloperie. Quoi qu'il en soit, ce casque qu'on a fabriqué devrait te protéger contre tout dispositif de "contrôle mental" encore actif dans les labos.</text>
+</string>
+<string id="hb_hernandez_search_labs_dialog_6">
+<text>Putain... ça vire carrément au film d'horreur.</text>
+</string>
+<string id="hb_hernandez_search_labs_dialog_7">
+<text>Ça ira. J'ai équipé certains de nos gars avec des dispositifs similaires, donc tu peux les emmener avec toi si tu veux. Quoi qu'il en soit, souviens-toi : ta mission est de récupérer tous les documents top secret dans les labos et de ne laisser aucun témoin. Laisse-moi marquer les emplacements sur ton PDA. Voilà.</text>
+</string>
+<string id="hb_hernandez_search_labs_dialog_8">
+<text>Je ne vous décevrai pas, monsieur.</text>
+</string>
+
+<string id="hb_hernandez_found_labs_docs_dialog_0">
+<text>Oui, ton meilleur coursier d'infos est encore de retour. Regarde ça.</text>
+</string>
+<string id="hb_hernandez_found_labs_docs_dialog_1">
+<text>Impressionnant... Beau travail ! Tu as gagné ma reconnaissance. L'ONU sera ravie de découvrir ce qu'on a appris.</text>
+</string>
+<string id="hb_hernandez_found_labs_docs_dialog_2">
+<text>Quelque chose d'intéressant pendant mon absence ?</text>
+</string>
+<string id="hb_hernandez_found_labs_docs_dialog_3">
+<text>Plusieurs autres escouades de l'UNISG sont aussi revenues de leurs expéditions vers la Centrale nucléaire de Tchernobyl et au-delà. Entre leurs efforts et les tiens, je pense qu'on a une assez bonne idée de ce qui se trame dans la Zone depuis quelques décennies. Mais il reste encore des mystères inexpliqués. Si les créateurs de la Zone ont disparu ou sont morts, comment se fait-il qu'elle se soit renforcée ? Et comment le culte fanatique connu sous le nom de "Monolithe" a-t-il réussi à rester aussi fort et aussi bien approvisionné toutes ces années ?</text>
+</string>
+<string id="hb_hernandez_found_labs_docs_dialog_4">
+<text>Tu sais où on pourrait trouver des réponses à ces mystères ?</text>
+</string>
+<string id="hb_hernandez_found_labs_docs_dialog_5">
+<text>Oui. Tu te souviens du groupe militaire qu'on a croisé dans l'usine de Jupiter ? Il s'avère qu'ils n'étaient pas là par hasard. Ils essayaient de faire la même chose que nous, sauf qu'ils préféraient brûler les documents plutôt que de laisser le monde les connaître.</text>
+</string>
+<string id="hb_hernandez_found_labs_docs_dialog_6">
+<text>Et tu as découvert l'emplacement d'une autre escouade ?</text>
+</string>
+<string id="hb_hernandez_found_labs_docs_dialog_7">
+<text>Oui. Et mes espions ont aussi découvert leur objectif : cette escouade militaire est à la recherche de leur ancien consultant scientifique en chef.</text>
+</string>
+<string id="hb_hernandez_found_labs_docs_dialog_8">
+<text>Ça semble un peu étrange. Pourquoi feraient-ils ça ?</text>
+</string>
+<string id="hb_hernandez_found_labs_docs_dialog_9">
+<text>Leur consultant en chef a gagné son poste non pas par un doctorat, mais grâce à son immense expérience de terrain avec les phénomènes de la Zone. Apparemment, il a découvert beaucoup de ses secrets, y compris des détails sur ses origines qui manquent encore dans nos propres notes. Si la moitié des histoires sur ses faits sont vraies, ça ne m'étonne pas. En tout cas, il n'était clairement pas satisfait de son poste officiel, vu qu'il est revenu ici. J'ai du mal à imaginer quel genre de boulot pousse quelqu'un à vouloir prendre des vacances dans un enfer pareil.</text>
+</string>
+<string id="hb_hernandez_found_labs_docs_dialog_10">
+<text>Et qui est cet homme ?</text>
+</string>
+<string id="hb_hernandez_found_labs_docs_dialog_11">
+<text>Ils l'appellent... Strelok.</text>
+</string>
+<string id="hb_hernandez_found_labs_docs_dialog_12">
+<text>Tu veux que je le ramène pour toi ?</text>
+</string>
+<string id="hb_hernandez_found_labs_docs_dialog_13">
+<text>Oui. C'est la dernière pièce du puzzle. Sauve-le des forces militaires qui le traquent à la périphérie de Pripyat. Convaincs-le de nous aider. S'il témoigne pour l'ONU contre la manière dont le gouvernement ukrainien gère la Zone, ça facilitera beaucoup les choses.</text>
+</string>
+<string id="hb_hernandez_found_labs_docs_dialog_14">
+<text>Et s'il refuse d'aider ?</text>
+</string>
+<string id="hb_hernandez_found_labs_docs_dialog_15">
+<text>Alors arrache-lui ses connaissances par tous les moyens, et reviens avec. Je peux t'assigner une escouade pour t'assister si tu penses que ça va tourner comme ça. D'après ce que je sais, il est peut-être même plus dangereux que les soldats qui le poursuivent.</text>
+</string>
+<string id="hb_hernandez_found_labs_docs_dialog_16">
+<text>Je ne prends aucun risque. Monsieur, informez l'escouade qu'elle partira avec moi sous peu. On trouvera Strelok, on s'occupera de ses poursuivants et on le maîtrisera avant qu'il comprenne ce qui se passe.</text>
+</string>
+<string id="hb_hernandez_found_labs_docs_dialog_17">
+<text>J'irai seul. Je suis sûr que Strelok nous aidera une fois que je l'aurai aidé, et je ne veux pas risquer qu'il soit touché par un tir ami.</text>
+</string>
+<string id="hb_hernandez_found_labs_docs_dialog_18">
+<text>Très bien. Bonne chance.</text>
+</string>
+
+<string id="hb_hernandez_strelok_pendrive_dialog_0">
+<text>À propos de Strelok, monsieur...</text>
+</string>
+<string id="hb_hernandez_strelok_pendrive_dialog_1">
+<text>Je vois ce regard dans tes yeux. Tu l'as tué. Que s'est-il passé ?</text>
+</string>
+<string id="hb_hernandez_strelok_pendrive_dialog_1_1">
+<text>Il a refusé de se rendre. Il n'y avait pas vraiment d'autre choix. Cependant, j'ai trouvé cette clé USB sur lui. Peut-être qu'elle contient quelque chose d'utile.</text>
+</string>
+<string id="hb_hernandez_strelok_pendrive_dialog_2">
+<text>Tu viens de ramener l'un des hommes les plus informés, rusés et dangereux de TOUTE LA ZONE directement à notre QG de terrain sans le désarmer. Explique-toi.</text>
+</string>
+<string id="hb_hernandez_strelok_pendrive_dialog_2_1">
+<text>C'était la meilleure façon de le surprendre, sans parler de cacher la preuve de sa mort. Tu devrais jeter un oeil à ce qu'il transportait.</text>
+</string>
+<string id="hb_hernandez_strelok_pendrive_dialog_3">
+<text>Je commençais à croire que tu avais été capturé par l'ennemi. Qu'est-ce qui t'a pris autant de temps ?</text>
+</string>
+<string id="hb_hernandez_strelok_pendrive_dialog_3_1">
+<text>J'ai accepté d'aider Strelok. En échange, il m'a donné cette clé USB. Elle contient beaucoup d'informations sur l'histoire de la Zone... et ses mystères.</text>
+</string>
+<string id="hb_hernandez_strelok_pendrive_dialog_4">
+<text>Hmm... Voyons voir...
+\nIncroyable... C'est bien plus que ce qu'on espérait...</text>
+</string>
+<string id="hb_hernandez_strelok_pendrive_dialog_5">
+<text>Qu'est-ce que vous voyez là-dedans, monsieur ?</text>
+</string>
+<string id="hb_hernandez_strelok_pendrive_dialog_6">
+<text>Des documents top secret, des infos sur les laboratoires, des dispositifs complexes, des expériences personnelles et des observations sur la Centrale nucléaire de Tchernobyl, l'Exauceur des voeux... Strelok n'a pas seulement tout traversé, mais il a aussi soigneusement documenté ses expériences. Je considère que cette mission est accomplie. Beau travail, soldat !</text>
+</string>
+<string id="hb_hernandez_strelok_pendrive_dialog_7">
+<text>Alors on a réussi ? Que se passe-t-il maintenant ?</text>
+</string>
+<string id="hb_hernandez_strelok_pendrive_dialog_8">
+<text>Il est temps pour nous de quitter cet enfer et de rentrer chez nous. L'ONU sera satisfaite de nos résultats. Je vais prévenir tous les commandants d'escouade de l'UNISG qu'il est temps de se retirer de la Zone, pour l'instant. Comme avant, en petits groupes.</text>
+</string>
+<string id="hb_hernandez_strelok_pendrive_dialog_9">
+<text>Reçu.</text>
+</string>
+<string id="hb_hernandez_strelok_pendrive_dialog_10">
+<text>Certaines de nos équipes scientifiques resteront pour étudier les artefacts et les champs anormaux. Certains de nos soldats ont aussi choisi de rejoindre les mercenaires pour pouvoir rester plus longtemps.</text>
+</string>
+<string id="hb_hernandez_strelok_pendrive_dialog_11">
+<text>C'est autorisé ?</text>
+</string>
+<string id="hb_hernandez_strelok_pendrive_dialog_12">
+<text>Je leur ai donné ma permission, oui. Ils ont montré le désir de... s'intégrer... au style de vie unique de la Zone. Je peux leur faire confiance pour garder leurs secrets, et les contacts qu'ils noueront nous seront utiles plus tard.
+\nBon, on a obtenu ce pour quoi on est venus. Ton rôle dans cette opération est terminé. Si tu choisis toi aussi de rester dans la Zone, tu as ma bénédiction, même si ça pourrait te faire louper quelques belles opportunités de promotion. Réfléchis-y.
+\nRompez.</text>
+</string>
+
+<string id="hb_hernandez_guide_dialog_0">
+<text>Euh... Je me suis perdu. Je dois quitter cet endroit.</text>
+</string>
+<string id="hb_hernandez_guide_dialog_1">
+<text>Hm. Je vais demander à quelqu'un de mon escouade de venir te chercher. Tu veux aller de quel côté ?</text>
+</string>
+<string id="hb_hernandez_guide_dialog_2">
+<text>Retour à notre planque précédente, sous l'usine de Jupiter.</text>
+</string>
+<string id="hb_hernandez_guide_dialog_3">
+<text>Vers la banlieue de Pripyat.</text>
+</string>
+<string id="hb_hernandez_guide_dialog_4">
+<text>Laisse tomber, j'irai tout seul.</text>
+</string>
+<string id="hb_hernandez_guide_dialog_5">
+<text>Très bien.</text>
+</string>
+<string id="hb_hernandez_guide_dialog_6">
+<text>Très bien.</text>
+</string>
+
+<string id="hb_maus_start_0">
+<text>...</text>
+</string>
+<string id="hb_maus_start_1">
+<text>Hé, on se connaît pas ?</text>
+</string>
+<string id="hb_maus_start_2">
+<text>Ouais, t'as l'air un peu familier... Attends. Ouais, je te connais aussi ! Incroyable ! Mec, comment t'as fait pour être capitaine déjà ?</text>
+</string>
+<string id="hb_maus_start_3">
+<text>Je n'ai pas de grade officiel pour cette opération, je réponds directement au Major.</text>
+</string>
+<string id="hb_maus_start_4">
+<text>Alors il doit vraiment avoir des plans spéciaux pour toi. Si t'étais un peu plus fragile, tu fondrais.</text>
+</string>
+<string id="hb_maus_start_5">
+<text>Et toi alors ? T'es lieutenant maintenant.</text>
+</string>
+<string id="hb_maus_start_6">
+<text>Putain ouais ! Et j'en suis fier. Je peux pas dire que c'est ce que j'imaginais en visant une carrière d'ingénieur, mais franchement, je crois que je m'en sors pas mal !</text>
+</string>
+<string id="hb_maus_start_7">
+<text>T'es drôlement joyeux pour un gars coincé dans un enfer irradié.</text>
+</string>
+<string id="hb_maus_start_8">
+<text>Un enfer en vaut un autre, tu crois pas ? Au moins, les singes armés du coin sont trop bourrés pour viser juste la moitié du temps. Hé hé...</text>
+</string>
+<string id="hb_maus_start_9">
+<text>En parlant de viser juste...</text>
+</string>
+<string id="hb_maus_start_10">
+<text>Ah, évidemment. J'aurais dû me douter que t'étais pas là pour mon charme ravageur et ma belle gueule. Si ton flingue a un peu pris la poussière, ou même si c'est rien d'autre qu'un tas de poussière, file-le-moi et je le ferai tourner plus doux qu'une nappe de pétrole sur de la glace.</text>
+</string>
+
+<string id="hb_maus_leave_0">
+<text>Qu'est-ce que tu comptes faire maintenant que la mission est terminée ?</text>
+</string>
+<string id="hb_maus_leave_1">
+<text>Euh, partir avec les autres ? Quoi, tu comptes pas devenir un local, j'espère ?</text>
+</string>
+<string id="hb_maus_leave_2">
+<text>Non. Je préfère rentrer chez moi et revoir ma famille. Ce serait bien.</text>
+</string>
+<string id="hb_maus_leave_3">
+<text>Bien sûr que non. Je pars avec le reste de l'UNISG. Peut-être qu'on se recroisera un jour.</text>
+</string>
+<string id="hb_maus_leave_4">
+<text>Pas vraiment, mais je sens que je dois rester dans la Zone. Peu importe ce que pense le Major, je crois pas que mon travail soit terminé ici.</text>
+</string>
+<string id="hb_maus_leave_5">
+<text>Maintenant que l'opération est terminée, je vais probablement tenter ma chance seul. Peut-être me faire un nom chez les mercenaires. Je dois dire que j'attends ça avec impatience.</text>
+</string>
+<string id="hb_maus_leave_6">
+<text>Ah, d'accord. Comme tu veux.</text>
+</string>
+<string id="hb_maus_leave_7">
+<text>Ça ressemble à un plan, je suppose. Écoute, si tu te retrouves dans la merde, je n'en ai jamais entendu parler, d'accord ?</text>
+</string>
+
+<string id="hb_maus_guide_0">
+<text>Hé, Maus. J'ai besoin d'un guide pour rejoindre la nouvelle planque...</text>
+</string>
+<string id="hb_maus_guide_1">
+<text>Les tushkanos t'ont filé des cauchemars là-dessous, hein ? T'inquiète pas, mon pote. Je vais contacter un des gars pour venir te chercher.</text>
+</string>
+<string id="hb_maus_guide_2">
+<text>...</text>
+</string>
+
+<string id="hb_strelok_start_dialog_0">
+<text>C'était moins une. T'es qui ?</text>
+</string>
+<string id="hb_strelok_start_dialog_1">
+<text>Je représente les Nations Unies. Strelok, on a besoin que tu viennes sous notre garde et que tu témoignes contre le gouvernement ukrainien.</text>
+</string>
+<string id="hb_strelok_start_dialog_2">
+<text>La Zone a vraiment un sens de l'humour tordu. Sauvé d'une équipe de larbins du gouvernement par un autre larbin du gouvernement. Ça me réjouit pas vraiment.</text>
+</string>
+<string id="hb_strelok_start_dialog_3">
+<text>J'ai prouvé que je pouvais les affronter. Rends-toi, ou sinon...</text>
+</string>
+<string id="hb_strelok_start_dialog_31">
+<text>Je refuse.</text>
+</string>
+<string id="hb_strelok_start_dialog_4">
+<text>Pas besoin de morts supplémentaires. Je suis venu seul pour assurer ta sécurité et apprendre ce que tu sais. Ça pourrait aider le monde à lancer une vraie enquête sur la Zone. Et ce serait sous gestion internationale : plus de mensonges ou de secrets gouvernementaux sur cet endroit.</text>
+</string>
+<string id="hb_strelok_start_dialog_5">
+<text>Pourquoi je devrais croire un seul mot de ce que tu dis ?</text>
+</string>
+<string id="hb_strelok_start_dialog_6">
+<text>Parce que ça signifierait que l'armée ukrainienne cesserait de te traquer ou de t'harceler pour le reste de ta vie.</text>
+</string>
+<string id="hb_strelok_start_dialog_7">
+<text>Ça a l'air bien. Mais j'ai pas envie que l'ONU me souffle dans le cou en permanence pendant que je reste enfermé dans une cage dorée. Si tu me sors d'ici, je peux partager certains secrets de la Zone avec toi.</text>
+</string>
+<string id="hb_strelok_start_dialog_8">
+<text>Marché conclu. Où veux-tu aller ?</text>
+</string>
+<string id="hb_strelok_start_dialog_9">
+<text>La Forêt Rouge. Cet endroit est une zone de mort, mais je la connais bien. Ça découragera l'armée de continuer la poursuite.</text>
+</string>
+<string id="hb_strelok_start_dialog_10">
+<text>D'accord, ta connaissance de la Zone contre ta sécurité. Allons-y.</text>
+</string>
+
+<string id="hb_strelok_escorted_dialog_0">
+<text>Voilà, Strelok. Tu es en sécurité maintenant.</text>
+</string>
+<string id="hb_strelok_escorted_dialog_1">
+<text>T'es un homme de parole. Merci.</text>
+</string>
+<string id="hb_strelok_escorted_dialog_2">
+<text>Et maintenant, ta part du marché, Strelok.</text>
+</string>
+<string id="hb_strelok_escorted_dialog_3">
+<text>Bien sûr. Tiens, ma clé USB personnelle. Elle contient la documentation de toutes mes expériences et réflexions à propos de la Zone, ainsi que des copies des nombreux documents intéressants et autres infos que j'ai trouvés pendant mes voyages. L'ONU y trouvera toutes les réponses qu'elle cherche, mais sache une chose : la Zone n'est pas et ne sera jamais facile à comprendre. On est comme des hommes des cavernes qui ont frotté deux pierres et déclenché un incendie. On ne sait pas vraiment ce qui est arrivé ni ce qu'on regarde. Pendant ce temps, le feu s'étend et consume tout autour...</text>
+</string>
+<string id="hb_strelok_escorted_dialog_4">
+<text>Merci. C'est probablement plus que ce que j'espérais. Je vais retourner voir mon commandant. Et toi ?</text>
+</string>
+<string id="hb_strelok_escorted_dialog_5">
+<text>J'ai de vieux amis à enterrer, et un à aller voir. Avec le temps, on réalise vraiment à quel point le temps est une ressource précieuse, et l'importance de se souvenir des moments qu'on a déjà vécus...</text>
+</string>
+<string id="hb_strelok_escorted_dialog_6">
+<text>Adieu, Strelok.</text>
+</string>
+<string id="hb_strelok_escorted_dialog_21">
+<text>Merde. Après tout ça, je sais pas si je peux rapporter ces infos à mon commandant.</text>
+</string>
+<string id="hb_strelok_escorted_dialog_31">
+<text>Intéressant. Des doutes ?</text>
+</string>
+<string id="hb_strelok_escorted_dialog_41">
+<text>Peut-être. Je sais ce que j'ai dit plus tôt, mais plus j'y pense, moins je crois que l'ONU utilisera ces infos pour le bien. Ce que tu m'as confié pourrait changer le monde entier. Ça ne devrait pas être laissé aux mains de ceux qui détiennent déjà tout le pouvoir.
+\nJe dois rester ici et en apprendre plus par moi-même sur la Zone. Je dois en savoir plus avant d'être sûr de ce qui est juste. Et je peux pas le faire à moins de devenir moi-même un stalker.</text>
+</string>
+<string id="hb_strelok_escorted_dialog_51">
+<text>Je comprends ce sentiment mieux que tu ne peux l'imaginer.</text>
+</string>
+<string id="hb_strelok_escorted_dialog_61">
+<text>Je risque d'être attrapé et jugé pour désertion à la fin. Ironiquement, ce serait à cause des autres documents que j'ai trouvés plus tôt. Ils pourraient permettre à l'UNISG d'envahir la Zone un jour.</text>
+</string>
+<string id="hb_strelok_escorted_dialog_71">
+<text>Je suis aussi très sceptique sur la capacité de n'importe quel gouvernement à gérer cette situation. Mais ça ne posera pas de problème si les documents que tu as déjà récupérés ne quittent pas la Zone. En fait, je pourrais utiliser mes contacts parmi les stalkers pour prévenir l'armée, afin qu'elle renforce la sécurité et empêche tes camarades de franchir le périmètre. C'est faisable.</text>
+</string>
+<string id="hb_strelok_escorted_dialog_81">
+<text>Merci, mais je ne veux pas que mes... anciens camarades soient blessés.</text>
+</string>
+<string id="hb_strelok_escorted_dialog_91">
+<text>Il y a peut-être une autre solution. On verra. En attendant, si tu comptes vraiment aller au bout, je te suggère de passer par Rostok ou Zaton. Il y a toujours du boulot là-bas pour un stalker indépendant, et des endroits pour se fondre dans la masse ou se cacher. Qui sait, tu pourrais même te faire des amis sur place.
+\nBref, on manque de temps. Allons-y.</text>
+</string>
+<string id="hb_strelok_escorted_dialog_101">
+<text>Est-ce qu'on se reverra ?</text>
+</string>
+<string id="hb_strelok_escorted_dialog_111">
+<text>Probablement pas. J'ai des vieux amis à enterrer, des vivants à saluer, et ensuite je trouverai probablement un endroit où disparaître. Je crois que j'ai trouvé mes réponses. J'espère que tu trouveras les tiennes. Tu peux garder ma clé USB. Je n'en aurai plus besoin.</text>
+</string>
+<string id="hb_strelok_escorted_dialog_121">
+<text>Adieu, Strelok. Peut-être qu'on se croisera un jour pour un pique-nique au bord du chemin.</text>
+</string>
+
+</string_table>

@@ -1,0 +1,530 @@
+siski = siski or {}
+
+local LootPatch = {
+    RUNTIME = {
+        patched = false,
+        gather_items_patched = false,
+        corpse_loot_call_patched = false,
+        corpse_loot_call_orig = nil,
+        next_retry_tg = 0,
+    }
+}
+
+local EVENT_SCAN_COOLDOWN_MS = 250
+local PATCH_RETRY_COOLDOWN_MS = 1000
+
+local function cfg(key, def)
+    if not (siski.config and siski.config.get) then return def end
+    local ok, v = pcall(siski.config.get, key, def)
+    if ok then return v end
+    return def
+end
+
+local function cfg_num(key, def, min_v)
+    local v = tonumber(cfg(key, def)) or tonumber(def) or 0
+    if min_v ~= nil and v < min_v then
+        v = min_v
+    end
+    return v
+end
+
+local function tg()
+    return (time_global and time_global()) or 0
+end
+
+local function log_debug(fmt, ...)
+    if siski.log and siski.log.debug then
+        siski.log.debug("LOOT_PATCH", fmt, ...)
+    end
+end
+
+local function payload_args(payload)
+    if type(payload) ~= "table" then
+        return {}
+    end
+    return type(payload.args) == "table" and payload.args or {}
+end
+
+local function should_skip_event_scan(loot)
+    if not loot then return true end
+    if type(loot.should_skip_event_scan) == "function" then
+        local ok, res = pcall(loot.should_skip_event_scan)
+        if ok and res == true then
+            return true
+        end
+    end
+    return false
+end
+
+local function quest_corpse_protection_enabled()
+    return cfg("loot_protect_quest_corpses_enabled", true) ~= false
+end
+
+local function object_id(obj)
+    if not obj then
+        return nil
+    end
+    if type(obj.id) == "function" then
+        local ok, id = pcall(function()
+            return obj:id()
+        end)
+        if ok then
+            return tonumber(id) or nil
+        end
+    end
+    return tonumber(obj.id) or nil
+end
+
+local function is_protected_corpse(corpse, corpse_id)
+    if not quest_corpse_protection_enabled() then
+        return false
+    end
+
+    local loot = siski.loot
+    if loot then
+        if corpse and type(loot.is_protected_corpse) == "function" then
+            local ok, res = pcall(loot.is_protected_corpse, corpse)
+            if ok and res == true then
+                return true
+            end
+        end
+        if corpse_id ~= nil and type(loot.is_protected_corpse_id) == "function" then
+            local ok, res = pcall(loot.is_protected_corpse_id, corpse_id)
+            if ok and res == true then
+                return true
+            end
+        end
+    end
+
+    return false
+end
+
+local function clear_corpse_detection_state(st)
+    if not st then
+        return
+    end
+
+    local selected_id = st.selected_corpse_id
+    if selected_id and db and db.storage and db.storage[selected_id] then
+        db.storage[selected_id].corpse_already_selected = nil
+    end
+    st.selected_corpse_id = nil
+    st.state = nil
+    st.vertex_id = nil
+    st.vertex_position = nil
+    st.nearest_corpse_dist = nil
+    st.nearest_corpse_vertex = nil
+    st.nearest_corpse_position = nil
+    st.nearest_id = nil
+    st.nearest_state = nil
+    st.index = 1
+    st.__stimer = nil
+    st.mutant_analysed = nil
+end
+
+local function patch_get_all_from_corpse()
+    if LootPatch.RUNTIME.corpse_loot_call_patched == true then
+        return true
+    end
+
+    local xr = rawget(_G, "xr_corpse_detection")
+    local orig = xr and xr.get_all_from_corpse or rawget(_G, "get_all_from_corpse")
+    if type(orig) ~= "function" then
+        log_debug("PATCH_GET_ALL_FROM_CORPSE_WAIT")
+        return false
+    end
+    if LootPatch.RUNTIME.corpse_loot_call_orig == orig then
+        LootPatch.RUNTIME.corpse_loot_call_patched = true
+        log_debug("PATCH_GET_ALL_FROM_CORPSE_ALREADY")
+        return true
+    end
+
+    log_debug("PATCH_GET_ALL_FROM_CORPSE_APPLY")
+    LootPatch.RUNTIME.corpse_loot_call_orig = orig
+    local wrapped = function(npc)
+        local npc_id = npc and npc.id and npc:id() or nil
+        local st = npc_id and db and db.storage and db.storage[npc_id] and db.storage[npc_id].corpse_detection or nil
+        local corpse_id = st and st.selected_corpse_id or nil
+        local corpse = corpse_id and db and db.storage and db.storage[corpse_id] and db.storage[corpse_id].object
+            or corpse_id and level and level.object_by_id and level.object_by_id(corpse_id)
+        local protected = corpse_id and is_protected_corpse(corpse, corpse_id) or false
+        log_debug(
+            "GET_ALL_FROM_CORPSE_CALL npc_id=%s corpse_id=%s protected=%s corpse=%s",
+            tostring(npc_id or "-"),
+            tostring(corpse_id or "-"),
+            tostring(protected == true),
+            tostring(corpse ~= nil)
+        )
+        if protected == true then
+            clear_corpse_detection_state(st)
+            return false
+        end
+        return orig(npc)
+    end
+    if xr then
+        xr.get_all_from_corpse = wrapped
+    else
+        _G.get_all_from_corpse = wrapped
+    end
+    LootPatch.RUNTIME.corpse_loot_call_patched = true
+    log_debug("PATCH_GET_ALL_FROM_CORPSE_OK")
+    return true
+end
+
+local function patch_xr_gather_items()
+    if LootPatch.RUNTIME.gather_items_patched == true then return true end
+    local mod = rawget(_G, "xr_gather_items")
+    local cls = mod and mod.eva_gather_itm or rawget(_G, "eva_gather_itm")
+    if not (cls and cls.find_valid_item) then return false end
+    if cls.__siski_loot_patched == true then
+        LootPatch.RUNTIME.gather_items_patched = true
+        return true
+    end
+
+    local orig_find = cls.find_valid_item
+    local uv = {}
+    if debug and debug.getupvalue then
+        for i = 1, 80 do
+            local name, val = debug.getupvalue(orig_find, i)
+            if not name then break end
+            uv[name] = val
+        end
+    end
+
+    local function near_actor(obj)
+        if not (ui_options and ui_options.get and db and db.actor and db.actor.position and obj and obj.position) then
+            return false
+        end
+        local dist = tonumber(ui_options.get("gameplay/general/npc_loot_distance"))
+        if dist and dist > 0 then
+            return db.actor:position():distance_to(obj:position()) < dist
+        end
+        return false
+    end
+
+    cls.find_valid_item = function(self)
+        local ok, vanilla_res = pcall(orig_find, self)
+        if not ok then
+            return false
+        end
+        if vanilla_res == true then
+            return true
+        end
+
+        if cfg("loot_items_enabled", false) ~= true then
+            return false
+        end
+
+        local loot = siski.loot
+        if not (loot and loot.get_item_event_ids and loot.is_recent_item_id) then
+            return false
+        end
+        if should_skip_event_scan(loot) then
+            return false
+        end
+
+        if self.st.cstackprevent then
+            return false
+        end
+
+        if self.st.selected_id then
+            local se_itm = self.st.selected_id ~= 0 and self.st.selected_id ~= 65535 and alife_object(self.st.selected_id)
+            if se_itm and se_itm.parent_id == 65535 then
+                local itm = level.object_by_id(se_itm.id)
+                if itm and not near_actor(itm) then
+                    return true
+                end
+            end
+            if uv.Items then
+                uv.Items[self.st.selected_id] = nil
+            end
+            self.st.selected_id = nil
+        end
+
+        local now = tg()
+        self.st.__dtimer = not self.st.__dtimer and now + EVENT_SCAN_COOLDOWN_MS or self.st.__dtimer
+        if now < self.st.__dtimer then
+            return false
+        end
+        self.st.__dtimer = nil
+
+        local loot_table = uv.UseCorpseLootTable ~= true and uv.LootTable or (rawget(_G, "xr_corpse_detection") and _G.xr_corpse_detection.lootable_table)
+        if not loot_table then
+            return false
+        end
+
+        if not self.st.index then
+            self.st.index = 1
+        end
+
+        if not self.st.memory then
+            self.st.memory = {}
+        end
+
+        local npc = self.object
+        local max_memory = cfg_num("loot_patch_max_memory_size", 48, 8)
+        local size = #self.st.memory
+        if size > max_memory then
+            for i = size, max_memory + 1, -1 do
+                self.st.memory[i] = nil
+            end
+            size = max_memory
+        end
+
+        local corpse_hint = false
+        local corpse_md = tonumber(cfg("loot_corpse_detect_dist_m", 35)) or 35
+        if corpse_md < 0 then corpse_md = 0 end
+        local corpse_sqr = corpse_md * corpse_md
+        local corpse_ids = loot.get_corpse_event_ids and loot.get_corpse_event_ids() or nil
+        local corpse_pool_n = corpse_ids and #corpse_ids or 0
+        if corpse_pool_n > 0 and corpse_sqr > 0 then
+            for idx = corpse_pool_n, 1, -1 do
+                local corpse_id = corpse_ids[idx]
+                local corpse = corpse_id and db and db.storage and db.storage[corpse_id] and db.storage[corpse_id].object
+                if corpse and corpse:alive() ~= true and not is_protected_corpse(corpse, corpse_id) then
+                    if npc:position():distance_to_sqr(corpse:position()) < corpse_sqr then
+                        corpse_hint = true
+                        break
+                    end
+                end
+            end
+        end
+
+        if size == 0 then
+            self.st.cstackprevent = true
+
+            local md = tonumber(cfg("loot_items_detect_dist_m", 35)) or 35
+            if md < 0 then md = 0 end
+            local max_item_dist_sqr = md * md
+
+            local max_items = max_memory - #self.st.memory
+            if max_items < 0 then max_items = 0 end
+            local added = 0
+
+            local scan_md = tonumber(cfg("loot_scan_radius_m", 35)) or 35
+            if scan_md < 0 then scan_md = 0 end
+            local scan_sqr = scan_md * scan_md
+            local item_ids = loot.get_item_event_ids and loot.get_item_event_ids() or nil
+            local item_pool_n = item_ids and #item_ids or 0
+            if item_pool_n > 0 and max_items > 0 then
+                for idx = item_pool_n, 1, -1 do
+                    if added >= max_items then
+                        break
+                    end
+                    local id = item_ids[idx]
+                    local se_itm = id and alife_object and alife_object(id) or nil
+                    if se_itm and se_itm.parent_id == 65535 then
+                        local itm = level.object_by_id(id)
+                        if itm then
+                            local ok_sect, sect = pcall(function() return itm:section() end)
+                            if ok_sect and sect and loot_table[sect] ~= nil and not near_actor(itm) then
+                                local dist = npc:position():distance_to_sqr(itm:position())
+                                local limit_sqr = scan_sqr > 0 and scan_sqr or max_item_dist_sqr
+                                if dist < limit_sqr then
+                                    self.st.memory[#self.st.memory + 1] = id
+                                    added = added + 1
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+
+            self.st.cstackprevent = nil
+
+            size = #self.st.memory
+            if size == 0 then
+                return false
+            end
+        end
+
+        if size == 0 or self.st.index > size then
+            if self.st.nearest_id and uv.Items and uv.Items[self.st.nearest_id] == nil and (not game_setup.is_world_item(self.st.nearest_id)) then
+                if self.st.selected_id and uv.Items[self.st.selected_id] then
+                    uv.Items[self.st.selected_id] = nil
+                end
+                self.st.selected_id = self.st.nearest_id
+                self.st.vid = self.st.nearest_vid
+                self.st.vid_pos = self.st.nearest_pos
+                uv.Items[self.st.selected_id] = npc:id()
+                self.st.stage = 1
+
+                self.st.nearest_dist = nil
+                self.st.nearest_vid = nil
+                self.st.nearest_pos = nil
+                self.st.nearest_id = nil
+
+                self.st.index = 1
+
+                local be = npc:best_enemy()
+                local dist = npc:position():distance_to(self.st.vid_pos)
+                if be or dist < uv.RunDist then
+                    self.st.state = uv.StateWalk
+                else
+                    self.st.state = uv.StateRun
+                end
+                return true
+            end
+
+            self.st.index = 1
+            self.st.nearest_dist = nil
+            self.st.nearest_vid = nil
+            self.st.nearest_pos = nil
+            self.st.nearest_id = nil
+            if empty_table then
+                empty_table(self.st.memory)
+            else
+                self.st.memory = {}
+            end
+            return false
+        end
+
+        local itm_id = self.st.memory[self.st.index]
+        self.st.index = self.st.index + 1
+
+        local itm = itm_id and itm_id ~= 0 and itm_id ~= 65535 and level.object_by_id(itm_id)
+        local se_itm = itm and loot_table[itm:section()] and uv.Items and uv.Items[itm_id] == nil and alife_object(itm_id)
+
+        if not (se_itm and se_itm.parent_id == 65535) then
+            return false
+        end
+
+        if get_object_story_id(itm_id) then
+            return false
+        end
+
+        if npc:best_enemy() then
+            if not IsWeapon(itm) then
+                return false
+            end
+            if IsWeapon(npc:active_item()) then
+                return false
+            end
+        end
+
+        if IsArtefact(nil, se_itm:clsid()) then
+            if not uv.ArtifactDectection then
+                return false
+            end
+
+            if xr_logic.pick_section_from_condlist(db.actor, npc, self.st.gather_artefact_items_enabled) == "false" then
+                return false
+            end
+
+            local squad = get_object_squad(npc)
+            local squad_community = squad and squad.player_id or character_community(npc)
+
+            if not (uv.ArtifactCommunities and uv.ArtifactCommunities[squad_community]) then
+                return false
+            end
+        else
+            if not npc:see(itm) then
+                if cfg("loot_items_allow_unseen", false) ~= true and corpse_hint ~= true then
+                    return false
+                end
+                if corpse_hint ~= true and not loot.is_recent_item_id(itm_id) then
+                    return false
+                end
+            end
+        end
+
+        local itm_pos = itm:position()
+        local dist = npc:position():distance_to_sqr(itm_pos)
+
+        local md = tonumber(cfg("loot_items_detect_dist_m", 35)) or 35
+        if md < 0 then md = 0 end
+        local max_item_dist_sqr = md * md
+        local max_detect_sqr = uv.MaxDetectDistance or max_item_dist_sqr
+        if max_item_dist_sqr > 0 then
+            max_detect_sqr = math.min(max_detect_sqr, max_item_dist_sqr)
+        end
+
+        if (self.st.nearest_dist == nil or dist < self.st.nearest_dist) and (dist < max_detect_sqr) then
+            local vid = level.vertex_id(itm_pos)
+            if level.vertex_position(vid):distance_to_sqr(itm_pos) > 16 then
+                vid = itm:level_vertex_id()
+            end
+
+            if npc:accessible(vid) and level.vertex_position(vid):distance_to_sqr(itm_pos) <= 15 then
+                self.st.nearest_dist = dist
+                self.st.nearest_vid = vid
+                self.st.nearest_pos = itm_pos
+                self.st.nearest_id = itm_id
+            end
+        end
+
+        return false
+    end
+
+    cls.__siski_loot_patched = true
+    LootPatch.RUNTIME.gather_items_patched = true
+    return true
+end
+
+function LootPatch.apply()
+    local loot_items_enabled = cfg("loot_items_enabled", false) == true
+    local assist_ready = loot_items_enabled ~= true or LootPatch.RUNTIME.gather_items_patched == true
+    if LootPatch.RUNTIME.patched == true and assist_ready == true then return true end
+
+    log_debug("APPLY_ATTEMPT")
+    local gather_ok = patch_xr_gather_items() == true
+    local loot_call_ok = patch_get_all_from_corpse() == true
+    LootPatch.RUNTIME.gather_items_patched = gather_ok
+    LootPatch.RUNTIME.corpse_loot_call_patched = loot_call_ok
+    LootPatch.RUNTIME.patched = loot_call_ok
+
+    if siski.loot and siski.loot.sync_protected_corpse_lootability then
+        pcall(siski.loot.sync_protected_corpse_lootability)
+    end
+
+    log_debug(
+        "APPLY_RESULT gather=%s loot_call=%s patched=%s",
+        tostring(gather_ok),
+        tostring(loot_call_ok),
+        tostring(LootPatch.RUNTIME.patched == true)
+    )
+
+    return LootPatch.RUNTIME.patched == true
+end
+
+local function maybe_retry_apply()
+    local loot_items_enabled = cfg("loot_items_enabled", false) == true
+    local assist_ready = loot_items_enabled ~= true or LootPatch.RUNTIME.gather_items_patched == true
+    if LootPatch.RUNTIME.patched == true and assist_ready == true then
+        return true
+    end
+
+    local now = tg()
+    local next_retry_tg = tonumber(LootPatch.RUNTIME.next_retry_tg) or 0
+    if now < next_retry_tg then
+        return false
+    end
+
+    LootPatch.RUNTIME.next_retry_tg = now + PATCH_RETRY_COOLDOWN_MS
+    log_debug("APPLY_RETRY now=%s", tostring(now))
+    return LootPatch.apply() == true
+end
+
+function LootPatch.on_game_start()
+    if not (siski.bus and siski.bus.subscribe) then
+        return
+    end
+
+    siski.bus.subscribe("actor_on_first_update", "siski_loot_patch", function()
+        maybe_retry_apply()
+    end)
+    siski.bus.subscribe("load_state", "siski_loot_patch", function()
+        maybe_retry_apply()
+    end)
+    siski.bus.subscribe("server_entity_on_register", "siski_loot_patch", function(payload)
+        local args = payload_args(payload)
+        if args[1] ~= nil then
+            maybe_retry_apply()
+        end
+    end)
+    siski.bus.subscribe("npc_on_update", "siski_loot_patch", function()
+        maybe_retry_apply()
+    end)
+end
+
+siski.loot_patch = LootPatch

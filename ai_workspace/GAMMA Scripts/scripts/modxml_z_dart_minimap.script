@@ -1,0 +1,130 @@
+local Dart   = dart_core
+local Utils  = dart_utils
+local Module = dart_module
+
+
+local mod = "minimap"
+
+
+function parseCircularMap(XML, config)
+  local compass = XML:query("minimap > compass")[1]
+  local frame   = XML:query("minimap > level_frame")[1]
+  local bg      = XML:query("minimap > background")[1]
+  local clock   = XML:query("minimap > clock_wnd")[1]
+
+  local compassAttrs = XML:safeGetAttrs(compass)
+  local frameAttrs   = XML:safeGetAttrs(frame)
+  local bgAttrs      = XML:safeGetAttrs(bg)
+
+  local scaleSettings = Utils.merge(config, {
+    bounds = {
+      l = (frameAttrs.x * Dart.baseHeight - compassAttrs.width  / 2),
+      t = (frameAttrs.y * Dart.baseHeight - compassAttrs.height / 2),
+      r = (frameAttrs.x * Dart.baseHeight + compassAttrs.width  / 2),
+      b = (frameAttrs.y * Dart.baseHeight + compassAttrs.height / 2),
+    }
+  })
+
+  XML:safeSetAttrs(frame, function(attrs)
+    local dumbUnits = Dart.baseHeight
+    return {
+      x      = Utils.correctX(attrs.x * dumbUnits, XML.aspectRatio, scaleSettings) / dumbUnits,
+      y      = Utils.correctY(attrs.y * dumbUnits, XML.aspectRatio, scaleSettings) / dumbUnits,
+      width  = attrs.width  * config.scale,
+      height = attrs.height * config.scale,
+      a      = config.alpha,
+    }
+  end)
+
+  XML:safeSetAttrs(compass, function(attrs)
+    return {
+      width  = attrs.width  * config.scale,
+      height = attrs.height * config.scale,
+    }
+  end)
+
+  XML:safeSetAttrs(bg, function(attrs)
+    return {
+      width  = attrs.width  * config.scale,
+      height = attrs.height * config.scale,
+    }
+  end)
+
+  XML:safeSetAttrs(clock, function(attrs)
+    local dumbUnits = bgAttrs.height * Dart.baseHeight
+    return {
+      x = (attrs.x * dumbUnits + config.clockOffset[1] / Utils.getAspectRatioVs(Dart.ratio4x3)) / dumbUnits,
+      y = (attrs.y * dumbUnits + config.clockOffset[2] / Utils.getAspectRatioVs(Dart.ratio4x3)) / dumbUnits,
+    }
+  end)
+end
+
+
+function parseSquareMap(XML, config)
+  local compass = XML:query("minimap > compass")[1]
+  local frame   = XML:query("minimap > level_frame")[1]
+  local bg      = XML:query("minimap > background")[1]
+  local counter = XML:query("minimap > static_counter")[1]
+
+  local frameAttrs = XML:safeGetAttrs(frame)
+  local width  = math.max(frameAttrs.width, frameAttrs.height)
+  local height = math.min(frameAttrs.width, frameAttrs.height)
+
+  local scaleSettings = Utils.merge(config, {
+    anchor = {"LEFT", "TOP"},
+    bounds = {
+      l = (frameAttrs.x - width / 2)  * Dart.baseHeight,
+      r = (frameAttrs.x + width / 2)  * Dart.baseHeight,
+      t = (frameAttrs.y - height / 2) * Dart.baseHeight,
+      b = (frameAttrs.y + height / 2) * Dart.baseHeight,
+    }
+  })
+
+  XML:safeSetAttrs(frame, function(attrs)
+    local dumbUnits = Dart.baseHeight
+    return {
+      x          = Utils.correctX(attrs.x * dumbUnits, XML.aspectRatio, scaleSettings) / dumbUnits,
+      y          = Utils.correctY(attrs.y * dumbUnits, XML.aspectRatio, scaleSettings) / dumbUnits,
+      width      = width  * config.scale * Dart.ratio4x3,
+      height     = height * config.scale,
+      a          = config.alpha,
+      ratio_mode = 1,
+    }
+  end)
+
+  XML:safeSetAttrs(compass, function(attrs)
+    return {
+      width  = attrs.width  * config.scale,
+      height = attrs.height * config.scale,
+    }
+  end)
+
+  XML:safeSetAttrs(bg, function(attrs)
+    return {
+      width  = attrs.width  * config.scale,
+      height = attrs.height * config.scale,
+    }
+  end)
+
+  -- hide the engine-rendered counter
+  XML:safeSetAttrs(counter, {x = -9999, y = -9999})
+end
+
+
+function parseZoneMap(XML, config)
+  local frame      = XML:query("minimap > level_frame")[1]
+  local frameAttrs = XML:safeGetAttrs(frame)
+
+  local isSquareMap = tostring(frameAttrs.rounded) == "0"
+
+  if isSquareMap then
+    parseSquareMap(XML, config)
+  else
+    parseCircularMap(XML, config)
+  end
+end
+
+
+function on_xml_read()
+  Module.registerModule(mod, "zone_map", parseZoneMap)
+end

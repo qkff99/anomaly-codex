@@ -1,0 +1,932 @@
+bar_list = {
+	["condition_progess_bar"] = { min= {255,196,18,18,0}, mid= {255,255,255,118,0.5}, max= {255,107,207,119,1}, background= true},
+	["power_progess_bar"]     = { def= GetARGB(255,86,196,209), background= true },
+	["uses_progess_bar"]      = { def= GetARGB(255,255,255,255), background= false },
+}
+local lerp_color			= utils_xml.lerp_color
+local gc = game.translate_string
+local string_find = string.find
+utjan_xml = nil
+
+base_init = utils_ui.UICellItem.InitControls
+function utils_ui.UICellItem:InitControls(path, st)
+	self.disable_bar_og = self.disable_bar -- save original game setting for disabling bar in case user toggles bar visibility
+	base_init(self, path, st)
+end
+
+base_pbar = utils_ui.UICellItem.Add_ProgressBar
+function utils_ui.UICellItem:Add_ProgressBar(xml, obj, sec, clsid)
+	local hide_non_equipped = settings.cond_text.hide_bar and not (self.path == "equipment:cont_equ")
+	local hide_on_magazine = settings.mag_info.hide_bar and magazine_binder and magazine_binder.is_magazine(sec)
+	if not IsItem("multiuse", sec) and (hide_non_equipped or hide_on_magazine) then
+		self.disable_bar = true
+	else
+		self.disable_bar = self.disable_bar_og
+	end
+
+	base_pbar(self, xml, obj, sec, clsid)
+
+	Add_Parts_Bars(self, xml, obj, sec, clsid)
+
+	Add_Mag_Icon_Text(self, xml, obj, sec, clsid)
+
+	Add_Condition_Text(self, xml, obj, sec, clsid)
+end
+
+base_counter = utils_ui.UICellItem.Add_Counter
+function utils_ui.UICellItem:Add_Counter(xml, obj, sec)
+	base_counter(self, xml, obj, sec)
+
+	Add_Ammo_Short_Name_Text(self, xml, obj, sec)
+
+	Add_Money_Text(self, xml, obj, sec)
+
+	Add_Recipe_Icon_Text(self, xml, obj, sec)
+
+	Add_Weapon_Name(self, xml, obj, sec)
+
+	Add_Repair_Icon(self, xml, obj, sec)
+end
+
+base_reset = utils_ui.UICellItem.Reset
+function utils_ui.UICellItem:Reset()
+	base_reset(self)
+	if (self.manual) then
+		if self.parts_indicators then
+			for k,v in pairs(self.parts_indicators) do
+				self.parts_indicators[k]:Show(false)
+			end
+		end
+
+		if  self.cond_text then
+			self.cond_text:Show(false)
+		end
+		if  self.cond_text_bg then
+			self.cond_text_bg:Show(false)
+		end
+		if self.wpn_name then
+			self.wpn_name:Show(false)
+		end
+		if self.gun_repair_icon then
+			self.gun_repair_icon:Show(false)
+		end
+	end
+end
+
+valid_wpn_kinds = {
+	["w_rifle"] = true,
+	["w_smg"] = true,
+	["w_pistol"] = true,
+	["w_shotgun"] = true,
+	["w_sniper"] = true,
+	["w_explosive"] = true,
+	["w_melee"] = true,
+}
+
+grenade_classes = {
+	["G_F1"] = true,
+	["G_F1_S"] = true,
+	["G_RGD5_S"] = true,
+}
+
+main_slot_indexes = {
+	[2] = true,
+	[3] = true,
+}
+
+-- AlphaLion wpn name
+function Add_Weapon_Name(self, xml, obj, sec)
+	if self.wpn_name then
+		self.wpn_name:Show(false)
+	end
+
+	if not settings.wpn_info.show_wpn_name then return end
+
+	local class = SYS_GetParam(0, sec, "class")
+	if not settings.wpn_info.show_grenade_name and grenade_classes[class] then return end
+
+	local kind = SYS_GetParam(0, sec, "kind")
+	if not valid_wpn_kinds[kind] then return end
+
+	if not settings.wpn_info.show_melee and kind == "w_melee" then return end
+
+	local wpn_name_short = SYS_GetParam(0, sec, "inv_name_short")
+	if not wpn_name_short then return end
+
+	local is_equipped = self.path == "equipment:cont_equ"
+	if settings.wpn_info.main_slots_only and is_equipped and not main_slot_indexes[self.indx] then return end
+
+	self.wpn_name = self.wpn_name or utjan_xml:InitTextWnd("counter_text", self.cell)
+	self.wpn_name:SetEllipsis(true)
+
+	local name = game.translate_string(wpn_name_short)
+	self.wpn_name:SetText(name)
+	self.wpn_name:AdjustHeightToText()
+	self.wpn_name:AdjustWidthToText()
+
+	local x_offset = self.bar and self.bar:IsShown() and self.bar:GetWndPos().x + self.bar:GetWidth() or 0
+	if self.parts_indicators then
+		for k,v in pairs(self.parts_indicators) do
+			local part_x_edge = self.parts_indicators[k]:IsShown() and self.parts_indicators[k]:GetWndPos().x + self.parts_indicators[k]:GetWidth() or 0
+			if part_x_edge > x_offset then
+				x_offset = part_x_edge
+			end
+		end
+	end
+	if self.cond_text and self.cond_text:IsShown() then
+		local cond_text_x_edge = self.cond_text:GetWndPos().x + self.cond_text:GetWidth()
+		if cond_text_x_edge > x_offset then 
+			x_offset = cond_text_x_edge
+		end
+	end
+
+	local cell_h = self.cell:GetHeight()
+	local cell_w = self.cell:GetWidth()
+
+	if not is_equipped then
+		self.wpn_name:SetTextAlignment(1)
+		self.wpn_name:SetWndRect(Frect():set(0, 0, cell_w - (x_offset + 2),self.wpn_name:GetHeight() + 2))
+		self.wpn_name:SetWndPos(vector2():set(x_offset, cell_h - self.wpn_name:GetHeight()))
+	else
+		self.wpn_name:SetTextAlignment(2)
+		self.wpn_name:SetWndRect(Frect():set(0, 0, cell_w, self.wpn_name:GetHeight() + 2))
+		self.wpn_name:SetWndPos(vector2():set(0, 3))
+	end
+
+	self.wpn_name:Show(true)
+end
+
+function set_text_rect(ele, padding_w, padding_h, text)
+	if text then
+		ele:SetText(text)
+	end
+	ele:AdjustHeightToText()
+	ele:AdjustWidthToText()
+	local width = ele:GetWidth()
+	local height = ele:GetHeight()
+	ele:SetWndRect(Frect():set(0, 0, width + padding_w, height + padding_h))
+end
+
+-- MONEY TEXT
+function Add_Money_Text(self, xml, obj, sec)
+	if  self.money_text then
+        self.money_text:Show(false)
+    end
+	if  self.money_text_bg then
+        self.money_text_bg:Show(false)
+    end
+
+	if not settings.money_text.enable then return end
+
+	local money_amount = IsItem("money", sec) or parse_list(ini_sys, sec, "money_value") -- money_value is used for Lootboxes cash stacks
+	if not (money_amount and money_amount[1]) then return end
+
+	local show_bg = not settings.money_text.hide_bg
+	if show_bg then
+		self.money_text_bg = self.money_text_bg or utjan_xml:InitStatic("background", self.cell)
+	end
+	self.money_text = self.money_text or utjan_xml:InitTextWnd("counter_text", self.cell)
+
+	local text
+	if money_amount[2] then
+		text = gc("ui_utjan_ruble") .. ((money_amount[1] + money_amount[2]) / 2) .. "~"
+	else
+		text = gc("ui_utjan_ruble") .. money_amount[1]
+	end
+
+	local text_padding_w = settings.money_text.padding + 1
+	local text_padding_h = settings.money_text.padding
+	set_text_rect(self.money_text, text_padding_w, text_padding_h, text)
+	local text_height = self.money_text:GetHeight()
+	local cell_h = self.cell:GetHeight()
+
+	self.money_text:SetWndPos( vector2():set( 0 , cell_h - text_height) )
+
+	if show_bg then
+		self.money_text_bg:SetWndRect(Frect():set(0, 0, self.money_text:GetWidth(), self.money_text:GetHeight()))
+		self.money_text_bg:SetWndPos( self.money_text:GetWndPos() )
+		self.money_text_bg:Show(true)
+	end
+
+    self.money_text:Show(true)
+end
+-- MONEY TEXT END
+
+-- ADD CONDITION TEXT
+arty_table = {
+	["i_arty_junk"] = true,
+	["i_arty"] = true,
+	["i_arty_cont"] = true,
+}
+
+function Add_Condition_Text(self, xml, obj, sec, clsid)
+	if  self.cond_text then
+        self.cond_text:Show(false)
+    end
+	if  self.cond_text_bg then
+        self.cond_text_bg:Show(false)
+    end
+
+	if not settings.cond_text.enable then return end
+
+	if self.disable_bar_og then return end -- dont show condition when the vanilla scripts hide the condition bar
+
+	local is_equipped = self.path == "equipment:cont_equ"
+	if not settings.cond_text.enable_equipped and is_equipped then return end
+	if IsItem("multiuse",sec) then return end
+
+	local has_cond = utils_item.is_degradable(obj, sec) or IsWeapon(nil,clsid) or IsOutfit(nil,clsid) or IsHeadgear(nil,clsid)
+	if (not has_cond) then return end
+
+	if magazine_binder and magazine_binder.is_magazine(sec) then return end
+
+	local show_bg = not settings.cond_text.hide_bg
+	if show_bg and not is_equipped then
+		self.cond_text_bg = self.cond_text_bg or utjan_xml:InitStatic("background", self.cell)
+	end
+
+	self.cond_text = self.cond_text or utjan_xml:InitTextWnd("counter_text", self.cell)
+
+	local cond = obj:condition()
+	local str = SYS_GetParam(0,sec, "condition_bar","condition_progess_bar")
+	local props = bar_list[str]
+	local color = props.def or lerp_color( cond , props.min , props.mid , props.max )
+	if color then
+		self.cond_text:SetTextColor( color )
+	end
+
+	local text = math.ceil(cond * 100) .. "%"
+	local text_padding_w = is_equipped and 0 or settings.cond_text.padding + 1
+	local text_padding_h = is_equipped and 0 or settings.cond_text.padding
+	set_text_rect(self.cond_text, text_padding_w, text_padding_h, text)
+
+	local text_height = self.cond_text:GetHeight()
+	local kind = SYS_GetParam(0, sec, "kind", "na")
+
+	if arty_table[kind] then
+		local alt_artefact_pos = settings.cond_text.alt_artefact_pos
+		if alt_artefact_pos == 0 then
+			self.cond_text:SetWndPos( vector2():set( 0 , self.cell:GetHeight() - text_height) )
+		elseif alt_artefact_pos == 1 then
+			self.cond_text:SetWndPos( vector2():set( self.cell:GetWidth() - self.cond_text:GetWidth() , self.cell:GetHeight() - text_height) )
+		elseif alt_artefact_pos == 2 then
+			self.cond_text:SetWndPos( vector2():set( self.cell:GetWidth() - self.cond_text:GetWidth() , 0) )
+		end
+	elseif is_equipped and settings.cond_text.enable_equipped then
+		local pos_adjusted = false
+		local bar_pos = self.bar and self.bar:IsShown() and self.bar:GetWndPos()
+		if self.parts_indicators then -- Adjust position if part dots are shown
+			for k,v in pairs(self.parts_indicators) do
+				if self.parts_indicators[k]:IsShown() then
+					self.cond_text:SetWndPos( vector2():set( bar_pos.x , self.parts_indicators[k]:GetWndPos().y - text_height) )
+					pos_adjusted = true
+					break
+				end
+			end
+		end
+		if not pos_adjusted then
+			self.cond_text:SetWndPos( vector2():set( bar_pos.x , bar_pos.y - text_height) )
+		end
+	elseif settings.part_dots.enable and (settings.part_dots.position == 1 or (settings.part_dots.position == 2 and is_short_gun(obj, clsid, sec))) then
+		local part_y = self.cell:GetHeight()
+		if self.parts_indicators then
+			for k,v in pairs(self.parts_indicators) do
+				if self.parts_indicators[k]:IsShown() then
+					part_y = self.parts_indicators[k]:GetWndPos().y
+					break
+				end
+			end
+		end
+
+		self.cond_text:SetWndPos( vector2():set( 0 , part_y - text_height) )
+	else
+		local bar_h = self.bar and self.bar:IsShown() and self.bar:GetHeight() or 0
+		self.cond_text:SetWndPos( vector2():set( 0 , self.cell:GetHeight() - bar_h - text_height) )
+	end
+
+	if show_bg and not is_equipped then
+		self.cond_text_bg:SetWndRect(Frect():set(0, 0, self.cond_text:GetWidth(), self.cond_text:GetHeight()))
+		self.cond_text_bg:SetWndPos( self.cond_text:GetWndPos() )
+		self.cond_text_bg:Show(true)
+	end
+
+    self.cond_text:Show(true)
+end
+-- END ADD CONDITION TEXT 
+
+-- ADD PART CONDITION BARS
+function is_short_gun(obj, clsid, sec)
+	if IsWeapon(obj, clsid) and SYS_GetParam(2, sec, "inv_grid_width") == 2 then
+		return true
+	end
+end
+
+-- WPO colors
+clr_r  = GetARGB(255,196,18,18)
+clr_o  = utils_xml.get_color("d_orange", true)
+clr_y  = GetARGB(255,255,255,118)
+clr_g  = GetARGB(255,107,207,119)
+clr_missing = GetARGB(255,70,60,60) -- Missing part color
+
+local ini_parts   = itms_manager.ini_parts
+function has_parts(obj)
+	if not obj then return end
+	local sec = SYS_GetParam(0, obj:section(), "parent_section") or obj:section()
+	local parts = ini_parts:r_string_ex("con_parts_list", sec)
+	return parts ~= nil
+end
+
+function Add_Parts_Bars(self, xml, obj, sec, clsid)
+	if self.parts_indicators then
+		for k,v in pairs(self.parts_indicators) do
+			self.parts_indicators[k]:Show(false)
+		end
+	end
+
+	if not settings.part_dots.enable then return end
+	if not has_parts(obj) then return end
+
+	local is_equipped = self.path == "equipment:cont_equ"
+	if not settings.part_dots.show_on_equipped and is_equipped then return end
+
+	if not settings.part_dots.show_on_wpn and IsWeapon(nil, clsid) then return end
+	if not settings.part_dots.show_on_armor and (IsHeadgear(nil, clsid) or IsOutfit(nil, clsid)) then return end
+
+	local se_parts = item_parts.get_parts_con(obj, nil, true)
+	if is_empty(se_parts) then return end
+	local parts = dup_table(se_parts)
+
+	self.parts_indicators = self.parts_indicators or {}
+
+	for part, v in pairs(parts) do
+		if SYS_GetParam(1, part, "cond_part") then
+			self.parts_indicators[part] = self.parts_indicators[part] or utjan_xml:InitStatic("cond_dot", self.cell)
+		else
+			parts[part] = nil
+		end
+	end
+
+	local bar_shown = self.bar and self.bar:IsShown()
+	local bar_h = bar_shown and self.bar:GetHeight() or 0
+	local bar_w = bar_shown and self.bar:GetWidth() or 0
+	local props = bar_list.condition_progess_bar
+	local i = 0
+	for part, condition in spairs(parts, parts_sort) do
+		local bar_pos = bar_shown and self.bar:GetWndPos()
+		local cond_dot_h = 4 --self.parts_indicators[part]:GetHeight()
+		local cond_dot_w = cond_dot_h * 0.75
+		cond_dot_h = cond_dot_h * settings.part_dots.size_mult
+		cond_dot_w = cond_dot_w * settings.part_dots.size_mult
+		local cond_text_w = self.cond_text and self.cond_text:GetWidth() or 0
+		local separator_width = settings.part_dots.separator_width
+
+		self.parts_indicators[part]:SetWndRect( Frect():set(0, 0, cond_dot_w, cond_dot_h) )
+
+		if is_equipped then
+			self.parts_indicators[part]:SetWndPos( vector2():set( bar_pos.x + (cond_dot_w + separator_width) * i, bar_pos.y - cond_dot_h * 1.5))
+		else
+			if settings.part_dots.position == 1 or (settings.part_dots.position == 2 and is_short_gun(obj, clsid, sec)) then
+				if bar_shown then
+					self.parts_indicators[part]:SetWndPos( vector2():set( (cond_dot_w + separator_width) * i, self.cell:GetHeight() - bar_h - cond_dot_h * 1.5))
+				else
+					self.parts_indicators[part]:SetWndPos( vector2():set( 1 + (cond_dot_w + separator_width) * i, self.cell:GetHeight() - cond_dot_h * 1.5))
+				end
+			else
+				if bar_shown then
+					self.parts_indicators[part]:SetWndPos( vector2():set( bar_w + 1 + (cond_dot_w + separator_width) * i, self.cell:GetHeight() - cond_dot_h * 1.5))
+				else
+					self.parts_indicators[part]:SetWndPos( vector2():set( cond_text_w + 1 + (cond_dot_w + separator_width) * i, self.cell:GetHeight() - cond_dot_h * 1.5))
+				end
+			end
+		end
+
+		local color
+		if settings.part_dots.wpo_mode and IsWeapon(nil, clsid) then -- Weapon Parts Overhaul Colors
+			color = clr_missing
+			if condition >= settings.part_dots.wpo_green then color = clr_g
+			elseif condition >= settings.part_dots.wpo_yellow then color = clr_y
+			elseif condition >= settings.part_dots.wpo_orange then color = clr_o
+			elseif condition > -1 then color = clr_r end
+		else
+			if condition >= 0 then
+				local cond = clamp(condition / 99, 0, 1)
+				color = props.def or lerp_color( cond , props.min , props.mid , props.max )
+			else
+				color = clr_missing
+			end
+		end
+
+		if color then
+			self.parts_indicators[part]:SetTextureColor( color )
+		end
+		self.parts_indicators[part]:Show(true)
+
+		i = i + 1
+	end
+end
+
+unique_mapping = {
+	["prt_w_gas_tube_9"] = "extractor",
+	["prt_w_gas_tube_10"] = "extractor",
+	["prt_w_gas_tube_8"] = "ejector",
+	["prt_w_gas_tube_2"] = "pump",
+	["prt_w_bolt_11"] = "hammers",
+	["prt_w_bolt_12"] = "hammers",
+	["prt_w_bolt_carrier_8"] = "chock",
+	["prt_w_bolt_carrier_9"] = "chock",
+}
+
+name_mapping = {
+	["barrel"] = 1,
+	["trigger"] = 2,
+	["bolt"] = 3,
+	["bolt_carrier"] = 4,
+	["chock"] = 5,
+	["ejector"] = 6,
+	["extractor"] = 7,
+	["gas_tube"] = 8,
+	["hammers"] = 9,
+	["pump"] = 10,
+	["spring"] = 11,
+}
+
+function parts_sort(t, a, b)
+	if not (a and b) then return false end
+
+	local a_map
+	if unique_mapping[a] then
+		a_map = name_mapping[unique_mapping[a]]
+	else
+		for k,v in pairs(name_mapping) do 
+			if string_find(a, k) then 
+				a_map = v
+				break
+			end
+		end
+	end
+
+	local b_map
+	if unique_mapping[b] then
+		b_map = name_mapping[unique_mapping[b]]
+	else
+		for k,v in pairs(name_mapping) do 
+			if string_find(b, k) then 
+				b_map = v
+				break
+			end
+		end
+	end
+	if not (a_map and b_map) then return false end
+	return a_map < b_map
+end
+-- ADD PART CONDITION BARS END
+
+-- ADD AMMO ITEM SHORT NAME TEXT
+valid_ammo_class = {
+	["AMMO"] = true,
+	["AMMO_S"] = true,
+}
+
+valid_exlosive_ammo = {
+	["S_M209"] = true,
+	["S_VOG25"] = true,
+	["S_OG7B"] = true,
+}
+
+function Add_Ammo_Short_Name_Text(self, xml, obj, sec)
+	if self.ammo_name_bg then
+		for k,v in pairs(self.ammo_name_bg)do
+			self.ammo_name_bg[k]:Show(false)
+		end
+	end
+	if self.ammo_name then
+		for k,v in pairs(self.ammo_name)do
+			self.ammo_name[k]:Show(false)
+		end
+	end
+
+	local class = SYS_GetParam(0, sec, "class")
+	if not (valid_ammo_class[class] or valid_exlosive_ammo[class]) then return end
+	if not settings.ammo_name.enable and valid_ammo_class[class] then return end
+	if not settings.ammo_name.show_expl and valid_exlosive_ammo[class] then return end
+
+	local is_component = SYS_GetParam(1, sec, "is_component")
+	if is_component then return end -- Ammo maker compat
+
+	local ammo_name_short = SYS_GetParam(0, sec, "inv_name_short")
+	if not ammo_name_short then return end
+
+	self.ammo_name = {}
+	self.ammo_name_bg = {}
+
+	local gc_name = gc(ammo_name_short)
+	local i = 1
+	local name_cutoff = ""
+
+	while i > 0 do
+		self.ammo_name_bg[i] = self.ammo_name_bg[i] or utjan_xml:InitStatic("background", self.cell)
+		self.ammo_name[i] = self.ammo_name[i] or utjan_xml:InitTextWnd("counter_text", self.cell)
+
+		local text_padding = settings.ammo_name.padding
+		set_text_rect(self.ammo_name[i], text_padding, text_padding, gc_name)
+
+		local incr_i = false
+		while (self.ammo_name[i]:GetWidth() > self.cell:GetWidth()) do
+			local str_table = str_explode(gc_name, " ")
+			if #str_table == 1 then
+				break
+			end
+
+			if name_cutoff == "" then
+				name_cutoff = str_table[1]
+			else
+				name_cutoff = name_cutoff .. " " .. str_table[1]
+			end
+
+			gc_name = ""
+			for i = 2, #str_table do
+				gc_name = gc_name .. str_table[i]
+				if #str_table > i then
+					gc_name = gc_name .. " "
+				end
+			end
+
+			set_text_rect(self.ammo_name[i], text_padding, text_padding, gc_name)
+			incr_i = true
+		end
+
+		local name_h = self.ammo_name[i]:GetHeight()
+		local name_w = self.ammo_name[i]:GetWidth()
+
+		self.ammo_name[i]:SetWndPos( vector2():set( 0 , self.H - (name_h * i)) )
+		local bg_padding = name_w * 0.08
+		self.ammo_name_bg[i]:SetWndRect(Frect():set(0, 0, name_w + (bg_padding * 2), name_h))
+		local name_pos = self.ammo_name[i]:GetWndPos()
+		self.ammo_name_bg[i]:SetWndPos( vector2():set(name_pos.x - bg_padding , name_pos.y ) )
+
+		if valid_ammo_class[class] and settings.ammo_name.bad_color or 
+		valid_exlosive_ammo[class] and settings.ammo_name.expl_bad_color then
+			if string.find(sec, "_verybad") then
+				self.ammo_name[i]:SetTextColor( clr_r )
+			elseif string.find(sec, "_bad") then
+				self.ammo_name[i]:SetTextColor( clr_o )
+			else
+				self.ammo_name[i]:SetTextColor( clr_g )
+			end
+		end
+
+		-- Check if ammo icon is dimmed in crafting list
+		local craft_gui = ui_workshop.GUI and ui_workshop.GUI:IsShown() and ui_workshop.GUI.dlg_craft
+		if craft_gui then
+			local menu = craft_gui.list_menu:GetSelectedItem()
+			local last_type = menu and menu.idx
+			local r = last_type and craft_gui.recipes[last_type] or {}
+			local rsp_sec
+			for k,v in pairs(r) do
+				if r[k].sec == sec then
+					rsp_sec = r[k].rsp
+					break
+				end
+			end
+
+			if rsp_sec and not craft_gui.recipes_items[rsp_sec] then
+				local txt_clr = self.ammo_name[i]:GetTextColor()
+				self.ammo_name[i]:SetTextColor( change_alpha(txt_clr, 140) )
+				local bg_clr = self.ammo_name_bg[i]:GetTextureColor()
+				self.ammo_name_bg[i]:SetTextureColor( change_alpha(bg_clr, 140) )
+			end
+		end
+
+		self.ammo_name_bg[i]:Show(true)
+    	self.ammo_name[i]:Show(true)
+
+		if incr_i then
+			i = i + 1
+			gc_name = name_cutoff
+			name_cutoff = ""
+		else
+			i = 0
+		end
+	end
+end
+
+function change_alpha(clr, a)
+    if not clr and a ~= nil then return end
+
+	local b = bit.band(clr, 255)
+	local g = bit.band(bit.rshift(clr, 8), 255)
+	local r = bit.band(bit.rshift(clr, 16), 255)
+
+    return GetARGB(a, r, g, b)
+end
+-- ADD AMMO ITEM SHORT NAME TEXT END
+
+-- ADD RECIPE READ/UNREAD TEXT
+one_use_recipes = {
+	recipe_cooking_1 = true,
+}
+
+workshop_autoinject_known_recipes = {}
+
+functor_table_readable = {
+	["item_recipe.func_recipe"] = true,
+	["item_recipe.func_letter"] = true,
+}
+
+function Add_Recipe_Icon_Text(self, xml, obj, sec)
+	if  self.recipe_text then
+        self.recipe_text:Show(false)
+    end
+	if  self.recipe_text_bg then
+        self.recipe_text_bg:Show(false)
+    end
+
+	if not settings.recipe_text.enable then return end
+	if not sec then return end
+
+	local use_map = SYS_GetParam(0, sec, "use_map")
+	local functor = SYS_GetParam(0, sec, "use1_action_functor", "na")
+	local has_encyclopedia = functor_table_readable[functor]
+	local is_pda = functor == "ui_pda_npc_tab.use_view"
+	if not (has_encyclopedia or is_pda or use_map or one_use_recipes[sec]) then return end
+
+	if not settings.recipe_text.show_on_pda and is_pda then return end
+
+	local has_stash
+	if is_pda and obj then
+		local pda_info = se_load_var(obj:id(), obj:name(), "info")
+		if pda_info and pda_info.msg then
+			for k,v in pairs(pda_info.msg) do
+				if pda_info.msg[k].stash and not pda_info.msg[k].stash_read then
+					has_stash = true
+					break
+				end
+			end
+		end
+	end
+	if is_pda and not has_stash then return end
+
+	local recipe_is_known
+	if use_map then
+		local maps = game_statistics.actor_anomaly_maps or {}
+		recipe_is_known = maps[use_map] or false
+	else
+		workshop_autoinject_known_recipes = workshop_autoinject and workshop_autoinject.known_recipe or workshop_autoinject_known_recipes
+		recipe_is_known = workshop_autoinject_known_recipes[sec] or ui_pda_encyclopedia_tab.is_unlocked_note("encyclopedia__notes_" .. sec)
+	end
+
+	self.recipe_text_bg = self.recipe_text_bg or utjan_xml:InitStatic("background", self.cell)
+	self.recipe_text = self.recipe_text or utjan_xml:InitTextWnd("counter_text", self.cell)
+
+	local text
+	if recipe_is_known then
+		text = gc("ui_utjan_recipe_read")
+		self.recipe_text:SetTextColor( GetARGB(255, 185, 162, 138))
+	elseif has_stash then
+		text = "(???)"
+		self.recipe_text:SetTextColor( GetARGB(255, 255, 232, 208))
+	else
+		text = gc("ui_utjan_recipe_unread")
+		self.recipe_text:SetTextColor( GetARGB(255, 255, 232, 208))
+	end
+
+	local text_padding = settings.recipe_text.padding
+	set_text_rect(self.recipe_text, text_padding + 1, text_padding, text)
+
+	local name_h = self.recipe_text:GetHeight()	
+	local name_w = self.recipe_text:GetWidth()
+	if has_stash then
+		local bar_h = self.bar and self.bar:IsShown() and self.bar:GetHeight() or 0
+		local cond_text_h = self.cond_text and self.cond_text:IsShown() and self.cond_text:GetHeight() or 0
+		self.recipe_text:SetWndPos( vector2():set( 0 , self.H - bar_h - cond_text_h - name_h) )
+	else
+		self.recipe_text:SetWndPos( vector2():set( 0 , self.H - name_h) )
+	end
+	local bg_padding = name_w * 0.08
+	self.recipe_text_bg:SetWndRect(Frect():set(0, 0, name_w + (bg_padding * 2), name_h))
+	local name_pos = self.recipe_text:GetWndPos()
+	self.recipe_text_bg:SetWndPos( vector2():set(name_pos.x - bg_padding , name_pos.y ) )
+
+	self.recipe_text_bg:Show(true)
+    self.recipe_text:Show(true)
+end
+
+if workshop_autoinject and not workshop_autoinject.known_recipe then
+	base_wai_load = workshop_autoinject.load_state
+	function workshop_autoinject.load_state(mdata)
+		base_wai_load(mdata)
+		workshop_autoinject_known_recipes = mdata.known_recipe or {}
+	end
+end
+-- ADD RECIPE READ/UNREAD TEXT END
+
+-- ADD MAGS REDUX ITEM TEXT
+function Add_Mag_Icon_Text(self, xml, obj, sec, clsid)
+	if not magazine_binder then return end
+
+	if  self.mag_ammo_count then
+        self.mag_ammo_count:Show(false)
+    end
+	if  self.mag_ammo_count_bg then
+        self.mag_ammo_count_bg:Show(false)
+    end
+	if self.mag_ammo_name_bg then
+		for k,v in pairs(self.mag_ammo_name_bg)do
+			self.mag_ammo_name_bg[k]:Show(false)
+		end
+	end
+	if self.mag_ammo_name then
+		for k,v in pairs(self.mag_ammo_name)do
+			self.mag_ammo_name[k]:Show(false)
+		end
+	end
+
+	if not settings.mag_info.enable then return end
+	if not magazine_binder.is_magazine(sec) then return end
+	if (not self.ID) or self.manual then return end
+	local mag_data = magazine_binder.get_data(self.ID)
+	if not mag_data then return end
+
+	if  self.cond_text then
+        self.cond_text:Show(false)
+    end
+	if  self.cond_text_bg then
+        self.cond_text_bg:Show(false)
+    end
+
+	local count_h
+	local bar_h = self.bar and self.bar:IsShown() and self.bar:GetHeight() or 0
+
+	if settings.mag_info.show_ammo_count then
+		self.mag_ammo_count_bg = self.mag_ammo_count_bg or utjan_xml:InitStatic("background", self.cell)
+		self.mag_ammo_count = self.mag_ammo_count or utjan_xml:InitTextWnd("condition_text", self.cell)
+
+		local mag_capacity = SYS_GetParam(2, sec, "max_mag_size")
+		local text = #mag_data.loaded .. "/" .. mag_capacity
+		local text_padding = settings.mag_info.padding
+		set_text_rect(self.mag_ammo_count, text_padding + 1, text_padding, text)
+
+		count_h = self.mag_ammo_count:GetHeight() + bar_h
+		local count_w = self.mag_ammo_count:GetWidth()
+		self.mag_ammo_count:SetWndPos( vector2():set( 0 , self.H - count_h) )
+		self.mag_ammo_count_bg:SetWndRect(Frect():set(0, 0, count_w, count_h))
+		self.mag_ammo_count_bg:SetWndPos( self.mag_ammo_count:GetWndPos() )
+
+		local props = bar_list["condition_progess_bar"]
+		local cond = #mag_data.loaded / mag_capacity
+		local color = props.def or lerp_color( cond , props.min , props.mid , props.max )
+		if color then
+			self.mag_ammo_count:SetTextColor( color )
+		end
+
+		self.mag_ammo_count_bg:Show(true)
+		self.mag_ammo_count:Show(true)
+	else
+		count_h = 0
+	end
+
+	if not settings.mag_info.show_ammo_name then return end
+	if not (#mag_data.loaded > 0) then return end
+
+	self.mag_ammo_name = {}
+	self.mag_ammo_name_bg = {}
+
+	local last_bullet_sec
+	for k,v in pairs(mag_data.loaded) do
+		last_bullet_sec = v
+	end
+	local inv_short_name = SYS_GetParam(0, last_bullet_sec, "inv_name_short", "Bullet?")
+	local gc_name = gc(inv_short_name)
+	
+	local i = 1
+	local name_cutoff = ""
+
+	while i > 0 do
+		self.mag_ammo_name_bg[i] = self.mag_ammo_name_bg[i] or utjan_xml:InitStatic("background", self.cell)
+		self.mag_ammo_name[i] = self.mag_ammo_name[i] or utjan_xml:InitTextWnd("counter_text", self.cell)
+
+		local text_padding = settings.mag_info.padding
+		set_text_rect(self.mag_ammo_name[i], text_padding, text_padding, gc_name)
+
+		local incr_i = false
+		while (self.mag_ammo_name[i]:GetWidth() > self.cell:GetWidth()) do
+			local str_table = str_explode(gc_name, " ")
+			if #str_table == 1 then
+				break
+			end
+
+			if name_cutoff == "" then
+				name_cutoff = str_table[1]
+			else
+				name_cutoff = name_cutoff .. " " .. str_table[1]
+			end
+
+			gc_name = ""
+			for i = 2, #str_table do
+				gc_name = gc_name .. str_table[i]
+				if #str_table > i then
+					gc_name = gc_name .. " "
+				end
+			end
+
+			set_text_rect(self.mag_ammo_name[i], text_padding, text_padding, gc_name)
+			incr_i = true
+		end
+
+		local name_h = self.mag_ammo_name[i]:GetHeight()
+		local name_w = self.mag_ammo_name[i]:GetWidth()
+
+		self.mag_ammo_name[i]:SetWndPos( vector2():set( 0 , self.H - count_h - (name_h * i)) )
+		local bg_padding = name_w * 0.08
+		self.mag_ammo_name_bg[i]:SetWndRect(Frect():set(0, 0, name_w + (bg_padding * 2), name_h))
+		local name_pos = self.mag_ammo_name[i]:GetWndPos()
+		self.mag_ammo_name_bg[i]:SetWndPos( vector2():set(name_pos.x - bg_padding , name_pos.y ) )
+
+		self.mag_ammo_name_bg[i]:Show(true)
+    	self.mag_ammo_name[i]:Show(true)
+
+		if incr_i then
+			i = i + 1
+			gc_name = name_cutoff
+			name_cutoff = ""
+		else
+			i = 0
+		end
+	end
+end
+-- ADD MAGS REDUX ITEM TEXT END
+
+function Add_Repair_Icon(self, xml, obj, sec)
+	if self.gun_repair_icon then
+		self.gun_repair_icon:Show(false)
+	end
+
+	if not settings.wpn_info.show_gun_repair_type then return end
+
+	local repair_type = SYS_GetParam(0, sec, "repair_type")
+	if not repair_type then return end
+
+	local icon_texture = repair_type_texture_tbl[repair_type]
+	if not icon_texture then return end
+	
+	local is_equipped = self.path == "equipment:cont_equ"
+
+	self.gun_repair_icon = self.gun_repair_icon or utjan_xml:InitStatic("gun_repair_icon", self.cell)
+	self.gun_repair_icon:InitTexture(icon_texture)
+	local y_offset = (not is_equipped) and self.wpn_name and self.wpn_name:IsShown() and self.wpn_name:GetHeight() or 2
+	local x_offset = is_equipped and -4 or -1
+	self.gun_repair_icon:SetWndPos(vector2():set(self.cell:GetWidth() - self.gun_repair_icon:GetWidth() + x_offset, self.cell:GetHeight() - self.gun_repair_icon:GetHeight() - y_offset))
+	self.gun_repair_icon:Show(true)
+end
+
+repair_type_texture_tbl = {
+	pistol = "ui_dyn_eq_repair_blue",
+	shotgun = "ui_dyn_eq_repair_green",
+	rifle_5 = "ui_dyn_eq_repair_red",
+	rifle_7 = "ui_dyn_eq_repair_yellow",
+}
+
+-- MCM
+function load_defaults()
+	local t = {}
+	local op = item_icon_info_mcm.op
+	for i, v in ipairs(op.gr) do
+		if v.gr then
+			t[v.id] = {}
+			for ii, vv in ipairs(v.gr) do
+				if vv.def ~= nil then
+					t[v.id][vv.id] = vv.def
+				end
+			end
+		elseif v.def ~= nil then
+			t[v.id] = v.def
+		end
+	end
+	return t
+end
+
+settings = load_defaults()
+
+function load_settings()
+	settings = load_defaults()
+	if ui_mcm then
+		for k, v in pairs(settings) do
+			if type(settings[k]) == "table" then
+				for kk, vv in pairs(settings[k]) do
+					settings[k][kk] = ui_mcm.get("item_icon_info/" .. k .. "/" .. kk)
+				end
+			else
+				settings[k] = ui_mcm.get("item_icon_info/" .. k)
+			end
+		end
+	end
+	return settings
+end
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_first_update", load_settings)
+	RegisterScriptCallback("on_option_change", load_settings)
+
+	utjan_xml = CScriptXmlInit()
+	utjan_xml:ParseFile("ui_utjan_icon_info.xml")
+end

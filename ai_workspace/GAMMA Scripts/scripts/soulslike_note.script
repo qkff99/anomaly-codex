@@ -1,0 +1,28 @@
+function menu_read(obj) -- return "read" name
+	local p = obj:parent()
+	if not (p and p:id() == AC_ID) then return end
+	
+	return game.translate_string("st_item_read")
+end
+
+function func_radio_freq(obj)
+	local sec = obj:section()
+
+	if (not IsItem("letter",sec)) then
+		return
+	end
+
+    local id = obj:id()
+	local data = soulslike.get_soulslike_state()
+
+	if data.note_message_data and data.note_message_data[id] then
+		local note_data = data.note_message_data[id]
+		local freq = note_data.freq;
+		local level_name = utils_xml.get_special_txt(note_data.level_name)
+		local msg = strformat(game.translate_string("st_soulslike_rescuers_radio_frequency_note_message"), freq, level_name)
+		
+		actor_menu.set_msg(2, msg, 10)
+
+		hide_hud_inventory()
+	end
+end

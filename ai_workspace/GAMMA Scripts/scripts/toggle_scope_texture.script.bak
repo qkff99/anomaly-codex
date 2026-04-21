@@ -1,0 +1,61 @@
+local scope_ini_path = "plugins\\toggle_scope_texture.ltx"
+local scope_ini = ini_file_ex(scope_ini_path)
+scope_texture_table = {}
+local ATS_keybind = ATS_illum_mcm.get_config("ATS_keybind")
+local ATS_toggle_sound = sound_object('ATS_scope_sounds\\ATS_toggle_sound')
+local ATS_toggle_volume = ATS_illum_mcm.get_config("ATS_toggle_volume")
+
+function on_option_change()
+	ATS_keybind = ATS_illum_mcm.get_config("ATS_keybind")
+	ATS_toggle_volume = ATS_illum_mcm.get_config("ATS_toggle_volume")
+end
+
+function on_key_press(dik)
+	
+	if dik == ATS_keybind then
+		local wpn = db.actor:active_item()
+		if not wpn then return end
+
+		assert(wpn.set_scope_ui, "[Toggleable scope texture] the mod requires Modded Exes 2024.07.05 or later, https://github.com/themrdemonized/STALKER-Anomaly-modded-exes")
+
+		-- new
+		local wpn_obj = wpn:cast_Weapon()
+
+		if not wpn_obj then return end
+
+		local zoom_type = wpn_obj:GetZoomType()
+		
+		local scope_texture = SYS_GetParam(0, wpn:section(), "scope_texture")
+		if not scope_texture then return end
+
+		local t = scope_texture_table[scope_texture]
+		if not t then return end
+
+		if (zoom_type == 0) then
+			t.currentIndex = clamp(t.currentIndex, 1, #t.replacements)
+			local texture = t.replacements[t.currentIndex]
+			t.currentIndex = t.currentIndex == #t.replacements and 1 or (t.currentIndex + 1)
+
+			wpn:set_scope_ui(texture)
+		end
+
+		ATS_toggle_sound:play(db.actor, 0, sound_object.s2d)
+		ATS_toggle_sound.volume = ATS_toggle_volume
+	end
+end
+
+function on_game_start()
+	assert(scope_ini.ini, ("[Toggleable scope texture] %s ltx not found"):format(scope_ini_path))
+	local t = scope_ini:collect_section("scope_texture")
+	for texture, replacements in pairs(t) do
+		local replacementTable = str_explode(replacements, ",")
+		table.insert(replacementTable, texture)
+		scope_texture_table[texture] = {
+			replacements = replacementTable,
+			currentIndex = 1,
+		}
+	end
+
+	RegisterScriptCallback("on_key_press", on_key_press)
+	RegisterScriptCallback("on_option_change", on_option_change)
+end

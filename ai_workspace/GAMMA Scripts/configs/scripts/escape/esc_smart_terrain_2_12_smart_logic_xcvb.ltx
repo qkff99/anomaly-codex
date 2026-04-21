@@ -1,0 +1,100 @@
+[beh@general]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+gather_items_enabled = false
+help_wounded_enabled = false
+corpse_detection_enabled = false
+meet = no_meet
+wounded = wounded@ignore
+use_camp = false
+
+[meet@general]
+close_anim 		= nil
+close_victim 	= nil
+far_anim 		= nil
+far_victim 		= nil
+close_distance  = 0
+far_distance 	= 0
+use = {=actor_enemy} false, {=dist_to_actor_le(3)} true, false
+snd_on_use = {!dist_to_actor_le(3)} nil
+meet_on_talking = false
+
+[wounded@ignore]
+hp_state        = 0|wounded_heavy@help_heavy
+hp_state_see    = 0|wounded_heavy@help_heavy
+hp_victim       = 0|nil
+hp_fight        = 0|false
+hp_cover        = 0|false
+
+
+[logic@xcvb_night_def]
+suitable = {=is_night} true
+prior = 42
+
+
+; 6 sleep points (for 9 camp jobs)
+[logic@2_12_xcvb_night_1]:logic@xcvb_night_def
+active = beh@night_1
+
+[logic@2_12_xcvb_night_2]:logic@xcvb_night_def
+active = beh@night_2
+
+[logic@2_12_xcvb_night_3]:logic@xcvb_night_def
+active = beh@night_3
+
+[logic@2_12_xcvb_night_4]:logic@xcvb_night_def
+active = beh@night_4
+
+[logic@2_12_xcvb_night_5]:logic@xcvb_night_def
+active = beh@night_5
+
+[logic@2_12_xcvb_night_6]:logic@xcvb_night_def
+active = beh@night_6
+
+
+; basement where actor sleeps
+[beh@night_1]:beh@general
+pt1 = 20000, sleep | 		pos: -210.7, -21.8584, -122.5 	 	 look: -211.6781, -22.8809, -122.218
+path_end = loop
+
+; corner house with campfire (sleep)
+[beh@night_2]:beh@general
+pt1 = 20000, sleep | 		pos: -235.2, -19.0176, -155.4 	 	 look: -235.3071, -20.0408, -152.4795 
+path_end = loop
+
+; corner house with campfire 2 (sit)
+[beh@night_3]:beh@general
+pt1 = 20000, sit | 		pos: -233.8, -19.0176, -153.3 	 	 look: -234.1864, -20.0414, -157.7872 
+path_end = loop
+turn_on_campfire = true
+meet = meet@general
+gather_items_enabled = true
+help_wounded_enabled = true
+corpse_detection_enabled = true
+
+; house where actor starts
+[beh@night_4]:beh@general
+pt1 = 20000, sleep | 		pos: -223.2, -18.8217, -163.8 	 	 look: -222.7656, -19.8516, -162.9011
+path_end = loop
+
+; house with wolf (sleep)
+[beh@night_5]:beh@general
+pt1 = 20000, sleep | 		pos: -196, -18.4849, -137.2 	 	 look: -195.593, -19.5032, -136.2663
+path_end = loop
+
+; house with wolf 2 (sit drink vodka)
+[beh@night_6]:beh@general
+pt1 = 20000, sit_ass_drink_vodka | 		pos: -196.7, -18.4849, -135.1 	 	 look: -196.0366, -19.5022, -135.0199
+path_end = loop
+meet = meet@general
+gather_items_enabled = true
+help_wounded_enabled = true
+corpse_detection_enabled = true

@@ -1,0 +1,57 @@
+---@param npc game_object
+local function generate_trade_table(npc)
+    local ini_trades = ini_file("items\\settings\\hideout_furniture\\trade\\trades.ltx")
+    local trade_table = {}
+
+    local npc_faction = trader_autoinject.get_real_community(npc, "stalker")
+    local npc_supply_level = trader_autoinject.supply_level(npc, true) or 1
+    
+    local ignore_faction_restrictions = ui_mcm.get("aol_hf/gameplay/uniform_trade_profiles") or false
+
+    ini_trades:section_for_each(function(section)
+        -- Check if NPC meets required supply level
+        local min_supply_level = ini_trades:r_float_ex(section, "min_supply_level", 1)
+        if min_supply_level > npc_supply_level then return end
+
+        -- Check if NPC is in a valid faction
+        local factions = ini_trades:r_list(section, "factions", "all")
+        local is_faction_valid = false
+        if ignore_faction_restrictions then
+            is_faction_valid = true
+        else
+            for _, faction in pairs(factions) do
+                if faction == npc_faction or faction == "all" then
+                    is_faction_valid = true
+                    break
+                end
+            end
+        end
+        if not is_faction_valid then return end
+
+        -- Add items to trade table
+        local items = ini_trades:r_list(section, "items")
+        for _, item in pairs(items) do
+            local amount = ini_trades:r_float(section, "amount") or 1
+            trade_table[item] = amount
+        end
+    end)
+
+    return trade_table
+end
+
+function spawn_items(npc)
+    local is_supplier = trader_autoinject.get_trader_type(npc) == trader_autoinject.SUPPLIER
+    if not is_supplier then return end
+    
+    local trade_table = generate_trade_table(npc)
+    if not trade_table then return end
+    
+    trader_autoinject.spawn_items(npc, trade_table, true)
+end
+
+TraderAuto = trader_autoinject.update
+
+function trader_autoinject.update(npc)
+    TraderAuto(npc)
+    spawn_items(npc)
+end

@@ -1,0 +1,28 @@
+
+![animpoint@bar]
+on_info2 = {=trader_sleep_time} beh@xcvb_sleep
+
+[beh@xcvb_sleep]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+path_end = loop
+
+on_info = {!trader_sleep_time} animpoint@bar
+meet = no_meet
+combat_ignore_cond = {=is_warfare} false, {=actor_true_enemy =check_enemy_name(actor)} false, true
+combat_ignore_keep_when_attacked = {=is_warfare} false, true
+invulnerable = {=is_warfare} false, {!actor_true_enemy} true, false
+gather_items_enabled = false
+help_wounded_enabled = false
+corpse_detection_enabled = false
+
+pt1 = 20000, sleep | 		pos: -132.3, 2.2834, -272.3 	 	 look: -132.1546, 1.2935, -274.2581 
+

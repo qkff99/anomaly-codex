@@ -1,0 +1,160 @@
+[beh@general]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+gather_items_enabled = false
+help_wounded_enabled = false
+corpse_detection_enabled = false
+meet = no_meet
+wounded = wounded@ignore
+use_camp = false
+
+[meet@general]
+close_anim 		= nil
+close_victim 	= nil
+far_anim 		= nil
+far_victim 		= nil
+close_distance  = 0
+far_distance 	= 0
+use = {=actor_enemy} false, {=dist_to_actor_le(3)} true, false
+snd_on_use = {!dist_to_actor_le(3)} nil
+meet_on_talking = false
+
+[wounded@ignore]
+hp_state        = 0|wounded_heavy@help_heavy
+hp_state_see    = 0|wounded_heavy@help_heavy
+hp_victim       = 0|nil
+hp_fight        = 0|false
+hp_cover        = 0|false
+
+; =======================
+; ------------- DAY ---------------
+; =======================
+; guard north
+[logic@mar_8_11_xcvb_day_1]
+active = walker@day_1
+suitable = {!surge_started !is_night} true
+prior = 59
+
+[walker@day_1]
+path_walk = guard_2_walk
+path_look = guard_2_look
+
+
+; guard west and south
+[logic@mar_8_11_xcvb_day_2]
+active = beh@day_2
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[beh@day_2]:beh@general
+pt1 = 45000, guard | 		pos: 285.6, 1.1399, -161 	 	 look: 272.238, 0.2852, -161.6724 
+pt2 = 30000, guard | 		pos: 292.6, 1.1399, -167.3 	 	 look: 292.8369, 0.1075, -170.9765 
+path_end = loop
+gather_items_enabled = true
+help_wounded_enabled = true
+corpse_detection_enabled = true
+meet = meet@general
+wait_anim = guard
+walk_anim = patrol
+
+
+; guard top
+[logic@mar_8_11_xcvb_day_3]
+active = walker@day_3
+suitable = {!surge_started !is_night =guard_has_rifle} true
+prior = 57
+
+[walker@day_3]
+path_walk = walker_4_walk
+path_look = walker_4_look
+
+
+
+; =======================
+; ------------ NIGHT -------------
+; =======================
+; guard north
+[logic@mar_8_11_xcvb_night_1]
+active = walker@night_1
+suitable = {!surge_started =is_night} true
+prior = 59
+
+[walker@night_1]
+path_walk = guard_2_walk
+path_look = guard_2_look
+
+
+; guard south
+[logic@mar_8_11_xcvb_night_2]
+active = beh@night_2
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[beh@night_2]:beh@general
+pt1 = 45000, guard | 		pos: 285.6, 1.1399, -161 	 	 look: 272.238, 0.2852, -161.6724 
+path_end = loop
+gather_items_enabled = true
+help_wounded_enabled = true
+corpse_detection_enabled = true
+meet = meet@general
+
+
+; sit drink vodka then go smoke at south
+[logic@mar_8_11_xcvb_night_3]
+active = beh@night_3
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[beh@night_3]:beh@general
+pt1 = 120000, eat_vodka | 		pos: 296.1, 1.7368, -158.9 	 	 look: 294.6624, 0.6654, -163.4711 
+pt2 = 50000, smoking_stand | 		pos: 292.6, 1.1399, -167.3 	 	 look: 292.8369, 0.1075, -170.9765 
+path_end = loop
+gather_items_enabled = true
+help_wounded_enabled = true
+corpse_detection_enabled = true
+meet = meet@general
+wait_anim = guard
+walk_anim = patrol
+turn_on_campfire = true
+
+
+; sleep 1
+[logic@mar_8_11_xcvb_night_4]
+active = beh@night_4
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[beh@night_4]:beh@general
+pt1 = 30000, sleep | 		pos: 296.8, 1.7301, -163.1 	 	 look: 296.9518, 0.7345, -158.642 
+path_end = loop
+turn_on_campfire = true
+
+
+; sleep 2
+[logic@mar_8_11_xcvb_night_5]
+active = beh@night_5
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[beh@night_5]:beh@general
+pt1 = 30000, sleep | 		pos: 298.9, 1.7168, -161 	 	 look: 294.3969, 0.6664, -161.0374 
+path_end = loop
+
+
+; guard top
+[logic@mar_8_11_xcvb_night_6]
+active = walker@night_6
+suitable = {!surge_started =is_night =guard_has_rifle} true
+prior = 55
+
+[walker@night_6]
+path_walk = walker_4_walk
+path_look = walker_4_look

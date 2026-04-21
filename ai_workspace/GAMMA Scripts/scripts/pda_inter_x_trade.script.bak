@@ -1,0 +1,717 @@
+
+Trade_available_messages = {}
+Ordered_items = {}
+delivered_stashes = {}
+local potential_traders = {}
+
+local item_groups = {}
+categorized_items = {}
+local respond_chance_mult = pda_inter_mcm.get_config("trade_respond_mult")
+local delivery_price_mult = pda_inter_mcm.get_config("trade_delivery_price_mult")
+local delivery_time_mult = pda_inter_mcm.get_config("trade_delivery_time_mult")
+local stalkers_pool = pda_inter_mcm.get_config("trade_stalker_pool")
+
+local tmr
+local tmr_order
+local ctime_to_t = utils_data.CTime_to_table
+local t_to_ctime = utils_data.CTime_from_table
+local gt = game.translate_string
+
+-- blacklist ignored if actor from the same faction
+local traders_blacklist = {
+	["army"] = true,
+	["monolith"] = true,
+	["greh"] = true,
+	["zombied"] = true,
+}
+
+Delivery_blacklisted_levels = { ["l03u_agr_underground"] = true, ["y04_pole"] = true, ["k01_darkscape"] = true, ["l04u_labx18"] = true, ["l08u_brainlab"] = true, ["jupiter_underground"] = true, ["l10u_bunker"] = true, ["labx8"] = true, ["l12u_control_monolith"] = true, ["l12u_sarcofag"] = true, ["l13u_warlab"] = true, ["bunker_a1"] = true, ["collaider"] = true }
+
+-- chance for trader to sell certain item by its group
+-- chance is number, if group isnt in array then its default 0.05
+local sell_chance = {
+	["trader"] = { weapons = 0.75, outfits = 0.75, medicine = 0.25, food = 0.25, repair = 0.1, others = 0.1, delivery_percent = 0.03 },
+	["barman"] = { food = 1, others = 0.5, delivery_percent = 0.06 },
+	["mechanic"] = { weapons = 0.25, outfits = 0.25, repair = 1, delivery_percent = 0.1 },
+	["medic"] = { medicine = 1, delivery_percent = 0.1 },
+	["sci"] = { artefacts = 1, medicine = 0.75, delivery_percent = 0.15 },
+	["stalker"] = { others = 0.25, trash = 1, delivery_percent = 0.2 },
+}
+
+function find_traders()
+
+	-- collect all traders and some stalkers
+	for i = 1, 65534 do
+		local se_obj = alife_object(i)
+		local stalker_or_trader = (IsStalker(se_obj) and se_obj:alive()) or IsTrader(se_obj)
+		if se_obj and stalker_or_trader and ((not traders_blacklist[se_obj:community()]) or (get_actor_true_community() == se_obj:community())) then
+
+			local sec = se_obj:section_name()
+			if (se_obj:community() == "trader" and (not string.find(sec, "warlab"))) or (string.find(sec, "_trader_")) then
+				potential_traders[se_obj.id] = "trader"
+			elseif string.find(sec, "_barman") then
+				potential_traders[se_obj.id] = "barman"
+			elseif string.find(sec, "_mechanic") then
+				potential_traders[se_obj.id] = "mechanic"
+			elseif string.find(sec, "_medic") then
+				potential_traders[se_obj.id] = "medic"
+			elseif string.find(sec, "yan_stalker_sakharov") or string.find(sec, "jup_b6_scientist_nuclear_physicist") then
+				potential_traders[se_obj.id] = "sci"
+			-- save only small portion of stalkers
+			elseif ((stalkers_pool / 100) > math.random()) and (not string.find(sec, "warlab")) then
+				potential_traders[se_obj.id] = "stalker"
+			end
+
+		end
+	end
+
+	-- exclude traders that we werent met yet (without profile), except stalkers
+	for npc_id, npc_group in pairs(potential_traders) do
+		if npc_group ~= "stalker" and (not trade_manager.get_trade_profile(npc_id)) then
+			potential_traders[npc_id] = nil
+		end
+	end
+
+
+	-- test
+	local item_sec = pda_inter_gui.pda_msg_states[4] and pda_inter_gui.pda_msg_states[4].section
+	local stalkers, traders, available_traders = 0, 0, 0
+	for npc_id, npc_group in pairs(potential_traders) do
+		if npc_group == "stalker" then
+			-- all stalkers
+			stalkers = stalkers + 1
+		else
+			-- all traders
+			traders = traders + 1
+		end
+
+		-- available traders
+		if trade_manager.get_trade_profile(npc_id) and get_npc_item_list(npc_id) then
+			local itm_list = get_npc_item_list(npc_id)
+			if item_sec and itm_list[item_sec] then
+				available_traders = available_traders + 1
+			end
+		end
+	end
+
+	pr("stalker: %s || traders: %s || avail_traders: %s", stalkers, traders, available_traders)
+
+end
+
+function setup_traders_on_update()
+	local tg = time_global()
+	if (tmr and tg < tmr) then return end
+	tmr = tg + 1000
+
+	local state = pda_inter_gui.pda_msg_states[4] and pda_inter_gui.pda_msg_states[4].state
+	if (not state) or state ~= 5 then return end
+
+	-- add traders for lower menu here
+	add_trader()
+
+end
+
+function add_trader()
+	if #Trade_available_messages >= 5 then return end
+
+	pr("---------------------------------------------------------------------------")
+	local item_sec = pda_inter_gui.pda_msg_states[4].section
+
+	-- pick random trader from the pool
+	local t = potential_traders
+	local rnd_trader_id = size_table(t) > 0 and rnd_key_table(t)
+	if not rnd_trader_id or (not alife_object(rnd_trader_id)) then return end
+
+	-- test
+	local print_npc = alife_object(rnd_trader_id)
+	pr("name: %s", print_npc and print_npc:character_name())
+
+	-- dont add traders that already responded
+	local already_responded = is_trader_already_responded(Trade_available_messages, rnd_trader_id)
+	if already_responded then return end
+
+	-- get trader's group, but exclude traders that we werent met yet or that dont or cant have selected item (group "stalker" can scam)
+	local trader_group = get_trader_group(t, rnd_trader_id, item_sec)
+	if not trader_group then return end
+
+	-- exclude enemy traders (except group "stalker")
+	local relations = get_trader_relations(rnd_trader_id)
+	if (not relations) or (trader_group ~= "stalker" and relations == "enemy") then return end
+
+	-- get chance to respond
+	local chance_to_answer = get_respond_chance(item_sec, trader_group)
+	if not chance_to_answer then return end
+
+	local print_npc = alife_object(rnd_trader_id)
+	pr("chance: %s%", math.floor(chance_to_answer * 100))
+
+	if chance_to_answer <= math.random() then return end
+
+	-- pick a random stash on selected level and distance from trader to it
+	local stash = get_random_level_stash()
+	local distance = stash and get_dist_to_stash(rnd_trader_id, stash)
+	if not distance then return end
+	distance = math.ceil(distance)
+
+	-- get item price and quantity
+	local quantity = pda_inter_gui.pda_msg_states[4].quantity
+	local item_price = get_item_price(rnd_trader_id, item_sec, trader_group)
+	if (not item_price) or (not quantity) then return end
+
+	-- delivery price
+	local delivery_percent = sell_chance[trader_group].delivery_percent
+	local delivery_price = quantity * item_price * delivery_percent * delivery_price_mult
+
+	-- total price
+	local total_price = math.ceil(quantity * item_price + delivery_price)
+
+	-- get delivery time
+	local max_time = 4 * 86400 * delivery_time_mult
+	local delivery_distance = normalize(distance, 9600, 1)		-- 9600 meters from darkscape to generators
+	local delivery_time = max_time * (1 - delivery_distance)
+	delivery_time = math.ceil(delivery_time)
+	delivery_time = math.random(delivery_time * 0.75, delivery_time * 1.25)
+
+	-- response info
+	pr("~Responded!")
+	pr("Trader sec: %s || name: %s", alife_object(rnd_trader_id):section_name(), alife_object(rnd_trader_id):character_name())
+	pr("chance was: %s%", math.floor(chance_to_answer * 100))
+
+	-- Save trader info
+	local se_obj = alife_object(rnd_trader_id)
+	table.insert(Trade_available_messages, {})
+	Trade_available_messages[#Trade_available_messages].id = rnd_trader_id
+	Trade_available_messages[#Trade_available_messages].section = item_sec
+	Trade_available_messages[#Trade_available_messages].stash_id = stash.id
+	Trade_available_messages[#Trade_available_messages].quantity = quantity
+
+	Trade_available_messages[#Trade_available_messages].name = se_obj.character_name and se_obj:character_name() or se_obj:name()
+	Trade_available_messages[#Trade_available_messages].icon = se_obj:character_icon()
+	Trade_available_messages[#Trade_available_messages].comm = se_obj:community()
+	Trade_available_messages[#Trade_available_messages].reputation = se_obj:reputation()
+	Trade_available_messages[#Trade_available_messages].distance = distance
+	Trade_available_messages[#Trade_available_messages].price = total_price
+	Trade_available_messages[#Trade_available_messages].delivery_price = math.ceil(delivery_price)
+	Trade_available_messages[#Trade_available_messages].delivery_time = delivery_time
+
+	if trader_group ~= "stalker" then		-- for scam
+		Trade_available_messages[#Trade_available_messages].name_color = true
+	end
+
+	-- send news offer message
+	local def_clr = strformat("%c[%s,%s,%s,%s]", 255, 190, 190, 190)
+	local inc_clr = strformat("%c[%s,%s,%s,%s]", 255, 0, 140, 180)
+	local se_obj_name = se_obj.character_name and se_obj:character_name() or se_obj:name()
+	local msg = inc_clr .. gt("pda_private_msg") .. " " .. def_clr .. gt("pda_trade_offer_" .. math.random(1, 3))
+	dynamic_news_helper.send_tip(msg, se_obj_name, nil, 5, se_obj:character_icon(), "news", "npc")
+
+	-- update GUI
+	pda_inter_gui.GUI:UpdTradeLowerMenu()
+
+end
+
+function clear_trade_tables()
+	iempty_table(Trade_available_messages)
+	empty_table(potential_traders)
+
+end
+
+function setup_order(idx)
+	-- store orders before tables are cleared
+	local t = Trade_available_messages
+	local cur_time = game.get_game_time()
+
+	-- send message
+	local def_clr = strformat("%c[%s,%s,%s,%s]", 255, 190, 190, 190)
+	local inc_clr = strformat("%c[%s,%s,%s,%s]", 255, 0, 140, 180)
+	local msg = inc_clr .. gt("pda_private_msg") .. " " .. def_clr .. gt("pda_trade_order_" .. math.random(1, 2))
+	dynamic_news_helper.send_tip(msg, t[idx].name, nil, 10, t[idx].icon, "danger", "npc")
+
+	-- check for scam
+	local cant_scam = t[idx].name_color
+	local reputation = t[idx].reputation
+	reputation = normalize(reputation, 2000, -2000)
+
+	if cant_scam or (reputation < math.random()) then
+		table.insert(Ordered_items, {})
+		Ordered_items[#Ordered_items].name = t[idx].name
+		Ordered_items[#Ordered_items].section = t[idx].section
+		Ordered_items[#Ordered_items].amount = t[idx].quantity
+		Ordered_items[#Ordered_items].icon = t[idx].icon
+		Ordered_items[#Ordered_items].stash_id = t[idx].stash_id
+		Ordered_items[#Ordered_items].start_time = ctime_to_t(cur_time)
+		Ordered_items[#Ordered_items].duration = t[idx].delivery_time
+	end
+
+end
+
+function manage_orders_on_update()
+	local tg = time_global()
+	if (tmr_order and tg < tmr_order) then return end
+	tmr_order = tg + 3000
+
+	if #Ordered_items <= 0 then return end
+
+	-- check passed time and then spawn section and amount in the stash
+	check_order_time_and_spawn()
+
+end
+
+function check_order_time_and_spawn()
+	local cur_time = game.get_game_time()
+
+	for idx, t in ipairs(Ordered_items) do
+		if cur_time:diffSec(t_to_ctime(t.start_time)) > (t.duration) then
+			-- spawn item
+			local stash = alife_object(t.stash_id)
+			for i = 1, t.amount do
+				alife_create_item(t.section, stash)
+			end
+
+			-- mark stash and pass stash id again (need to reset ordered_items here)
+			delivered_stashes[t.stash_id] = t.name
+
+			if level.map_has_object_spot(t.stash_id, "secondary_task_location") == 0 then
+				level.map_add_object_spot_ser(t.stash_id, "secondary_task_location", t.name .. " " .. gt("pda_delivery_stash"))
+			end
+
+			-- send message
+			pr("- Stash created")
+			local def_clr = strformat("%c[%s,%s,%s,%s]", 255, 190, 190, 190)
+			local inc_clr = strformat("%c[%s,%s,%s,%s]", 255, 0, 140, 180)
+			local msg = inc_clr .. gt("pda_private_msg") .. " " .. def_clr .. gt("pda_trade_deliver_" .. math.random(1, 2))
+			dynamic_news_helper.send_tip(msg, t.name, nil, 15, t.icon, "danger", "npc")
+
+			-- remove from array
+			table.remove(Ordered_items, idx)
+
+		end
+	end
+
+end
+
+function ActorMenu_on_item_after_move(box_id, item, str)
+	if str == "loot" then
+		local id = box_id
+		if not delivered_stashes[id] then return end
+
+		pr("stash taken")
+		level.map_remove_object_spot(id, "secondary_task_location")
+
+		delivered_stashes[id] = nil
+	end
+
+end
+
+------------------------------ utils ------------------------------
+local all_items = {}
+local trade_ini = ini_file("plugins\\pda_trade_items.ltx")
+local to_collect = { "pistols", "rifles", "ammo", "ammo_bad", "ammo_damaged", "w_addons", "explosives", "melee", "headgear", "outfits", "outfits_ecolog", "backpacks", "artefacts", "drugs", "cigs", "drinks", "food", "fuels", "misc", "devices", "mutant_parts", "trash", "tools", "repair_kits", "upgrade_items", "parts", "camping", "money", "toolkits_h", "artefacts_h" }
+local to_exclude = { "_1p29", "_kobra", "_ps01", "_pso1m21", "_ac10632", "_acog", "_eot", "_c-more", "_ac11090", "_verybad" }
+
+local to_group = {
+	["melee"] = {"melee"},
+	["pistols"] = { "pistols"},
+	["rifles"] = {"rifles"},
+	["ammo"] = { "ammo", "ammo_bad"},
+	["explosives"] = {"explosives"},
+	["w_addons"] = {"w_addons"},
+	["outfits"] = {"outfits", "outfits_ecolog"},
+	["headgear"] = {"headgear"},
+	["backpacks"] = {"backpacks"},
+	["devices"] = {"devices"},
+	["mutant_parts"] = {"mutant_parts" },
+	["artefacts"] = { "artefacts", "artefacts_h"},
+	["medicine"] = { "drugs" },
+	["food"] = { "cigs", "drinks", "food" },
+	["repair"] = { "tools", "repair_kits", "upgrade_items", "parts", "toolkits_h" },
+	["others"] = { "fuels", "misc", "camping" },
+	["trash"] = { "trash" },
+}
+
+function collect_all_items()
+	for i = 1, #to_collect do
+		local n = 0
+		n = trade_ini:line_count(to_collect[i])
+		for j = 0, n - 1 do
+			result, id, value	= trade_ini:r_line_ex(to_collect[i], j, "", "")
+			if ini_sys:section_exist(id) then
+				-- collect into all_items (for search)
+				local name = ini_sys:r_string_ex(id, "inv_name")
+				if name then
+					all_items[id] = name
+				end
+
+				-- sort into item_groups (for traders)
+				for group, t in pairs(to_group) do
+					for g = 1, #t do
+						if to_collect[i] == t[g] then
+							-- save section to certain group
+							item_groups[id] = group
+						end
+					end
+				end
+
+			end
+		end
+	end
+
+	-- add groups to categorized_items for GUI
+	for group, _ in pairs(to_group) do
+		categorized_items[group] = categorized_items[group] or {}
+
+		-- add sec and cost to this group
+		for sec, item_group in pairs(item_groups) do
+			if item_group == group then
+				-- add only valid items
+				local cost = ini_sys:r_float_ex(sec, "cost")
+				if cost and is_valid_item(sec, name) then
+					categorized_items[group][sec] = cost
+				end
+			end
+		end
+	end
+
+	-- sort by cost
+	for group, _ in pairs(categorized_items) do
+		categorized_items[group] = pda_inter_gui.t_to_ar_by_val(categorized_items[group], false, "k")
+	end
+end
+
+function is_valid_item(sec, name)
+	if sec == "ammo_box" then return end
+
+	local name = ini_sys:r_string_ex(sec, "inv_name")
+	if not name then return end
+
+	-- exclude scoped versions from the list
+	for i = 1, #to_exclude do
+		if string.find(sec, to_exclude[i]) then
+			return
+		end
+	end
+
+	-- exclude items that exist in debug only
+	if name == game.translate_string(name) then
+		return
+	end
+
+	-- exclude other stuff
+	if ini_sys:r_bool_ex(sec, "quest_item")
+	or (ini_sys:r_string_ex(sec, "kind") and ini_sys:r_string_ex(sec, "kind") == "i_quest")
+	or IsItem("anim", sec)
+	or sec == "bolt"
+	or sec == "bolt_bullet" then
+		return
+	end
+
+	-- allow only cost > 10
+	local cost = ini_sys:r_float_ex(sec, "cost")
+	if cost < 11 then
+		return
+	end
+
+	return true
+end
+
+function get_item_list_by_str(str)
+	if (not str) or (str == "") then return end
+
+	local t = {}
+	for sec, name in pairs(all_items) do
+		local tname = game.translate_string(name)
+		local str_low = string.lower(str)
+		local tname_low = string.lower(tname)
+
+		if string.find(tname_low, str_low) then
+
+			-- exclude scoped versions from the list
+			local cancel = false
+			for i = 1, #to_exclude do
+				if string.find(sec, to_exclude[i]) then
+					cancel = true
+					break
+				end
+			end
+
+			-- exclude items that exist in debug only
+			if name == tname then
+				cancel = true
+			end
+
+			-- exclude other stuff
+			if ini_sys:r_bool_ex(sec, "quest_item")
+			or (ini_sys:r_string_ex(sec, "kind") and ini_sys:r_string_ex(sec, "kind") == "i_quest")
+			or IsItem("anim", sec)
+			or sec == "bolt"
+			or sec == "bolt_bullet" then
+				cancel = true
+			end
+
+			-- add
+			if (not cancel) then
+				table.insert(t, {sec, name})
+			end
+
+		end
+	end
+
+	return t
+end
+
+-- bless Raven
+------------------------------ for add_trader() ------------------------------
+function is_trader_already_responded(t, trader_id)
+	local already_responded = false
+
+	for i = 1, #t do
+		if t[i] and t[i].id and t[i].id == trader_id then
+			already_responded = true
+			break
+		end
+	end
+
+	return already_responded
+end
+
+function get_npc_item_list(npc_id)
+	local config = ini_file(trade_manager.get_trade_profile(npc_id, "cfg_ltx"))
+	local supply_condlist = config and config:r_string_to_condlist("trader", "buy_supplies")
+	local supply_sec = supply_condlist and xr_logic.pick_section_from_condlist(db.actor, nil, supply_condlist)
+	local ini_ex = ini_file_ex("fonts.ltx")	-- should be fine for read only
+	ini_ex.ini = config
+	local sell_table = supply_sec and ini_ex:collect_section(supply_sec)
+
+	return sell_table
+end
+
+function get_trader_group(t, npc_id, item_sec)
+
+	-- get trader type
+	local trader_type = t[npc_id]
+	if not trader_type then return end
+
+	local trader_group
+	-- if trader has profile and item list
+	if trade_manager.get_trade_profile(npc_id) then
+		pr("- has profile")
+		local trader_item_list = get_npc_item_list(npc_id)
+		-- and if this list has selected item section
+		if trader_item_list and trader_item_list[item_sec] then
+			pr("- has item in the list")
+			trader_group = trader_type
+		end
+	-- elseif trader is random stalker
+	elseif trader_type == "stalker" then
+		trader_group = trader_type
+	end
+
+	if trader_group then
+		pr("trader_group: %s", trader_group)
+		return trader_group
+	end
+
+	return trader_group
+end
+
+function get_trader_relations(trader_id)
+	local trader = alife_object(trader_id)
+	if not trader then return end
+
+	local trader_comm = trader.community and trader:community() or "stalker"
+	local ac_true_comm = get_actor_true_community()
+	local relation
+
+	if game_relations.is_factions_friends(trader_comm, ac_true_comm) then
+		relation = "friend"
+	elseif game_relations.is_factions_neutrals(trader_comm, ac_true_comm) then
+		relation = "neutral"
+	elseif game_relations.is_factions_enemies(trader_comm, ac_true_comm) then
+		relation = "enemy"
+	end
+
+	return relation
+end
+
+function get_respond_chance(item_sec, trader_group)
+	-- get item group
+	local item_group = item_groups[item_sec]
+	if not item_group then return end
+
+	-- base chance to respond
+	local base_chance = sell_chance[trader_group][item_group] or 0.05		-- from 0.05 to 1.0
+
+	-- modify chance with item tier
+	local item_chance = ini_sys:r_float_ex(item_sec, "tier") or 4
+	item_chance = normalize(item_chance, 6, 1)
+
+	local respond_chance = base_chance * item_chance * respond_chance_mult
+	pr("item group: %s || base_chance: %s || item_chance: %s || total: %s", item_group, base_chance, item_chance, respond_chance)
+
+	return respond_chance
+end
+
+function get_random_level_stash()
+	local selected_level = pda_inter_gui.pda_msg_states[4].level
+
+	local all_level_stashes = {}
+	local random_level_stashes = { ["l09_deadcity"] = true, ["l10_radar"] = true, ["pripyat"] = true, ["l11_hospital"] = true, ["l12_stancia"] = true, ["l12_stancia_2"] = true, ["l13_generators"] = true, ["jupiter"] = true, ["zaton"] = true, ["promzona"] = true, ["grimwood"] = true, ["poselok_ug"] = true }
+
+	-- get all stashes on selected level
+	for id, _ in pairs(treasure_manager.caches) do
+		local se_stash = alife_object(id)
+		if se_stash then
+			local se_stash_level_id = game_graph():vertex(se_stash.m_game_vertex_id):level_id()
+			local se_stash_level_name = alife():level_name(se_stash_level_id)
+			if se_stash_level_name == selected_level then
+				table.insert(all_level_stashes, se_stash)
+			end
+		end
+	end
+
+	-- if selected level is from obnoxious list then return a random stash
+	if random_level_stashes[selected_level] then
+		local random_random_stash = all_level_stashes[math.random(1, #all_level_stashes)]
+		pr("#returning random stash name: %s", random_random_stash:name())
+		return random_random_stash
+	end
+
+
+	-- get all stash names from our ltx
+	local ltx_stash_names = {}
+	local stash_ini = ini_file("plugins\\pda_trade_stashes.ltx")
+	local n = 0
+	n = stash_ini:line_count(selected_level)
+	for i = 0, n - 1 do
+		result, id, value	= stash_ini:r_line_ex(selected_level, i, "", "")
+		ltx_stash_names[id] = true
+		pr("- saving ltx stash name: %s", id)
+	end
+
+	-- add stashes with matched names from all_level_stashes to a new array
+	local ltx_stashes = {}
+	for idx, stash in ipairs(all_level_stashes) do
+		local stash_name = stash:name()
+		if stash_name and ltx_stash_names[stash_name] then
+			pr("adding stash name to a new array: %s", stash_name)
+			table.insert(ltx_stashes, stash)
+		end
+	end
+
+	local random_stash = ltx_stashes[math.random(1, #ltx_stashes)]
+	pr("returning ltx stash name: %s", random_stash:name())
+
+	return random_stash
+end
+
+function get_dist_to_stash(obj_id, target)
+	local se_obj = alife_object(obj_id)
+	if (not se_obj) or (not target) then return end
+
+	-- additional checks for possible offset error
+	local se_obj_p = se_obj.position
+	local target_p = target.position
+	if (not se_obj_p) or (not target_p) then return end
+
+	local se_obj_lid = game_graph():vertex(se_obj.m_game_vertex_id):level_id()
+	local target_lid = game_graph():vertex(target.m_game_vertex_id):level_id()
+	if (not se_obj_lid) or (not global_position.level_offsets[se_obj_lid]) then return end
+	if (not target_lid) or (not global_position.level_offsets[target_lid]) then return end
+
+	-- this can sometimes be nil for whatever reason
+	local se_obj_pos = global_position.from(se_obj_p, se_obj_lid)
+	local target_pos = global_position.from(target_p, target_lid)
+	if (not se_obj_pos) or (not target_pos) then return end
+
+	local dist_between = se_obj_pos:distance_to_xz(target_pos)
+	dist_between = dist_between < 1 and 1 or dist_between
+
+	return dist_between
+end
+
+function get_item_price(npc_id, item_sec, group)
+	local npc = alife_object(npc_id)
+	if not npc then return end
+
+	local item_price
+
+	local eco_factor = game_difficulties.get_eco_factor("sell") or 1
+	local discount = group == "stalker" and (1.4 * eco_factor) or get_sell_discountx(npc_id)		-- kills engine if u change this
+	if not discount then return end
+
+	-- base price
+	local item_base_price = ini_sys:r_float_ex(item_sec, "cost")
+	item_price = item_base_price * discount
+
+	-- add some random price range for random stalkers
+	if group == "stalker" then
+		local rnd_range = math.random(90, 120) / 100
+		item_price = item_price * rnd_range
+	end
+
+	pr("disc: %s || base: %s || total: %s", discount, item_base_price, math.ceil(item_price))
+
+	return item_price
+end
+
+function get_sell_discountx(id)
+	--utils_data.debug_write("get_sell_discount")
+	local config = ini_file(trade_manager.get_trade_profile(id, "cfg_ltx"))
+	local condlist = config and config:r_string_to_condlist("trader", "discounts")
+	local sect = condlist and xr_logic.pick_section_from_condlist(db.actor, nil, condlist)
+	if (sect == nil or sect == "") then return end
+
+	local factor = config:r_float_ex(sect, "sell")
+	local eco_factor = game_difficulties.get_eco_factor("sell")
+	if (not factor) or (not eco_factor) then return end
+
+
+	factor = factor * eco_factor
+
+	return factor
+end
+
+------------------------------------------------------------------------------------
+function rnd_key_table(t)		-- for 1.5.1
+	local check = t and type(t) == "table"
+	if not check then
+		return
+	end
+	local n = {}
+	for k,v in pairs(t) do
+		n[#n+1] = k
+	end
+	return #n > 0 and n[math.random(#n)] or nil
+end
+
+function pr(...)
+	if not pda_inter_gui.Custom_PDA_debug then return end
+	printf(...)
+end
+
+function save_state(m_data)
+	m_data.Ordered_items = Ordered_items
+	m_data.delivered_stashes = delivered_stashes
+end
+
+function load_state(m_data)
+	Ordered_items = m_data.Ordered_items or {}
+	delivered_stashes = m_data.delivered_stashes or {}
+end
+
+function on_option_change()
+	respond_chance_mult = pda_inter_mcm.get_config("trade_respond_mult")
+	delivery_price_mult = pda_inter_mcm.get_config("trade_delivery_price_mult")
+	delivery_time_mult = pda_inter_mcm.get_config("trade_delivery_time_mult")
+	stalkers_pool = pda_inter_mcm.get_config("trade_stalker_pool")
+end
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_first_update", collect_all_items)
+	RegisterScriptCallback("actor_on_update", setup_traders_on_update)
+	RegisterScriptCallback("actor_on_update", manage_orders_on_update)
+	RegisterScriptCallback("ActorMenu_on_item_after_move", ActorMenu_on_item_after_move)
+	RegisterScriptCallback("save_state", save_state)
+	RegisterScriptCallback("load_state", load_state)
+	RegisterScriptCallback("on_option_change", on_option_change)
+end

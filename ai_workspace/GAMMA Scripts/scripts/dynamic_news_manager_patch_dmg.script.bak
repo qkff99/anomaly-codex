@@ -1,0 +1,848 @@
+-- ===========================================================================================================================
+--[[	Addon: Dynamic News Manager Fixes and Tweaks
+-- ===========================================================================================================================
+ 	
+ 	Author: dEmergence (dEmergence @ ModDB)
+ 	Version: 1.2.1
+	Updated: 20241114
+
+	----------------
+	 Compatibility:
+	----------------
+	
+		This addon is primarily compatible with the vanilla 1.5.x dynamic_news_manager.script and the extended version:
+			https://www.moddb.com/mods/stalker-anomaly/addons/dialogue-expanded-v4
+		
+		Most addons using a modified dynamic_news_manager.script file should work fine as well, notably:
+			https://www.moddb.com/mods/stalker-anomaly/addons/dialogue-expanded-expanded-152-eng/
+			https://www.moddb.com/mods/stalker-anomaly/addons/ultimate-dialogue-expanded
+			LTTZ DC / LTTZ DC DLTX
+	
+	-----------------
+	 Addon Contents:
+	-----------------
+
+		Busy Hands Fixes
+			NPC and Item objects are no longer pushed to the message queue, instead their id number is stored and the script attempts
+			to retrieve the object when needed.
+			
+		Broken Spammer Counter Fix
+			NPC/Monster "on_death" messages after the first were suppressed due to spammer counter never increasing.
+			
+		News about UNISG
+			Messages about UNISG in functions such as "npc_on_death_callback" etc. are no longer permanently suppressed 
+			in freeplay or after their reveal within the main LTTZ story.
+		
+		Message String Sanitizing
+			Instances of Double-spaces in messages should now be removed in all messages passing through send_tip function.
+			
+		FindSpeaker Tweaks / Dead NPCs messages suppression
+			Caching of viable speakers to slightly increase performance.
+			Improved speaker selection process to avoid "special" npcs to be selected where possible.
+			Dead NPCs won't send messages and delayed messages of dead NPCs will not be shown.
+
+	------------------
+	 Recommendations:
+	------------------
+	
+		Be sure to also check out these fixes provided by other modders ...
+		
+		"Dynamic News Heard Melee Fix" and "Dynamic News Task Gossip Fix" by Tosox:
+			https://www.moddb.com/mods/stalker-anomaly/addons/tosox-mini-mods-repo/
+			
+	------------------
+	 Change Log:
+	------------------
+		
+		1.0.1	Added Checks to avoid send_tip crashes due to empty messages.
+		1.1.0	Replaced dynamic_news_helper.send_tip function entirely to implement string sanitization.
+				Disabled attempted fix for repetitive messages.
+		1.2.0	Reworked Busy Hands fixes, now including item loot messages which have also been a cause for issues.
+				Improved Spammer Counter Fix, added FindSpeaker Tweaks and Dead NPCs messages suppression.
+				Refactored debug output code.
+		1.2.1	Added Compatibility for most recent U.D.E. version which introduced some major code changes
+
+-- ========================================================================================================================--]]
+
+settings = {
+	["enable_debug_output"] = false,
+	["enable_general_error_debug_output"] = true,
+	["enable_isg_news_after_story_reveal"] = true,
+	["enable_isg_news_debug_output"] = true,
+	["enable_string_trim_fix_debug_output"] = true,
+	["enable_response_who_fix_debug_output"] = true,
+	["enable_findspeaker_tweaks"] = true,
+	["online_npc_cache_refresh_time"] = 5000,
+	["enable_repetitive_news_filter"] = true,
+	["enable_rn_filter_debug_output"] = true,
+	["rn_filter_message_min_timeout"] = 30000 -- minimum suppression time for one and the same message
+}
+
+local spammer_limit = {	
+	["show_about_death"] = 3, -- default: 3
+--	["show_about_kill_wounded"] = 10, -- default: 10
+	["show_about_death_mutant"] = 3, -- default: 3
+--	["show_about_death_response"] = 2, -- default: 2
+--	["show_about_loot"] = 1 -- default: 1
+}
+
+function d_printf(debug_text, source)
+	if not settings["enable_debug_output"] then return end
+	source = tostring(source)
+	if source == "gen" and not settings["enable_general_error_debug_output"] then return end
+	if source == "isg" and not settings["enable_isg_news_debug_output"] then return end
+	if source == "stf" and not settings["enable_string_trim_fix_debug_output"] then return end
+	if source == "fst" and not settings["enable_findspeaker_tweaks"] then return end
+	if source == "rnf" and not settings["enable_rn_filter_debug_output"] then return end
+	if source == "rwf" and not settings["enable_response_who_fix_debug_output"] then return end
+	printf(tostring(debug_text))
+end
+
+--============================================< Patches >=====================================================--
+
+----------------------------------------- < News about UNISG > -------------------------------------------------
+
+local dbg_has_shown_isg_status = false
+orig_update_settings = dynamic_news_manager.update_settings
+dynamic_news_manager.update_settings = function(self)
+	orig_update_settings(self)	
+	if not settings["enable_isg_news_after_story_reveal"] then return end
+
+	local instance = dynamic_news_manager.get_dynamic_news()
+	if not instance then
+		d_printf("~dynamic_news_manager_patch @ update_settings : instance not ready yet.", "gen")
+		return
+	end
+	
+	-- UNISG does not need to be unknown if story has progressed beyond a specific point or is not chosen at all
+	if not (IsStoryMode() and IsStoryPlayer()) or (IsStoryMode() and IsStoryPlayer() and has_alife_info("operation_afterglow_complete")) then
+		instance.unknown["isg"] = false
+		if not dbg_has_shown_isg_status then
+			d_printf("*dynamic_news_manager_patch @ update_settings : UNISG is known to stalkers at this point", "isg")
+			dbg_has_shown_isg_status = true
+		end
+	end
+end
+
+----------------------------------------- < Busy Hands Fixes > -------------------------------------------------
+
+orig_TickQuick = dynamic_news_manager.DynamicNewsManager.TickQuick
+dynamic_news_manager.DynamicNewsManager.TickQuick = function(self)
+	if (dynamic_news_manager.enable_news == false) then
+		return true
+	end
+	
+	local instance = dynamic_news_manager.get_dynamic_news()
+	if not instance then
+		d_printf("~dynamic_news_manager_patch @ TickQuick : instance not ready yet.", "gen")
+		return false
+	end
+	
+	if instance.response["who"] and type(instance.response["who"]) == "number" then
+		-- look up npc object by id and convert var to object (if still valid) or just set false and forget it
+		local obj_id = instance.response["who"]
+		local obj = get_object_by_id(obj_id)
+		if not obj then
+			d_printf("~dynamic_news_manager_patch @ TickQuick : npc object with id ["..tostring(obj_id).."] already expired.", "rwf")
+			instance.response["who"] = false
+		elseif not IsStalker(obj) then
+			d_printf("!dynamic_news_manager_patch @ TickQuick : npc object with id ["..tostring(obj_id).."] is not a valid npc.", "rwf")
+			instance.response["who"] = false
+		else
+			d_printf("-dynamic_news_manager_patch @ TickQuick : retrieved npc object reference for id ["..tostring(obj_id).."]", "rwf")
+			instance.response["who"] = obj
+		end
+	end	
+	
+	orig_TickQuick(self)
+end
+
+-- v1.2 replaces function instead of just patching it:
+--orig_npc_on_get_all_from_corpse = dynamic_news_manager.DynamicNewsManager.npc_on_get_all_from_corpse
+dynamic_news_manager.DynamicNewsManager.npc_on_get_all_from_corpse = function(self,npc,corpse_npc,item,lootable_table)
+	-- orig_npc_on_get_all_from_corpse(self,npc,corpse_npc,item,lootable_table)	
+	local shw_loot = ui_options.get("alife/dynamic_news/loot_news")
+	if not (shw_loot and db.actor and npc and item) then 
+		return
+	end
+	
+	local instance = dynamic_news_manager.get_dynamic_news()
+	if not instance then
+		d_printf("~dynamic_news_manager_patch: instance not ready yet.", "gen")
+		return
+	end	
+	
+	local npc_id
+	if type(npc.id) == "function" then
+		npc_id = npc:id()
+	else
+		npc_id = npc.id
+	end
+	if instance.response["who"] ~= npc_id then
+		instance.response["who"] = npc_id
+		d_printf("*dynamic_news_manager_patch @ npc_on_get_all_from_corpse : replaced npc object reference with number for id ["..tostring(npc_id).."]", "rwf")
+	end
+	
+	local item_id
+	if type(item.id) == "function" then
+		item_id = item:id()
+	else
+		item_id = item.id
+	end
+	table.insert(instance.loot,item_id)
+	
+	d_printf("*dynamic_news_manager_patch @ npc_on_get_all_from_corpse : replaced item object reference with number for id ["..tostring(item_id).."]", "rwf")
+	
+	instance.response["type"] = "loot"
+	
+	ResetTimeEvent("DynamicNewsManager","TickQuick",4)	
+end
+
+-- v1.2 replaces function instead of just patching it:
+--orig_GetLootValue = dynamic_news_manager.DynamicNewsManager.GetLootValue
+dynamic_news_manager.DynamicNewsManager.GetLootValue = function(self,item_tbl)
+	local value = 0
+	for i=1,#item_tbl do
+		local item
+		if (type(item_tbl[i]) == "number") then
+			item = get_object_by_id(item_tbl[i])
+		else
+			item = item_tbl[i]
+		end
+		if item then
+			value = value + item:cost()
+		end
+	end	
+	--printf(">>> Dyn News: help GetLootValue | value = " .. value)
+	return value
+end
+
+-- v1.2 replaces function instead of just patching it:
+--orig_GetLootBestItem = dynamic_news_manager.DynamicNewsManager.GetLootBestItem
+dynamic_news_manager.DynamicNewsManager.GetLootBestItem = function(self,item_tbl)
+	local value = 0
+	local best_item_id, item_id
+	for i=1,#item_tbl do
+		local item
+		if (type(item_tbl[i]) == "number") then
+			item = get_object_by_id(item_tbl[i])
+			item_id = item_tbl[i]
+		else
+			item = item_tbl[i]
+			item_id = item:id()			
+		end
+		if item and item_id then
+			if (item:cost() > value) then
+				value = item:cost()
+				best_item_id = item_id
+			end
+		end
+	end
+	local best_item = get_object_by_id(best_item_id)
+	--printf(">>> Dyn News: help GetLootBestItem | best item's value: " .. value)
+	return best_item
+end
+
+----------------------------------------- < FindSpeaker Fixes > -------------------------------------------------
+
+online_npc_cache = {
+	["ids"] = {},
+	["senders"] = {},
+	["last_update"] = 0,
+	["last_count"] = 0
+}
+
+function update_online_npc_cache()
+	if (online_npc_cache.last_update > 0) 
+	and ((online_npc_cache.last_update + settings["online_npc_cache_refresh_time"]) > time_global())
+	and (online_npc_cache.last_count == #db.OnlineStalkers)
+	then 
+		d_printf("#dynamic_news_manager_patch @ update_online_npc_cache : using cached data ("..tostring(#online_npc_cache.ids).." npc ids)", "fst")
+		return
+	end
+
+	online_npc_cache.ids = {}
+	online_npc_cache.last_update = time_global()
+	online_npc_cache.last_count = #db.OnlineStalkers
+
+	for i=1, #db.OnlineStalkers do
+		local st = db.storage[db.OnlineStalkers[i]]
+		local npc = st and st.object or level.object_by_id(db.OnlineStalkers[i])
+		if (npc and IsStalker(npc,npc:clsid()) and not get_object_story_id(db.OnlineStalkers[i])) then
+			local se_name = strformat("%s, %s",npc:character_name(),dynamic_news_helper.GetCommunityDescription(npc,6))
+			if npc:alive() then
+				local idx = #online_npc_cache.ids + 1
+				online_npc_cache.ids[idx] = npc:id()
+			else
+				-- mark npc as dead in senders list if included
+				if online_npc_cache.senders[se_name] then
+					online_npc_cache.senders[se_name] = -1
+				end
+			end
+		end
+	end
+	d_printf("#dynamic_news_manager_patch @ update_online_npc_cache : cached online npcs ("..tostring(#online_npc_cache.ids).." found)", "fst")
+end
+
+orig_FindSpeakerNoVictim = dynamic_news_manager.DynamicNewsManager.FindSpeakerNoVictim
+dynamic_news_manager.DynamicNewsManager.FindSpeakerNoVictim = function(self,who,same_as_who,not_in_combat)
+	if not settings["enable_findspeaker_tweaks"] then
+		return orig_FindSpeakerNoVictim(self,who,same_as_who,not_in_combat)
+	end
+	
+	local instance = dynamic_news_manager.get_dynamic_news()
+	if not instance then
+		d_printf("~dynamic_news_manager_patch @ FindSpeakerNoVictim : instance not ready yet.", "gen")
+		return
+	end
+
+	local comm_sender
+	local comm_who = who and character_community(who) or nil
+	local who_id = who and who:id() or nil
+	local t = {}
+	local ts = {}
+
+	update_online_npc_cache()
+
+	for i=1, #online_npc_cache.ids do
+		if (who_id == nil) or (online_npc_cache.ids[i] ~= who_id) then
+			local st = db.storage[online_npc_cache.ids[i]]
+			local npc = st and st.object or level.object_by_id(online_npc_cache.ids[i])
+			if npc and npc:alive() then -- reduced check
+				if (not_in_combat == nil) or (not_in_combat == true and not npc:best_enemy()) or (not_in_combat ~= true) then
+					comm_sender = npc:character_community()
+					if (same_as_who == nil) or (comm_who == nil) or (same_as_who == true and comm_sender == comm_who) or (same_as_who == false and comm_sender ~= comm_who) then
+						if (instance.channel_status[comm_sender]) then
+							-- store ids for special npcs separately
+							if instance:IsSpecialNPC(npc) then
+								ts[#ts+1] = npc
+							else
+								t[#t+1] = npc
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+
+	-- prioritize non-special npcs
+	local sender
+	if (#t == 0) then
+		if (#ts == 0) then
+			return nil
+		end
+		sender = ts[math.random(#ts)]
+	else
+		sender = t[math.random(#t)]
+	end
+	
+	-- save se_name to distinguish from generic senders
+	local se_name = strformat("%s, %s",sender:character_name(),dynamic_news_helper.GetCommunityDescription(sender,6))
+	online_npc_cache.senders[se_name] = sender:id()
+	
+	return sender
+end
+
+orig_FindSpeaker = dynamic_news_manager.DynamicNewsManager.FindSpeaker
+dynamic_news_manager.DynamicNewsManager.FindSpeaker = function(self,victim,who,same_as_victim,same_as_who,not_in_combat,can_see)
+	if not settings["enable_findspeaker_tweaks"] then
+		return orig_FindSpeaker(self,victim,who,same_as_victim,same_as_who,not_in_combat,can_see)
+	end
+
+	local instance = dynamic_news_manager.get_dynamic_news()
+	if not instance then
+		d_printf("~dynamic_news_manager_patch @ FindSpeaker : instance not ready yet.", "gen")
+		return
+	end
+	
+	local comm = character_community(victim)
+	local comm_sender
+	local comm_who = character_community(who)
+	local who_id = who:id()
+	local t = {}
+	local ts = {}
+
+	update_online_npc_cache()
+	
+	for i=1, #online_npc_cache.ids do
+		if (online_npc_cache.ids[i] ~= who_id) then
+			local st = db.storage[online_npc_cache.ids[i]]
+			local npc = st and st.object or level.object_by_id(online_npc_cache.ids[i])
+			if npc and npc:alive() then -- reduced check
+				if (not_in_combat == nil) or (not_in_combat == true and not npc:best_enemy()) or (not_in_combat ~= true) then
+					comm_sender = npc:character_community()
+					if (same_as_victim == nil) or (same_as_victim == true and comm_sender == comm) or (same_as_victim == false and comm_sender ~= comm) then
+						if (same_as_who == nil) or (same_as_who == true and comm_sender == comm_who) or (same_as_who == false and comm_sender ~= comm_who) then
+							if (instance.channel_status[comm_sender]) then
+								if (can_see == nil) or (can_see and npc:see(victim)) or (can_see == false) then
+									-- store ids for special npcs separately
+									if instance:IsSpecialNPC(npc) then
+										ts[#ts+1] = npc
+									else
+										t[#t+1] = npc
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	
+	-- prioritize non-special npcs
+	local sender
+	if (#t == 0) then
+		if (#ts == 0) then
+			return nil
+		end
+		sender = ts[math.random(#ts)]
+	else
+		sender = t[math.random(#t)]
+	end
+	
+	-- save se_name to distinguish from generic senders
+	local se_name = strformat("%s, %s",sender:character_name(),dynamic_news_helper.GetCommunityDescription(sender,6))
+	online_npc_cache.senders[se_name] = sender:id()
+	
+	return sender
+end
+
+orig_FindSpeakerWithEnemy = dynamic_news_manager.DynamicNewsManager.FindSpeakerWithEnemy
+dynamic_news_manager.DynamicNewsManager.FindSpeakerWithEnemy = function(self,victim,who,same_as_victim,same_as_who,can_see)
+	if not settings["enable_findspeaker_tweaks"] then
+		return orig_FindSpeakerWithEnemy(self,victim,who,same_as_victim,same_as_who,can_see)
+	end
+
+	local instance = dynamic_news_manager.get_dynamic_news()
+	if not instance then
+		d_printf("~dynamic_news_manager_patch @ FindSpeakerWithEnemy : instance not ready yet.", "gen")
+		return
+	end
+	
+	local comm = character_community(victim)
+	local comm_sender
+	local comm_who = character_community(who)
+	local who_id = who:id()
+	local t = {}
+	local ts = {}
+	
+	update_online_npc_cache()
+	
+	for i=1, #online_npc_cache.ids do
+		if (online_npc_cache.ids[i] ~= who_id) then
+			local st = db.storage[online_npc_cache.ids[i]]
+			local npc = st and st.object or level.object_by_id(online_npc_cache.ids[i])
+			if npc and npc:alive() and npc:best_enemy() then  -- reduced check
+				comm_sender = npc:character_community()
+				if (same_as_victim == nil) or (same_as_victim == true and comm_sender == comm) or (same_as_victim == false and comm_sender ~= comm) then
+					if (same_as_who == nil) or (same_as_who == true and comm_sender == comm_who) or (same_as_who == false and comm_sender ~= comm_who) then
+						if (instance.channel_status[comm_sender]) then
+							if (can_see == nil) or (can_see and npc:see(victim)) or (can_see == false) then
+								if instance:IsSpecialNPC(npc) then
+									ts[#ts+1] = npc
+								else
+									t[#t+1] = npc
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	
+	-- prioritize non-special npcs
+	local sender
+	if (#t == 0) then
+		if (#ts == 0) then
+			return nil
+		end
+		sender = ts[math.random(#ts)]
+	else
+		sender = t[math.random(#t)]
+	end
+	
+	-- save se_name to distinguish from generic senders
+	local se_name = strformat("%s, %s",sender:character_name(),dynamic_news_helper.GetCommunityDescription(sender,6))
+	online_npc_cache.senders[se_name] = sender:id()
+	
+	return sender
+end
+
+orig_FindSpeakerRandom = dynamic_news_manager.DynamicNewsManager.FindSpeakerRandom
+if dynamic_news_manager.DynamicNewsManager.start_conversation then
+	-- U.D.E. detected, use workaround to allow for dead npc avoid to work:
+	dynamic_news_manager.DynamicNewsManager.FindSpeakerRandom = function(self,not_in_combat,speaker_community,exclude_npc_id)
+		if not settings["enable_findspeaker_tweaks"] then
+			return orig_FindSpeakerRandom(self,not_in_combat,speaker_community,exclude_npc_id)
+		end
+		d_printf("~dynamic_news_manager_patch @ FindSpeakerRandom : applying U.D.E. workaround", "gen")
+		exclude_npc_id = exclude_npc_id or 0
+		local sender, origin_npc_name = orig_FindSpeakerRandom(self,not_in_combat,speaker_community,exclude_npc_id)
+		origin_npc_name = (exclude_npc_id > 0) and origin_npc_name or "Unknown"
+		if sender then
+			local se_name = strformat("%s, %s",sender:character_name(),dynamic_news_helper.GetCommunityDescription(sender,6))
+			online_npc_cache.senders[se_name] = sender:id()
+			d_printf("* sender_name = "..tostring(se_name)..", origin_npc_name = "..tostring(origin_npc_name), "gen")
+		else
+			d_printf("** invalid sender - origin_npc_name = "..tostring(origin_npc_name), "gen")
+		end
+		return sender, origin_npc_name
+	end
+else
+	dynamic_news_manager.DynamicNewsManager.FindSpeakerRandom = function(self,not_in_combat,speaker_community)
+		if not settings["enable_findspeaker_tweaks"] then
+			return orig_FindSpeakerRandom(self,not_in_combat,speaker_community)
+		end
+
+		local instance = dynamic_news_manager.get_dynamic_news()
+		if not instance then
+			d_printf("~dynamic_news_manager_patch @ FindSpeakerRandom : instance not ready yet.", "gen")
+			return
+		end
+		
+		local comm_sender
+		local t = {}
+		local ts = {}
+		
+		update_online_npc_cache()
+		
+		for i=1, #online_npc_cache.ids do
+			local st = db.storage[online_npc_cache.ids[i]]
+			local npc = st and st.object or level.object_by_id(online_npc_cache.ids[i])
+			if npc and npc:alive() then  -- reduced check
+				if (not_in_combat == nil) or (not_in_combat == true and not npc:best_enemy()) or (not_in_combat ~= true) then
+					if (speaker_community == nil) or (speaker_community and npc:character_community() == speaker_community) then
+						comm_sender = npc:character_community()
+						if (instance.channel_status[comm_sender]) or (speaker_community == "zombied") then -- must use channel_status["general"] for intended zombied case
+							if instance:IsSpecialNPC(npc) then
+								ts[#ts+1] = npc
+							else
+								t[#t+1] = npc
+							end
+						end
+					end
+				end
+			end
+		end
+		
+		-- prioritize non-special npcs
+		local sender
+		if (#t == 0) then
+			if (#ts == 0) then
+				return nil
+			end
+			sender = ts[math.random(#ts)]
+		else
+			sender = t[math.random(#t)]
+		end
+		
+		-- save se_name to distinguish from generic senders
+		local se_name = strformat("%s, %s",sender:character_name(),dynamic_news_helper.GetCommunityDescription(sender,6))
+		online_npc_cache.senders[se_name] = sender:id()
+		
+		return sender
+	end
+end
+
+orig_FindSpeakerAndTarget = dynamic_news_manager.DynamicNewsManager.FindSpeakerAndTarget
+dynamic_news_manager.DynamicNewsManager.FindSpeakerAndTarget = function(self,not_in_combat,distance,speaker_community)
+	if not settings["enable_findspeaker_tweaks"] then
+		return orig_FindSpeakerAndTarget(self,not_in_combat,distance,speaker_community)
+	end
+
+	local instance = dynamic_news_manager.get_dynamic_news()
+	if not instance then
+		d_printf("~dynamic_news_manager_patch @ FindSpeakerAndTarget : instance not ready yet.", "gen")
+		return
+	end
+	
+	update_online_npc_cache()
+	
+	local sender,target,comm_sender
+	local dis = distance or 300
+	local t1,t2 = {},{}
+	local ts = {}
+	
+	-- Find a sender
+	for i=1, #online_npc_cache.ids do
+		local st = db.storage[online_npc_cache.ids[i]]
+		local npc = st and st.object or level.object_by_id(online_npc_cache.ids[i])
+		if npc and npc:alive() then  -- reduced check
+			if (not_in_combat == nil) or (not_in_combat == true and not npc:best_enemy()) or (not_in_combat ~= true) then
+				if (speaker_community == nil) or (speaker_community and npc:character_community() == speaker_community) then
+					comm_sender = npc:character_community()
+					if (instance.channel_status[comm_sender]) then
+						if instance:IsSpecialNPC(npc) then
+							ts[#ts+1] = npc
+						else
+							t1[#t1+1] = npc
+						end
+					end
+				end
+			end
+		end
+	end
+	if (#t1 == 0) then
+		if (#ts == 0) then
+			return nil
+		end
+		sender = ts[math.random(#ts)] -- vanilla functions may not use special npcs but who knows...
+	else
+		sender = t1[math.random(#t1)]
+	end
+	
+	if (not sender) then
+		return nil
+	end
+
+	-- save se_name to distinguish from generic senders
+	local se_name = strformat("%s, %s",sender:character_name(),dynamic_news_helper.GetCommunityDescription(sender,6))
+	online_npc_cache.senders[se_name] = sender:id()
+	
+	-- Find an enemy to sender
+	local sender_pos = sender:position()
+	local sender_comm = sender:character_community()
+	
+	local sim = alife()
+	local se_obj,clsid
+	for i=1,65534 do 
+		se_obj = sim:object(i)
+		clsid = se_obj and se_obj:clsid()
+		if clsid then
+			-- Check if its enemy stalker or monester
+			if ( IsStalker(nil,clsid) and (se_obj:community() ~= "trader") and game_relations.is_factions_enemies(sender_comm, se_obj:community()) ) or (IsMonster(nil,clsid)) then 
+				-- Check if its close to sender
+				if (se_obj.position:distance_to(sender_pos) < dis) and (se_obj.group_id ~= 65535) then
+					-- Check if its alive
+					if (se_obj:alive()) then
+						local st = db.storage[se_obj.id]
+						local npc = st and st.object or level.object_by_id(se_obj.id)
+						if npc then
+							t2[#t2+1] = npc
+						end
+					end
+				end
+			end
+		end
+	end
+	if (#t2 == 0) then
+		return nil
+	end
+	
+	target = t2[math.random(#t2)]
+
+	return sender,target
+end
+
+----------------------------------------- < Broken Spammer Counter Fix > -------------------------------------------------
+----------------------------------------- < and Busy Hands Fixes Cont. > -------------------------------------------------
+
+orig_PushToChannel = dynamic_news_manager.DynamicNewsManager.PushToChannel
+dynamic_news_manager.DynamicNewsManager.PushToChannel = function(self,name,t,fifo)
+	if not (name and t) then
+		d_printf("!dynamic_news_manager_patch @ PushToChannel : name or t is nil", "gen")
+		return
+	end
+	if not t.Mg then
+		d_printf("!dynamic_news_manager_patch @ PushToChannel : t.Mg is nil", "gen")
+		return
+	end
+	
+	-- v1.1: did not work as intended, disabled until fixed
+	-- Testing if removing escape chars may help:
+	-- local msg_clean = string.gsub(t.Mg,"\\n","")
+	-- if is_deja_vu(msg_clean) then
+		-- d_printf("*dynamic_news_manager_patch @ PushToChannel : Repetitive message WOULD be suppressed : "..tostring(msg_clean), "rnf")
+		--return
+	-- end
+	
+	if t.Id then
+		if t.Id.id then
+			-- replace object with id number
+			if type(t.Id.id) == "function" then
+				t.Id = t.Id:id()
+			else
+				t.Id = t.Id.id
+			end
+			d_printf("*dynamic_news_manager_patch @ PushToChannel : replaced npc object reference with number for id ["..tostring(t.Id).."]", "rwf")
+		end
+	end
+	
+	orig_PushToChannel(self,name,t,fifo)
+end
+
+-- this issue has been fixed in a different way in DFRC 2.2.3, so this should be applied only if that addon is *not* present at all or an outdated version
+-- it checks for 'dfrc_resources' because that was incidentally introduced in that update
+if not dynamic_news_manager_dfrc and not dfrc_resources then
+	d_printf("-dynamic_news_manager_patch: applying patch for monster_on_death_callback and npc_on_death_callback", "gen")
+
+	orig_monster_on_death_callback = dynamic_news_manager.DynamicNewsManager.monster_on_death_callback
+	dynamic_news_manager.DynamicNewsManager.monster_on_death_callback = function(self,victim,who)
+		local instance = dynamic_news_manager.get_dynamic_news()
+		if not instance then
+			d_printf("~dynamic_news_manager_patch @ monster_on_death_callback : instance not ready yet.", "gen")
+			return
+		end
+		local original_show_about_death_mutant = instance.spammer.show_about_death_mutant
+		orig_monster_on_death_callback(self,victim,who)
+		if (original_show_about_death_mutant ~= 0) then
+			instance.spammer.show_about_death_mutant = instance.spammer.show_about_death_mutant + 1 -- 0,1,2,3,4
+			if (instance.spammer.show_about_death_mutant > spammer_limit.show_about_death_mutant) then
+				instance.spammer.show_about_death_mutant = 0
+			end
+		end
+		d_printf("*dynamic_news_manager_patch @ (after) monster_on_death_callback : old show_about_death_mutant == "..tostring(original_show_about_death_mutant)..", new show_about_death_mutant == "..tostring(instance.spammer.show_about_death_mutant), "gen")
+	end
+
+	orig_npc_on_death_callback = dynamic_news_manager.DynamicNewsManager.npc_on_death_callback
+	dynamic_news_manager.DynamicNewsManager.npc_on_death_callback = function(self,victim,who)
+		local instance = dynamic_news_manager.get_dynamic_news()
+		if not instance then
+			d_printf("~dynamic_news_manager_patch @ npc_on_death_callback : instance not ready yet.", "gen")
+			return
+		end	
+		local original_show_about_death = instance.spammer.show_about_death
+		orig_npc_on_death_callback(self,victim,who)
+		if (original_show_about_death ~= 0) then
+			instance.spammer.show_about_death = instance.spammer.show_about_death + 1 -- 0,1,2,3,4
+			if (instance.spammer.show_about_death > spammer_limit.show_about_death) then
+				instance.spammer.show_about_death = 0
+			end
+		end
+		d_printf("*dynamic_news_manager_patch @ (after) npc_on_death_callback : old show_about_death == "..tostring(original_show_about_death)..", new show_about_death == "..tostring(instance.spammer.show_about_death), "gen")
+	end
+
+end
+
+----------------------------------------- < Message String Sanitizing > -------------------------------------------------
+----------------------------------------- < Repetitive message suppr. > -------------------------------------------------
+----------------------------------------- < Dead NPCs messages suppr. > -------------------------------------------------
+
+-- v1.1: 'is_deja_vu' does not work as intended, disabled until fixed
+-- message_history = {}
+-- function is_deja_vu(msg)
+	-- if not (msg and settings["enable_repetitive_news_filter"]) then return false end	
+	-- local message_min_timeout = settings["rn_filter_message_min_timeout"] or 30000
+	-- if message_history[msg] then
+		-- if (message_history[msg] + message_min_timeout) > time_global() then
+			-- return true
+		-- end
+	-- end
+	-- message_history[msg] = time_global()
+-- end
+
+-- v1.1: replaces function to make string sanitization work for any scenario and to add debug code for further development
+function dynamic_news_helper.send_tip(msg, header, timeout, showtime, sender, sound, icon_by)
+	d_printf("*dynamic_news_manager_patch @ call dynamic_news_helper.send_tip(msg='"..tostring(msg).."',header='"..tostring(header).."',timeout='"..tostring(timeout).."',showtime='"..tostring(showtime).."',sender='"..tostring(sender).."',sound='"..tostring(sound).."',icon_by='"..tostring(icon_by).."')", "stf")
+	if not (msg and db.actor) then -- if (actor is dead) and (there is not message)
+		d_printf("!dynamic_news_manager_patch @ dynamic_news_helper.send_tip : msg or db.actor is nil", "gen")
+		return false
+	end
+
+	-- v1.1: string sanitization
+	local sane_msg = trim(msg:gsub("  ", " ")) -- sanitize string: remove excess spaces
+	
+	if sane_msg ~= msg then
+		d_printf("-dynamic_news_manager_patch @ dynamic_news_helper.send_tip : string sanitization applied : '"..tostring(sane_msg).."'", "stf")
+	end
+	
+	-- v1.1: did not work as intended, disabled until fixed
+	-- if is_deja_vu(msg) then
+		-- d_printf("~dynamic_news_manager_patch @ dynamic_news_helper.send_tip : Repetitive message WOULD be suppressed : "..tostring(msg), "rnf")
+		-- --return
+	-- end
+	
+	msg = "%c[default]" .. game.translate_string(sane_msg)
+	
+	header = header or game.translate_string("st_tip") -- sender name (!!!)
+	timeout = timeout or 0 
+	showtime = showtime or 7
+	sender = sender or "default" -- faction
+	
+	-- if cache is active check if sender is npc and still alive
+	if settings["enable_findspeaker_tweaks"] and online_npc_cache and online_npc_cache.senders then
+		--d_printf("*dynamic_news_manager_patch @ dynamic_news_helper.send_tip : checking if sender is npc or generic : "..tostring(header), "fst")
+		local sender_id = online_npc_cache.senders[header]
+		if sender_id and type(sender_id) == "number" then
+			local dead = (sender_id < 0)
+			if not dead then
+				local st = db.storage[sender_id]
+				local npc = st and st.object or level.object_by_id(sender_id)
+				if npc and not npc:alive() then
+					dead = true
+				end
+			end			
+			if dead then
+				d_printf("~dynamic_news_manager_patch @ dynamic_news_helper.send_tip : caught dead sender : '"..tostring(header).."'. Message cancelled : "..tostring(msg), "fst")
+				return false
+			end
+		end
+	end
+
+	-- v1.1: moved 'icon' section above 'snd' section
+	-- pick icon to show
+	if icon_by=="gr" then
+		ui_sender = news_manager.tips_icons[sender]
+	elseif icon_by=="npc" then
+		ui_sender = sender
+	elseif icon_by==nil then
+		ui_sender = news_manager.tips_icons[sender]
+	end
+  
+	-- if icon is nil
+	if not (ui_sender) then
+		d_printf("~dynamic_news_manager_patch @ dynamic_news_helper.send_tip : Icon is nil. Message cancelled : "..tostring(msg), "gen")
+		return false 
+	end
+	
+	-- sound effect depends on the type of news
+	local function news_snd(snd)
+		if snd =="news" then	
+			xr_sound.set_sound_play(AC_ID, "pda_tips")
+		elseif snd == "danger" then
+			xr_sound.set_sound_play(AC_ID, "pda_alarm")
+		elseif snd == "communication_lost" then
+			xr_sound.set_sound_play(AC_ID, "pda_communication_lost")
+		elseif snd == "beep_1" then
+			xr_sound.set_sound_play(AC_ID, "pda_beep_1")
+		elseif snd == "beep_2" then
+			xr_sound.set_sound_play(AC_ID, "pda_beep_2")
+		elseif snd == "welcome" then
+			xr_sound.set_sound_play(AC_ID, "pda_welcome")
+		elseif snd == nil then
+			xr_sound.set_sound_play(AC_ID, "pda_tips")
+		end
+		return true
+	end
+	if (timeout == 0) then
+		news_snd(sound)
+	else
+		CreateTimeEvent("dynamic_news_snd_delay", math.random(1000), timeout, news_snd, sound)
+	end
+	
+	-- consume PDA power
+	item_device.drain_device_on_event(db.actor:item_in_slot(8), nil, 1)
+
+	-- send the news
+	db.actor:give_game_news(header, msg, ui_sender, timeout*1000, showtime*1000)
+
+	return true
+end
+
+----------------------------------------- < Callbacks > -------------------------------------------------
+
+function npc_on_death_callback( victim, killer )
+	if not IsStalker(victim) then return end
+	
+	if settings["enable_findspeaker_tweaks"] and online_npc_cache and online_npc_cache.senders then
+		local se_name = strformat("%s, %s",victim:character_name(),dynamic_news_helper.GetCommunityDescription(victim,6))
+		online_npc_cache.senders[se_name] = -1
+	end
+end
+
+function on_game_start()
+	RegisterScriptCallback( "npc_on_death_callback", npc_on_death_callback )
+end

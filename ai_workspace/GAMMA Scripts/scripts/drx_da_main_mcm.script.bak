@@ -1,0 +1,206 @@
+-- Table of new anomalies sections
+new_anomalies_sections = {
+    zone_mine_radar = true,
+    zone_mine_darkness = true,
+    zone_mine_flash = true,
+    zone_mine_ghost = true,
+    zone_mine_gold = true,
+    zone_mine_green_dragon = true,
+    zone_mine_mefistotel = true,
+    zone_mine_net = true,
+    zone_mine_point = true,
+    zone_mine_sphere = true,
+}
+
+-- Table of variations of old anomalies
+variations_anomalies_sections = {
+    zone_unknown = true,
+    zone_mine_acid = true,
+    zone_mine_electra = true,
+    zone_mine_springboard = true,
+    zone_mine_vortex = true,
+    zone_mine_blast = true,
+    zone_mine_zharka = true,
+    zone_mine_vapour = true,
+}
+
+presets = {
+    [0] = {
+        anomaly_zone_spawn_chance           = 0.5,
+        anomaly_zone_anomalies_distance_max = 35,
+        anomaly_zone_anomalies_distance_min = 2,
+        anomaly_amount_modifier             = 0.5,
+        max_artefacts_per_zone              = 2,
+        artefacts_spawn_chance              = 15,
+        random_artefact_spawn_chance        = 25,
+        gravitational_shake_modifier        = 0.5,
+        electric_field_modifier             = 0.5,
+        enable_anomalies_behaviour          = "true", -- Pass as string, thats important
+    },
+    [1] = {
+        anomaly_zone_spawn_chance           = 1,
+        anomaly_zone_anomalies_distance_max = 25,
+        anomaly_zone_anomalies_distance_min = 1,
+        anomaly_amount_modifier             = 1,
+        max_artefacts_per_zone              = 2,
+        artefacts_spawn_chance              = 15,
+        random_artefact_spawn_chance        = 25,
+        gravitational_shake_modifier        = 1,
+        electric_field_modifier             = 1,
+        enable_anomalies_behaviour          = "true", -- Pass as string, thats important
+    },
+    [2] = {
+        anomaly_zone_spawn_chance           = 1,
+        anomaly_zone_anomalies_distance_max = 25,
+        anomaly_zone_anomalies_distance_min = 0.5,
+        anomaly_amount_modifier             = 1.5,
+        max_artefacts_per_zone              = 2,
+        artefacts_spawn_chance              = 25,
+        random_artefact_spawn_chance        = 25,
+        gravitational_shake_modifier        = 1,
+        electric_field_modifier             = 1.5,
+        enable_anomalies_behaviour          = "true", -- Pass as string, thats important
+    },
+}
+
+op_id = "drx_da"
+op_preset_id = "presets"
+
+op = {
+	id = op_id, sh = true, gr = {
+    	{id = "banner", type = "slide", text = "ui_mcm_drx_da_title", size = {512, 50}, spacing = 20},
+
+        {id=op_preset_id, type="list", val=2, def=1, content={
+            {0, "drx_da_preset_easy"},
+            {1, "drx_da_preset_normal"},
+            {2, "drx_da_preset_hard"},
+        }},
+
+        {id = "anomaly_zone_spawn_chance", type = "track", val = 2, min = 0, max = 1, step = 0.1, def = presets[1].anomaly_zone_spawn_chance or 1},
+        {id = "anomaly_zone_anomalies_distance_max", type = "track", val = 2, min = 1, max = 60, step = 1, def = presets[1].anomaly_zone_anomalies_distance_max or 40},
+        {id = "anomaly_zone_anomalies_distance_min", type = "track", val = 2, min = -5, max = 5, step = 0.1, def = presets[1].anomaly_zone_anomalies_distance_min or 1.5},
+        {id = "anomaly_amount_modifier", type = "track", val = 2, min = 0, max = 3, step = 0.1, def = presets[1].anomaly_amount_modifier or 1},
+        {id = "max_artefacts_per_zone", type = "track", val = 2, min = 0, max = 3, step = 1, def = presets[1].max_artefacts_per_zone or 2},
+        {id = "artefacts_spawn_chance", type = "track", val = 2, min = 0, max = 25, step = 1, def = presets[1].artefacts_spawn_chance or 15},
+        {id = "random_artefact_spawn_chance", type = "track", val = 2, min = 0, max = 100, step = 1, def = presets[1].random_artefact_spawn_chance or 25},
+
+        {id = "divider", type = "line"},
+        {id = "gravitational_shake_modifier", type = "track", val = 2, min = 0, max = 2, step = 0.1, def = presets[1].gravitational_shake_modifier or 1},
+        {id = "electric_field_modifier", type = "track", val = 2, min = 0, max = 3, step = 0.1, def = presets[1].electric_field_modifier or 1},
+        {id = "enable_anomalies_behaviour", type = "check", val = 1, def = presets[1].enable_anomalies_behaviour ~= nil and presets[1].enable_anomalies_behaviour == "true" or presets[1].enable_anomalies_behaviour == nil and true},
+        {id = "save_after_cleanup", type = "check", val = 1, def = false},
+        {id = "disable_new_anomalies", type = "check", val = 1, def = false},
+
+        {id = "divider", type = "line"},
+        {id = "drx_da_choose_help", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_drx_da_choose_help"},
+
+        {id = "drx_da_choose_divider_begin", type = "line"},
+        -- Here will be anomalies choose to disable (see on_mcm_load)
+        {id = "drx_da_choose_divider_end", type = "line"},
+
+        {id = "delete_dynamic_anomalies", type = "check", val = 1, def = false},
+        {id = "debug_mode", type = "check", val = 1, def = false},
+    }
+}
+
+function add_drx_da_choose_options()
+    for i = #op.gr, 1, -1 do
+        if op.gr[i].id == "drx_da_choose_divider_end" then
+            -- Build list of new anomalies from drx_da_main.script
+            for k, _ in spairs(new_anomalies_sections, function(t, a, b) return a > b end) do
+                table.insert(op.gr, i, {id = k .. "_enable", type = "check", val = 1, def = true})
+                table.insert(op.gr, i, {id = k .. "_banner", type = "slide", link = "banner_" .. k .. ".dds", text = k .. "_section_name", size = {512, 50}, spacing = 20})
+            end
+            break
+        end
+    end
+end
+
+function remove_drx_da_choose_options()
+    for i = 1, #op.gr do
+        if op.gr[i].id == "drx_da_choose_divider_begin" then
+            i = i + 1
+            while op.gr[i].id ~= "drx_da_choose_divider_end" do
+                table.remove(op.gr, i)
+            end
+            break
+        end
+    end
+end
+
+function is_enabled_anomaly(section)
+    if ui_mcm then
+        return ui_mcm.get("drx_da/" .. section .. "_enable")
+    end
+    return true
+end
+
+function set_preset(self, p)
+    if not presets[p] then
+        printf("DRX DA preset %s not found", p)
+        return
+    end
+
+    -- Pre-build available MCM values
+    local t = {}
+    for _, v in ipairs(op.gr) do
+        if v.def ~= nil then
+            t[v.id] = v.def
+        end
+    end
+
+    for k, value in pairs(presets[p]) do
+        if t[k] then
+        
+            -- Validate option
+            local v = ui_mcm.get_opt_table(op_id .. "/" .. k)
+            if v and v.type then
+
+                -- Get proper value
+                if v.val == 0 then
+                    -- Pass input value as is
+                elseif v.val == 1 then
+                    value = (value == "true") and true or false
+                elseif v.val == 2 then
+                    value = clamp(tonumber(value), v.min or 0, v.max or 100)
+                end
+                
+                -- Extract path and opt
+                local t = ui_mcm.str_opt_explode(op_id .. "/" .. k)
+                local opt = t[#t]
+                local path = t[1]
+                for i=2,#t-1 do
+                    path = ui_mcm.cc(path , t[i])
+                end
+                
+                -- Cache changes
+                self:CacheValue(path, opt, value, v)
+            end
+        end
+    end
+
+    -- Update XML elements
+    self:Reset_opt(self.last_curr_tree, self.last_path)
+    
+    -- Update state
+    self:UpdatePending()
+end
+
+if ui_mcm and ui_mcm.UIMCM and ui_mcm.UIMCM.Callback_List then
+    MCM_Callback_List = ui_mcm.UIMCM.Callback_List
+    ui_mcm.UIMCM.Callback_List = function(self, ctrl, path, opt, v)
+        MCM_Callback_List(self, ctrl, path, opt, v)
+        if path ~= op_id then return end
+        if opt == op_preset_id then
+            local value = self:GetValue(path, opt, v)
+            set_preset(self, value)
+        end
+    end
+end
+
+function on_mcm_load()
+    remove_drx_da_choose_options()
+    add_drx_da_choose_options()
+    return op
+end
+

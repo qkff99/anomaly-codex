@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="windows-1251" ?>
+
+<game_dialogs>
+
+    <dialog id="grounded_ask_for_intel">
+		<precondition>dialogs_axr_companion.is_not_actor_companion</precondition>
+        <precondition>aflimod.is_actor_same_community</precondition>
+        <phrase_list>
+            <phrase id="0">
+                <text>st_aflimod_actor_ask_intel</text>
+                <next>1</next>
+                <next>2</next>
+                <next>3</next>
+            </phrase>
+            <phrase id="1">
+                <precondition>aflimod.is_npc_free_intel_or_already_paid</precondition>
+                <script_text>aflimod.build_intel_string</script_text>
+            </phrase>
+            <phrase id="2">
+                <precondition>aflimod.is_npc_paid_intel</precondition>
+                <precondition>aflimod.has_actor_not_paid_for_intel</precondition>
+                <text>st_aflimod_paid_intel</text>
+                <next>20</next>
+                <next>21</next>
+            </phrase>
+            <phrase id="3">
+                <precondition>aflimod.is_npc_refuse_intel</precondition>
+                <text>st_aflimod_refuse_intel</text>
+            </phrase>
+            <!-- Payment branch -->
+            <phrase id="20">
+                <precondition>aflimod.can_actor_afford_intel</precondition>
+                <action>aflimod.actor_pay_intel</action>
+                <script_text>aflimod.build_pay_intel_string</script_text>
+                <next>100</next>
+            </phrase>
+
+            <phrase id="21">
+                <text>st_aflimod_actor_refuse_pay_intel</text>
+            </phrase>
+
+            <phrase id="100">
+                <script_text>aflimod.build_intel_string</script_text>
+            </phrase>
+
+        </phrase_list>
+    </dialog>
+
+</game_dialogs>
+
+

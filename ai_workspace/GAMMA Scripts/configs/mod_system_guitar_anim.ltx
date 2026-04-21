@@ -1,0 +1,30 @@
+![guitar_a]
+use1_action_functor         = guitar_anim.play_guitar_anim
+
+![harmonica_a]
+use1_action_functor         = harmonica_anim.play_harmonica_anim
+
+[item_guit_anm_1_hud]
+hands_position              = 0.03, 0.02, 0.015
+hands_position_16x9         = 0.03, 0.02, 0.015
+hands_orientation			= -3, -1, 6
+hands_orientation_16x9		= -3, -1, 6
+
+item_visual             	= dynamics\devices\dev_guitar_hud.ogf
+
+anm_guitar_draw			    = hand_guitar_draw, dev_guitar_play
+anm_guitar_show			    = hand_guitar_play, dev_guitar_play
+anm_guitar_holster			= hand_guitar_draw, dev_guitar_play
+
+
+[item_harm_anm_1_hud]
+hands_position              = 0.03, -0.02, 0.02
+hands_position_16x9         = 0.03, -0.007, 0.02
+hands_orientation			= -3, -1, 6
+hands_orientation_16x9		= -3, -1, 6
+
+item_visual             	= dynamics\devices\dev_harmonica\dev_harmonica.ogf
+
+anm_harmonica_draw			    = hand_harm_draw, dev_harm_play
+anm_harmonica_show			    = hand_harm_play, dev_harm_play
+anm_harmonica_holster			= hand_harm_draw, dev_harm_play

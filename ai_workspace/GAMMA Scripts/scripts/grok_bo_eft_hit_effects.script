@@ -1,0 +1,16 @@
+function actor_on_before_hit( hit, boneId, flags )
+	if not ( hit and hit.type and hit.power and boneId ) then return end
+	
+	if hit.power == 0 then return end
+	if not ( hit.type == 5 or hit.type == 6 or hit.type == 7 or hit.type == 8 ) then return end
+	
+	local ply = db.actor
+	if not ( ply and ply:alive() ) then return end
+	
+	level.add_pp_effector("blur2.ppe", math.random(655808, 655820), false)
+end
+
+
+function on_game_start()
+	RegisterScriptCallback( "actor_on_before_hit", actor_on_before_hit )
+end

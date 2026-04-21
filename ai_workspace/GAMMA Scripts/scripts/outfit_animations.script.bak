@@ -1,0 +1,382 @@
+enable_animations = false
+
+-- local fov_manager = lam_fov_manager
+local mcm_memory_enable = outfit_animations_mcm.get_config("memory")
+local mcm_allow_movement = outfit_animations_mcm.get_config("allow_movement")
+local mcm_enable_animation = outfit_animations_mcm.get_config("enable_outfit_equip")
+
+local ruck_last_outfit = -1
+local is_animation_playing = false
+local item_to_equip
+local item_to_unequip
+
+------------------------------------------------------------------------------
+--#region monkey patches
+------------------------------------------------------------------------------
+
+local originalPIF = actor_effects.play_item_fx
+function actor_effects.play_item_fx(name)
+	if name == "outfit" then return end
+	originalPIF(name)
+end
+
+--#endregion
+------------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------------
+--#region callbacks
+------------------------------------------------------------------------------
+
+function on_game_start()
+    RegisterScriptCallback("on_option_change", on_option_change)
+	RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+	RegisterScriptCallback("actor_item_to_slot", on_item_to_slot)
+	RegisterScriptCallback("actor_item_to_ruck", on_item_to_ruck)
+	RegisterScriptCallback("actor_on_item_drop", on_item_to_ruck)
+end
+
+
+function on_option_change()
+	mcm_memory_enable = outfit_animations_mcm.get_config("memory")
+	mcm_allow_movement = outfit_animations_mcm.get_config("allow_movement")
+	memory_max = outfit_animations_mcm.get_config("memory_size")
+	mcm_enable_animation = outfit_animations_mcm.get_config("enable_outfit_equip")
+end
+
+
+function actor_on_first_update()
+	CreateTimeEvent("outfit_animations", "enable_animation_delay_te", 3, function()
+		ruck_last_outfit = db.actor:item_in_slot(7) and db.actor:item_in_slot(7):id() or -1
+		local sec = db.actor:item_in_slot(7) and db.actor:item_in_slot(7):section()
+		if sec then remember_outfit(sec) end
+		enable_animations = true
+		return true
+	end)
+end
+
+
+function on_item_to_ruck(obj)
+	if IsOutfit(obj) and obj:id() == ruck_last_outfit then
+		ruck_last_outfit = -1
+
+		if not db.actor:alive() then return end
+		if not enable_animations then return end
+		if not mcm_enable_animation then return end
+		if has_alife_info("bar_arena_fight") then return end
+
+		item_to_unequip = obj and obj:section() or nil
+		if not is_animation_playing then
+			is_animation_playing = true
+			play_animation(obj)
+		end
+	end
+end
+
+
+function on_item_to_slot(obj)
+	if IsOutfit(obj) and obj:id() ~= ruck_last_outfit then
+		ruck_last_outfit = obj:id()
+
+		if not db.actor:alive() then return end
+		if not enable_animations then return end
+		if not mcm_enable_animation then return end
+		if has_alife_info("bar_arena_fight") then return end
+
+		item_to_equip = obj and obj:section() or nil
+		if not is_animation_playing then
+			is_animation_playing = true
+			play_animation(obj)
+		end
+	end
+end
+
+--#endregion
+------------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------------
+--#region main
+------------------------------------------------------------------------------
+
+local activeSlot
+local activeWpn
+local activeDetector
+local activeWpnId
+local activeDetectorId
+
+
+function play_animation(obj)
+	hide_hud_inventory()
+
+	CreateTimeEvent("outfit_animations", "select_animation_te", 0.05, function ()
+		--trying to kill backpack animation (kinda afterid that it might cause busy hands bug. Need some testing)
+		-- if enhanced_animations and ui_mcm and ui_mcm.get("EA_settings/enable_backpack_addon") then
+		if enhanced_animations and enhanced_animations.used_item and enhanced_animations.used_item:sub(1,14) == "backpack_close" then
+			game.stop_hud_motion()
+			enhanced_animations.stop_my_item_anim() --boy I don't like this hack
+			RemoveTimeEvent("ea_anim_stoper", "stop_my_item_anim")
+		end
+		
+		hide_weapon()
+		
+		local anm_info = select_animation(item_to_equip or item_to_unequip)
+		local length = game.get_motion_length(anm_info.section_name, "anm_equip", 1) -- / 1000
+		local action = {
+			sec = anm_info.section_name,
+			anm = "anm_equip",
+			params = {
+				delay = 0.125,
+				can_walk = mcm_allow_movement,
+				hud_fov = 0.6
+			},
+			fnc = {
+				[length + 125] = "outfit_animations.show_weapon()"
+			}
+		}
+		lam.try_play_action(action)
+		
+		is_animation_playing = false
+		item_to_equip = nil
+		item_to_unequip = nil
+
+		return true
+	end)
+end
+
+
+function hide_weapon()
+	activeSlot = db.actor:active_slot()
+	activeWpn = db.actor:active_item()
+	activeDetector = db.actor:active_detector()
+	activeWpnId = nil
+	activeDetectorId = nil
+	if activeWpn or activeDetector then
+		if activeWpn then
+			db.actor:move_to_ruck(activeWpn)
+			activeWpnId = activeWpn:id()
+		end
+		if activeDetector then
+			db.actor:move_to_ruck(activeDetector)
+			activeDetectorId = activeDetector:id()
+		end
+	end
+	-- return true
+end
+
+
+function show_weapon()
+	-- Restore weapons if had
+	if activeWpnId or activeDetectorId then
+		if activeWpnId then
+			local obj = level.object_by_id(activeWpnId)
+			if obj then
+				db.actor:move_to_slot(obj, activeSlot)
+				CreateTimeEvent("outfit_animations", "restore_active_weapon_te", 0.05, function()
+					db.actor:activate_slot(activeSlot)
+					return true
+				end)
+				-- nextTick(function()
+				-- 	db.actor:activate_slot(activeSlot)
+				-- 	return true
+				-- end, 2)
+			end
+		end
+		if activeDetectorId then
+			local obj = level.object_by_id(activeDetectorId)
+			if obj then
+				db.actor:move_to_slot(obj, 9)
+
+				-- Time event for proper animation play
+				CreateTimeEvent("outfit_animations", "restore_active_detector_te", 0.5, function()
+					obj:switch_state(1)
+					return true
+				end)
+			end
+		end
+	end
+	-- if mcm_allow_movement then game.only_allow_movekeys(false) else level.enable_input() end
+	-- if headgear_animations then headgear_animations.enable_animations = true end
+	-- outfit_animations_backpack.enable_animations = true
+end
+
+
+-- function play_animation_old(obj)
+-- 	--prepare for anim
+-- 	outfit_animations_backpack.enable_animations = false
+-- 	if headgear_animations then headgear_animations.enable_animations = false end 
+-- 	hide_hud_inventory()
+	
+-- 	--trying to kill backpack animation (kinda afterid that it might cause busy hands bug. Need some testing)
+-- 	if enhanced_animations and ui_mcm.get("EA_settings/enable_backpack_addon") then
+-- 		CreateTimeEvent("outfit_animations", "stop_fdda_animation_te", 0.05, function()
+-- 			game.stop_hud_motion()
+-- 			fov_manager.restore_fov()
+-- 			if mcm_allow_movement then game.only_allow_movekeys(true) else level.disable_input() end
+-- 			return true
+-- 		end)
+-- 	end
+
+-- 	local activeSlot = db.actor:active_slot()
+-- 	local activeWpn = db.actor:active_item()
+-- 	local activeDetector = db.actor:active_detector()
+-- 	local activeWpnId
+-- 	local activeDetectorId
+-- 	CreateTimeEvent("outfit_animations", "unequip_weapon_te", 0.1, function()
+-- 		if activeWpn or activeDetector then
+-- 			if activeWpn then
+-- 				db.actor:move_to_ruck(activeWpn)
+-- 				activeWpnId = activeWpn:id()
+-- 			end
+-- 			if activeDetector then
+-- 				db.actor:move_to_ruck(activeDetector)
+-- 				activeDetectorId = activeDetector:id()
+-- 			end
+-- 		end
+-- 		return true
+-- 	end)
+	
+-- 	--play
+-- 	anm_info = select_animation(obj)
+-- 	local delay = 0.25
+-- 	local length = 0
+-- 	length = length + game.get_motion_length(anm_info.section_name, anm_info.anm, 1) / 1000
+-- 	Invoke("play_outfti_inspect_animation_te", delay, function()
+-- 		xr_effects.play_snd(db.actor, nil, {[1] = anm_info.snd})
+-- 		level.add_cam_effector(anm_info.cam, 1300, false, "")
+-- 		game.play_hud_motion(2, anm_info.section_name, anm_info.anm, false, 1)
+-- 	end)
+
+-- 	--restore
+-- 	Invoke("restore_after_animtion_play_te", delay + length + 0.25, function()
+-- 		-- Restore weapons if had
+-- 		if activeWpnId or activeDetectorId then
+-- 			if activeWpnId then
+-- 				local obj = level.object_by_id(activeWpnId)
+-- 				if obj then
+-- 					db.actor:move_to_slot(obj, activeSlot)
+-- 					CreateTimeEvent("outfit_animations", "restore_active_weapon_te", 0.05, function()
+-- 						db.actor:activate_slot(activeSlot)
+-- 						return true
+-- 					end)
+-- 					-- nextTick(function()
+-- 					-- 	db.actor:activate_slot(activeSlot)
+-- 					-- 	return true
+-- 					-- end, 2)
+-- 				end
+-- 			end
+-- 			if activeDetectorId then
+-- 				local obj = level.object_by_id(activeDetectorId)
+-- 				if obj then
+-- 					db.actor:move_to_slot(obj, 9)
+
+-- 					-- Time event for proper animation play
+-- 					CreateTimeEvent("outfit_animations", "restore_active_detector_te", 0.5, function()
+-- 						obj:switch_state(1)
+-- 						return true
+-- 					end)
+-- 				end
+-- 			end
+-- 		end
+
+-- 		if mcm_allow_movement then game.only_allow_movekeys(false) else level.enable_input() end
+-- 		if headgear_animations then headgear_animations.enable_animations = true end
+-- 		outfit_animations_backpack.enable_animations = true
+-- 	end)
+-- end
+
+
+function select_animation(sec)
+	local m_section = "outfit_animation_hud"
+
+	if mcm_memory_enable then
+		-- local sec = obj and obj:section()
+		if sec then
+			if memory_contain(sec) then
+				m_section = "outfit_animation_fast_hud"
+			else
+				remember_outfit(sec)
+				m_section = "outfit_animation_hud"
+			end
+		else
+			m_section = "outfit_animation_fast_hud"
+		end
+	end
+
+	return {
+		section_name = m_section,
+		anm = "anm_equip",
+		cam = ini_sys:r_string_ex(m_section, "cam"),
+		snd = ini_sys:r_string_ex(m_section, "snd")
+	}
+end
+
+
+-- function Invoke(name, time, action)
+-- 	CreateTimeEvent("outfit_animations", name, time, function()
+-- 		action()
+-- 		return true
+-- 	end)
+-- end
+
+--#endregion
+------------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------------
+--#region outfit memmory management.
+------------------------------------------------------------------------------
+local memory_first = 0
+local memory_last = -1
+local memory_max = outfit_animations_mcm.get_config("memory_size")
+local memory = {}
+
+function remember_outfit(sec)
+    local last = memory_last + 1
+	memory_last = last
+	memory[last] = sec
+	if memory_max > 0 and (memory_size() > memory_max) then
+        forget_outfit()
+    end
+end
+
+function forget_outfit()
+	local first = memory_first
+	memory[first] = nil
+	memory_first = first + 1
+end
+
+function memory_size()
+    local count = 0
+	for _, __ in pairs(memory) do
+        count = count + 1
+    end
+    return count
+end
+
+function memory_contain(sec)
+	for _, v in pairs(memory) do
+        if v == sec then return true end
+    end
+    return false
+end
+
+function memory_print()
+    local s = memory_size()
+    if s == 0 then 
+        printf("outfit memory: l(" .. s ..") {}") 
+        return
+    end
+    printf("outfit memory: l(" .. s .. ") {")
+    for i, v in pairs(memory) do
+        if i == "last" or i == "first" or i == "maximum" then
+            goto continue
+        end
+        printf("    " .. i .. " = " .. v)
+        ::continue::
+    end
+    printf("}")
+end
+
+--#endregion
+------------------------------------------------------------------------------

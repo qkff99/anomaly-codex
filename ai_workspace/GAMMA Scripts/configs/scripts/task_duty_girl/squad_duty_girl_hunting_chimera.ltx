@@ -1,0 +1,34 @@
+[section@squad]
+target@base = gar_smart_terrain_2_4
+
+[section@logic]
+logic@general
+
+[logic@base]
+net_spawn	= pt1
+
+[logic@general]:logic@base
+active = mob_home@general
+
+;==================================================
+[mob_home@base]
+target				= %=mutant_path%
+before_hit			= task_duty_girl@hunting_chimera_hit
+combat_ignore_cond	= {+duty_girl_hunting_chimera_fight} false, {=fighting_dist_le(20)} false, true
+enemy_ignore_cond	= {+duty_girl_hunting_chimera_fight} false, {=fighting_dist_le(20)} false, true
+on_info1			= {-duty_girl_hunting_chimera_fight =see_actor() =dist_to_actor_le(20)} %+duty_girl_hunting_chimera_fight%
+on_sound1 = actor|WPN_shoot|30|0|	{-duty_girl_hunting_chimera_fight} %+duty_girl_hunting_chimera_fight%
+on_sound2 = actor|WPN_hit|10|0|		{-duty_girl_hunting_chimera_fight} %+duty_girl_hunting_chimera_fight%
+on_sound3 = actor|WPN_empty|10|0|	{-duty_girl_hunting_chimera_fight} %+duty_girl_hunting_chimera_fight%
+on_sound4 = actor|WPN_reload|10|0|	{-duty_girl_hunting_chimera_fight} %+duty_girl_hunting_chimera_fight%
+
+[mob_home@general]:mob_home@base
+pt1 = pos:-271.6,0.42,23.8 dir:0
+move_animation = run
+wait_animation = sleep
+on_info = {!dist_to_beh(100)} mob_home@return
+
+[mob_home@return]:mob_home@base
+pt1 = pos:-271.6,0.42,23.8 dir:0
+on_info = {=dist_to_beh(20)} mob_home@general
+combat_ignore_cond = true

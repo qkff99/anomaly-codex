@@ -1,0 +1,7 @@
+-- Script to remove the blinking light from the rf-receiver made by utjan
+-- This fuction overwrites another one inside the item_radio.script
+base_radio_update = item_radio.UI3D_RF.Update
+function item_radio.UI3D_RF:Update()
+    base_radio_update(self)
+    self.m_led:Show(false)
+end

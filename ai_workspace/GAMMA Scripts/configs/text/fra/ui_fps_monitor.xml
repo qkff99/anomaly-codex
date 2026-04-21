@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="windows-1252"?>
+
+<string_table>
+
+<!--
+F.R.I.T.E.S | Thundard
+Dernière révision : 24 novembre 2025
+-->
+
+<!-- SIMPLE FPS MONITOR - MCM xml -->
+	
+<!-- Valeurs -->
+	<string id="ui_fps_monitor_cur">
+		<text>Actuel :</text>
+	</string>
+	<string id="ui_fps_monitor_ftime">
+		<text>FT :</text>
+	</string>
+	<string id="ui_fps_monitor_min">
+		<text>Min :</text>
+	</string>
+	<string id="ui_fps_monitor_max">
+		<text>Max :</text>
+	</string>
+	<string id="ui_fps_monitor_avg">
+		<text>Moy :</text>
+	</string>
+	
+	<string id="ui_fps_monitor_cur_ui">
+		<text>Actuel</text>
+	</string>
+	<string id="ui_fps_monitor_ftime_ui">
+		<text>FTime</text>
+	</string>
+	<string id="ui_fps_monitor_min_ui">
+		<text>Min</text>
+	</string>
+	<string id="ui_fps_monitor_max_ui">
+		<text>Max</text>
+	</string>
+	<string id="ui_fps_monitor_avg_ui">
+		<text>Moy</text>
+	</string>
+	
+	<!-- ImGui -->
+	<string id="ui_fps_monitor_menu_file">
+		<text>Moniteur FPS</text>
+	</string>
+	
+	<string id="ui_fps_monitor_title">
+		<text>Moniteur FPS Simple</text>
+	</string>
+	<string id="ui_fps_monitor_start">
+		<text>DÉMARRER LE MONITEUR</text>
+	</string>
+	<string id="ui_fps_monitor_stop">
+		<text>ARRÊTER LE MONITEUR</text>
+	</string>
+	<string id="ui_fps_monitor_settings">
+		<text>Paramètres</text>
+	</string>
+	<string id="ui_fps_monitor_pre_start_msg">
+		<text>Démarrer le moniteur pour afficher les paramètres.</text>
+	</string>
+	<string id="ui_fps_monitor_save_val">
+		<text>Enregistrer les paramètres</text>
+	</string>
+	<string id="ui_fps_monitor_save_val_desc">
+		<text>Ceci enregistre vos paramètres. Lors du prochain lancement du jeu et du Moniteur FPS Simple, ces paramètres seront restaurés.\nLes paramètres sauvegardés peuvent être trouvés et modifiés dans gamedata/configs/plugins/fps_monitor_settings.ltx.</text>
+	</string>
+	<string id="ui_fps_monitor_def_val">
+		<text>Paramètres par défaut</text>
+	</string>
+	
+	<!-- Onglets -->
+	<string id="ui_fps_monitor_general">
+		<text>Général</text>
+	</string>
+	<string id="ui_fps_monitor_ui">
+		<text>UI</text>
+	</string>
+	
+	<!-- Paramètres généraux -->
+	<string id="ui_fps_monitor_buffer_size">
+		<text>Taille du buffer</text>
+	</string>
+	<string id="ui_fps_monitor_buffer_size_desc">
+		<text>Quantité de valeurs stockées dans le buffer. Diminuer ce nombre fournit des résultats plus rapides mais rend la moyenne plus sensible aux pics/chutes de FPS de courte durée. Avec des valeurs plus élevées, les mesures couvrent une période plus longue.</text>
+	</string>
+	
+	<string id="ui_fps_monitor_update_fps">
+		<text>Mise à jour du FPS actuel [ms]</text>
+	</string>
+	<string id="ui_fps_monitor_update_fps_desc">
+		<text>Détermine la fréquence de mise à jour des compteurs FPS actuel et FTime.</text>
+	</string>
+	
+	<!-- Paramètres UI -->
+	<string id="ui_fps_monitor_layout">
+		<text>Mise en page</text>
+	</string>
+	<string id="ui_fps_monitor_layout_desc">
+		<text>Détermine quelles valeurs sont affichées et comment elles sont placées les unes par rapport aux autres.</text>
+	</string>
+	<string id="ui_fps_monitor_layout_horz">
+		<text>Horizontal</text>
+	</string>
+	<string id="ui_fps_monitor_layout_vert">
+		<text>Vertical</text>
+	</string>
+	<string id="ui_fps_monitor_layout_rect">
+		<text>Rectangulaire</text>
+	</string>
+	
+	<string id="ui_fps_monitor_position">
+		<text>Position</text>
+	</string>
+	
+	<!-- arrière-plan -->
+	<string id="ui_fps_monitor_bg">
+		<text>Arrière-plan</text>
+	</string>
+	<string id="ui_fps_monitor_bg_show">
+		<text>Afficher l'arrière-plan</text>
+	</string>
+	<string id="ui_fps_monitor_bg_alpha">
+		<text>Opacité</text>
+	</string>
+	
+	<!-- Options du texte -->
+	<string id="ui_fps_monitor_txt_options">
+		<text>Paramètres du texte</text>
+	</string>
+	<string id="ui_fps_monitor_txt_size">
+		<text>Taille</text>
+	</string>
+	<string id="ui_fps_monitor_txt_size_1">
+		<text>Minuscule</text>
+	</string>
+	<string id="ui_fps_monitor_txt_size_2">
+		<text>Petit</text>
+	</string>
+	<string id="ui_fps_monitor_txt_size_3">
+		<text>Moyen</text>
+	</string>
+	<string id="ui_fps_monitor_txt_size_4">
+		<text>Grand</text>
+	</string>
+	
+	<string id="ui_fps_monitor_txt_clr_default">
+		<text>Défaut</text>
+	</string>
+	<string id="ui_fps_monitor_txt_clr">
+		<text>Couleur du texte</text>
+	</string>
+	
+	<!-- À propos -->
+	<string id="ui_fps_monitor_about">
+		<text>À propos</text>
+	</string>
+	<string id="ui_fps_monitor_about_desc">
+		<text>MONITEUR FPS SIMPLE\npar Private Pirate\n \nCet outil offre un aperçu rapide des performances du jeu sans logiciel externe. Il utilise un buffer circulaire pour stocker les temps de frame mesurés. Ce buffer permet de fournir une moyenne glissante. Selon la taille du buffer et le FPS, il faut plus ou moins de temps pour remplir le buffer. Cela influence la rapidité d'évolution des valeurs Min, Max et Moy.\n \nQuelles sont ces valeurs ?\n- Actuel = FPS actuel\n- FT = temps de frame actuel\n- Min/Max = FPS le plus bas/élevé sur la période mesurée\n- Moy = FPS moyen sur la période mesurée\n \nLe Moniteur FPS Simple n'est pas aussi sophistiqué que les programmes de monitoring spécialisés, mais il est rapide, facile à utiliser et très accessible !\n \nEt maintenant, fiche le camp, Stalker !</text>
+	</string>
+
+</string_table>

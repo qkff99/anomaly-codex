@@ -16,11 +16,13 @@ Canonical helper scripts and references also live in `../../../../.skills/stalke
 User-added references should be stored in `../../../../ai_workspace/user references` and searched alongside the built-in local refs.
 If the user asks, or if the agent decides extra local references are needed, create links there instead of copying big external folders into the repo.
 Use `../../../../ai_workspace/Anomaly-Mod-Configuration-Menu-main` as the primary local authority for Anomaly MCM API, `*mcm.script` discovery, keybind widgets, and MCM-specific UI behavior.
+Use `../../../../ai_workspace/GAMMA Scripts` as the local flattened GAMMA configs/scripts reference overlay for pack-specific addon behavior and conflict examples.
 Default extension order is callbacks/config hooks first, then DXML, then DLTX, then narrow monkey patches, and full-file overrides only last.
 Use `../../../../ai_workspace/vanilla scripts/gamedata/scripts/_g.script`, `lua_help.script`, and `axr_main.script` as the first orientation files when tracing vanilla script flow.
 Project-local machine-readable metadata lives in `../../../../projects/<project-name>/.codex-stalker/project.json`.
 If the user wants to edit an existing mod, ask whether to import a copy into `../../../../projects/<project-name>` or edit the provided path in place.
-Use `../../../../.skills/stalker-modding/scripts/init_project.py`, `scaffold_template.py`, `check_project.py`, `validate_project.py`, `package_project.py`, `import_mod.py`, and `fomod_tool.py` for the repo-local project toolchain.
+Use `../../../../.skills/stalker-modding/scripts/init_project.py`, `scaffold_template.py`, `check_project.py`, `validate_project.py`, `package_project.py`, `import_mod.py`, `extract_mo2_resources.py`, and `fomod_tool.py` for the repo-local project toolchain.
+Use `../../../../.skills/stalker-modding/scripts/extract_mo2_resources.py` to flatten MO2 `mods/*` `configs/` and `scripts/` payloads into one reference overlay when the user wants bulk local references.
 Use `../../../../.skills/stalker-modding/scripts/run_regressions.py` for deterministic repo-local reliability checks.
 Use `../../../../.skills/stalker-modding/scripts/log_triage.py` before bringing huge Anomaly/XRay logs into context.
 Use `../../../../.skills/stalker-modding/scripts/external_path_tool.py` to remember logs folders, MO2 `mods/`, unpacked `gamedata/`, or external mod roots in the tracked workspace overlay.

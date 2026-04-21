@@ -1,0 +1,53 @@
+-- Draw a sphere as the crosshair vertex (point of rotation)
+
+class "bshape_renderer" (aol_bshape.bshape_renderer)
+
+function bshape_renderer:__init() super()
+    self.crosshair_gizmo = nil
+end
+
+function bshape_renderer:DrawCube(bshape_collider)
+    if self.crosshair_gizmo == nil then
+        self.crosshair_gizmo = self:AddCrosshairGizmo(bshape_collider)
+    end
+
+    aol_bshape.bshape_renderer.DrawCube(self, bshape_collider)
+
+    local scale_mat = matrix():identity():scale(0.02,0.02,0.02)
+    local pos_mat = matrix():translate(bshape_collider.world_vertices[self.crosshair_gizmo.vertex])
+    local mat = matrix():mul(pos_mat, scale_mat)
+    self.crosshair_gizmo.gizmo.matrix = mat
+    self.crosshair_gizmo.gizmo.visible = true
+end
+
+function bshape_renderer:AddCrosshairGizmo(bshape_collider)
+    if bshape_collider == nil then
+        return
+    end
+
+    local crosshair_vertex = #bshape_collider.world_vertices
+
+    local color = aol_bshape.color_not_colliding
+    aol_bshape.last_gizmo_id = aol_bshape.last_gizmo_id + 1
+    local sphere = debug_render.add_object(aol_bshape.last_gizmo_id, DBG_ScriptObject.sphere):cast_dbg_sphere()
+    sphere.visible = true
+    sphere.color = color
+    local scale_mat = matrix():identity():scale(0.02,0.02,0.02)
+    local pos_mat = matrix():translate(bshape_collider.world_vertices[crosshair_vertex])
+    local mat = matrix():mul(pos_mat, scale_mat)
+    sphere.matrix = mat
+
+    return {
+        gizmo = sphere,
+        vertex = #bshape_collider.world_vertices,
+    }
+end
+
+function bshape_renderer:StopCrosshairGizmo()
+    self.crosshair_gizmo.gizmo.visible = false
+end
+
+function bshape_renderer:Stop()
+    aol_bshape.bshape_renderer.Stop(self)
+    self:StopCrosshairGizmo()
+end

@@ -1,0 +1,18 @@
+local baseFDDARDIP = liz_fdda_redone_item_pickup.actor_on_item_before_pickup
+liz_fdda_redone_item_pickup.actor_on_item_before_pickup = function (obj, flags)
+    for _, case_guns in pairs(weapon_showcase.weapon_displays) do
+        for _, world_id in pairs(case_guns) do
+            if obj:id() == world_id then
+                flags.ret_value = false
+            end
+        end
+    end
+
+    if flags.ret_value == false then return end
+
+    baseFDDARDIP(obj, flags)
+end
+
+--remove original Hideout Furniture pickup code
+weapon_showcase.actor_on_item_before_pickup = function (obj, flags)
+end

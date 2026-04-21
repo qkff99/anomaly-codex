@@ -1,0 +1,1441 @@
+local ignore_items = {
+    bolt = "ignore_bolt",
+    itm_actor_backpack = "ignore_itm_actor_backpack",
+    device_pda = "ignore_device_pda",
+    device_pda_1 = "ignore_device_pda_1",
+    device_pda_2 = "ignore_device_pda_2",
+    device_pda_3 = "ignore_device_pda_3",
+    detector_radio = "ignore_detector_radio",
+    wpn_knife = "ignore_wpn_knife",
+    wpn_knife2 = "ignore_wpn_knife2",
+    wpn_knife3 = "ignore_wpn_knife3",
+    wpn_knife4 = "ignore_wpn_knife4",
+    wpn_knife5 = "ignore_wpn_knife5",
+    wpn_knife6 = "ignore_wpn_knife6",
+    wpn_knife7 = "ignore_wpn_knife7",
+    wpn_knife8 = "ignore_wpn_knife8",
+    wpn_knife9 = "ignore_wpn_knife9",
+    wpn_axe = "ignore_wpn_axe",
+    wpn_axe2 = "ignore_wpn_axe2",
+    wpn_axe3 = "ignore_wpn_axe3",
+    bandage = "ignore_bandage",
+    medkit = "ignore_medkit"
+}
+
+local function ignore_list(sec)
+    local mcm_func = ignore_items[sec]
+    return mcm_func and soulslike_mcm[mcm_func]() or false
+end
+
+local obj_to_spawn_classes = {
+    -- kind
+    ["AI_STL_S"]    = "NPC (Stalker)",
+    ["AI_TRD_S"]    = "NPC (Stalker)",
+
+    ["SM_KAR"]	    = "NPC (Mutant)",
+    ["SM_BLOOD"]    = "NPC (Mutant)",
+    ["SM_BOARW"]    = "NPC (Mutant)",
+    ["SM_BURER"]    = "NPC (Mutant)",
+    ["SM_CAT_S"]    = "NPC (Mutant)",
+    ["SM_CHIMS"]    = "NPC (Mutant)",
+    ["SM_CONTR"]    = "NPC (Mutant)",
+    ["SM_DOG_S"]    = "NPC (Mutant)",
+    ["SM_FLESH"]    = "NPC (Mutant)",
+    ["SM_IZLOM"]    = "NPC (Mutant)",
+    ["SM_GIANT"]    = "NPC (Mutant)",
+    ["SM_POLTR"]    = "NPC (Mutant)",
+    ["SM_P_DOG"]    = "NPC (Mutant)",
+    ["SM_DOG_P"]    = "NPC (Mutant)",
+    ["SM_DOG_F"]    = "NPC (Mutant)",
+    ["SM_SNORK"]    = "NPC (Mutant)",
+    ["SM_TUSHK"]    = "NPC (Mutant)",
+    ["SM_ZOMBI"]    = "NPC (Mutant)",
+    ["SM_RAT"]	    = "NPC (Mutant)",
+    ["SM_KARLIK"]	= "NPC (Mutant)",
+    ["SM_LURKER"]	= "NPC (Mutant)",
+    ["SM_PSYSUCKER"]	= "NPC (Mutant)",
+
+    ["C_HLCP_S"] 	= "Vehicles",
+    ["C_NIVA"] 		= "Vehicles",
+    ["SCRPTCAR"] 	= "Vehicles",
+
+    ["ON_OFF_S"]    = "Squads",
+    
+    ["O_PHYSIC"]    = "Physic (Misc.)",
+    ["O_DSTRBL"]    = "Physic (Misc.)",
+    ["P_DSTRBL"]    = "Physic (Misc.)",
+    ["O_PHYS_S"]    = "Physic (Misc.)",
+    ["O_DSTR_S"]    = "Physic (Misc.)",
+    ["S_INVBOX"]    = "Physic (Misc.)",
+    ["O_INVBOX"]    = "Physic (Misc.)",
+    ["S_EXPLO"]     = "Physic (Misc.)",
+    ["II_EXPLO"]    = "Physic (Misc.)",
+
+    ["ZS_MBALD"]    = "Anomaly",
+    ["ZS_GALAN"]    = "Anomaly",
+    ["ZS_MINCE"]    = "Anomaly",
+    ["ZS_RADIO"]    = "Anomaly",
+    ["ZS_TORRD"]    = "Anomaly",
+    ["ZS_NGRAV"]    = "Anomaly",
+    ["Z_MBALD"]     = "Anomaly",
+    ["Z_RADIO"]     = "Anomaly",
+    ["Z_CFIRE"]     = "Anomaly",
+    ["Z_NOGRAV"]    = "Anomaly",
+    ["Z_TORRID"]    = "Anomaly",
+    ["Z_RUSTYH"]    = "Anomaly",
+    ["ZS_BFUZZ"]    = "Anomaly",
+    ["ZS_AMEBA"]    = "Anomaly",
+    
+    ["AI_PHANT"]    = "Phantom",
+}
+
+local dte = demonized_time_events
+
+local mutant_spawn_type = {
+    Boar = 1,
+    Flesh = 2,
+    Dog = 3,
+    Cat = 4,
+    Snork =5,
+    BloodSucker = 6,
+    Burer = 7,
+    Chimera = 8,
+    Controller = 9
+}
+
+local stalker_spawn_type = {
+    Novice = 1,
+    Advanced = 2,
+    Veteran = 2,
+    Sniper = 2,
+}
+
+local mutant_spawns = {
+    --Common Mutants
+    { section = "simulation_boar",              weight = 1.00,  type = mutant_spawn_type.Boar },
+    { section = "simulation_flesh",             weight = 0.90,  type = mutant_spawn_type.Flesh },
+    { section = "simulation_dog",               weight = 0.80,  type = mutant_spawn_type.Dog },
+    { section = "simulation_cat",               weight = 0.60,  type = mutant_spawn_type.Cat },
+    { section = "simulation_boar_3_5",          weight = 0.50,  type = mutant_spawn_type.Boar },
+    { section = "simulation_mix_boar_flesh",    weight = 0.40,  type = mutant_spawn_type.Flesh },
+    { section = "simulation_mix_dogs",          weight = 0.20,  type = mutant_spawn_type.Dog },
+    { section = "simulation_dog_5_7",           weight = 0.15,  type = mutant_spawn_type.Dog },
+    { section = "simulation_pseudodog",         weight = 0.12,  type = mutant_spawn_type.Dog },
+    { section = "simulation_cat_3_5",           weight = 0.10,  type = mutant_spawn_type.Cat },
+    { section = "simulation_snork",             weight = 0.08,  type = mutant_spawn_type.Snork },
+    --Rare Mutants
+    { section = "simulation_bloodsucker",       weight = 0.04,  type = mutant_spawn_type.BloodSucker },
+    { section = "simulation_burer1",            weight = 0.03,  type = mutant_spawn_type.Burer },
+    { section = "simulation_chimera",           weight = 0.02,  type = mutant_spawn_type.Chimera },
+    { section = "simulation_bloodsucker_2weak", weight = 0.02,  type = mutant_spawn_type.BloodSucker },
+    { section = "simulation_chimera_2weak",     weight = 0.01,  type = mutant_spawn_type.Chimera },
+    { section = "simulation_controller",        weight = 0.01,  type = mutant_spawn_type.Controller },
+}
+
+local stalker_spawns = {
+    --Loner
+    { section = "stalker_sim_squad_novice",      community = "stalker",     weight = 1.00,  type = stalker_spawn_type.Novice },
+    { section = "stalker_sim_squad_advanced",    community = "stalker",     weight = 0.50,  type = stalker_spawn_type.Advanced },
+    { section = "stalker_sim_squad_veteran",     community = "stalker",     weight = 0.10,  type = stalker_spawn_type.Veteran },
+    --Bandit
+    { section = "bandit_sim_squad_novice",      community = "bandit",       weight = 1.00,  type = stalker_spawn_type.Novice },
+    { section = "bandit_sim_squad_advanced",    community = "bandit",       weight = 0.50,  type = stalker_spawn_type.Advanced },
+    { section = "bandit_sim_squad_veteran",     community = "bandit",       weight = 0.10,  type = stalker_spawn_type.Veteran },
+    --Merc
+    { section = "merc_sim_squad_novice",        community = "killer",       weight = 0.75,  type = stalker_spawn_type.Novice },
+    { section = "merc_sim_squad_advanced",      community = "killer",       weight = 0.25,  type = stalker_spawn_type.Advanced },
+    { section = "merc_sim_squad_veteran",       community = "killer",       weight = 0.10,  type = stalker_spawn_type.Veteran },
+    --Duty
+    { section = "duty_sim_squad_novice",        community = "dolg",         weight = 1.00,  type = stalker_spawn_type.Novice },
+    { section = "duty_sim_squad_advanced",      community = "dolg",         weight = 0.10,  type = stalker_spawn_type.Advanced },
+    { section = "duty_sim_squad_veteran",       community = "dolg",         weight = 0.10,  type = stalker_spawn_type.Veteran },
+    --Freedom
+    { section = "freedom_sim_squad_novice",     community = "freedom",      weight = 1.00,  type = stalker_spawn_type.Novice },
+    { section = "freedom_sim_squad_advanced",   community = "freedom",      weight = 0.10,  type = stalker_spawn_type.Advanced },
+    { section = "freedom_sim_squad_veteran",    community = "freedom",      weight = 0.10,  type = stalker_spawn_type.Veteran },
+    --Military
+    { section = "army_sim_squad_novice",        community = "army",         weight = 1.00,  type = stalker_spawn_type.Novice },
+    { section = "army_sim_squad_advanced",      community = "army",         weight = 0.10,  type = stalker_spawn_type.Advanced },
+    { section = "army_sim_squad_veteran",       community = "army",         weight = 0.10,  type = stalker_spawn_type.Veteran },
+    { section = "army_sim_squad_sniper",        community = "army",         weight = 0.05,  type = stalker_spawn_type.Sniper },
+    --Clear Sky
+    { section = "csky_sim_squad_novice",        community = "csky",         weight = 1.00,  type = stalker_spawn_type.Novice },
+    { section = "csky_sim_squad_advanced",      community = "csky",         weight = 0.10,  type = stalker_spawn_type.Advanced },
+    { section = "csky_sim_squad_veteran",       community = "csky",         weight = 0.10,  type = stalker_spawn_type.Veteran },
+    --Renegades
+    { section = "renegade_sim_squad_novice",    community = "renegade",     weight = 0.50,  type = stalker_spawn_type.Novice },
+    { section = "renegade_sim_squad_advanced",  community = "renegade",     weight = 0.20,  type = stalker_spawn_type.Advanced },
+    { section = "renegade_sim_squad_veteran",   community = "renegade",     weight = 0.10,  type = stalker_spawn_type.Veteran },
+    --Clear Sky
+    { section = "csky_sim_squad_novice",        community = "csky",         weight = 0.50,  type = stalker_spawn_type.Novice },
+    { section = "csky_sim_squad_advanced",      community = "csky",         weight = 0.20,  type = stalker_spawn_type.Advanced },
+    { section = "csky_sim_squad_veteran",       community = "csky",         weight = 0.10,  type = stalker_spawn_type.Veteran },
+    --Monolith
+    { section = "monolith_sim_squad_novice",    community = "monolith",     weight = 0.50,  type = stalker_spawn_type.Novice },
+    { section = "monolith_sim_squad_advanced",  community = "monolith",     weight = 0.20,  type = stalker_spawn_type.Advanced },
+    { section = "monolith_sim_squad_veteran",   community = "monolith",     weight = 0.10,  type = stalker_spawn_type.Veteran },
+    --Sin
+    { section = "greh_sim_squad_novice",        community = "greh",         weight = 0.50,  type = stalker_spawn_type.Novice },
+    { section = "greh_sim_squad_advanced",      community = "greh",         weight = 0.20,  type = stalker_spawn_type.Advanced },
+    { section = "greh_sim_squad_veteran",       community = "greh",         weight = 0.10,  type = stalker_spawn_type.Veteran },
+    --UNISG
+    { section = "isg_sim_squad_novice",         community = "isg",          weight = 0.50,  type = stalker_spawn_type.Novice },
+    { section = "isg_sim_squad_advanced",       community = "isg",          weight = 0.20,  type = stalker_spawn_type.Advanced },
+    { section = "isg_sim_squad_veteran",        community = "isg",          weight = 0.10,  type = stalker_spawn_type.Veteran },
+    --Ecologist
+    { section = "ecolog_sim_squad_novice",      community = "ecolog",       weight = 0.50,  type = stalker_spawn_type.Novice },
+    { section = "ecolog_sim_squad_advanced",    community = "ecolog",       weight = 0.20,  type = stalker_spawn_type.Advanced },
+    { section = "ecolog_sim_squad_veteran",     community = "ecolog",       weight = 0.10,  type = stalker_spawn_type.Veteran },
+}
+
+local function is_equipped(id) 
+    local is_equipped = false
+    for i=1,12 do
+        slot = db.actor:item_in_slot(i)
+        if (slot and slot:id() == id) then
+            is_equipped = true
+            break
+        end
+    end
+    return is_equipped
+end
+
+---------------------------------------------------------
+-- Base Scenario Class 
+---------------------------------------------------------
+
+class "SoulslikeScenarioLogic"
+
+function SoulslikeScenarioLogic:__init(state)   
+    if state then 
+        self.logic_state = state
+        soulslike.debug("Scenario created with state:")
+        soulslike.debug(state)
+    else    
+        local rank = db.actor:character_rank()
+        
+        if soulslike_mcm.debug_item_loss() then
+            soulslike.debug("Debugging item loss, setting max rank:")
+            rank = 56000
+        end
+
+        local ignore_rank_item_loss = soulslike_mcm.ignore_rank_when_computing_item_loss_chance()
+        local ignore_rank_item_condition_loss = soulslike_mcm.ignore_rank_when_computing_item_condition_loss()
+        
+        local ranked_chance = 0
+        if not ignore_rank_item_loss or not ignore_rank_item_condition_loss then
+            ranked_chance = math.clamp(math.sqrt(rank / 500) * math.log(rank * rank) / math.log(1000) * 1.5, 0, 50) / 66
+        end
+        
+        soulslike.debug("Creating logic state.")
+        self.logic_state = {
+            rank = rank,
+            ranked_chance = ranked_chance,
+            item_condition_loss_percent = math.clamp((ignore_rank_item_condition_loss and 1 or ranked_chance) * soulslike_mcm.get_item_condition_loss_percent(), 0, 1),
+            keep_equipped_items_on_death = soulslike_mcm.get_keep_equipped_items_on_death(),
+            item_loss_scalar = soulslike_mcm.get_item_loss_scalar(),
+            ignore_rank_item_loss = ignore_rank_item_loss,
+            ignore_rank_item_condition_loss = ignore_rank_item_condition_loss,
+            health_loss_percent = soulslike_mcm.get_health_loss_percent(),
+            rank_loss_percent = soulslike_mcm.rank_loss_percent(),
+            rep_loss_percent = soulslike_mcm.rep_loss_percent(),
+            allow_weapon_loss = soulslike_mcm.allow_weapon_loss(),
+            allow_artifact_loss = soulslike_mcm.allow_artifact_loss(),
+            allow_outfit_loss = soulslike_mcm.allow_outfit_loss(),
+            allow_headgear_loss = soulslike_mcm.allow_headgear_loss(),
+            allow_toolkit_loss = soulslike_mcm.allow_toolkit_loss(),
+            mutant_ambush_chance = soulslike_mcm.mutant_ambush_chance(),
+            stalker_ambush_chance = soulslike_mcm.stalker_ambush_chance(),            
+            allow_boar_ambush = soulslike_mcm.allow_boar_ambush(),
+            allow_flesh_ambush = soulslike_mcm.allow_flesh_ambush(),
+            allow_dogs_ambush = soulslike_mcm.allow_dogs_ambush(),
+            allow_cats_ambush = soulslike_mcm.allow_cats_ambush(),
+            allow_snorks_ambush = soulslike_mcm.allow_snorks_ambush(),
+            allow_bloodsucker_ambush = soulslike_mcm.allow_bloodsucker_ambush(),
+            allow_burer_ambush = soulslike_mcm.allow_burer_ambush(),
+            allow_chimera_ambush = soulslike_mcm.allow_chimera_ambush(),
+            allow_controller_ambush = soulslike_mcm.allow_controller_ambush(),
+            allow_stalker_novice_ambush = soulslike_mcm.allow_stalker_novice_ambush(),
+            allow_stalker_advanced_ambush = soulslike_mcm.allow_stalker_advanced_ambush(),
+            allow_stalker_veteran_ambush = soulslike_mcm.allow_stalker_veteran_ambush(),
+            allow_stalker_sniper_ambush = soulslike_mcm.allow_stalker_sniper_ambush(),
+            allow_npc_looting = true,
+            are_looter_npcs_marked = soulslike_mcm.are_looter_npcs_marked(),
+            death_location = {
+                position = {
+                    x = nil,
+                    y = nil,
+                    z = nil
+                },
+                level_vertex_id = nil,
+                game_vertex_id = nil
+            },
+            story = {
+                gave_food_or_water = nil,
+                has_pda_marker = nil,
+                has_stash_pda_marker = nil,                
+                radio_freq = nil,
+                items_were_lost = nil,
+                enemy = nil, -- { name, community, tarkov_experience }
+                player_died_indoor = nil,
+                player_died_in_water = nil,
+                level_name = nil,
+            }
+        }
+        soulslike.debug("Scenario created without state.")
+    end
+    
+    self.game_state = soulslike.get_soulslike_state()
+end
+
+function SoulslikeScenarioLogic:SetIsInDoor(player_is_indoor)
+    self.logic_state.player_died_indoor = player_is_indoor
+end
+
+function SoulslikeScenarioLogic:SetIsInWater(is_in_water)
+    self.logic_state.player_died_in_water = is_in_water
+end
+
+function SoulslikeScenarioLogic:SetLevelName(name)
+    self.logic_state.story.level_name = name
+end
+
+function SoulslikeScenarioLogic:SetLootScalar(scenario_loot_scalar)
+    self.logic_state.scenario_loot_scalar = scenario_loot_scalar
+end
+
+function SoulslikeScenarioLogic:SetRescuer(npc)
+    if npc and (type(npc.id) == "function") then
+        self.logic_state.rescuer_id = npc:id()
+    elseif npc and npc.id then
+        self.logic_state.rescuer_id = npc.id
+    end
+end
+
+function SoulslikeScenarioLogic:SetLooter(npc)
+    if npc and (type(npc.id) == "function") then
+        self.logic_state.looter_id = npc:id()
+    elseif npc and npc.id then
+        self.logic_state.looter_id = npc.id
+    end
+end
+
+function SoulslikeScenarioLogic:SetLooterType(entity_type)
+    self.logic_state.looter_type = entity_type
+    self.logic_state.story.looter_type = entity_type
+end
+
+function SoulslikeScenarioLogic:SetKiller(npc)
+    if npc and (type(npc.id) == "function") then
+        self.logic_state.killer_id = npc:id()
+    elseif npc and npc.id then
+        self.logic_state.killer_id = npc.id
+    end
+end
+
+function SoulslikeScenarioLogic:SetKillerType(entity_type)
+    self.logic_state.killer_type = entity_type
+end
+
+function SoulslikeScenarioLogic:SetFatalHitType(hit_type)
+    self.logic_state.fatal_hit_type = hit_type
+end
+
+function SoulslikeScenarioLogic:destroy()
+    self.logic_state = nil
+    self.game_state = nil
+end
+
+function SoulslikeScenarioLogic:HealActor()
+    local heath = 1 - self.logic_state.health_loss_percent
+
+    db.actor:set_health_ex(heath)
+    db.actor.power = 1
+    db.actor.radiation = 0
+    db.actor.bleeding = 1
+    db.actor.psy_health = 1
+
+    save_var(db.actor,'grw_in_water',nil)
+    
+    if arszi_psy then 
+        arszi_psy.set_psy_health(1.0)
+    end
+end
+
+function SoulslikeScenarioLogic:ApplyRankLoss()
+    if soulslike_mcm.allow_rank_loss() == false then
+        soulslike.debug("Rank loss disabled.")
+        return
+    end
+
+    local rank = db.actor:character_rank()
+    local loss_percent = self.logic_state.rank_loss_percent
+    local rank_loss = math.abs(rank * loss_percent)
+
+    soulslike.debug("Player has lost "..tostring(rank_loss).." rank.")
+
+    db.actor:set_character_rank(db.actor:character_rank() + (-rank_loss or 0))
+    game_statistics.check_for_rank_change()
+end
+
+function SoulslikeScenarioLogic:ApplyReputationLoss()
+    if soulslike_mcm.allow_rep_loss() == false then
+        soulslike.debug("Reputation loss disabled.")
+        return
+    end
+
+    local rep = db.actor:character_reputation()
+    local loss_percent = self.logic_state.rep_loss_percent
+    local rep_loss = math.abs(rep * loss_percent)
+
+    soulslike.debug("Player has lost "..tostring(rep_loss).." repuation.")
+
+    db.actor:set_character_reputation(db.actor:character_reputation() + (-rep_loss or 0))
+    game_statistics.check_for_reputation_change()
+end
+
+function SoulslikeScenarioLogic:ApplyItemConditionLoss(item, container, condition_loss_percent)
+    local g_tostring = tostring
+    local cond = item:condition()
+    local sec = item:section()
+
+    soulslike.debug("Item ".. sec.. " condition ".. g_tostring(cond).." before degradation")
+    soulslike.debug("Item ".. sec.. " condition loss percent ".. g_tostring(condition_loss_percent))
+    
+    local is_grenade = IsGrenade(item)
+    local is_weapon = (IsWeapon(item) and not is_grenade)
+    local is_outfit = IsOutfit(item) 
+    local is_headgear = IsHeadgear(item)
+    local to_id = container:id()
+    
+    local use_condition = utils_item.is_degradable(item, sec)
+    local has_cond = use_condition or is_weapon or is_outfit or is_headgear
+
+    if has_cond then
+        if is_weapon then
+            if not item_parts then
+                soulslike.debug("Cannot find item_parts, skipping degradation.")
+                return
+            end
+
+            local parts = item_parts.get_parts_con(item)
+
+            if not parts then
+                soulslike.debug("Item ".. sec.. " has no parts")
+                return
+            end
+
+            for sec,con in pairs(parts) do
+                local degrade_amount = (con * condition_loss_percent)
+                local degraded_con = con - degrade_amount
+
+                -- Round with no decimals
+                degrade_amount = math.floor(degrade_amount + 0.5)
+
+                soulslike.debug("Degrading part ".. sec.. " condition ".. g_tostring(con).." by "..g_tostring(degrade_amount).." to "..g_tostring(degraded_con))
+                
+                parts[sec] = math.clamp(degraded_con, 1, 100)
+            end
+
+            item_parts.set_parts_con(item:id(), parts)
+        else
+            soulslike.debug("Degrading item ".. sec.. " condition ".. g_tostring(cond).." by "..g_tostring(condition_loss_percent))
+            -- utils_item.degrade releases the item if the condition is 0
+            local condition = utils_item.degrade(item, condition_loss_percent)
+            
+            if condition == 0 then
+                soulslike.debug("Item ".. sec.. " was degraded into oblivion")
+                self.logic_state.story.items_were_lost = true
+                self.game_state.created_stashes[to_id].lost_items[#self.game_state.created_stashes[to_id].lost_items+1] = sec
+            end
+        end
+    end
+end
+
+function SoulslikeScenarioLogic:ApplyTransferItemsPreConditions()
+    local is_magazine					= magazine_binder and magazine_binder.is_magazine
+    local is_carried_mag				= magazine_binder and magazine_binder.is_carried_mag
+    local toggle_carried_mag			= magazine_binder and magazine_binder.toggle_carried_mag
+
+    local function check_item(_, item)
+        local sec = item:section()
+        if is_magazine and is_magazine(sec) and is_carried_mag(item:id()) then
+            soulslike.debug("Toggling carried mag: "..sec)
+            local result = toggle_carried_mag(item:id())
+            soulslike.debug("Mag toggled to: "..tostring(result))
+        end
+    end
+
+    soulslike.debug("Inventory precondition checks")
+    db.actor:iterate_inventory(check_item)
+    
+    if magazine_binder and magazine_binder.validate_loadout then
+        magazine_binder.validate_loadout()
+    end
+end
+
+function SoulslikeScenarioLogic:ApplyTransferItemsPostConditions()
+    soulslike.debug("BASE Applying post conditions")
+end
+
+function SoulslikeScenarioLogic:TransferAndRespawn(to_id)
+    soulslike.debug("BASE TransferAndRespawn")
+    self:TransferItems(to_id)       
+    self:ApplyMoneyLoss()  
+    self:ApplyTransferItemsPostConditions()
+    self:RespawnActor()
+end
+
+function SoulslikeScenarioLogic:HandleItemsAndRespawn() 
+    self:ApplyTransferItemsPreConditions()
+
+    local actor = db.actor
+    local position = actor:position()
+    self.logic_state.death_location = {
+        position = {
+            x = position.x,
+            y = position.y,
+            z = position.z
+        },
+        level_vertex_id = actor:level_vertex_id(),
+        game_vertex_id = actor:game_vertex_id()
+    }
+
+    local se_stash = self:CreateStash()
+             
+    if se_stash then
+        soulslike.debug("Stash created "..tostring(se_stash.id))
+
+        local function wait_for_stash_creation(id, scenario)
+            local pack = level.object_by_id(id)
+
+            if pack then
+                scenario:TransferAndRespawn(id)
+                return true
+            else
+                soulslike.debug("Stash does not yet exist in game")            
+                return false
+            end
+        end
+        
+        --We have to create a timer to give the game time to spawn the backpack.
+        if dte then
+            dte.CreateTimeEvent(1980, "wait_for_stash_creation", 0, wait_for_stash_creation, se_stash.id, self)
+        else
+            CreateTimeEvent(1980, "wait_for_stash_creation", 0, wait_for_stash_creation, se_stash.id, self)
+        end
+    else    
+        soulslike.debug("Stash was not created")
+        self:RespawnActor()
+    end
+end
+
+
+function SoulslikeScenarioLogic:OnDeath()  
+    if not self.logic_state.scenario_id  then
+        error("Soulslike: No scenario id defined!")
+    end
+
+    bind_stalker_ext.invulnerable_time = time_global() + 30000
+    actor_status.deactivate_hud()
+
+    self:HealActor()
+    self:ApplyRankLoss()
+    self:ApplyReputationLoss()
+    self:HandleItemsAndRespawn()
+end
+
+function SoulslikeScenarioLogic:GiveFoodAndWater()
+    -- Satiety
+    local conditions = db.actor:cast_Actor():conditions()
+    local satiety = conditions:GetSatiety()
+    local red_icon_satiety = conditions:SatietyCritical() * 0.5
+    
+    satiety = normalize(satiety, red_icon_satiety, 1)
+    satiety = math.clamp( satiety / 5.65 , 0, 0.185)
+
+    soulslike.debug({satiety = satiety})
+    if satiety < 0.5 then
+        self.logic_state.story.gave_food_or_water = true  
+        db.actor.satiety = 0.5
+    end
+
+    -- Thirst
+    local thirst = 1 - actor_status_thirst.get_water_deprivation()		-- 1 full
+    local red_icon_thirst = 1 - normalize(5760, 0, 10000) -- def 0.424 red
+    
+    thirst = normalize(thirst, red_icon_thirst, 1)
+    thirst = math.clamp(thirst / 5.65, 0, 0.185)
+
+    soulslike.debug({thirst = thirst})
+
+    if thirst < 0.5 then
+        self.logic_state.story.gave_food_or_water = true  
+        -- HACK... deal with it :shades:
+        soulslike.debug("HACK updating thirst.")
+        actor_status_thirst.load_state({drink = {last_drink = 3500, chk_drink = nil}})
+        actor_status_thirst.actor_on_update()
+    end
+
+    if self.logic_state.story.gave_food_or_water then
+        soulslike.debug("Spawning bread and water on actor.")
+        alife_create_item('bread', db.actor)
+        alife_create_item('water_drink', db.actor)
+    end
+end
+
+function SoulslikeScenarioLogic:GiveMeds()
+end
+
+function SoulslikeScenarioLogic:GiveWeapon()
+end
+
+function SoulslikeScenarioLogic:GiveOutfit()
+end
+
+function SoulslikeScenarioLogic:GiveMask()
+end
+
+function SoulslikeScenarioLogic:TrackAmbusher(id, mental_state, body_state, movement_type, sight_type, position, level_vertex_id, game_vertex_id)
+    if not self.game_state.tracked_ambushers then
+        self.game_state.tracked_ambushers = {}
+    end
+    self.game_state.tracked_ambushers[id] = {
+        mental_state = mental_state, 
+        body_state = body_state, 
+        movement_type = movement_type, 
+        sight_type = sight_type, 
+        position = position,
+        level_vertex_id = level_vertex_id,
+        game_vertex_id = game_vertex_id
+    }
+end
+
+function SoulslikeScenarioLogic:SpawnAmbush()
+    local g_pairs = pairs
+    soulslike.debug("Checking ambush chance.")
+    local loss_chance_dice_roll = math.random(0, 100)
+    local spawns = {}
+    local sim = alife()
+
+    if not sim then return end
+    
+    local debug_spawn = soulslike_mcm.debug_always_spawn_ambush()
+
+    if debug_spawn then
+        soulslike.debug("Ambush debugging enabled")
+        loss_chance_dice_roll = 0
+    end
+
+    soulslike.debug({
+        killer_type = self.logic_state.killer_type,
+        has_mutant_bait = self.logic_state.has_mutant_bait,
+        mutant_ambush_chance = self.logic_state.mutant_ambush_chance,
+        stalker_ambush_chance = self.logic_state.stalker_ambush_chance,
+        loss_chance_dice_roll = loss_chance_dice_roll
+    })
+
+    if self.logic_state.killer_type == soulslike.entity_type.Monster and 
+       self.logic_state.has_mutant_bait and
+       loss_chance_dice_roll < self.logic_state.mutant_ambush_chance * 100 then 
+        soulslike.debug("Setting up mutant spawn table.")
+        for _, spawn in g_pairs(mutant_spawns) do
+            if (spawn.type == mutant_spawn_type.Boar and self.logic_state.allow_boar_ambush) or
+               (spawn.type == mutant_spawn_type.Flesh and self.logic_state.allow_flesh_ambush) or
+               (spawn.type == mutant_spawn_type.Dog and self.logic_state.allow_dogs_ambush) or
+               (spawn.type == mutant_spawn_type.Cat and self.logic_state.allow_cats_ambush) or
+               (spawn.type == mutant_spawn_type.Snork and self.logic_state.allow_snorks_ambush) or
+               (spawn.type == mutant_spawn_type.Burer and self.logic_state.allow_burer_ambush) or
+               (spawn.type == mutant_spawn_type.BloodSucker and self.logic_state.allow_bloodsucker_ambush) or
+               (spawn.type == mutant_spawn_type.Chimera and self.logic_state.allow_chimera_ambush) or
+               (spawn.type == mutant_spawn_type.Controller and self.logic_state.allow_controller_ambush) then                
+                spawns[#spawns+1] = spawn
+            end
+        end
+    elseif self.logic_state.killer_type == soulslike.entity_type.Stalker and
+           loss_chance_dice_roll < self.logic_state.stalker_ambush_chance * 100 then 
+        local killer = self.logic_state.killer_id and sim:object(self.logic_state.killer_id) or nil
+        
+        if killer then
+            soulslike.debug("Setting up stalker spawn table.")
+            local community = killer:community()    
+            soulslike.debug("killer community - "..community)
+            for _, spawn in g_pairs(stalker_spawns) do
+                if spawn.community == community then
+                    soulslike.debug(spawn)
+                    if (spawn.type == stalker_spawn_type.Novice and self.logic_state.allow_stalker_novice_ambush) or
+                       (spawn.type == stalker_spawn_type.Advanced and self.logic_state.allow_stalker_advanced_ambush) or
+                       (spawn.type == stalker_spawn_type.Veteran and self.logic_state.allow_stalker_veteran_ambush) or
+                       (spawn.type == stalker_spawn_type.Sniper and self.logic_state.allow_stalker_sniper_ambush) then
+                        soulslike.debug("Spawn accepted.")
+                        spawns[#spawns+1] = spawn
+                    end
+                end
+            end
+        end
+    else
+        soulslike.debug("No ambush scenario detected.")
+        return
+    end
+               
+    soulslike.debug("Spawns:")
+    soulslike.debug(spawns)    
+    
+    if table.get_length(spawns) == 0 then
+        soulslike.debug("No valid spawns for ambush")
+        return
+    end
+
+    local weight_sum = 0
+    for _, value in g_pairs(spawns) do
+        weight_sum = weight_sum + value.weight
+    end
+
+    local min = 0
+    for _, value in g_pairs(spawns) do
+        value.min = min + 1
+        value.max = math.floor(min + (100 * (value.weight / weight_sum)))
+        min = value.max
+    end
+
+    local roll = math.random(1, 100)    
+    local section = nil
+    for _, value in g_pairs(spawns) do
+        if(roll >= value.min and roll <= value.max) then
+            section = value.section
+            break
+        end
+    end
+
+    if section then    
+        soulslike.debug_tip("Spawning ambush "..section)   
+        
+        local class = ini_sys:r_string_ex(section,"class")
+        local kind = ini_sys:r_string_ex(section,"kind") -- special class name for the sake of correct listing
+
+        if kind then class = kind end
+
+        if self.logic_state.death_location.position.x then
+            local pos = vector():set(
+                self.logic_state.death_location.position.x, 
+                self.logic_state.death_location.position.y, 
+                self.logic_state.death_location.position.z)   
+            local lvid = self.logic_state.death_location.level_vertex_id
+            local gvid = self.logic_state.death_location.game_vertex_id
+            local group = obj_to_spawn_classes[class]
+            local is_squad = string.find(group, "Squad")
+            local se_obj = section and alife_create(section, pos, lvid, gvid)
+
+            if se_obj then
+                if is_squad then
+                    se_obj:create_npc(nil, pos, lvid, gvid)
+                    local sim = alife()
+                    if not sim then return end
+                    for k in se_obj:squad_members() do
+                        local se_npc = k.object or k.id and sim:object(k.id)
+                        if (se_npc) then
+                            SIMBOARD:setup_squad_and_group(se_npc)
+                            SendScriptCallback("squad_on_npc_creation", se_obj, se_npc)
+                            
+                            -- TODO: Need to have them guard (this is code for stalkers... not sure what to do about mutants)
+                            self:TrackAmbusher(
+                                k.id, 
+                                anim.look_around,
+                                move.standing,
+                                move.stand,
+                                look.search,
+                                self.logic_state.death_location.position)
+                        end 
+                    end
+                    if soulslike_mcm.debug_squad_spawns() then
+                        level.map_add_object_spot_ser(se_obj.id, "secondary_task_location", "DEBUG: Spawn "..section) 
+                    end
+                    soulslike.debug_tip(strformat("Spawned squad [%s] (%s)", section, se_obj.id))
+                else
+                    -- TODO: Need to have them guard (this is code for stalkers... not sure what to do about mutants)
+                    self:TrackAmbusher(
+                        se_obj.id, 
+                        anim.look_around,
+                        move.standing,
+                        move.stand,
+                        look.search,
+                        self.logic_state.death_location.position,
+                        lvid,
+                        gvid)
+                    if soulslike_mcm.debug_squad_spawns() then
+                        level.map_add_object_spot_ser(se_obj.id, "secondary_task_location", "DEBUG: Spawn "..section) 
+                    end
+                    soulslike.debug_tip(strformat("Spawned object [%s] (%s)", section, se_obj.id))
+                end
+            else
+                soulslike.debug(strformat("No server object made for [%s]", section))
+            end                
+        else
+            soulslike.debug("No nearby smarts, to dumb")
+        end
+    end
+end
+
+function SoulslikeScenarioLogic:OnComplete()
+    self:GiveFoodAndWater()
+    self:GiveMeds()
+    self:GiveWeapon()
+    self:GiveOutfit()
+    self:GiveMask()
+    self:SpawnAmbush()
+
+    actor_status.activate_hud()
+
+    self:SendWakeupMessage()
+
+    if soulslike_mcm.is_hardcore_save_enabled() then
+        soulslike.force_save("respawn")	
+    end
+    
+    actor_menu.set_msg(1, strformat(game.translate_string("st_death_count"), game_statistics.get_statistic_count("deaths")),8)
+end
+
+function SoulslikeScenarioLogic:RespawnActor()
+    soulslike.debug("Respawning actor")
+
+    -- Nighttime respawn logic
+    if not soulslike_mcm.allow_nighttime_respawn() then
+        local hour = level.get_time_hours()
+        -- If it's before 7am or after 21 (9pm), advance to 7-9am
+        if hour < 7 or hour >= 21 then
+            local advance_hours = 7 - hour
+            if advance_hours <= 0 then
+                advance_hours = 24 - hour + 7
+            end
+            -- Add a little randomness between 7-9am
+            advance_hours = advance_hours + math.random(0,2)
+            soulslike.debug("Advancing time for daytime respawn: "..tostring(advance_hours).." hours")
+            level.change_game_time(0, advance_hours, 0)
+        end
+    end
+    
+    local position = vector():set(self.game_state.spawn_location.position.x, self.game_state.spawn_location.position.y, self.game_state.spawn_location.position.z)   
+    local level_vertex_id = self.game_state.spawn_location.level_vertex_id
+    local game_vertex_id = self.game_state.spawn_location.game_vertex_id  
+    
+    level.add_pp_effector("black_infinite.ppe", 5606, true)
+    
+
+    local function respawn(position, level_vertex_id, game_vertex_id)
+        soulslike.debug("Changing levels")
+        ChangeLevel(position, level_vertex_id, game_vertex_id, VEC_ZERO, false)
+        return true
+    end
+
+    --We have to create a timer to give the game time to spawn the backpack.
+    if dte then
+        dte.CreateTimeEvent(0, "respawn", 1, respawn, position, level_vertex_id, game_vertex_id)
+    else
+        CreateTimeEvent(0, "respawn", 1, respawn, position, level_vertex_id, game_vertex_id)
+    end
+
+    self:StopSurgeAndStorm()
+end
+
+function SoulslikeScenarioLogic:SendWakeupMessage()
+    soulslike.debug("SoulslikeScenarioLogic:SendWakeupMessage") 
+
+    local rescuer;
+    if self.logic_state.rescuer_id then 
+        soulslike.debug("Looking up rescuer id "..tostring(self.logic_state.rescuer_id)) 
+        rescuer = alife_object(self.logic_state.rescuer_id)
+    end
+    
+    soulslike.debug("Creating message.") 
+    local msg = soulslike_message_factory.create(rescuer, self.logic_state.story)
+    soulslike.debug("Message created: "..msg)
+
+    if rescuer then
+        soulslike.debug("Sending tip to player from rescuer.") 
+        news_manager.send_tip(db.actor, msg, nil, rescuer, 20000)
+    else
+        soulslike.debug("No rescuer, its a mystery...") 
+        local ui_sender = news_manager.tips_icons['default']
+        db.actor:give_game_news("", msg, ui_sender, 0, 20000)
+    end  
+end
+
+function SoulslikeScenarioLogic:AdvanceTime()
+    self.logic_state.is_advancing_time = true
+
+    xr_effects.disable_ui(db.actor, nil)
+
+    level.add_cam_effector("camera_effects\\sleep.anm", 10, false, "soulslike.dream_callback")
+    level.add_pp_effector("sleep_fade.ppe", 11, false)
+
+    _G.mus_vol = get_console_cmd(2,"snd_volume_music")
+    _G.amb_vol = get_console_cmd(2,"snd_volume_eff")
+
+    exec_console_cmd("snd_volume_music 0")
+    exec_console_cmd("snd_volume_eff 0")
+
+    level.add_pp_effector("surge_fade.ppe", 11, false) 
+    db.actor:give_info_portion("actor_is_sleeping")
+end
+
+function SoulslikeScenarioLogic:StopSurgeAndStorm(to_id)
+    -- skip surge due to bug with killing actor on switch
+    surge_manager.stop_surge()    
+    
+    local psi_storm_manager = psi_storm_manager.get_psi_storm_manager()
+
+    if (psi_storm_manager.started) then
+        psi_storm_manager:finish(true)
+    end
+end
+function SoulslikeScenarioLogic:IsItemLossAllowed(item)
+    local math_random = math.random
+    -- If the player died in the water, no items will be lost
+    if self.logic_state.player_died_in_water then
+        return false
+    end
+
+    local sec = item:section()
+    local is_grenade = IsGrenade(item)
+    local is_artefact = IsArtefact(item)
+    local is_weapon = (IsWeapon(item) and not is_grenade)
+    local is_outfit = IsOutfit(item)
+    local is_headgear = IsHeadgear(item)
+    local is_backpack = item and SYS_GetParam(0, sec, "kind") == "i_backpack"
+    local is_toolkit = IsToolkit(item)
+
+    -- Check loss permission for each type
+    if is_weapon and not self.logic_state.allow_weapon_loss then
+        soulslike.debug("Not allowed to lose weapon "..sec)
+        return false
+    end
+    
+    if is_artefact and not self.logic_state.allow_artifact_loss then
+        soulslike.debug("Not allowed to lose artefact "..sec)
+        return false
+    end
+
+    if is_outfit and not self.logic_state.allow_outfit_loss then
+        soulslike.debug("Not allowed to lose outfit "..sec)
+        return false
+    end
+
+    if is_headgear and not self.logic_state.allow_headgear_loss then
+        soulslike.debug("Not allowed to lose headgear "..sec)
+        return false
+    end
+
+    if is_toolkit and not self.logic_state.allow_toolkit_loss then
+        soulslike.debug("Not allowed to lose toolkit "..sec)
+        return false
+    end
+
+    if is_backpack then
+        soulslike.debug("Not allowed to lose backpack "..sec)
+        return false
+    end
+
+    -- Chance logic for each type
+    if is_outfit and self.logic_state.allow_outfit_loss and math_random() < soulslike_mcm.get_keep_outfit_chance() then
+        soulslike.debug("Rolled to keep outfit "..sec)
+        return false
+    end
+    if is_headgear and self.logic_state.allow_headgear_loss and math_random() < soulslike_mcm.get_keep_headgear_chance() then
+        soulslike.debug("Rolled to keep headgear "..sec)
+        return false
+    end
+    if is_weapon and self.logic_state.allow_weapon_loss and math_random() < soulslike_mcm.get_keep_weapon_chance() then
+        soulslike.debug("Rolled to keep weapon "..sec)
+        return false
+    end
+    if is_artefact and self.logic_state.allow_artifact_loss and math_random() < soulslike_mcm.get_keep_artifact_chance() then
+        soulslike.debug("Rolled to keep artefact "..sec)
+        return false
+    end
+
+    return true
+end
+
+function SoulslikeScenarioLogic:TryStalkerLooter(item, container, looter)
+    local sec = item:section()
+    local to_id = container:id()
+
+    if(self.logic_state.allow_npc_looting and looter) then   
+        soulslike.debug("Transfering item to enemy: "..sec)   
+        self.game_state.created_stashes[to_id].lost_items[#self.game_state.created_stashes[to_id].lost_items+1] = sec                
+        db.actor:transfer_item(item, looter)
+        self.logic_state.looter = true
+        return true
+    end
+    return false
+end
+
+function SoulslikeScenarioLogic:TryMonsterLooter(item, container, looter)
+    local sec = item:section()
+    local to_id = container:id()
+    local is_mutant_meat = SYS_GetParam(0, sec, "kind") == "i_mutant_raw"
+    local is_food = SYS_GetParam(0, sec, "kind") == "i_food"
+    local is_mutant_belt = SYS_GetParam(0, sec, "kind") == "i_mutant_belt"
+
+    self.logic_state.has_mutant_bait =         
+        self.logic_state.has_mutant_bait or is_mutant_meat or is_food or is_mutant_belt
+    
+    if(self.logic_state.allow_npc_looting and looter and (is_mutant_meat or is_food or is_mutant_belt)) then   
+        soulslike.debug("Monster ate item: "..sec)   
+        self.game_state.created_stashes[to_id].lost_items[#self.game_state.created_stashes[to_id].lost_items+1] = sec            
+        alife_release(item)
+        return true
+    end
+    
+    return false
+end
+
+function SoulslikeScenarioLogic:TryTarkovLooter(item, container, looter)
+    local loss_chance_dice_roll = math.random(0, 100)
+    local sec = item:section()
+    local is_grenade = IsGrenade(item)
+    local is_weapon = (IsWeapon(item) and not is_grenade)
+
+    if soulslike_mcm.debug_the_tarkov_looter() then
+        loss_chance_dice_roll = 1
+    end
+
+    if loss_chance_dice_roll <= 1 and is_weapon and item_parts then
+        local parts = item_parts.get_parts_con(item)
+        if parts then
+            local keys = {}
+            local numitems = 0 
+            for k,v in pairs(parts) do
+                numitems = numitems + 1
+                keys[#keys+1] = k
+            end
+            
+            local index = math.random(1, numitems)
+            local sec = keys[index]
+            local condition = parts[keys[index]]
+
+            soulslike.debug("Creating item "..sec.." with condition "..tostring(condition)) 
+
+            local max_con_obj = 0.999
+            local min_con_obj = 0.001
+            local se_result = alife_create(sec, looter:position(), looter:level_vertex_id(), looter:game_vertex_id(), looter:id(), false)
+            local data_result = utils_stpk.get_item_data(se_result)
+            
+            data_result.condition = math.clamp((condition / 100) , min_con_obj , max_con_obj)
+            utils_stpk.set_item_data(data_result,se_result)
+            alife():register(se_result)
+
+            parts[sec] = -1 -- KEKW 
+            item_parts.set_parts_con(item:id(), parts)
+            
+            -- TODO: Spawn part on looter
+            self.logic_state.looter = true
+            -- TODO: Add message text for this 
+            self.logic_state.got_tarkoved = true
+        end
+            
+        soulslike.debug("Transfering item "..sec.." to container")
+        db.actor:transfer_item(item, container)
+        return true
+    end
+    return false
+end
+
+function SoulslikeScenarioLogic:TransferItem(item, container, looter)
+    local sec = item:section()
+    local to_id = container:id()
+
+    if ini_sys:r_bool_ex(sec,"quest_item",false) then
+        soulslike.debug("Item quest item: "..sec)
+        return false
+    end
+
+    -- HARDCORE: Lose all items on death overrides all other logic
+    if soulslike_mcm.lose_all_items_on_death() then
+        soulslike.debug("Lose all items on death is enabled, removing item: "..sec)
+        self.game_state.created_stashes[to_id].lost_items[#self.game_state.created_stashes[to_id].lost_items+1] = sec
+        alife_release(item)
+        self.logic_state.story.items_were_lost = true
+        return false
+    end
+
+    if ignore_list(sec) then
+        soulslike.debug("Item is in ignore list: "..sec)
+        return false
+    end
+
+    local keep_equipped_items_on_death = self.logic_state.keep_equipped_items_on_death
+
+    if keep_equipped_items_on_death and is_equipped(item:id()) then
+        soulslike.debug("Not allowed tolose equipped item "..sec)
+        return false
+    end
+
+    local is_loss_allowed = self:IsItemLossAllowed(item)
+
+    if is_loss_allowed then
+        local loss_chance_dice_roll = math.random(0, 100)
+        local loss_chance
+        local loss_type_multipler = 1.0
+        local is_outfit = IsOutfit(item)
+        local is_weapon = (IsWeapon(item) and not IsGrenade(item))
+        local is_artefact = IsArtefact(item)
+        local is_headgear = IsHeadgear(item)
+        local is_toolkit = IsToolkit(item)
+
+        -- If not any of the above, treat as 'other'
+        if is_outfit then
+            loss_type_multipler = soulslike_mcm.get_outfit_loss_chance()
+        elseif is_weapon then
+            loss_type_multipler = soulslike_mcm.get_weapon_loss_chance()
+        elseif is_artefact then
+            loss_type_multipler = soulslike_mcm.get_artefact_loss_chance()
+        elseif is_headgear then
+            loss_type_multipler = soulslike_mcm.get_headgear_loss_chance()
+        elseif is_toolkit then
+            loss_type_multipler = soulslike_mcm.get_toolkit_loss_chance()
+        else
+            loss_type_multipler = soulslike_mcm.get_other_loss_chance()
+        end
+
+        if self.logic_state.ignore_rank_item_loss then
+            loss_chance = math.clamp(self.logic_state.item_loss_scalar * loss_type_multipler, 0, 1) * 100
+        else
+            loss_chance = math.clamp(self.logic_state.ranked_chance * self.logic_state.item_loss_scalar * loss_type_multipler, 0, 1) * 100
+        end
+        
+        loss_chance = math.floor(loss_chance * (self.logic_state.scenario_loot_scalar or 1))
+
+        local is_mutant_meat = SYS_GetParam(0, sec, "kind") == "i_mutant_raw"
+        local is_food = SYS_GetParam(0, sec, "kind") == "i_food"
+        local is_mutant_belt = SYS_GetParam(0, sec, "kind") == "i_mutant_belt"
+    
+        self.logic_state.has_mutant_bait =         
+            self.logic_state.has_mutant_bait or is_mutant_meat or is_food or is_mutant_belt
+
+        local condition_loss_percent
+        local cond_type_multiplier = 1.0
+
+        if is_outfit then
+            cond_type_multiplier = soulslike_mcm.get_outfit_condition_loss_chance()
+        elseif is_weapon then
+            cond_type_multiplier = soulslike_mcm.get_weapon_condition_loss_chance()
+        elseif is_headgear then
+            cond_type_multiplier = soulslike_mcm.get_headgear_condition_loss_chance()
+        end
+
+        if self.logic_state.ignore_rank_item_condition_loss then
+            condition_loss_percent = math.clamp(soulslike_mcm.get_item_condition_loss_percent() * cond_type_multiplier, 0, 1)
+        else
+            condition_loss_percent = math.clamp(self.logic_state.ranked_chance * soulslike_mcm.get_item_condition_loss_percent() * cond_type_multiplier, 0, 1)
+        end
+
+        if condition_loss_percent > 0 then
+            self:ApplyItemConditionLoss(item, container, condition_loss_percent)
+        end
+        
+        -- We never want to delete the players backpack
+        -- since it makes up the created stash
+        if loss_chance ~= 0 and loss_chance_dice_roll < loss_chance then          
+            -- This shit is going to be funny as fuck for me to know 
+            -- that there is a 1% chance for this to happen 
+            if looter and self:TryTarkovLooter(item, container, looter) then
+                return false
+            end
+
+            local is_looter_stalker = self.logic_state.looter_type == soulslike.entity_type.Stalker
+            local is_looter_mutant = self.logic_state.looter_type == soulslike.entity_type.Monster
+
+            if looter and is_looter_stalker and self:TryStalkerLooter(item, container, looter) then
+                return false
+            end
+
+            if looter and is_looter_mutant and self:TryMonsterLooter(item, container, looter) then
+                return false
+            end
+
+            local is_ammo = IsAmmo(item)
+            local is_medical = SYS_GetParam(0, sec, "kind") == "i_medical"
+            local is_food = SYS_GetParam(0, sec, "kind") == "i_food"
+
+            if is_ammo or is_food or is_medical then
+                soulslike.debug("Item lost "..sec)  
+                self.game_state.created_stashes[to_id].lost_items[#self.game_state.created_stashes[to_id].lost_items+1] = sec          
+                alife_release(item)
+                self.logic_state.story.items_were_lost = true 
+                return false 
+            end 
+        end
+    end
+
+    soulslike.debug("Transfering item "..sec)
+    db.actor:transfer_item(item, container)
+    return true
+end
+
+function SoulslikeScenarioLogic:ApplyMoneyLoss()
+    if soulslike_mcm.allow_money_loss() then
+        local loss_chance = soulslike_mcm.get_money_loss_chance()
+        if math.random() < loss_chance then
+            local max_percent = soulslike_mcm.get_money_loss_max_percent()
+            local percent = math.random() * max_percent
+            local money = db.actor:money()
+            local to_lose = math.floor(money * percent)
+            if to_lose > 0 then
+                db.actor:give_money(-to_lose)
+                soulslike.debug("Lost money on death: "..to_lose)
+            end
+        end
+    end
+end
+
+function SoulslikeScenarioLogic:TransferItems(to_id)
+    local container = level.object_by_id(to_id)
+    local enemy_looter = self.logic_state.looter_id and level.object_by_id(self.logic_state.looter_id) or nil
+
+    if enemy_looter and self.logic_state.looter_type == soulslike.entity_type.Stalker then
+        soulslike.debug("Scenario Looter "..enemy_looter:character_community().." "..enemy_looter:character_name()) 
+    end
+
+    soulslike.debug("Transfering items")
+    local function release_actor_item(_, item)
+        self:TransferItem(item, container, enemy_looter)
+    end
+    db.actor:iterate_inventory(release_actor_item)
+    soulslike.debug("Transfering items complete")
+
+    if enemy_looter and self.logic_state.looter and self.logic_state.looter_type == soulslike.entity_type.Stalker then      
+        soulslike.debug("Recording enemy looter")  
+        self.logic_state.story.enemy = {
+            name = enemy_looter:character_name(),
+            community = enemy_looter:character_community(),
+            tarkov_experience = self.logic_state.got_tarkoved 
+        }
+
+        if self.logic_state.are_looter_npcs_marked then
+            soulslike.debug("Marking looter on pda")
+            level.map_add_object_spot_ser(enemy_looter:id(), "secondary_task_location", enemy_looter:character_name())            
+        end
+    end
+end
+
+function SoulslikeScenarioLogic:OnRespawn()
+
+    bind_stalker_ext.invulnerable_time = time_global() + 1
+
+    self:HealActor()
+    self:AdvanceTime()
+    
+    local rank = db.actor:character_rank()
+    local rep = db.actor:character_reputation()
+
+    soulslike.debug('Character rank: '..rank)
+    soulslike.debug('Character rep: '..rep)    
+end 
+
+---------------------------------------------------------
+-- Default Scenario 
+-- Stash dropped where the player died
+-- Marked on PDA
+---------------------------------------------------------
+
+class "DefaultSoulslikeScenarioLogic" (SoulslikeScenarioLogic)
+
+function DefaultSoulslikeScenarioLogic:__init(state) super (state)
+    self.logic_state.scenario_id = soulslike.SCENARIOS.Default
+end
+
+function DefaultSoulslikeScenarioLogic:CreateStash()
+    soulslike.debug("Creating stash")    
+
+    local actor = db.actor
+    local se_stash = alife_create("inv_backpack", actor:position(), actor:level_vertex_id(), actor:game_vertex_id())  
+    
+    if se_stash then
+        self.game_state.created_stashes[se_stash.id] = {
+            lost_items = {},
+            examine = false
+        } 
+        self.logic_state.stash_id = se_stash.id 
+    end
+
+    return se_stash
+end
+
+function DefaultSoulslikeScenarioLogic:ApplyTransferItemsPostConditions() 
+    soulslike.debug("Applying post conditions")
+    self.logic_state.story.has_pda_marker = true
+    level.map_add_object_spot_ser(self.logic_state.stash_id, "secondary_task_location", db.actor:character_name() .. "'s items")
+end
+
+---------------------------------------------------------
+-- RF Detector Scenario 
+-- Hidden stash used for item drop
+-- RF Detector must be used to find the stash
+-- TODO: Add task to the players PDA
+---------------------------------------------------------
+
+class "RFDetectorSoulslikeScenarioLogic" (SoulslikeScenarioLogic)
+
+function RFDetectorSoulslikeScenarioLogic:__init(state) super (state)
+    self.logic_state.scenario_id = soulslike.SCENARIOS.RFDetectorStash
+end
+
+function RFDetectorSoulslikeScenarioLogic:CreateStash()
+     -- For some reason, "box_in_same_map" doesn't actually mean same map in the treasure_manager.
+    local old_box_in_same_map = treasure_manager.box_in_same_map
+    treasure_manager.box_in_same_map = function(id)
+        local obj1 = alife():actor()
+        local obj2 = alife_object(id)
+        return simulation_objects.is_on_the_same_level(obj1, obj2)
+    end
+    local id = treasure_manager.get_random_stash("treasure", nil ,true, true)
+    treasure_manager.box_in_same_map = old_box_in_same_map
+
+    -- If we could not grab a ransom stash, we need to return nil so we don't transfer anything
+    if not id then return nil end
+
+    soulslike.debug("Random stash found: "..tostring(id))    
+
+    local se_treasure = alife_object(id)
+
+    -- If we could not grab a ransom stash, we need to return nil so we don't transfer anything
+    if not se_treasure then return nil end
+
+    local se_stash = alife_create("hidden_box", se_treasure.position, se_treasure.m_level_vertex_id, se_treasure.m_game_vertex_id)
+
+    if (se_stash) then
+        local sim = alife()
+    
+        if sim then
+            -- force strictly online
+            sim:set_switch_online(se_stash.id,true)
+            sim:set_switch_offline(se_stash.id,false)
+        end   
+        
+        self.game_state.created_stashes[se_stash.id] = {
+            lost_items = {},
+            examine = false
+        } 
+
+        if not self.game_state.hidden_stashes then
+            self.game_state.hidden_stashes = {}
+        end
+    
+        self.logic_state.hidden_stash_id = se_stash.id
+        self.logic_state.treasure_stash_id = id
+    
+        local lvl = level.name()
+        self.game_state.hidden_stashes[id] = {
+            stash_id = se_stash.id, 
+            radio_id = id,
+            radio_level = lvl
+        }   
+    end             
+    return se_stash
+end
+
+function RFDetectorSoulslikeScenarioLogic:ApplyTransferItemsPostConditions()
+    soulslike.debug("Applying post conditions")
+    local lvl = level.name()
+    soulslike.debug("Added radio target to level: "..lvl)
+    self.logic_state.story.radio_freq = math.random(30,  300)
+    item_radio.add_stash(lvl, self.logic_state.treasure_stash_id, self.logic_state.story.radio_freq) 
+
+    if soulslike_mcm.debug_hidden_stashes() then
+        soulslike.debug("Adding PDA marker "..tostring(self.logic_state.treasure_stash_id))
+        level.map_add_object_spot_ser(self.logic_state.treasure_stash_id, "secondary_task_location", "DEBUG: RF DETECTOR STASH.") 
+    end   
+
+    local se_note = alife_create_item('soulslike_rescuers_radio_frequency_note', db.actor)
+    self.game_state.note_message_data[se_note.id] = { 
+        freq = self.logic_state.story.radio_freq,
+        level_name = lvl
+    }
+end
+
+---------------------------------------------------------
+-- Hidden Stash Scenario 
+-- Hidden stash used for item drop
+-- TODO: Add task to the players PDA
+---------------------------------------------------------
+
+class "HiddenStashSoulslikeScenarioLogic" (SoulslikeScenarioLogic)
+
+function HiddenStashSoulslikeScenarioLogic:__init(state) super (state)
+    self.logic_state.scenario_id = soulslike.SCENARIOS.HiddenStash
+end
+
+function HiddenStashSoulslikeScenarioLogic:CreateStash()
+
+     -- For some reason, "box_in_same_map" doesn't actually mean same map in the treasure_manager.
+    local old_box_in_same_map = treasure_manager.box_in_same_map
+    treasure_manager.box_in_same_map = function(id)
+        local obj1 = alife():actor()
+        local obj2 = alife_object(id)
+        return simulation_objects.is_on_the_same_level(obj1, obj2)
+    end
+
+    local id = treasure_manager.get_random_stash("treasure", nil ,true, true)
+    treasure_manager.box_in_same_map = old_box_in_same_map
+
+    -- If we could not grab a ransom stash, we need to return nil so we don't transfer anything
+    if not id then return nil end
+
+    soulslike.debug("Random stash found: "..tostring(id))    
+
+    local actor = db.actor
+    local se_stash = alife_create("hidden_box", actor:position(), actor:level_vertex_id(), actor:game_vertex_id())
+
+    if (se_stash) then
+        self.game_state.created_stashes[se_stash.id] = {
+            lost_items = {},
+            examine = false
+        } 
+
+        if not self.game_state.hidden_stashes then
+            self.game_state.hidden_stashes = {}
+        end
+    
+        self.logic_state.hidden_stash_id = se_stash.id
+        self.logic_state.treasure_stash_id = id
+    
+        self.game_state.hidden_stashes[id] = {
+            stash_id = se_stash.id,
+        } 
+    end
+
+    return se_stash
+end
+
+function HiddenStashSoulslikeScenarioLogic:ApplyTransferItemsPostConditions() 
+    soulslike.debug("Applying post conditions")
+    soulslike.debug("Adding PDA marker "..tostring(self.logic_state.treasure_stash_id))     
+
+    local value = game.translate_string("st_soulslike_your_items")
+    self.logic_state.story.has_stash_pda_marker = true
+    level.map_add_object_spot_ser(self.logic_state.treasure_stash_id, "secondary_task_location", value)
+end
+
+---------------------------------------------------------
+-- No Loss scenario
+-- Players items are all returned
+---------------------------------------------------------
+
+class "NoLossSoulslikeScenarioLogic" (SoulslikeScenarioLogic)
+
+function NoLossSoulslikeScenarioLogic:__init(state) super (state)  
+    self.logic_state.scenario_id = soulslike.SCENARIOS.NoLoss
+end
+
+function NoLossSoulslikeScenarioLogic:CreateStash()
+     return nil
+end
+
+function NoLossSoulslikeScenarioLogic:TransferItems(_)
+    -- Do Nothing 
+end
+
+function NoLossSoulslikeScenarioLogic:IsItemLossAllowed(item)
+    return false
+end

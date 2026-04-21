@@ -1,0 +1,144 @@
+siski = siski or {}
+
+local type = _G.type
+local pcall = _G.pcall
+local pairs = _G.pairs
+local setmetatable = _G.setmetatable
+local tostring = _G.tostring
+
+local Patch = {
+    RUNTIME = {
+        patched = false,
+        originals = {},
+    }
+}
+
+local function log_info(fmt, ...)
+    if siski.log and siski.log.info then
+        siski.log.info("AXR_TASK_PATCH", fmt, ...)
+    end
+end
+
+local function get_proxy_seed(npc)
+    if not (npc and siski.service_filler and siski.service_filler.get_task_proxy_seed) then
+        return nil, nil
+    end
+    local ok, seed, role = pcall(siski.service_filler.get_task_proxy_seed, npc)
+    if not ok or type(seed) ~= "string" or seed == "" then
+        return nil, nil
+    end
+    return seed, role
+end
+
+local function make_proxy_npc(npc, seed)
+    local proxy = {
+        __npc = npc,
+        __seed = seed,
+    }
+
+    proxy.id = function()
+        return npc:id()
+    end
+
+    proxy.section = function()
+        return seed
+    end
+
+    proxy.name = function()
+        return seed
+    end
+
+    return setmetatable(proxy, {
+        __index = function(_, key)
+            local value = npc[key]
+            if type(value) == "function" then
+                return function(_, ...)
+                    return value(npc, ...)
+                end
+            end
+            return value
+        end
+    })
+end
+
+local function build_proxy(npc, is_sim)
+    local seed, role = get_proxy_seed(npc)
+    if not seed then
+        return npc, is_sim, nil
+    end
+    return make_proxy_npc(npc, seed), false, role
+end
+
+local function wrap_triple(fn_name)
+    if not (axr_task_manager and type(axr_task_manager[fn_name]) == "function") then
+        return
+    end
+    if Patch.RUNTIME.originals[fn_name] then
+        return
+    end
+
+    local original = axr_task_manager[fn_name]
+    Patch.RUNTIME.originals[fn_name] = original
+    axr_task_manager[fn_name] = function(npc, arg2, is_sim)
+        local proxied_npc, proxied_is_sim = build_proxy(npc, is_sim)
+        return original(proxied_npc, arg2, proxied_is_sim)
+    end
+end
+
+local function wrap_pair(fn_name)
+    if not (axr_task_manager and type(axr_task_manager[fn_name]) == "function") then
+        return
+    end
+    if Patch.RUNTIME.originals[fn_name] then
+        return
+    end
+
+    local original = axr_task_manager[fn_name]
+    Patch.RUNTIME.originals[fn_name] = original
+    axr_task_manager[fn_name] = function(npc, is_sim)
+        local proxied_npc, proxied_is_sim = build_proxy(npc, is_sim)
+        return original(proxied_npc, proxied_is_sim)
+    end
+end
+
+function Patch.apply()
+    if Patch.RUNTIME.patched == true then
+        return true
+    end
+    if not axr_task_manager then
+        return false
+    end
+
+    local triple_wrappers = {
+        "drx_sl_generate_random_sl_task",
+        "drx_sl_generate_change_factions_task",
+        "get_first_available_task",
+        "drx_sl_get_mechanic_task",
+    }
+
+    local pair_wrappers = {
+        "drx_sl_get_finished_task",
+        "drx_sl_get_finished_cf_task",
+        "drx_sl_set_finished_task_complete",
+        "drx_sl_set_finished_cf_task_complete",
+        "get_first_finished_task",
+        "set_finished_task_complete",
+        "npc_give_first_available_ordered_task",
+        "generate_available_tasks",
+        "generate_ongoing_tasks",
+        "generate_finished_tasks",
+    }
+
+    for i = 1, #triple_wrappers do
+        wrap_triple(triple_wrappers[i])
+    end
+    for i = 1, #pair_wrappers do
+        wrap_pair(pair_wrappers[i])
+    end
+
+    Patch.RUNTIME.patched = true
+    log_info("applied functions=%s", tostring(#triple_wrappers + #pair_wrappers))
+    return true
+end
+
+siski.axr_task_patch = Patch

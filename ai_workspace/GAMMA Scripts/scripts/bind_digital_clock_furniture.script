@@ -1,0 +1,55 @@
+--[[
+	Functionality for digital clock furniture
+	Author: HarukaSai (visit us at: https://discord.com/invite/efp)
+	19-06-2023
+]]
+
+function init(obj)
+    obj:bind_object(haru_placeable_digital_clock_wrapper(obj).binder)
+end
+
+--------------------------------------------------------------------------------
+-- Class "placeable_digital_clock_binder"
+--------------------------------------------------------------------------------
+class "haru_placeable_digital_clock_wrapper" (bind_hf_base.hf_binder_wrapper)
+-- Class constructor
+function haru_placeable_digital_clock_wrapper:__init(obj) super(obj)
+end
+
+-- Class update
+function haru_placeable_digital_clock_wrapper:update(delta)
+    bind_hf_base.hf_binder_wrapper.update(self, delta)
+
+    local curr_time = game.get_game_time()
+    
+    if (self.previous_time == nil) then self.previous_time = curr_time end
+
+    if not (curr_time:diffSec(self.previous_time) > 1) then
+        return
+    end
+
+    self.previous_time = curr_time
+    
+	local time = { 
+		h = string.format("%02d", tostring(level.get_time_hours())),
+		m = string.format("%02d", tostring(level.get_time_minutes()))
+	}
+    
+    for k, v in pairs(time) do
+		local i = 1
+		v:gsub(".", function(c)
+			self:set_digit_visible({k, i}, c)
+            i = i + 1 
+		end)
+	end
+end
+
+function haru_placeable_digital_clock_wrapper:set_digit_visible(pos, digit)
+    for i = 0, 9 do
+        self.object:set_bone_visible(
+            string.format("digit_%s_%s_%s", pos[1], pos[2], i), 
+            i == tonumber(digit), 
+            false, false
+        )
+    end
+end

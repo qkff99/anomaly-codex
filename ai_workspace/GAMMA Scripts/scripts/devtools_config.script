@@ -1,0 +1,268 @@
+--[[
+=======================================================================================
+    DevTools Config - Presets for DevTools Profiler
+    
+    Profiling presets are saved to devtools/presets/devtools_presets.txt and can be
+    managed through the UI. Select the modules you want to profile, save as a preset,
+    and quickly load it later.
+    
+    File structure:
+    - devtools/                    (main devtools folder)
+      - presets/                   (preset files)
+        - devtools_presets.txt
+      - devtools_profiler_export.csv
+      - devtools_flamegraph.folded
+=======================================================================================
+--]]
+
+-- ============================================================================
+-- PRESETS FILE HANDLING
+-- ============================================================================
+
+local PRESETS_FILENAME = "devtools_presets.txt"
+local presets_path = nil
+local presets = {}  -- { preset_name = { "module1", "module2", ... }, ... }
+
+-- Get the base devtools directory
+local function get_devtools_dir()
+    local appdata = getFS():update_path("$app_data_root$", "")
+    local base_dir
+    if appdata and appdata ~= "" then
+        base_dir = appdata .. "devtools\\"
+    else
+        base_dir = getFS():update_path("$logs$", "") .. "devtools\\"
+    end
+    return base_dir
+end
+
+-- Get the presets directory
+local function get_presets_dir()
+    local presets_dir = get_devtools_dir() .. "presets\\"
+    return presets_dir
+end
+
+local function get_presets_path()
+    if presets_path then
+        return presets_path
+    end
+    
+    presets_path = get_presets_dir() .. PRESETS_FILENAME
+    return presets_path
+end
+
+-- Serialize a table to string
+local function serialize_value(val, indent)
+    indent = indent or ""
+    local t = type(val)
+    
+    if t == "string" then
+        return string.format("%q", val)
+    elseif t == "number" or t == "boolean" then
+        return tostring(val)
+    elseif t == "table" then
+        local parts = {}
+        local is_array = true
+        local max_index = 0
+        
+        for k, v in pairs(val) do
+            if type(k) ~= "number" or k < 1 or math.floor(k) ~= k then
+                is_array = false
+                break
+            end
+            if k > max_index then max_index = k end
+        end
+        
+        if is_array and max_index > 0 then
+            for i = 1, max_index do
+                table.insert(parts, serialize_value(val[i], indent .. "    "))
+            end
+            return "{\n" .. indent .. "    " .. table.concat(parts, ",\n" .. indent .. "    ") .. "\n" .. indent .. "}"
+        else
+            for k, v in pairs(val) do
+                local key_str
+                if type(k) == "string" and k:match("^[%a_][%w_]*$") then
+                    key_str = k
+                else
+                    key_str = "[" .. serialize_value(k) .. "]"
+                end
+                table.insert(parts, key_str .. " = " .. serialize_value(v, indent .. "    "))
+            end
+            table.sort(parts)
+            if #parts == 0 then
+                return "{}"
+            end
+            return "{\n" .. indent .. "    " .. table.concat(parts, ",\n" .. indent .. "    ") .. "\n" .. indent .. "}"
+        end
+    else
+        return "nil"
+    end
+end
+
+-- ============================================================================
+-- PRESETS API
+-- ============================================================================
+
+function load_presets()
+    local path = get_presets_path()
+    local file = io.open(path, "r")
+    
+    if file then
+        local content = file:read("*all")
+        file:close()
+        
+        local loader = loadstring(content)
+        if loader then
+            local success, loaded = pcall(loader)
+            if success and type(loaded) == "table" then
+                presets = loaded
+                if DEVTOOLS_VERBOSE then
+                    printf("[DEVTOOLS] Presets loaded from: " .. tostring(path))
+                end
+                return true
+            end
+        end
+        if DEVTOOLS_VERBOSE then
+            printf("[DEVTOOLS] Failed to parse presets file")
+        end
+    end
+    
+    presets = {}
+    return false
+end
+
+function save_presets()
+    local path = get_presets_path()
+    local presets_dir = get_presets_dir()
+    
+    -- Try to open the file for writing
+    local file = io.open(path, "w")
+    if not file then
+        -- File open failed - likely because directory doesn't exist
+        printf("[DEVTOOLS] ERROR: Failed to save presets!")
+        printf("[DEVTOOLS] Path: " .. tostring(path))
+        printf("[DEVTOOLS] Directory: " .. tostring(presets_dir))
+        printf("[DEVTOOLS] Please create the directory manually:")
+        printf("[DEVTOOLS]   " .. tostring(presets_dir))
+        return false
+    end
+    
+    local serialized = serialize_value(presets)
+    file:write("-- DevTools Profiling Presets\n")
+    file:write("-- Saved module selections for quick profiling setup\n\n")
+    file:write("return " .. serialized)
+    file:close()
+
+    printf("[DEVTOOLS] Presets saved successfully to: " .. tostring(path))
+    return true
+end
+
+-- Save current selection as a preset
+-- modules can be either:
+--   - Array of module names (old format, backward compatible)
+--   - Table with {modules = {...}, flamegraph_enabled = bool, module_colors = {...}} (new format)
+function save_preset(name, modules, flamegraph_enabled)
+    if not name or name == "" then 
+        printf("[DEVTOOLS] ERROR: Cannot save preset with empty name")
+        return false 
+    end
+    
+    -- If modules is already a table with modules key, use it as-is (supports module_colors)
+    -- Otherwise, create new format table
+    if type(modules) == "table" and modules.modules then
+        presets[name] = modules
+    else
+        -- New format: store as table with modules, optional flamegraph_enabled, and optional module_colors
+        presets[name] = {
+            modules = modules,
+            flamegraph_enabled = flamegraph_enabled or false
+        }
+    end
+    
+    local success = save_presets()
+    if not success then
+        printf("[DEVTOOLS] ERROR: Failed to save preset '" .. tostring(name) .. "' to file")
+        -- Remove from memory if file save failed
+        presets[name] = nil
+        return false
+    end
+    
+    return true
+end
+
+-- Load a preset (returns list of module names or table with modules and flamegraph_enabled)
+-- For backward compatibility: if preset is just an array, return it as-is
+-- If preset is a table with modules key, return the full table
+function load_preset(name)
+    local preset = presets[name]
+    if not preset then return nil end
+    
+    -- Backward compatibility: if it's an array (old format), return as-is
+    if type(preset) == "table" and #preset > 0 and preset[1] and type(preset[1]) == "string" then
+        return preset
+    end
+    
+    -- New format: return the table (has modules and flamegraph_enabled)
+    return preset
+end
+
+-- Delete a preset
+function delete_preset(name)
+    if presets[name] then
+        presets[name] = nil
+        save_presets()
+        return true
+    end
+    return false
+end
+
+-- Get all preset names
+function get_preset_names()
+    local names = {}
+    for name, _ in pairs(presets) do
+        table.insert(names, name)
+    end
+    table.sort(names)
+    return names
+end
+
+-- Check if a preset exists
+function preset_exists(name)
+    return presets[name] ~= nil
+end
+
+-- Get presets file path (for display)
+function get_presets_file_path()
+    return get_presets_path()
+end
+
+-- Get presets directory path (for display/help)
+function get_presets_directory_path()
+    return get_presets_dir()
+end
+
+-- ============================================================================
+-- INITIALIZATION
+-- ============================================================================
+
+-- Global verbosity flag for DevTools (set to true to enable verbose console logs)
+DEVTOOLS_VERBOSE = false
+
+-- ROOT-LEVEL: Load presets immediately when script loads
+-- This allows devtools_profiler to access presets at root level
+do
+    local success = pcall(function()
+        load_presets()
+    end)
+    if DEVTOOLS_VERBOSE then
+        if success then
+            printf("[DEVTOOLS CONFIG] Presets loaded at root level")
+        else
+            printf("[DEVTOOLS CONFIG] Failed to load presets at root level (will retry in on_game_start)")
+        end
+    end
+end
+
+function on_game_start()
+    -- Reload presets in case root-level loading failed
+    load_presets()
+end

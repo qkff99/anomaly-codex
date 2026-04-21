@@ -1,0 +1,276 @@
+disassemble_ammo_options = {
+	all = "all",
+	non_favourite = "non_favourite",
+	none = "none"
+}
+
+disassemble_armor_options = {
+	all = "all",
+	with_usable_parts = "with_usable_parts",
+	none = "none"
+}
+
+disassemble_weapon_options = {
+	all = "all",
+	with_usable_barrel = "with_usable_barrel",
+	none = "none"
+}
+
+strip_weapon_options = {
+	all = "all",
+	usable_parts = "usable_parts",
+	none = "none"
+}
+
+disassemble_misc_items_defaults = {
+	porn = false, -- Russian PLAYBOY
+	porn2 = false, -- Ukrainian MAXIM
+	beadspread = true,
+	synthrope = true,
+	tarpaulin = true,
+	underwear = true,
+	shovel_old = true, -- Metal shovel
+	shovel_mili = true, -- Military field shovel
+	ball_hammer = false,
+	boots = true, -- Leather boots
+	broken_detector = true,
+	cutlery = false,
+	explo_metalcan_powder = true,
+	flashlight_broken = true,
+	gloves = true, -- Leather gloves
+	hand_watch = false,
+	headlamp = true, -- Old headlamp
+	mirror = true, -- Telescopic mirror
+	radio = true, -- Small radio
+	radio2 = true, -- Broken radio
+	walkie = true, -- Walkie talkie
+
+	guitar_a = true,
+	compression_bag = true,
+	itm_sleepbag = false,
+	itm_pda_common = false,
+	itm_pda_uncommon = false,
+	itm_pda_rare = false
+}
+
+loot_misc_items_defaults = {
+	porn = true, -- Russian PLAYBOY
+	porn2 = true, -- Ukrainian MAXIM
+	beadspread = true,
+	synthrope = true,
+	tarpaulin = true,
+	underwear = true,
+	shovel_old = true, -- Metal shovel
+	shovel_mili = true, -- Military field shovel
+	ball_hammer = true,
+	boots = true, -- Leather boots
+	broken_detector = true,
+	cutlery = true,
+	explo_metalcan_powder = true,
+	flashlight_broken = true,
+	gloves = true, -- Leather gloves
+	hand_watch = true,
+	headlamp = true, -- Old headlamp
+	mirror = true, -- Telescopic mirror
+	radio = true, -- Small radio
+	radio2 = true, -- Broken radio
+	walkie = true, -- Walkie talkie
+	bolt = false,
+	bolt_bullet = false,
+
+	guitar_a = true,
+	compression_bag = true,
+	itm_sleepbag = true,
+	itm_pda_common = true,
+	itm_pda_uncommon = true,
+	itm_pda_rare = true
+}
+
+loot_part_options = {
+	all = 'all',
+	usable = 'usable',
+	none = 'none'
+}
+
+-- Default config
+config = {
+	remote_looting_distance = 0,
+	proximity_looting_distance = 0,
+	proximity_looting_refire_time = 2,
+	looter_key = DIK_keys.DIK_LMENU,
+
+	-- Ammo
+	disassemble_ammo = disassemble_ammo_options.none,
+	loot_ammo = true,
+	loot_ammo_parts = true,
+	loot_grenades = true,
+	-- Armor
+	disassemble_armor = disassemble_armor_options.none,
+	loot_armor_parts = loot_part_options.usable,
+	usable_armor_part_condition_treshold = 50,
+	delete_armor = false,
+	-- Weapon
+	disassemble_weapon = disassemble_weapon_options.none,
+	strip_weapon = strip_weapon_options.usable_parts,
+	strip_attachments = true,
+	loot_weapon_parts = loot_part_options.usable,
+	usable_weapon_part_condition_treshold = 60,
+	delete_weapon = false,
+	-- Misc
+	disassemble_misc = disassemble_misc_items_defaults,
+	delete_misc = false, -- Actually delete rest
+	loot_misc = loot_misc_items_defaults,
+
+	-------------- Misc options (not misc items)
+	no_valid_tool_messaging = true,
+	delete_body = false,
+	loot_magazines = true,
+	always_treat_recipe_part_as_usable = true
+}
+
+op = {
+	id = "auto_looter", sh = true, gr = {
+    	{id = "banner", type = "slide", size = {512, 50}, link="AL_Banner_Blackgrowl.dds", spacing = 20},
+		{id = "base_description", type = "desc", text="ui_mcm_auto_looter_base_description"},
+		{id = "looter_key_title", type = "desc", clr = {200, 200, 255, 200}, text="ui_mcm_auto_looter_looter_key_title"},
+		{id = "looter_key_description", type = "desc", text="ui_mcm_auto_looter_looter_key_description"},
+		{id = "looter_key", type = "key_bind", val = 2, def = config.looter_key},
+        {id = "remote_looting_title", type = "desc", clr = {200, 200, 255, 200}, text="ui_mcm_auto_looter_remote_looting_title"},
+		{id = "remote_looting_description", type = "desc", text="ui_mcm_auto_looter_remote_looting_description"},
+        {id = "remote_looting_distance", type = "track", val = 2, min = 0, max = 50, step = 0.5, def = config.remote_looting_distance},
+
+		{id = "proximity_looting_title", type = "desc", clr = {200, 200, 255, 200}, text="ui_mcm_auto_looter_proximity_looting_title"},
+		{id = "proximity_looting_description", type = "desc", text="ui_mcm_auto_looter_proximity_looting_description"},
+        {id = "proximity_looting_distance", type = "track", val = 2, min = 0, max = 10, step = 0.5, def = config.proximity_looting_distance},
+		{id = "proximity_looting_refire_time", type = "track", val = 2, min = 1, max = 20, step = 0.5, def = config.proximity_looting_refire_time},
+    	{id = "divider", type = "line"},
+
+		{id = "disassemble_title", type = "desc", clr = {200, 200, 255, 200}, text="ui_mcm_auto_looter_disassemble_title"},
+        {id = "disassemble_ammo", type="list", val=0, def=config.disassemble_ammo, content={
+			{disassemble_ammo_options.all, "auto_looter_all_label"},
+			{disassemble_ammo_options.non_favourite, "auto_looter_non_favourite_label"},
+			{disassemble_ammo_options.none, "auto_looter_none_label"},
+		  }
+		},
+		{id = "disassemble_armor", type="list", val=0, def=config.disassemble_armor, content={
+			{disassemble_armor_options.all, "auto_looter_all_label"},
+			{disassemble_armor_options.with_usable_parts, "auto_looter_with_usable_parts_label"},
+			{disassemble_armor_options.none, "auto_looter_none_label"},
+		  }
+		},
+		{id = "disassemble_weapon", type="list", val=0, def=config.disassemble_weapon, content={
+			{disassemble_weapon_options.all, "auto_looter_all_label"},
+			{disassemble_weapon_options.with_usable_barrel, "auto_looter_with_usable_barrel_label"},
+			{disassemble_weapon_options.none, "auto_looter_none_label"},
+		  }
+		},
+		{id = "disassemble_misc_title", type = "desc", text="ui_mcm_auto_looter_disassemble_misc_title"},
+		{id = "disassemble_misc_description", type = "desc", text="ui_mcm_auto_looter_disassemble_misc_description"},
+		unpack((function () 
+			local keys = {}
+			for k, _ in pairs(disassemble_misc_items_defaults) do
+				table.insert(keys, k)
+			end
+			table.sort(keys)
+			local result = {}
+			for _, v in pairs(keys) do
+				table.insert(result, {
+					id = "disassemble_misc_" .. v,
+					text = "st_" .. v,
+					type = "check",
+					val = 1,
+					def = disassemble_misc_items_defaults[v]
+				})
+			end
+			return result
+		end)())
+	}
+}
+
+-- Unpacked table records are overwritten by the thing below if it's defined right after it. Need to insert it later separately. Sheesh...
+local rest = {
+	{id = "divider", type = "line"},
+
+	{id = "strip_title", type = "desc", clr = {200, 200, 255, 200}, text="ui_mcm_auto_looter_strip_title"},
+	{id = "strip_attachments", type = "check", val = 1, def = config.strip_attachments},
+	{id = "strip_weapon", type="list", val=0, def=config.strip_weapon, content={
+		{strip_weapon_options.all, "auto_looter_all_label"},
+		{strip_weapon_options.usable_parts, "auto_looter_usable_label"},
+		{strip_weapon_options.none, "auto_looter_none_label"},
+		}
+	},
+	{id = "divider", type = "line"},
+
+	{id = "loot_title", type = "desc", clr = {200, 200, 255, 200}, text="ui_mcm_auto_looter_loot_title"},
+	{id = "loot_description", type = "desc", text="ui_mcm_auto_looter_loot_description"},
+	{id = "loot_ammo", type = "check", val = 1, def = config.loot_ammo},
+	{id = "loot_ammo_parts", type = "check", val = 1, def = config.loot_ammo_parts},
+	{id = "loot_grenades", type = "check", val = 1, def = config.loot_grenades},
+	{id = "loot_magazines", type = "check", val = 1, def = config.loot_magazines, precondition = {function () return not not magazine_binder end}},
+	{id = "loot_armor_parts", type="list", val=0, def=config.loot_armor_parts, content={
+		{loot_part_options.all, "auto_looter_all_label"},
+		{loot_part_options.usable, "auto_looter_usable_label"},
+		{loot_part_options.none, "auto_looter_none_label"},
+		}
+	},
+	{id = "loot_weapon_parts", type="list", val=0, def=config.loot_weapon_parts, content={
+		{loot_part_options.all, "auto_looter_all_label"},
+		{loot_part_options.usable, "auto_looter_usable_label"},
+		{loot_part_options.none, "auto_looter_none_label"},
+		}
+	},
+	{id = "loot_misc_title", type = "desc", text="ui_mcm_auto_looter_loot_misc_title"},
+	unpack((function () 
+		local keys = {}
+		for k, _ in pairs(loot_misc_items_defaults) do
+			table.insert(keys, k)
+		end
+		table.sort(keys)
+		local result = {}
+		for _, v in pairs(keys) do
+			table.insert(result, {
+				id = "loot_misc_" .. v,
+				text = "st_" .. v,
+				type = "check",
+				val = 1,
+				def = loot_misc_items_defaults[v]
+			})
+		end
+		return result
+	end)())
+}
+
+local rest1 = {
+	{id = "divider", type = "line"},
+
+	{id = "delete_title", type = "desc", clr = {200, 200, 255, 200}, text="ui_mcm_auto_looter_delete_title"},
+	{id = "delete_description", type = "desc", text="ui_mcm_auto_looter_delete_description"},
+	{id = "delete_body", type = "check", val = 1, def = config.delete_body},
+	{id = "delete_armor", type = "check", val = 1, def = config.delete_armor},
+	{id = "delete_weapon", type = "check", val = 1, def = config.delete_weapon},
+	{id = "delete_misc", type = "check", val = 1, def = config.delete_misc},
+	{id = "divider", type = "line"},
+
+	{id = "misc_options_title", type = "desc", clr = {200, 200, 255, 200}, text="ui_mcm_auto_looter_misc_options_title"},
+	{id = "no_valid_tool_messaging", type = "check", val = 1, def = config.no_valid_tool_messaging},
+	{id = "usable_armor_part_condition_treshold", type = "track", val = 2, min = 0, max = 100, step = 1, def = config.usable_armor_part_condition_treshold},
+	{id = "usable_weapon_part_condition_treshold", type = "track", val = 2, min = 0, max = 100, step = 1, def = config.usable_weapon_part_condition_treshold},
+	{id = "always_treat_recipe_part_as_usable", type = "check", val = 1, def = config.always_treat_recipe_part_as_usable},
+}
+
+
+function concat(...)
+	for _, arr in ipairs({...}) do
+		printf(_)
+		for _, v in ipairs(arr) do
+			printf(v.id)
+			table.insert(op.gr, v)
+		end
+	end
+end
+
+concat(rest, rest1)
+
+function on_mcm_load()
+    return op
+end

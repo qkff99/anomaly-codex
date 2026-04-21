@@ -1,0 +1,50 @@
+--Test script
+
+function on_xml_read()
+	RegisterScriptCallback("on_xml_read", function(xml_file_name, xml_obj)
+
+		-- Test 1: Find and replace text in string table
+		if xml_file_name == [[ui\scopes.xml]]
+		then
+			-- printf("DXML is patching scopes in %s", xml_file_name)
+                
+            local include_file = 
+[[
+#include "ui\scopes_ats.xml"
+]]
+            xml_obj:insertFromXMLString(include_file)
+		end
+
+		if xml_file_name == [[ui\scopes_16.xml]]
+		then
+			-- printf("DXML is patching scopes in %s", xml_file_name)
+                
+            local include_file = 
+[[
+#include "ui\scopes_16_ats.xml"
+]]
+            xml_obj:insertFromXMLString(include_file)
+		end
+
+		if xml_file_name == [[ui\scopes_21.xml]]
+		then
+			-- printf("DXML is patching scopes in %s", xml_file_name)
+                
+            local include_file = 
+[[
+#include "ui\scopes_21_ats.xml"
+]]
+            xml_obj:insertFromXMLString(include_file)
+		end
+				if xml_file_name == [[ui\textures_desc\ui_ingame.xml]]
+		then
+			-- printf("DXML is patching scopes in %s", xml_file_name)
+                
+            local include_file = 
+[[
+#include "ui\textures_desc\ui_ingame_ats.xml"
+]]
+            xml_obj:insertFromXMLString(include_file)
+		end
+	end)
+end

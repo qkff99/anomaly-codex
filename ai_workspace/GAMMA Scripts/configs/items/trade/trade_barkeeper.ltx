@@ -1,0 +1,480 @@
+#include "presets\trade_discounts.ltx"
+#include "presets\trade_presets.ltx"
+
+[trader]
+buy_condition =  trade_generic_buy
+sell_condition = trade_generic_sell
+buy_supplies = {=actor_goodwill_ge(stalker:1000)} supplies_5, {=heavy_pockets_functor()} supplies_5, {=actor_goodwill_ge(stalker:800)} supplies_4, {=actor_goodwill_ge(stalker:600)} supplies_3, {=actor_goodwill_ge(stalker:400)} supplies_2,  supplies_1
+buy_item_condition_factor = 0.50		;0.40
+buy_item_exponent = 2.25
+sell_item_exponent = 0.75
+
+discounts = discount_barkeeper
+
+[trade_generic_buy]: supplier
+mutant_part_flesh_meat                      = 0.6, 0.6
+mutant_part_boar_chop                       = 0.3, 0.3
+mutant_part_dog_meat                        = 0.6, 0.6
+mutant_part_psevdodog_meat                  = 0.6, 0.6
+mutant_part_krovosos_meat                   = 0.6, 0.6
+mutant_part_snork_hand                      = 0.3, 0.3
+mutant_part_chimera_meat                    = 0.6, 0.6
+mutant_part_tushkano_meat                   = 0.6, 0.6
+mutant_part_psysucker_meat                  = 0.6, 0.6
+mutant_part_lurker_meat                     = 0.6, 0.6
+
+mutant_part_krovosos_jaw                    = 0.3, 0.3
+mutant_part_boar_leg                        = 0.3, 0.3
+mutant_part_chimera_kogot                   = 0.3, 0.3
+mutant_part_dog_tail                        = 0.3, 0.3
+mutant_part_flesh_eye                       = 0.3, 0.3
+mutant_part_psevdodog_tail                  = 0.3, 0.3
+mutant_part_snork_leg                       = 0.3, 0.3
+mutant_part_snork_mask                      = 0.3, 0.3
+mutant_part_tushkano_head                   = 0.3, 0.3
+mutant_part_pseudogigant_eye                = 0.3, 0.3
+mutant_part_pseudogigant_hand               = 0.3, 0.3
+mutant_part_chimera_claw                    = 0.3, 0.3
+mutant_part_cat_tail                        = 0.3, 0.3
+mutant_part_burer_hand                      = 0.3, 0.3
+mutant_part_zombi_hand                      = 0.3, 0.3
+mutant_part_controller_hand                 = 0.3, 0.3
+mutant_part_controller_glass                = 0.3, 0.3
+mutant_part_fracture_hand                   = 0.3, 0.3
+mutant_part_dog_liver                       = 0.3, 0.3
+mutant_part_dog_heart                       = 0.3, 0.3
+mutant_part_cat_thyroid                     = 0.3, 0.3
+mutant_part_cat_claw                        = 0.3, 0.3
+mutant_part_lurker_tail                     = 0.3, 0.3
+mutant_part_lurker_eye                      = 0.3, 0.3
+mutant_part_psysucker_hand                  = 0.3, 0.3
+hide_chimera                                = 0.3, 0.3
+hide_pseudogiant                            = 0.3, 0.3
+hide_psy_dog                                = 0.3, 0.3
+hide_pseudodog                              = 0.3, 0.3
+hide_burer                                  = 0.3, 0.3
+hide_controller                             = 0.3, 0.3
+hide_bloodsucker                            = 0.3, 0.3
+hide_boar                                   = 0.3, 0.3
+hide_flesh                                  = 0.3, 0.3
+hide_lurker                                 = 0.3, 0.3
+hide_psysucker                              = 0.3, 0.3
+
+meat_tushkano				= 1.8, 1.8
+meat_dog				= 1.8, 1.8
+meat_pseudodog				= 1.8, 1.8
+meat_flesh				= 1.8, 1.8
+meat_boar				= 1.8, 1.8
+meat_bloodsucker			= 1.8, 1.8
+meat_snork				= 1.8, 1.8
+meat_chimera				= 1.8, 1.8
+meat_lurker				= 1.8, 1.8
+meat_psysucker				= 1.8, 1.8
+meat_tushkano_b				= 1.8, 1.8
+meat_dog_b				= 1.8, 1.8
+meat_pseudodog_b			= 1.8, 1.8
+meat_flesh_b				= 1.8, 1.8
+meat_boar_b				= 1.8, 1.8
+meat_bloodsucker_b			= 1.8, 1.8
+meat_snork_b				= 1.8, 1.8
+meat_chimera_b				= 1.8, 1.8
+meat_lurker_b				= 1.8, 1.8
+meat_psysucker_b			= 1.8, 1.8
+meat_tushkano_a				= 1.8, 1.8
+meat_dog_a				= 1.8, 1.8
+meat_pseudodog_a			= 1.8, 1.8
+meat_flesh_a				= 1.8, 1.8
+meat_boar_a				= 1.8, 1.8
+meat_bloodsucker_a			= 1.8, 1.8
+meat_snork_a				= 1.8, 1.8
+meat_chimera_a				= 1.8, 1.8
+meat_lurker_a				= 1.8, 1.8
+meat_psysucker_a			= 1.8, 1.8
+
+af_ameba_mica                               = 0.3, 0.3
+af_ameba_slime                              = 0.3, 0.3
+af_ameba_slug                               = 0.3, 0.3
+af_baloon                                   = 0.3, 0.3
+af_blood                                    = 0.3, 0.3
+af_compass                                  = 0.3, 0.3
+af_cristall                                 = 0.3, 0.3
+af_cristall_flower                          = 0.3, 0.3
+af_drops                                    = 0.3, 0.3
+af_dummy_battery                            = 0.3, 0.3
+af_dummy_dummy                              = 0.3, 0.3
+af_dummy_glassbeads                         = 0.3, 0.3
+af_dummy_pellicle                           = 0.3, 0.3
+af_dummy_spring                             = 0.3, 0.3
+af_electra_flash                            = 0.3, 0.3
+af_electra_moonlight                        = 0.3, 0.3
+af_electra_sparkler                         = 0.3, 0.3
+af_eye                                      = 0.3, 0.3
+af_fire                                     = 0.3, 0.3
+af_fireball                                 = 0.3, 0.3
+af_fuzz_kolobok                             = 0.3, 0.3
+af_glass                                    = 0.3, 0.3
+af_gold_fish                                = 0.3, 0.3
+af_gravi                                    = 0.3, 0.3
+af_ice                                      = 0.3, 0.3
+af_medusa                                   = 0.3, 0.3
+af_mincer_meat                              = 0.3, 0.3
+af_night_star                               = 0.3, 0.3
+af_oasis_heart                              = 0.3, 0.3
+af_quest_b14_twisted                        = 0.3, 0.3
+af_rusty_kristall                           = 0.3, 0.3
+af_rusty_sea                                = 0.3, 0.3
+af_rusty_thorn                              = 0.3, 0.3
+af_soul                                     = 0.3, 0.3
+af_vyvert                                   = 0.3, 0.3
+jup_b1_half_artifact                        = 0.3, 0.3
+;ZoneExpanded
+af_black_spray                              = 0.3, 0.3
+af_bracelet                                 = 0.3, 0.3
+af_empty                                    = 0.3, 0.3
+af_full_empty                               = 0.3, 0.3
+af_itcher                                   = 0.3, 0.3
+af_lobster_eyes                             = 0.3, 0.3
+af_pin                                      = 0.3, 0.3
+af_ring                                     = 0.3, 0.3
+af_sponge                                   = 0.3, 0.3
+;af_death_lamp                              = 0.3, 0.3
+
+bolt				= 0.6, 0.6
+bolt_bullet			= 0.6, 0.6
+broken_detector			= 0.6, 0.6
+ammo_box			= 0.6, 0.6
+gloves				= 0.6, 0.6
+hand_watch			= 0.6, 0.6
+guitar_a			= 0.6, 0.6
+harmonica_a			= 0.6, 0.6
+shovel_old			= 0.6, 0.6
+shovel_mili			= 0.6, 0.6
+meinkampf			= 0.6, 0.6
+jar				= 0.6, 0.6
+beadspread			= 0.6, 0.6
+walkie				= 0.6, 0.6
+cards				= 0.6, 0.6
+journal				= 0.6, 0.6
+boots				= 0.6, 0.6
+headlamp			= 0.6, 0.6
+mirror				= 0.6, 0.6
+welding_goggles			= 0.6, 0.6
+jewelry_box			= 0.6, 0.6
+picture_woman			= 0.6, 0.6
+flashlight_broken		= 0.6, 0.6
+underwear			= 0.6, 0.6
+porn				= 0.6, 0.6
+porn2				= 0.6, 0.6
+
+tarpaulin			= 0.6, 0.6
+rope				= 0.6, 0.6
+synthrope			= 0.6, 0.6
+
+cutlery				= 0.6, 0.6
+radio				= 0.6, 0.6
+radio2				= 0.6, 0.6
+
+[trade_generic_sell]:supplier
+
+[supplies_1]:common_stock
+;[devices]
+device_pda_1		= 1, 1
+wpn_binoc_inv		= 1, 1
+detector_simple         = 1, 1
+
+;[food]
+meat_tushkano		= 6, 1
+meat_dog		= 6, 1
+meat_pseudodog		= 4, 1
+meat_flesh		= 4, 1
+meat_boar		= 4, 1
+meat_bloodsucker	= 2, 1
+meat_snork		= 4, 1
+meat_chimera		= 1, 1
+meat_lurker		= 1, 1
+meat_psysucker		= 1, 1
+meat_tushkano_b		= 3, 0.75
+meat_dog_b              = 3, 0.75
+meat_pseudodog_b        = 2, 0.75
+meat_flesh_b            = 2, 0.75
+meat_boar_b             = 3, 0.75
+meat_bloodsucker_b      = 1, 0.75
+meat_snork_b            = 2, 0.75
+meat_chimera_b          = 1, 0.75
+meat_lurker_b           = 1, 0.75
+meat_psysucker_b        = 1, 0.75
+meat_tushkano_a         = 1, 0.50
+meat_dog_a              = 1, 0.50
+meat_pseudodog_a        = 1, 0.50
+meat_flesh_a            = 1, 0.50
+meat_boar_a             = 1, 0.50
+meat_bloodsucker_a      = 1, 0.50
+meat_snork_a            = 1, 0.50
+meat_chimera_a          = 1, 0.50
+meat_lurker_a           = 1, 0.50
+meat_psysucker_a        = 1, 0.50
+bread			= 4, 1
+breadold		= 6, 1
+kolbasa			= 4, 1
+tushonka                = 4, 1
+conserva		= 4, 1
+tomato			= 2, 1
+sausage			= 2, 1
+corn			= 2, 1
+beans			= 2, 1
+chili                   = 2, 1
+salmon                  = 2, 1
+raisins                 = 2, 1
+chocolate               = 2, 1
+nuts                    = 2, 1
+mre                  	= 1, 0.80
+ration_ru             	= 1, 0.75
+ration_ukr		= 1, 0.75
+mint			= 4, 1
+mineral_water		= 2, 1
+caffeine		= 2, 1
+
+;[drinks]
+beer                  = 3, 1
+vodka                 = 3, 1
+vodka2                = 3, 1
+energy_drink          = 3, 1
+water_drink           = 2, 1
+cigarettes            = 4, 1
+tea                   = 2, 1
+akvatab               = 3, 1
+flask                 = 2, 1
+bottle_metal          = 2, 1
+vodka_quality         = 2, 1
+
+;[cigs]
+tobacco               = 2, 1
+cigar1                = 2, 0.75
+cigar2                = 2, 0.75
+cigar3                = 2, 0.75
+hand_rolling_tobacco  = 2, 1
+cigar                 = 1, 0.75
+cigarettes_lucky      = 3, 0.75
+cigarettes_russian    = 3, 0.75
+
+;[drugs]
+medkit			= 3, 1
+bandage			= 4, 1
+antirad			= 2, 1
+
+;[tools]
+grooming		= 3, 1
+cooking                 = 4, 1
+fieldcooker             = 1, 1
+army_bowler             = 1, 1
+kerosene                = 1, 1
+charcoal                = 2, 1
+explo_jerrycan_fuel     = 1, 0.75
+box_matches		= 4, 1
+batteries_dead		= 6, 1
+bolts_pack		= 3, 1
+
+;[w_addons]
+1p29			= 1, 0.75
+c-more			= 1, 0.75
+
+wpn_sil_45		= 1, 0.75
+wpn_sil_9a91		= 1, 0.75
+wpn_sil_9mm		= 1, 0.75
+
+;[pistols]
+wpn_pm			= 1, 0.50
+wpn_fort 		= 1, 0.50
+wpn_tt33 		= 1, 0.50
+wpn_colt1911 		= 1, 0.50
+wpn_walther		= 1, 0.50
+wpn_beretta 		= 1, 0.50
+wpn_usp 		= 1, 0.50
+wpn_hpsa                = 1, 0.50
+wpn_gsh18		= 1, 0.50
+
+;[rifles]
+wpn_ak74u 		= 1, 0.50
+wpn_vz61		= 1, 0.50
+wpn_ppsh41      	= 1, 0.50
+wpn_kiparis		= 1, 0.50
+
+;[ammo]
+ammo_9x18_fmj 		= 16, 0.75
+ammo_9x18_pmm 		= 16, 0.75
+ammo_9x19_pbp 		= 15, 0.75
+ammo_9x19_fmj 		= 15, 0.75
+ammo_7.62x51_ap 	= 15, 0.75
+ammo_7.62x25_p 		= 16, 0.75
+ammo_11.43x23_fmj 	= 14, 0.75
+ammo_5.45x39_fmj 	= 15, 0.75
+ammo_5.45x39_ep 	= 15, 0.75
+ammo_12x70_buck 	= 10, 0.75
+ammo_12x76_zhekan 	= 10, 0.75
+ammo_12x76_dart 	= 10, 0.75
+
+;[outfits]
+trenchcoat_outfit		= 1, 1
+stalker_outfit			= 1, 1
+
+;[headgear]
+helm_resp               = 1, 1
+helm_bandana            = 1, 1
+helm_rp_bala            = 1, 1
+helm_cloth_mask		= 1, 1
+helm_respirator_gp5     = 1, 1
+helm_respirator_old     = 1, 1
+helm_respirator 	= 1, 1
+
+grenade_smoke		= 6, 0.85
+grenade_f1		= 4, 0.85
+
+;[w_addons]
+1p29				= 1, 1
+ps01				= 1, 1
+wpn_addon_scope_zf4		= 1, 1
+
+wpn_sil_9mm			= 1, 1
+wpn_sil_45			= 1, 1
+wpn_sil_aps			= 1, 1
+wpn_sil_atg			= 1, 1
+wpn_sil_pbs1			= 1, 1
+wpn_sil_pbs4			= 1, 1
+
+
+[supplies_2]:supplies_1
+;[devices]
+device_torch_nv_1	= 1, 0.75
+detector_advanced       = 1, 0.75
+equ_small_pack          = 1, 1
+
+;[outfits]
+nbc_outfit              	= 1, 1
+travel_outfit 			= 1, 0.75
+stalker_bear_outfit 		= 1, 1
+stalker_salamander_outfit 	= 1, 1
+stalker_graphite_outfit 	= 1, 1
+stalker_drought_outfit 		= 1, 1
+stalker_predator_outfit 	= 1, 1
+stalker_autumn_outfit 		= 1, 1
+stalker_tigerstripe_outfit 	= 1, 1
+
+;[headgear]
+helm_m40				= 1, 1
+helm_m50				= 1, 1
+
+;[ammo]
+ammo_9x18_ap 		= 16, 0.75
+ammo_9x19_ap 		= 15, 0.75
+ammo_11.43x23_hydro 	= 14, 0.75
+ammo_5.45x39_ap 	= 15, 0.75
+ammo_7.62x39_fmj 	= 15, 0.75
+ammo_7.92x33_fmj 	= 15, 0.75
+
+;[pistols]
+wpn_oc33 		= 1, 0.50
+wpn_pm_custom		= 1, 0.50
+wpn_fort_snag		= 1, 0.50
+
+;[shotguns]
+wpn_mp133                = 1, 0.50
+
+;[rifles]
+wpn_mp5 		= 1, 0.50
+wpn_ak74u_old		= 1, 0.50
+wpn_rpk                 = 1, 0.50
+wpn_akm               	= 1, 0.50
+wpn_aks74 		= 1, 0.50
+wpn_ak74 		= 1, 0.50
+wpn_abakan              = 1, 0.50
+wpn_aek              	= 1, 0.50
+wpn_ppsh41_woodnew      = 1, 0.50
+wpn_ppsh41_rednew       = 1, 0.50
+wpn_rpk74               = 1, 0.50
+
+;[snipers]
+wpn_k98                 = 1, 0.50
+
+grenade_rgd5		= 4, 0.80
+grenade_gd-05		= 4, 0.80
+
+;[w_addons]
+pso1m21				= 1, 1
+c-more				= 1, 1
+
+wpn_sil_kzrzp			= 1, 1
+wpn_sil_tgp-a			= 1, 1
+
+wpn_addon_grenade_launcher		= 1, 1
+wpn_addon_grenade_launcher_m203		= 1, 1
+
+
+[supplies_3]:supplies_2
+equ_small_military_pack 	= 1, 1
+test_container          	= 1, 1
+
+;[ammo]
+ammo_7.62x39_ap 		= 15, 0.75
+ammo_7.92x33_ap 		= 15, 0.75
+ammo_vog-25 			= 5, 0.75
+ammo_m209 			= 5, 0.75
+
+;[outfits]
+light_loner_outfit      	= 1, 1
+nomad_outfit 			= 1, 1
+
+;[headgear]
+helm_metro              	= 1, 1
+helm_ranger			= 1, 1
+
+
+[supplies_4]:supplies_3
+;[devices]
+equ_military_pack       	= 1, 1
+device_pda_2			= 1, 0.75
+
+;[outfits]
+exolight_outfit			= 1, 1
+exo_wood_outfit			= 1, 1
+stalker_proto_exo_outfit 	= 1, 1
+wastelander_outfit		= 1, 1
+
+;[headgear]
+helm_exo                = 1, 0.75
+
+;[shotguns]
+wpn_protecta              = 1, 0.50
+wpn_mp153                 = 1, 0.50
+
+;[rifles]
+wpn_groza               = 1, 0.50
+wpn_vsk94               = 1, 0.50
+wpn_sks_modern		= 1, 0.50
+wpn_pkm                 = 1, 0.50
+wpn_vintorez		= 1, 0.50
+wpn_galil               = 1, 0.50
+wpn_ak74_custom_kobra	= 1, 0.50
+wpn_ak74m_camo_kobra	= 1, 0.50
+wpn_ak103_camo_kobra	= 1, 0.50
+wpn_ak104_kobra		= 1, 0.50
+wpn_akms_alt_kobra	= 1, 0.50
+
+;[shotguns]
+wpn_protecta_custom        = 1, 0.50
+
+;[ammo]
+ammo_9x39_pab9 		= 15, 0.75
+ammo_9x39_ap 		= 15, 0.75
+ammo_pkm_100 		= 6, 0.75
+ammo_og-7b 		= 3, 0.75
+ammo_7.62x51_fmj 	= 15, 0.75
+ammo_7.62x51_ap 	= 15, 0.75
+
+
+[supplies_5]:supplies_4
+device_pda_3		= 1, 0.75
+
+;[outfits]
+exo_outfit		= 1, 0.88
+
+wpn_rg-6		= 1, 0.88

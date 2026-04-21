@@ -1,0 +1,2311 @@
+siski = siski or {}
+
+local type = _G.type
+local pcall = _G.pcall
+local require = _G.require
+local setmetatable = _G.setmetatable
+local tonumber = _G.tonumber
+local tostring = _G.tostring
+local pairs = _G.pairs
+local next = _G.next
+local time_global = _G.time_global
+local alife = _G.alife
+local game_graph = _G.game_graph
+local game = _G.game
+local level = _G.level
+local math = _G.math
+local string = _G.string
+
+local math_floor = math.floor
+local math_random = math.random
+local math_max = math.max
+local string_gsub = string.gsub
+local string_lower = string.lower
+local string_find = string.find
+
+local LOGIC_MAX_AGE_MS = 90000
+local NIGHT_START_HOUR = 22
+local NIGHT_END_HOUR = 6
+local HUNT_NEAR_RADIUS_M = 50
+local HUNT_NEAR_RADIUS_SQR = HUNT_NEAR_RADIUS_M * HUNT_NEAR_RADIUS_M
+local HUNT_R5_SQR = 5 * 5
+local HUNT_R10_SQR = 10 * 10
+local HUNT_R30_SQR = 30 * 30
+local FILTERED_SMARTS_CACHE_TTL_MS = 3000
+local FILTERED_SMARTS_CACHE_MAX = 256
+local HUNT_BUCKET_IN_SMART = "in_smart"
+local HUNT_BUCKET_R5 = "r5"
+local HUNT_BUCKET_R10 = "r10"
+local HUNT_BUCKET_R30 = "r30"
+local HUNT_BUCKET_R50 = "r50"
+local HUNT_BUCKET_CHAIN = {
+    HUNT_BUCKET_IN_SMART,
+    HUNT_BUCKET_R5,
+    HUNT_BUCKET_R10,
+    HUNT_BUCKET_R30,
+    HUNT_BUCKET_R50,
+}
+local HUNT_BUCKET_PRIORITY = {
+    [HUNT_BUCKET_IN_SMART] = 1,
+    [HUNT_BUCKET_R5] = 2,
+    [HUNT_BUCKET_R10] = 3,
+    [HUNT_BUCKET_R30] = 4,
+    [HUNT_BUCKET_R50] = 5,
+}
+local MUTANT_TARGET_SYNC_INTERVAL_MS = 5000
+local MUTANT_LOG_THROTTLE_MS = 5000
+local PREDATOR_PHASE_DAY = "day"
+local PREDATOR_PHASE_NIGHT = "night"
+local PREDATOR_PHASE_PROBE_INTERVAL_MS = 10000
+local PREDATOR_PHASE_ACTIVE_PROBE_INTERVAL_MS = 1000
+local PREDATOR_PHASE_ALIASES = {
+    ["day"] = PREDATOR_PHASE_DAY,
+    ["night"] = PREDATOR_PHASE_NIGHT,
+    ["predator_day"] = PREDATOR_PHASE_DAY,
+    ["day_predator"] = PREDATOR_PHASE_DAY,
+    ["predator_night"] = PREDATOR_PHASE_NIGHT,
+    ["night_predator"] = PREDATOR_PHASE_NIGHT,
+    ["predatory_day"] = PREDATOR_PHASE_DAY,
+    ["day_predatory"] = PREDATOR_PHASE_DAY,
+    ["predatory_night"] = PREDATOR_PHASE_NIGHT,
+    ["night_predatory"] = PREDATOR_PHASE_NIGHT,
+    ["monster_predatory_day"] = PREDATOR_PHASE_DAY,
+    ["monster_predatory_night"] = PREDATOR_PHASE_NIGHT,
+    ["zombied_day"] = PREDATOR_PHASE_DAY,
+    ["day_zombied"] = PREDATOR_PHASE_DAY,
+    ["zombied_night"] = PREDATOR_PHASE_NIGHT,
+    ["night_zombied"] = PREDATOR_PHASE_NIGHT,
+    ["zombie_day"] = PREDATOR_PHASE_DAY,
+    ["day_zombie"] = PREDATOR_PHASE_DAY,
+    ["zombie_night"] = PREDATOR_PHASE_NIGHT,
+    ["night_zombie"] = PREDATOR_PHASE_NIGHT,
+    ["monster_zombied_day"] = PREDATOR_PHASE_DAY,
+    ["monster_zombied_night"] = PREDATOR_PHASE_NIGHT,
+}
+
+local function is_valid_server_id(id)
+    id = tonumber(id) or nil
+    return id ~= nil and id > 0 and id ~= 65535
+end
+
+local function ensure_class()
+    local type = type
+    if type(siski.class) == "function" then
+        local ok, probe = pcall(siski.class, "_probe")
+        if ok and type(probe) == "table" then
+            return
+        end
+    end
+
+    if require then
+        pcall(require, "siski_oop")
+    end
+
+    local function define()
+        function siski.class(name)
+            local cls = {}
+            cls.__index = cls
+            cls.__name = name or "class"
+            function cls.new(...)
+                local self = setmetatable({}, cls)
+                if self.__init then
+                    self:__init(...)
+                end
+                return self
+            end
+            return cls
+        end
+    end
+
+    if type(siski.class) ~= "function" then
+        define()
+        return
+    end
+
+    local ok2, probe2 = pcall(siski.class, "_probe")
+    if not (ok2 and type(probe2) == "table") then
+        define()
+    end
+end
+
+ensure_class()
+
+local Mutants = siski.class("Mutants")
+Mutants.__index = Mutants
+
+local function tg()
+    return (time_global and time_global()) or 0
+end
+
+local function has_game_time()
+    return game and game.get_game_time and game.CTime
+end
+
+local function ctime_to_table(ct)
+    if not (ct and ct.get) then return nil end
+    local ok, Y, M, D, h, m, s, ms = pcall(function()
+        return ct:get(0, 0, 0, 0, 0, 0, 0)
+    end)
+    if not ok then return nil end
+    return { Y = Y, M = M, D = D, h = h, m = m, s = s, ms = ms }
+end
+
+local function ctime_from_table(t)
+    if not (has_game_time() and type(t) == "table") then
+        return nil
+    end
+    local ok_new, ct = pcall(function() return game.CTime() end)
+    if not (ok_new and ct and ct.set) then
+        return nil
+    end
+    local ok_set = pcall(function()
+        ct:set(t.Y, t.M, t.D, t.h, t.m, t.s, t.ms)
+    end)
+    if not ok_set then
+        return nil
+    end
+    return ct
+end
+
+local function game_time_now()
+    if not has_game_time() then
+        return nil
+    end
+    local ok, ct = pcall(function() return game.get_game_time() end)
+    return ok and ct or nil
+end
+
+local function game_time_diff_sec(start_ct)
+    local now = game_time_now()
+    if not (now and now.diffSec and start_ct) then
+        return nil
+    end
+    local ok, sec = pcall(function() return now:diffSec(start_ct) end)
+    return ok and tonumber(sec) or nil
+end
+
+local function is_night_now()
+    local ct = game_time_now()
+    if not (ct and ct.get) then
+        return false
+    end
+    local t = ctime_to_table(ct)
+    local h = t and tonumber(t.h) or nil
+    if h == nil then
+        return false
+    end
+    return h >= NIGHT_START_HOUR or h < NIGHT_END_HOUR
+end
+
+local function read_commander_id(se_squad)
+    if not se_squad then
+        return nil
+    end
+    local ok, cid = pcall(function() return se_squad:commander_id() end)
+    if not ok then
+        ok, cid = pcall(function() return se_squad.commander_id end)
+    end
+    cid = ok and tonumber(cid) or nil
+    if cid and cid > 0 and cid ~= 65535 then
+        return cid
+    end
+    return nil
+end
+
+local function read_squad_player_id(se_squad)
+    if not se_squad then
+        return nil
+    end
+    local ok, pid = pcall(function() return se_squad.player_id end)
+    if not ok or pid == nil then
+        ok, pid = pcall(function() return se_squad:player_id() end)
+    end
+    if not ok or type(pid) ~= "string" then
+        return nil
+    end
+    pid = string_lower(string_gsub(pid, "^%s*(.-)%s*$", "%1"))
+    if pid == "" then
+        return nil
+    end
+    return pid
+end
+
+local function normalize_predator_phase_alias_key(text)
+    if type(text) ~= "string" then
+        return nil
+    end
+    local s = string_lower(string_gsub(text, "^%s*(.-)%s*$", "%1"))
+    if s == "" then
+        return nil
+    end
+    s = string_gsub(s, "[%s%-]+", "_")
+    s = string_gsub(s, "_+", "_")
+    s = string_gsub(s, "^%[", "")
+    s = string_gsub(s, "%]$", "")
+    return s
+end
+
+local function detect_predator_phase_from_text(text)
+    local s = normalize_predator_phase_alias_key(text)
+    if not s then
+        return nil
+    end
+
+    local alias = PREDATOR_PHASE_ALIASES[s]
+    if alias == PREDATOR_PHASE_DAY or alias == PREDATOR_PHASE_NIGHT then
+        return alias
+    end
+
+    if string_find(s, "predator_night", 1, true)
+        or string_find(s, "night_predator", 1, true)
+        or string_find(s, "predatory_night", 1, true)
+        or string_find(s, "night_predatory", 1, true)
+        or string_find(s, "zombied_night", 1, true)
+        or string_find(s, "night_zombied", 1, true)
+        or string_find(s, "zombie_night", 1, true)
+        or string_find(s, "night_zombie", 1, true)
+    then
+        return PREDATOR_PHASE_NIGHT
+    end
+    if string_find(s, "predator_day", 1, true)
+        or string_find(s, "day_predator", 1, true)
+        or string_find(s, "predatory_day", 1, true)
+        or string_find(s, "day_predatory", 1, true)
+        or string_find(s, "zombied_day", 1, true)
+        or string_find(s, "day_zombied", 1, true)
+        or string_find(s, "zombie_day", 1, true)
+        or string_find(s, "day_zombie", 1, true)
+    then
+        return PREDATOR_PHASE_DAY
+    end
+
+    local has_predator = string_find(s, "predator", 1, true) ~= nil or string_find(s, "predatory", 1, true) ~= nil
+    local has_zombied = string_find(s, "zombied", 1, true) ~= nil or string_find(s, "zombie", 1, true) ~= nil
+    if not (has_predator or has_zombied) then
+        return nil
+    end
+
+    local has_night = string_find(s, "night", 1, true) ~= nil
+    local has_day = string_find(s, "day", 1, true) ~= nil
+    if has_night and (not has_day) then
+        return PREDATOR_PHASE_NIGHT
+    end
+    if has_day and (not has_night) then
+        return PREDATOR_PHASE_DAY
+    end
+    return nil
+end
+
+local function is_predator_phase_inactive(predator_phase, night_now)
+    if predator_phase == PREDATOR_PHASE_DAY then
+        return night_now == true
+    end
+    if predator_phase == PREDATOR_PHASE_NIGHT then
+        return night_now ~= true
+    end
+    return false
+end
+
+local function is_hunt_enabled()
+    if siski.config and siski.config.get then
+        return siski.config.get("mutant_hunt_enabled", true) ~= false
+    end
+    return true
+end
+
+local function now_level_name_by_gvid(gvid)
+    if not (gvid and alife and game_graph) then
+        return nil
+    end
+    local ok, res = pcall(function()
+        local gv = game_graph():vertex(gvid)
+        if not gv then return nil end
+        return alife():level_name(gv:level_id())
+    end)
+    return ok and res or nil
+end
+
+local function get_board()
+    if SIMBOARD then return SIMBOARD end
+    if sim_board and sim_board.get_sim_board then
+        local ok, board = pcall(function() return sim_board.get_sim_board() end)
+        if ok then return board end
+    end
+    return nil
+end
+
+local function is_surge_active()
+    if surge_manager and surge_manager.get_surge_manager then
+        local ok_mgr, mgr = pcall(function() return surge_manager.get_surge_manager() end)
+        if ok_mgr and mgr and mgr.is_started then
+            local ok_state, state = pcall(function() return mgr:is_started() end)
+            if ok_state then
+                return state == true
+            end
+        end
+    end
+    return false
+end
+
+local function validate_live_squad_with_memory(se_squad, source)
+    if siski.memory and siski.memory.validate_live_squad then
+        return siski.memory.validate_live_squad(se_squad, source)
+    end
+    local sid = tonumber(se_squad and se_squad.id)
+    if se_squad and sid then
+        return true, sid, nil, nil
+    end
+    return false, sid, "validate_unavailable", "soft"
+end
+
+local function resolve_entry_level(entry, se_squad)
+    if se_squad then
+        local gvid = tonumber(se_squad.m_game_vertex_id)
+        if gvid then
+            local lvl = now_level_name_by_gvid(gvid)
+            if lvl then
+                if entry then
+                    entry.level = lvl
+                    entry.level_gvid = gvid
+                end
+                return lvl
+            end
+        end
+    end
+    if entry and type(entry.level) == "string" and entry.level ~= "" then
+        return entry.level
+    end
+    if level and level.name then
+        local ok_lvl, lvl = pcall(function() return level.name() end)
+        if ok_lvl and lvl then
+            return lvl
+        end
+    end
+    return nil
+end
+
+local function normalize_community_key(name)
+    if type(name) ~= "string" then return nil end
+    local key = string_lower(string_gsub(name, "^%s*(.-)%s*$", "%1"))
+    if key == "" then return nil end
+    if key == "mutant" or key == "mutants" or key == "monsters" then
+        key = "monster"
+    end
+    local cfg = siski.config
+    if cfg and cfg.get_faction_alias then
+        local alias = cfg.get_faction_alias(key)
+        if type(alias) == "string" and alias ~= "" then
+            alias = string_lower(string_gsub(alias, "^%s*(.-)%s*$", "%1"))
+            if alias ~= "" then
+                key = alias
+            end
+        end
+    end
+    if key == "mutant" or key == "mutants" or key == "monsters" then
+        key = "monster"
+    end
+    return key
+end
+
+local function normalize_section_key(name)
+    if type(name) ~= "string" then return nil end
+    local key = string_lower(string_gsub(name, "^%s*(.-)%s*$", "%1"))
+    if key == "" then return nil end
+    return key
+end
+
+local function smart_blacklists_global_set()
+    local cfg = siski.config
+    if cfg and cfg.get_smart_blacklists_global_set then
+        local res = cfg.get_smart_blacklists_global_set()
+        if type(res) == "table" then
+            return res
+        end
+    end
+    return nil
+end
+
+local function smart_blacklists_rule(level_name)
+    local cfg = siski.config
+    if cfg and cfg.get_smart_blacklists_rule then
+        local res = cfg.get_smart_blacklists_rule(level_name)
+        if type(res) == "table" then
+            return res
+        end
+    end
+    return nil
+end
+
+local function faction_level_blacklists_rule(community)
+    local cfg = siski.config
+    if not (cfg and cfg.get_faction_level_blacklist_rule) then
+        return nil
+    end
+    local key = normalize_community_key(community)
+    if not key then return nil end
+    local res = cfg.get_faction_level_blacklist_rule(key)
+    if type(res) == "table" then
+        return res
+    end
+    return nil
+end
+
+local function is_level_globally_blacklisted(level_name)
+    if type(level_name) ~= "string" or level_name == "" then
+        return false
+    end
+    local cfg = siski.config
+    if cfg and cfg.is_level_globally_blacklisted then
+        return cfg.is_level_globally_blacklisted(level_name) == true
+    end
+    return false
+end
+
+local function faction_smart_blacklists_rule(community)
+    local cfg = siski.config
+    if not (cfg and cfg.get_faction_smart_blacklist_rule) then
+        return nil
+    end
+    local key = normalize_community_key(community)
+    if not key then return nil end
+    local res = cfg.get_faction_smart_blacklist_rule(key)
+    if type(res) == "table" then
+        return res
+    end
+    return nil
+end
+
+local function section_level_blacklists_rule(section_name)
+    local cfg = siski.config
+    if not (cfg and cfg.get_section_level_blacklist_rule) then
+        return nil
+    end
+    local key = normalize_section_key(section_name)
+    if not key then return nil end
+    local res = cfg.get_section_level_blacklist_rule(key)
+    if type(res) == "table" then
+        return res
+    end
+    return nil
+end
+
+local function section_smart_blacklists_rule(section_name)
+    local cfg = siski.config
+    if not (cfg and cfg.get_section_smart_blacklist_rule) then
+        return nil
+    end
+    local key = normalize_section_key(section_name)
+    if not key then return nil end
+    local res = cfg.get_section_smart_blacklist_rule(key)
+    if type(res) == "table" then
+        return res
+    end
+    return nil
+end
+
+local function is_level_blacklisted_for_faction(level_name, community, section_name)
+    if type(level_name) ~= "string" or level_name == "" then
+        return false
+    end
+    if is_level_globally_blacklisted(level_name) then
+        return true
+    end
+    local rule = faction_level_blacklists_rule(community)
+    if rule and rule.all == true then
+        return true
+    end
+    local set = rule and rule.set or nil
+    if set and set[level_name] == true then
+        return true
+    end
+
+    local s_rule = section_level_blacklists_rule(section_name)
+    if s_rule and s_rule.all == true then
+        return true
+    end
+    local s_set = s_rule and s_rule.set or nil
+    return s_set and s_set[level_name] == true or false
+end
+
+local function is_smart_blacklisted_for_faction(smart_name, community, level_name, section_name)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return false
+    end
+    if is_level_blacklisted_for_faction(level_name, community, section_name) then
+        return true
+    end
+    local rule = faction_smart_blacklists_rule(community)
+    if rule and rule.all == true then
+        return true
+    end
+    local set = rule and rule.set or nil
+    if set and set[smart_name] == true then
+        return true
+    end
+
+    local s_rule = section_smart_blacklists_rule(section_name)
+    if s_rule and s_rule.all == true then
+        return true
+    end
+    local s_set = s_rule and s_rule.set or nil
+    return s_set and s_set[smart_name] == true or false
+end
+
+local function smart_is_blacklisted_for_level(level_name, smart_name, community, section_name)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return false
+    end
+
+    local gset = smart_blacklists_global_set()
+    if gset and gset[smart_name] then
+        return true
+    end
+
+    local rule = level_name and smart_blacklists_rule(level_name) or nil
+    if rule and rule.all == true then
+        return true
+    end
+    local set = rule and rule.set or nil
+    if set and set[smart_name] then
+        return true
+    end
+
+    if is_smart_blacklisted_for_faction(smart_name, community, level_name, section_name) then
+        return true
+    end
+    return false
+end
+
+local function shuffle_in_place(arr)
+    if type(arr) ~= "table" then return end
+    for i = #arr, 2, -1 do
+        local j = math_random(i)
+        arr[i], arr[j] = arr[j], arr[i]
+    end
+end
+
+local function pick_random(arr)
+    if type(arr) ~= "table" then return nil end
+    local n = #arr
+    if n <= 0 then return nil end
+    return arr[math_random(n)]
+end
+
+local function pick_weighted(arr)
+    if type(arr) ~= "table" then return nil end
+    local n = #arr
+    if n <= 0 then return nil end
+
+    local total = 0
+    for i = 1, n do
+        local w = tonumber(arr[i] and arr[i].weight) or 0
+        if w < 1 then w = 1 end
+        w = math_floor(w)
+        if w < 1 then w = 1 end
+        total = total + w
+    end
+    if total <= 0 then
+        return arr[math_random(n)]
+    end
+
+    local roll = math_random(total)
+    local acc = 0
+    for i = 1, n do
+        local item = arr[i]
+        local w = tonumber(item and item.weight) or 0
+        if w < 1 then w = 1 end
+        w = math_floor(w)
+        if w < 1 then w = 1 end
+        acc = acc + w
+        if roll <= acc then
+            return item
+        end
+    end
+    return arr[n]
+end
+
+local function hunt_range_bucket_by_d2(d2)
+    d2 = tonumber(d2)
+    if not d2 then return nil end
+    if d2 <= HUNT_R5_SQR then return HUNT_BUCKET_R5 end
+    if d2 <= HUNT_R10_SQR then return HUNT_BUCKET_R10 end
+    if d2 <= HUNT_R30_SQR then return HUNT_BUCKET_R30 end
+    if d2 <= HUNT_NEAR_RADIUS_SQR then return HUNT_BUCKET_R50 end
+    return nil
+end
+
+local function get_neighbors(level_name, community, section_name)
+    if type(level_name) ~= "string" or level_name == "" then
+        return {}
+    end
+    if siski.board_index and siski.board_index.get_level_neighbors then
+        local res = siski.board_index.get_level_neighbors(level_name, {
+            community = community,
+            section_name = section_name,
+        })
+        if type(res) == "table" then
+            return res
+        end
+    end
+    return {}
+end
+
+local function resolve_smart_level_by_name(smart_name)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return nil
+    end
+    local board = get_board()
+    local sm = board and board.smarts_by_names and board.smarts_by_names[smart_name] or nil
+    local gvid = sm and tonumber(sm.m_game_vertex_id) or nil
+    if not gvid then
+        return nil
+    end
+    return now_level_name_by_gvid(gvid)
+end
+
+local function resolve_smart_level_from_obj(smart)
+    local gvid = tonumber(smart and smart.m_game_vertex_id) or nil
+    if not gvid then
+        return nil
+    end
+    return now_level_name_by_gvid(gvid)
+end
+
+local function get_smart_obj_by_name(smart_name)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return nil
+    end
+    local board = get_board()
+    return board and board.smarts_by_names and board.smarts_by_names[smart_name] or nil
+end
+
+local function smart_exists(smart_name)
+    return get_smart_obj_by_name(smart_name) ~= nil
+end
+
+local function resolve_target_smart_id(smart_name)
+    local sm = get_smart_obj_by_name(smart_name)
+    local sid = sm and tonumber(sm.id) or nil
+    return sid, sm
+end
+
+local function set_scripted_target(se_squad, smart_name)
+    if not se_squad then return false end
+    se_squad.scripted_target = smart_name
+    if se_squad.task_target_id ~= nil then
+        se_squad.task_target_id = nil
+    end
+
+    if type(smart_name) ~= "string" or smart_name == "" then
+        se_squad.current_action = 0
+        se_squad.current_target_id = nil
+        se_squad.assigned_target_id = nil
+        se_squad.stay_time = nil
+        se_squad.arrive_time = nil
+        return true
+    end
+
+    local sid = resolve_target_smart_id(smart_name)
+    if not sid then
+        return false
+    end
+
+    se_squad.current_action = 0
+    se_squad.current_target_id = nil
+    se_squad.assigned_target_id = sid
+    se_squad.stay_time = nil
+    se_squad.arrive_time = nil
+    return true
+end
+
+local function is_online_squad(se_squad)
+    if not se_squad then return false end
+    local ok, online = pcall(function() return se_squad.online end)
+    return ok and online == true or false
+end
+
+local function clear_always_arrived(se_squad)
+    if not se_squad then return end
+    local ok_cur, current = pcall(function() return se_squad.always_arrived end)
+    if not (ok_cur and current == true) then
+        return
+    end
+    pcall(function()
+        se_squad.always_arrived = false
+    end)
+end
+
+local function is_squad_arrived_to_smart(se_squad, smart_name)
+    if not se_squad then return false end
+    local sid, sm = resolve_target_smart_id(smart_name)
+    if not (sid and sm) then return false end
+
+    local ca = tonumber(se_squad.current_action) or nil
+    local ct = tonumber(se_squad.current_target_id) or nil
+    local ss = tonumber(se_squad.smart_id) or nil
+    if ca == 1 and (ct == sid or ss == sid) then
+        return true
+    end
+
+    if sm.am_i_reached then
+        local ok, reached = pcall(function() return sm:am_i_reached(se_squad) end)
+        if ok and reached then
+            return true
+        end
+    end
+
+    local sgvid = tonumber(se_squad.m_game_vertex_id) or nil
+    local tgvid = tonumber(sm.m_game_vertex_id) or nil
+    if sgvid and tgvid and sgvid == tgvid then
+        return true
+    end
+
+    local pos_s = siski.safe and siski.safe.safe_position and siski.safe.safe_position(se_squad) or nil
+    local pos_t = sm.position
+    if not (pos_s and pos_t and pos_s.distance_to_sqr) then
+        return false
+    end
+
+    local arrive_dist = tonumber(sm.arrive_dist) or 5
+    if arrive_dist > 5 then arrive_dist = 5 end
+    if arrive_dist < 1 then arrive_dist = 1 end
+    local ok_d2, d2 = pcall(function() return pos_s:distance_to_sqr(pos_t) end)
+    return ok_d2 and tonumber(d2) and d2 <= (arrive_dist * arrive_dist) or false
+end
+
+local function make_task(task_type, target, params, priority)
+    local now = tg()
+    local token = math_random(1000, 999999)
+    return {
+        id = string.format("mutant_%s_%d_%d", tostring(task_type), now, token),
+        type = task_type,
+        target = target,
+        params = params or {},
+        priority = tonumber(priority) or 0,
+        created_at = now,
+    }
+end
+
+local function build_rest_task()
+    local rest_hours = 1
+    if siski.config and siski.config.get then
+        local v = siski.config.get("mutant_rest_duration_game_hours", nil)
+        if v == nil then
+            v = siski.config.get("rest_duration_game_hours", rest_hours)
+        end
+        if tonumber(v) then
+            rest_hours = tonumber(v)
+        end
+    end
+    if rest_hours <= 0 then rest_hours = 1 end
+
+    local duration_game_sec = math_floor(rest_hours * 3600)
+    if duration_game_sec < 1 then duration_game_sec = 1 end
+
+    local started_gt = nil
+    local now_gt = game_time_now()
+    if now_gt then
+        started_gt = ctime_to_table(now_gt)
+    end
+
+    local tf = (level and level.get_time_factor and level.get_time_factor()) or 10
+    if tf <= 0 then tf = 10 end
+    local duration_ms = math_floor((duration_game_sec * 1000) / tf)
+    if duration_ms < 1000 then duration_ms = 1000 end
+
+    return make_task("REST_1H", nil, {
+        started_at_gt = started_gt,
+        duration_game_sec = duration_game_sec,
+        started_at_tg = tg(),
+        duration_ms = duration_ms,
+    }, 0)
+end
+
+local function is_rest_done(task)
+    local p = task.params or {}
+    local started_gt = ctime_from_table(p.started_at_gt)
+    local dur_gs = tonumber(p.duration_game_sec)
+    if started_gt and dur_gs and dur_gs > 0 then
+        local elapsed = game_time_diff_sec(started_gt) or 0
+        return elapsed >= dur_gs
+    end
+
+    local started = tonumber(p.started_at_tg) or 0
+    local dur = tonumber(p.duration_ms) or 0
+    if dur <= 0 then return true end
+    return tg() >= (started + dur)
+end
+
+local function count_keys(tbl)
+    if type(tbl) ~= "table" then return 0 end
+    local n = 0
+    for _ in pairs(tbl) do
+        n = n + 1
+    end
+    return n
+end
+
+local function pick_next_patrol_target(task, avoid_smart_name)
+    local p = task.params or {}
+    local order = type(p.order) == "table" and p.order or nil
+    if not order or #order <= 0 then
+        return nil
+    end
+    local idx = tonumber(p.idx) or 1
+    if idx < 1 then idx = 1 end
+    if idx > #order then idx = 1 end
+    for _ = 1, #order do
+        local target = order[idx]
+        idx = idx + 1
+        if idx > #order then idx = 1 end
+        if type(target) == "string" and target ~= "" and target ~= avoid_smart_name then
+            p.idx = idx
+            task.params = p
+            return target
+        end
+    end
+
+    p.idx = idx
+    task.params = p
+    return nil
+end
+
+function Mutants:__init()
+    self.RUNTIME = {
+        updates = 0,
+        completions = 0,
+        last_update_tg = 0,
+        hunt_presence_by_level = {},
+        hunt_presence_by_sid = {},
+        hunt_cache_tg = 0,
+        hunt_level_smarts_cache = {},
+        hunt_level_smarts_rev = {},
+        hunt_smart_id_to_name = {},
+        hunt_pass_obj_cache = {},
+        hunt_pass_level_cache = {},
+        hunt_pass_smart_cache = {},
+        hunt_pass_exists_cache = {},
+        hunt_cache_hits = 0,
+        hunt_cache_miss = 0,
+        hunt_targets_picked = 0,
+        hunt_pick_same_level = 0,
+        hunt_pick_neighbor_level = 0,
+        hunt_pick_bucket_in_smart = 0,
+        hunt_pick_bucket_r5 = 0,
+        hunt_pick_bucket_r10 = 0,
+        hunt_pick_bucket_r30 = 0,
+        hunt_pick_bucket_r50 = 0,
+        predator_phase_resolved_count = 0,
+        predator_phase_day_count = 0,
+        predator_phase_night_count = 0,
+        phase_rest_forced_count = 0,
+        phase_rest_forced_day_count = 0,
+        phase_rest_forced_night_count = 0,
+        night_forced_count = 0,
+        night_fallback_rest_count = 0,
+        day_hunt_released_count = 0,
+        target_resync_count = 0,
+        filtered_smarts_cache = {},
+        log_throttle_next_tg = {},
+    }
+end
+
+function Mutants:_log_throttled(key, interval_ms, level_name, fmt, ...)
+    if type(key) ~= "string" or key == "" then return end
+    if type(fmt) ~= "string" or fmt == "" then return end
+    local log = siski.log
+    if type(log) ~= "table" then return end
+    local fn = log[level_name or "debug"]
+    if type(fn) ~= "function" then return end
+
+    local now = tg()
+    local map = self.RUNTIME.log_throttle_next_tg
+    if type(map) ~= "table" then
+        map = {}
+        self.RUNTIME.log_throttle_next_tg = map
+    end
+    local next_tg = tonumber(map[key]) or 0
+    if now < next_tg then
+        return
+    end
+    map[key] = now + (tonumber(interval_ms) or MUTANT_LOG_THROTTLE_MS)
+    fn("MUTANTS", fmt, ...)
+end
+
+function Mutants:_sync_task_target(se_squad, task, reason)
+    if not (se_squad and task and type(task.target) == "string" and task.target ~= "") then
+        return false
+    end
+    local p = type(task.params) == "table" and task.params or {}
+    task.params = p
+
+    local now = tg()
+    local sid = resolve_target_smart_id(task.target)
+    if not set_scripted_target(se_squad, task.target) then
+        p.target_sync_next_tg = now + 1000
+        return false
+    end
+
+    p.target_sync_name = task.target
+    p.target_sync_smart_id = sid
+    p.target_sync_started_tg = tonumber(p.target_sync_started_tg) or now
+    p.target_sync_next_tg = now + MUTANT_TARGET_SYNC_INTERVAL_MS
+    p.online_last_progress_tg = now
+    p.online_last_gvid = tonumber(se_squad.m_game_vertex_id) or nil
+    p.online_nudge_stage = 0
+    p.online_nudge_next_tg = nil
+
+    self.RUNTIME.target_resync_count = (tonumber(self.RUNTIME.target_resync_count) or 0) + 1
+    self:_log_throttled(
+        "target_resync:" .. tostring(tonumber(se_squad.id) or 0),
+        MUTANT_LOG_THROTTLE_MS,
+        "info",
+        "MUTANT_TARGET_RESYNC sid=%s task=%s target=%s reason=%s",
+        tostring(se_squad.id or "-"),
+        tostring(task.type or "-"),
+        tostring(task.target or "-"),
+        tostring(reason or "sync")
+    )
+    return true
+end
+
+function Mutants:_resolve_predator_phase(se_squad, entry, force_probe)
+    if type(entry) ~= "table" then
+        return nil
+    end
+
+    local cached = entry.predator_phase
+    if cached == PREDATOR_PHASE_DAY or cached == PREDATOR_PHASE_NIGHT then
+        return cached
+    end
+
+    local now = tg()
+    local next_probe = nil
+    if force_probe == true then
+        next_probe = tonumber(entry.predator_phase_active_probe_next_tg) or 0
+    else
+        next_probe = tonumber(entry.predator_phase_probe_next_tg) or 0
+    end
+    if now < next_probe then
+        return nil
+    end
+    if force_probe == true then
+        entry.predator_phase_active_probe_next_tg = now + PREDATOR_PHASE_ACTIVE_PROBE_INTERVAL_MS
+    else
+        entry.predator_phase_probe_next_tg = now + PREDATOR_PHASE_PROBE_INTERVAL_MS
+    end
+
+    local function resolve_from(raw, source)
+        local phase = detect_predator_phase_from_text(raw)
+        if not phase then
+            return nil
+        end
+        entry.predator_phase = phase
+        entry.predator_phase_source = source
+        entry.predator_phase_resolved_tg = now
+        entry.predator_phase_probe_next_tg = nil
+        entry.predator_phase_active_probe_next_tg = nil
+
+        self.RUNTIME.predator_phase_resolved_count = (tonumber(self.RUNTIME.predator_phase_resolved_count) or 0) + 1
+        if phase == PREDATOR_PHASE_DAY then
+            self.RUNTIME.predator_phase_day_count = (tonumber(self.RUNTIME.predator_phase_day_count) or 0) + 1
+        elseif phase == PREDATOR_PHASE_NIGHT then
+            self.RUNTIME.predator_phase_night_count = (tonumber(self.RUNTIME.predator_phase_night_count) or 0) + 1
+        end
+
+        self:_log_throttled(
+            "predator_phase:" .. tostring(tonumber(entry.squad_id) or 0),
+            15000,
+            "info",
+            "MUTANT_PREDATOR_PHASE sid=%s phase=%s source=%s raw=%s",
+            tostring(entry.squad_id or "-"),
+            tostring(phase),
+            tostring(source or "-"),
+            tostring(raw or "-")
+        )
+        return phase
+    end
+
+    local safe_mod = siski.safe
+    if resolve_from(read_squad_player_id(se_squad), "squad.player_id") then
+        return entry.predator_phase
+    end
+    if resolve_from(entry.player_id, "entry.player_id") then
+        return entry.predator_phase
+    end
+    if resolve_from(entry.section, "entry.section") then
+        return entry.predator_phase
+    end
+
+    if safe_mod and safe_mod.safe_section and resolve_from(safe_mod.safe_section(se_squad), "squad.section") then
+        return entry.predator_phase
+    end
+    if safe_mod and safe_mod.safe_name and resolve_from(safe_mod.safe_name(se_squad), "squad.name") then
+        return entry.predator_phase
+    end
+
+    local commander_id = read_commander_id(se_squad) or tonumber(entry.commander_id) or nil
+    if is_valid_server_id(commander_id) and alife then
+        local sim = alife()
+        if sim then
+            local ok_obj, commander = pcall(function() return sim:object(commander_id) end)
+            if ok_obj and commander then
+                if safe_mod and safe_mod.safe_section and resolve_from(safe_mod.safe_section(commander), "commander.section") then
+                    return entry.predator_phase
+                end
+                if safe_mod and safe_mod.safe_name and resolve_from(safe_mod.safe_name(commander), "commander.name") then
+                    return entry.predator_phase
+                end
+            end
+        end
+    end
+
+    return nil
+end
+
+function Mutants:_get_entry_community(entry)
+    if type(entry) ~= "table" then return "monster" end
+    local key = normalize_community_key(entry.community)
+    if type(key) == "string" and key ~= "" then
+        return key
+    end
+    return "monster"
+end
+
+function Mutants:_get_entry_section(entry, se_squad)
+    if type(entry) == "table" then
+        local key = normalize_section_key(entry.section)
+        if key then
+            entry.section = key
+            return key
+        end
+    end
+    if siski.safe and siski.safe.safe_section and se_squad then
+        local live = normalize_section_key(siski.safe.safe_section(se_squad))
+        if live and type(entry) == "table" then
+            entry.section = live
+        end
+        return live
+    end
+    return nil
+end
+
+function Mutants:_filtered_smarts_cache_key(level_name, community, section_name)
+    if type(level_name) ~= "string" or level_name == "" then
+        return nil
+    end
+    local ckey = normalize_community_key(community) or "-"
+    local skey = normalize_section_key(section_name) or "-"
+    return tostring(level_name) .. "|" .. tostring(ckey) .. "|" .. tostring(skey)
+end
+
+function Mutants:_trim_filtered_smarts_cache()
+    local cache = self.RUNTIME.filtered_smarts_cache or {}
+    local size = 0
+    local oldest_key = nil
+    local oldest_tg = nil
+    for key, rec in pairs(cache) do
+        size = size + 1
+        local ts = type(rec) == "table" and tonumber(rec.tg) or 0
+        if oldest_tg == nil or ts < oldest_tg then
+            oldest_tg = ts
+            oldest_key = key
+        end
+    end
+    if size > FILTERED_SMARTS_CACHE_MAX and oldest_key ~= nil then
+        cache[oldest_key] = nil
+    end
+    self.RUNTIME.filtered_smarts_cache = cache
+end
+
+function Mutants:_get_filtered_smarts_for_level(level_name, community, section_name)
+    if type(level_name) ~= "string" or level_name == "" then
+        return {}
+    end
+
+    local cache_key = self:_filtered_smarts_cache_key(level_name, community, section_name)
+    local now = tg()
+    local cache = self.RUNTIME.filtered_smarts_cache or {}
+    if cache_key then
+        local cached = cache[cache_key]
+        if type(cached) == "table" and now < ((tonumber(cached.tg) or 0) + FILTERED_SMARTS_CACHE_TTL_MS) and type(cached.list) == "table" then
+            return cached.list
+        end
+    end
+
+    local out = {}
+    if siski.board_index and siski.board_index.get_level_smarts then
+        local list = siski.board_index.get_level_smarts(level_name, {
+            community = community,
+            section_name = section_name,
+            filter_fn = function(name)
+                return smart_exists(name)
+            end,
+        })
+        if type(list) == "table" then
+            out = list
+        end
+    end
+
+    if cache_key then
+        cache[cache_key] = { tg = now, list = out }
+        self.RUNTIME.filtered_smarts_cache = cache
+        self:_trim_filtered_smarts_cache()
+    end
+
+    return out
+end
+
+function Mutants:_get_smart_name_by_id(smart_id)
+    local sid = tonumber(smart_id)
+    if not sid then return nil end
+
+    local cache = self.RUNTIME.hunt_smart_id_to_name or {}
+    local cached = cache[sid]
+    if type(cached) == "string" and cached ~= "" then
+        return cached
+    end
+
+    local board = get_board()
+    local node = board and board.smarts and board.smarts[sid] or nil
+    local sm = node and node.smrt or nil
+    local nm = sm and sm.name or nil
+    if type(nm) == "string" and nm ~= "" then
+        cache[sid] = nm
+        self.RUNTIME.hunt_smart_id_to_name = cache
+        return nm
+    end
+    return nil
+end
+
+function Mutants:_get_current_smart_name(entry, se_squad)
+    local smart_id = tonumber(se_squad and se_squad.smart_id) or tonumber(entry and entry.smart_id) or nil
+    if smart_id then
+        local smart_name = self:_get_smart_name_by_id(smart_id)
+        if type(smart_name) == "string" and smart_name ~= "" then
+            return smart_name
+        end
+    end
+    return nil
+end
+
+function Mutants:_get_level_smart_positions(level_name)
+    local cache = self.RUNTIME.hunt_level_smarts_cache or {}
+    local rev_cache = self.RUNTIME.hunt_level_smarts_rev or {}
+    local current_rev = siski.board_index and siski.board_index.get_smart_revision and siski.board_index.get_smart_revision(level_name) or 0
+    local cached = cache[level_name]
+    if type(cached) == "table" and (tonumber(rev_cache[level_name]) or 0) == (tonumber(current_rev) or 0) then
+        return cached
+    end
+
+    local out = {}
+    if siski.board_index and siski.board_index.get_level_smarts then
+        local names = siski.board_index.get_level_smarts(level_name)
+        local board = get_board()
+        local by_name = board and board.smarts_by_names or nil
+        for i = 1, (names and #names or 0) do
+            local name = names[i]
+            local sm = by_name and by_name[name] or nil
+            if sm and sm.position then
+                out[#out + 1] = { name = name, pos = sm.position }
+            end
+        end
+    end
+    cache[level_name] = out
+    self.RUNTIME.hunt_level_smarts_cache = cache
+    rev_cache[level_name] = tonumber(current_rev) or 0
+    self.RUNTIME.hunt_level_smarts_rev = rev_cache
+    return out
+end
+
+function Mutants:_invalidate_hunt_level_smarts_cache(level_name)
+    if type(level_name) ~= "string" or level_name == "" then
+        return false
+    end
+    local cache = self.RUNTIME.hunt_level_smarts_cache or {}
+    local rev_cache = self.RUNTIME.hunt_level_smarts_rev or {}
+    local changed = cache[level_name] ~= nil or rev_cache[level_name] ~= nil
+    cache[level_name] = nil
+    rev_cache[level_name] = nil
+    self.RUNTIME.hunt_level_smarts_cache = cache
+    self.RUNTIME.hunt_level_smarts_rev = rev_cache
+    return changed
+end
+
+function Mutants:_ensure_hunt_presence_slot(level_name, smart_name)
+    if type(level_name) ~= "string" or level_name == "" then return nil end
+    if type(smart_name) ~= "string" or smart_name == "" then return nil end
+    local by_level = self.RUNTIME.hunt_presence_by_level
+    if type(by_level) ~= "table" then
+        by_level = {}
+        self.RUNTIME.hunt_presence_by_level = by_level
+    end
+
+    local lvl = by_level[level_name]
+    if type(lvl) ~= "table" then
+        lvl = {}
+        by_level[level_name] = lvl
+    end
+
+    local slot = lvl[smart_name]
+    if type(slot) ~= "table" then
+        slot = {
+            [HUNT_BUCKET_IN_SMART] = 0,
+            [HUNT_BUCKET_R5] = 0,
+            [HUNT_BUCKET_R10] = 0,
+            [HUNT_BUCKET_R30] = 0,
+            [HUNT_BUCKET_R50] = 0,
+        }
+        lvl[smart_name] = slot
+    end
+    return slot
+end
+
+function Mutants:_add_hunt_presence(level_name, smart_name, bucket, delta)
+    local slot = self:_ensure_hunt_presence_slot(level_name, smart_name)
+    if type(slot) ~= "table" then return end
+    if HUNT_BUCKET_PRIORITY[bucket] == nil then return end
+
+    local inc = tonumber(delta) or 1
+    inc = math_floor(inc)
+    if inc == 0 then return end
+    local next_count = (tonumber(slot[bucket]) or 0) + inc
+    if next_count < 0 then next_count = 0 end
+    slot[bucket] = next_count
+end
+
+function Mutants:_apply_hunt_presence_marks(sid, marks)
+    sid = tonumber(sid) or nil
+    if not sid then return end
+
+    local by_sid = self.RUNTIME.hunt_presence_by_sid
+    if type(by_sid) ~= "table" then
+        by_sid = {}
+        self.RUNTIME.hunt_presence_by_sid = by_sid
+    end
+
+    local old = by_sid[sid]
+    local function apply(snapshot, delta)
+        if type(snapshot) ~= "table" then return end
+        for smart_name, rec in pairs(snapshot) do
+            if type(rec) == "table" and type(smart_name) == "string" and smart_name ~= "" then
+                local bucket = rec.bucket
+                local level_name = rec.level
+                if type(level_name) == "string" and level_name ~= "" and HUNT_BUCKET_PRIORITY[bucket] ~= nil then
+                    self:_add_hunt_presence(level_name, smart_name, bucket, delta)
+                end
+            end
+        end
+    end
+
+    if old then
+        apply(old, -1)
+    end
+    if marks then
+        apply(marks, 1)
+        by_sid[sid] = marks
+    else
+        by_sid[sid] = nil
+    end
+end
+
+function Mutants:_clear_hunt_presence_for_sid(sid)
+    self:_apply_hunt_presence_marks(sid, nil)
+end
+
+function Mutants:_is_stalker_presence_entry(entry)
+    if type(entry) ~= "table" then return false end
+    if entry.npc_kind == "mutant" then return false end
+    if entry.npc_kind == "stalker" then return true end
+    -- If identity is temporarily degraded, treat non-mutant entries as stalker candidates.
+    return true
+end
+
+function Mutants:_process_stalker_presence(sid, entry)
+    if type(entry) ~= "table" then return end
+    local level_name = nil
+    local level_cache = self.RUNTIME.hunt_pass_level_cache or {}
+    local smart_cache = self.RUNTIME.hunt_pass_smart_cache or {}
+    local obj_cache = self.RUNTIME.hunt_pass_obj_cache or {}
+    local exists_cache = self.RUNTIME.hunt_pass_exists_cache or {}
+
+    local function cached_level_name(gvid)
+        gvid = tonumber(gvid) or nil
+        if not gvid then return nil end
+        local cached = level_cache[gvid]
+        if cached == nil then
+            cached = now_level_name_by_gvid(gvid) or false
+            level_cache[gvid] = cached
+        end
+        return cached ~= false and cached or nil
+    end
+
+    local se_squad = nil
+    local need_live_obj = false
+    level_name = type(entry.level) == "string" and entry.level or nil
+    if (type(level_name) ~= "string" or level_name == "") then
+        level_name = cached_level_name(entry.level_gvid) or cached_level_name(entry.m_game_vertex_id)
+    end
+    if type(level_name) ~= "string" or level_name == "" then
+        need_live_obj = true
+    end
+
+    local smart_name = nil
+    local smart_id = tonumber(entry.smart_id) or nil
+    if smart_id then
+        local cached = smart_cache[smart_id]
+        if cached == nil then
+            cached = self:_get_smart_name_by_id(smart_id) or false
+            smart_cache[smart_id] = cached
+        end
+        smart_name = cached ~= false and cached or nil
+    end
+    if (not smart_name) and type(entry.scripted_target) == "string" then
+        local action = tonumber(entry.current_action) or nil
+        if action == 1 then
+            smart_name = entry.scripted_target
+        end
+    end
+    if not smart_name then
+        need_live_obj = true
+    end
+
+    if need_live_obj then
+        local sid_num = tonumber(sid) or nil
+        local cached_obj = sid_num and obj_cache[sid_num] or nil
+        if cached_obj == nil and is_valid_server_id(sid_num) then
+            local sim = alife and alife() or nil
+            if sim then
+                local ok_obj, obj = pcall(function() return sim:object(sid_num) end)
+                cached_obj = (ok_obj and obj) or false
+            else
+                cached_obj = false
+            end
+            obj_cache[sid_num] = cached_obj
+        end
+        se_squad = cached_obj ~= false and cached_obj or nil
+    end
+
+    if (type(level_name) ~= "string" or level_name == "") and se_squad then
+        level_name = cached_level_name(se_squad.m_game_vertex_id)
+    end
+    if type(level_name) ~= "string" or level_name == "" then return end
+
+    local marked = {}
+    local function smart_exists_cached(name)
+        if type(name) ~= "string" or name == "" then return false end
+        local cached = exists_cache[name]
+        if cached == nil then
+            cached = smart_exists(name) == true
+            exists_cache[name] = cached
+        end
+        return cached == true
+    end
+    local function mark_best_bucket(smart_name, bucket, mark_level)
+        if type(smart_name) ~= "string" or smart_name == "" then return end
+        local pr = HUNT_BUCKET_PRIORITY[bucket]
+        if not pr then return end
+        if not smart_exists_cached(smart_name) then return end
+        if type(mark_level) ~= "string" or mark_level == "" then
+            mark_level = level_name
+        end
+        local cur = marked[smart_name]
+        if (not cur) or pr < (tonumber(cur.priority) or 999) then
+            marked[smart_name] = { bucket = bucket, priority = pr, level = mark_level }
+        end
+    end
+
+    if (not smart_name) and se_squad then
+        smart_id = tonumber(se_squad.smart_id) or nil
+        if smart_id then
+            local cached = smart_cache[smart_id]
+            if cached == nil then
+                cached = self:_get_smart_name_by_id(smart_id) or false
+                smart_cache[smart_id] = cached
+            end
+            smart_name = cached ~= false and cached or nil
+        end
+    end
+    if (not smart_name) and type(entry.scripted_target) == "string" then
+        -- Do not treat pure travel intent as on-smart presence.
+        local action = tonumber(se_squad and se_squad.current_action) or tonumber(entry.current_action) or nil
+        if action == 1 then
+            smart_name = entry.scripted_target
+        end
+    end
+    if smart_name then
+        local smart_level = resolve_smart_level_by_name(smart_name) or level_name
+        mark_best_bucket(smart_name, HUNT_BUCKET_IN_SMART, smart_level)
+    end
+
+    if se_squad then
+        local pos = siski.safe and siski.safe.safe_position and siski.safe.safe_position(se_squad) or nil
+        if pos and pos.distance_to_sqr then
+            local candidates = self:_get_level_smart_positions(level_name)
+            for i = 1, #candidates do
+                local c = candidates[i]
+                if c and c.pos and c.name then
+                    local ok_d2, d2 = pcall(function() return pos:distance_to_sqr(c.pos) end)
+                    d2 = ok_d2 and tonumber(d2) or nil
+                    local bucket = hunt_range_bucket_by_d2(d2)
+                    if bucket then
+                        mark_best_bucket(c.name, bucket, level_name)
+                    end
+                end
+            end
+        end
+    end
+
+    for name, rec in pairs(marked) do
+        if type(rec) == "table" and HUNT_BUCKET_PRIORITY[rec.bucket] ~= nil then
+            local mark_level = type(rec.level) == "string" and rec.level or level_name
+            rec.level = mark_level
+        end
+    end
+
+    self:_apply_hunt_presence_marks(sid, marked)
+end
+
+function Mutants:_build_hunt_task(se_squad, entry, source, night_forced)
+    if not is_hunt_enabled() then
+        return nil
+    end
+
+    local cur_level = resolve_entry_level(entry, se_squad)
+    if not cur_level then
+        return nil
+    end
+    local community = self:_get_entry_community(entry)
+    local section_name = self:_get_entry_section(entry, se_squad)
+    local current_smart_name = self:_get_current_smart_name(entry, se_squad)
+
+    local function pick_from_levels(levels)
+        local buckets = {}
+        for i = 1, #HUNT_BUCKET_CHAIN do
+            buckets[HUNT_BUCKET_CHAIN[i]] = {}
+        end
+
+        for i = 1, #levels do
+            local lvl = levels[i]
+            if not is_level_blacklisted_for_faction(lvl, community, section_name) then
+                local present = self.RUNTIME.hunt_presence_by_level and self.RUNTIME.hunt_presence_by_level[lvl] or nil
+                if type(present) == "table" then
+                    for smart_name, p_data in pairs(present) do
+                        if type(smart_name) == "string"
+                            and smart_name ~= ""
+                            and smart_name ~= current_smart_name
+                            and (not smart_is_blacklisted_for_level(lvl, smart_name, community, section_name))
+                            and smart_exists(smart_name)
+                        then
+                            local slot = type(p_data) == "table" and p_data or nil
+                            if not slot then
+                                slot = {
+                                    [HUNT_BUCKET_R50] = 1,
+                                }
+                            end
+                            for j = 1, #HUNT_BUCKET_CHAIN do
+                                local bucket = HUNT_BUCKET_CHAIN[j]
+                                local cnt = tonumber(slot[bucket]) or 0
+                                if cnt > 0 then
+                                    local w = math_floor(cnt)
+                                    if w < 1 then w = 1 end
+                                    local list = buckets[bucket]
+                                    list[#list + 1] = {
+                                        level = lvl,
+                                        smart = smart_name,
+                                        bucket = bucket,
+                                        weight = w,
+                                    }
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        for i = 1, #HUNT_BUCKET_CHAIN do
+            local bucket = HUNT_BUCKET_CHAIN[i]
+            local chosen = pick_weighted(buckets[bucket])
+            if chosen then
+                return chosen
+            end
+        end
+        return nil
+    end
+
+    local chosen = pick_from_levels({ cur_level })
+    local pick_scope = "same_level"
+    if not chosen then
+        local neighbors = get_neighbors(cur_level, community, section_name)
+        local levels = {}
+        local seen = { [cur_level] = true }
+        for i = 1, #neighbors do
+            local lvl = neighbors[i]
+            if type(lvl) == "string" and lvl ~= "" and not seen[lvl] then
+                seen[lvl] = true
+                levels[#levels + 1] = lvl
+            end
+        end
+        chosen = pick_from_levels(levels)
+        pick_scope = "neighbor_level"
+    end
+
+    if not chosen then
+        self.RUNTIME.hunt_cache_miss = (tonumber(self.RUNTIME.hunt_cache_miss) or 0) + 1
+        return nil
+    end
+
+    self.RUNTIME.hunt_cache_hits = (tonumber(self.RUNTIME.hunt_cache_hits) or 0) + 1
+    if pick_scope == "same_level" then
+        self.RUNTIME.hunt_pick_same_level = (tonumber(self.RUNTIME.hunt_pick_same_level) or 0) + 1
+    else
+        self.RUNTIME.hunt_pick_neighbor_level = (tonumber(self.RUNTIME.hunt_pick_neighbor_level) or 0) + 1
+    end
+
+    local bucket = chosen.bucket
+    if bucket == HUNT_BUCKET_IN_SMART then
+        self.RUNTIME.hunt_pick_bucket_in_smart = (tonumber(self.RUNTIME.hunt_pick_bucket_in_smart) or 0) + 1
+    elseif bucket == HUNT_BUCKET_R5 then
+        self.RUNTIME.hunt_pick_bucket_r5 = (tonumber(self.RUNTIME.hunt_pick_bucket_r5) or 0) + 1
+    elseif bucket == HUNT_BUCKET_R10 then
+        self.RUNTIME.hunt_pick_bucket_r10 = (tonumber(self.RUNTIME.hunt_pick_bucket_r10) or 0) + 1
+    elseif bucket == HUNT_BUCKET_R30 then
+        self.RUNTIME.hunt_pick_bucket_r30 = (tonumber(self.RUNTIME.hunt_pick_bucket_r30) or 0) + 1
+    elseif bucket == HUNT_BUCKET_R50 then
+        self.RUNTIME.hunt_pick_bucket_r50 = (tonumber(self.RUNTIME.hunt_pick_bucket_r50) or 0) + 1
+    end
+
+    self.RUNTIME.hunt_targets_picked = (tonumber(self.RUNTIME.hunt_targets_picked) or 0) + 1
+    self:_log_throttled(
+        "hunt_pick:" .. tostring(tonumber(se_squad and se_squad.id) or 0),
+        MUTANT_LOG_THROTTLE_MS,
+        "info",
+        "MUTANT_HUNT_PICK sid=%s scope=%s smart=%s level=%s bucket=%s weight=%s",
+        tostring(se_squad and se_squad.id or "-"),
+        tostring(pick_scope),
+        tostring(chosen.smart or "-"),
+        tostring(chosen.level or "-"),
+        tostring(bucket or "-"),
+        tostring(chosen.weight or "-")
+    )
+
+    return make_task("HUNT", chosen.smart, {
+        started_at_tg = tg(),
+        target_level = chosen.level,
+        source = source or "hunt",
+        night_forced = night_forced == true,
+        presence_bucket = bucket,
+        presence_weight = tonumber(chosen.weight) or 1,
+        pick_scope = pick_scope,
+    }, 0)
+end
+
+function Mutants:_build_explore_task(se_squad, entry)
+    local cur_level = resolve_entry_level(entry, se_squad)
+    if not cur_level then
+        return nil
+    end
+    local community = self:_get_entry_community(entry)
+    local section_name = self:_get_entry_section(entry, se_squad)
+    local current_smart_name = self:_get_current_smart_name(entry, se_squad)
+
+    local levels = {}
+    local seen = {}
+    local function add_level(name)
+        if type(name) ~= "string" or name == "" then return end
+        if seen[name] then return end
+        seen[name] = true
+        levels[#levels + 1] = name
+    end
+    local neighbors = get_neighbors(cur_level, community, section_name)
+    for i = 1, #neighbors do
+        add_level(neighbors[i])
+    end
+    if #levels <= 0 then
+        return nil
+    end
+    shuffle_in_place(levels)
+
+    for i = 1, #levels do
+        local target_level = levels[i]
+        local smarts = self:_get_filtered_smarts_for_level(target_level, community, section_name)
+        local candidates = {}
+        for j = 1, #smarts do
+            local smart_name = smarts[j]
+            if smart_name ~= current_smart_name then
+                candidates[#candidates + 1] = smart_name
+            end
+        end
+        local target = pick_random(candidates)
+        if target then
+            return make_task("EXPLORE", target, {
+                started_at_tg = tg(),
+                target_level = target_level,
+                source = "explore",
+            }, 0)
+        end
+    end
+    return nil
+end
+
+function Mutants:_build_patrol_task(se_squad, entry)
+    local cur_level = resolve_entry_level(entry, se_squad)
+    if not cur_level then
+        return nil
+    end
+    local community = self:_get_entry_community(entry)
+    local section_name = self:_get_entry_section(entry, se_squad)
+    local current_smart_name = self:_get_current_smart_name(entry, se_squad)
+
+    local cached_order = self:_get_filtered_smarts_for_level(cur_level, community, section_name)
+    if #cached_order <= 0 then
+        return nil
+    end
+    local order = {}
+    for i = 1, #cached_order do
+        local smart_name = cached_order[i]
+        if smart_name ~= current_smart_name then
+            order[#order + 1] = smart_name
+        end
+    end
+    if #order <= 0 then
+        return nil
+    end
+    shuffle_in_place(order)
+
+    local duration_game_sec = 3600
+    if siski.config and siski.config.get then
+        local patrol_hours = siski.config.get("mutant_patrol_duration_game_hours", 1.0)
+        patrol_hours = tonumber(patrol_hours) or 1.0
+        if patrol_hours <= 0 then patrol_hours = 1.0 end
+        duration_game_sec = math_floor(patrol_hours * 3600)
+        if duration_game_sec < 1 then duration_game_sec = 1 end
+    end
+
+    local tf = (level and level.get_time_factor and level.get_time_factor()) or 10
+    if tf <= 0 then tf = 10 end
+    local duration_ms = math_floor((duration_game_sec * 1000) / tf)
+    if duration_ms < 1000 then duration_ms = 1000 end
+
+    local started_gt = nil
+    local now_gt = game_time_now()
+    if now_gt then
+        started_gt = ctime_to_table(now_gt)
+    end
+
+    local params = {
+        started_at_tg = tg(),
+        started_at_gt = started_gt,
+        duration_game_sec = duration_game_sec,
+        duration_ms = duration_ms,
+        order = order,
+        idx = 1,
+        hops = 0,
+        max_hops = math_max(3, #order),
+        target_level = cur_level,
+        source = "patrol",
+    }
+    return make_task("PATROL", order[1], params, 0)
+end
+
+function Mutants:_pick_day_roam_task(se_squad, entry, exclude_type)
+    local hunt_enabled = is_hunt_enabled()
+    local explore_enabled = true
+    local patrol_enabled = true
+    if siski.config and siski.config.get then
+        explore_enabled = siski.config.get("mutant_explore_enabled", true) ~= false
+        patrol_enabled = siski.config.get("mutant_patrol_enabled", true) ~= false
+    end
+
+    local builders = {}
+    if hunt_enabled then
+        builders[#builders + 1] = { type = "HUNT", fn = function() return self:_build_hunt_task(se_squad, entry, "day_roam", false) end }
+    end
+    if explore_enabled then
+        builders[#builders + 1] = { type = "EXPLORE", fn = function() return self:_build_explore_task(se_squad, entry) end }
+    end
+    if patrol_enabled then
+        builders[#builders + 1] = { type = "PATROL", fn = function() return self:_build_patrol_task(se_squad, entry) end }
+    end
+    shuffle_in_place(builders)
+
+    for pass = 1, 2 do
+        for i = 1, #builders do
+            local b = builders[i]
+            if pass == 2 or b.type ~= exclude_type then
+                local task = b.fn()
+                if task then
+                    return task
+                end
+            end
+        end
+    end
+    return nil
+end
+
+function Mutants:_pick_first_task(se_squad, entry, night_now)
+    if night_now == true then
+        local hunt = self:_build_hunt_task(se_squad, entry, "night_force", true)
+        if hunt then
+            self.RUNTIME.night_forced_count = (tonumber(self.RUNTIME.night_forced_count) or 0) + 1
+            return hunt
+        end
+        self.RUNTIME.night_fallback_rest_count = (tonumber(self.RUNTIME.night_fallback_rest_count) or 0) + 1
+        return build_rest_task()
+    end
+
+    local task = self:_pick_day_roam_task(se_squad, entry, nil)
+    if task then
+        return task
+    end
+    return build_rest_task()
+end
+
+function Mutants:_rotate_task(se_squad, entry, prev, night_now)
+    if night_now == true then
+        local hunt = self:_build_hunt_task(se_squad, entry, "night_force", true)
+        if hunt then
+            self.RUNTIME.night_forced_count = (tonumber(self.RUNTIME.night_forced_count) or 0) + 1
+            return hunt
+        end
+        self.RUNTIME.night_fallback_rest_count = (tonumber(self.RUNTIME.night_fallback_rest_count) or 0) + 1
+        return build_rest_task()
+    end
+
+    local exclude = prev and prev.type or nil
+    local next_task = self:_pick_day_roam_task(se_squad, entry, exclude)
+    if next_task then
+        return next_task
+    end
+    return build_rest_task()
+end
+
+function Mutants:_is_task_target_valid(task, entry, se_squad)
+    if not task then return false end
+    if task.type == "REST_1H" then return true end
+    if type(task.target) ~= "string" or task.target == "" then
+        return false
+    end
+    if not smart_exists(task.target) then
+        return false
+    end
+
+    local community = self:_get_entry_community(entry)
+    local section_name = self:_get_entry_section(entry, se_squad)
+    local target_level = task.params and task.params.target_level or nil
+    if type(target_level) ~= "string" or target_level == "" then
+        target_level = resolve_smart_level_by_name(task.target) or resolve_entry_level(entry, se_squad)
+    end
+    if target_level and smart_is_blacklisted_for_level(target_level, task.target, community, section_name) then
+        return false
+    end
+    return true
+end
+
+function Mutants:_is_task_completed(se_squad, task, night_now)
+    if not task then return true end
+
+    if task.type == "REST_1H" then
+        return is_rest_done(task)
+    end
+    if task.type == "EXPLORE" then
+        return is_squad_arrived_to_smart(se_squad, task.target) == true
+    end
+    if task.type == "HUNT" then
+        return is_squad_arrived_to_smart(se_squad, task.target) == true
+    end
+
+    if task.type == "PATROL" then
+        local p = type(task.params) == "table" and task.params or {}
+        task.params = p
+
+        if p.duration_elapsed == true then
+            return true
+        end
+
+        local started_gt = ctime_from_table(p.started_at_gt)
+        local dur_gs = tonumber(p.duration_game_sec)
+        if started_gt and dur_gs and dur_gs > 0 then
+            local elapsed = game_time_diff_sec(started_gt) or 0
+            if elapsed >= dur_gs then
+                return true
+            end
+        else
+            local started = tonumber(p.started_at_tg) or 0
+            local dur = tonumber(p.duration_ms) or 0
+            if dur > 0 and tg() >= (started + dur) then
+                return true
+            end
+        end
+
+        if not self:_is_task_target_valid(task, nil, se_squad) then
+            local next_target = pick_next_patrol_target(task, self:_get_current_smart_name(nil, se_squad))
+            if not next_target then
+                return true
+            end
+            p.target_sync_next_tg = 0
+            return false
+        end
+
+        if is_squad_arrived_to_smart(se_squad, task.target) then
+            p.hops = (tonumber(p.hops) or 0) + 1
+            if p.hops >= (tonumber(p.max_hops) or 3) then
+                return true
+            end
+            local next_target = pick_next_patrol_target(task, self:_get_current_smart_name(nil, se_squad))
+            if not next_target then
+                return true
+            end
+            task.target = next_target
+            p.target_sync_next_tg = 0
+        end
+        return false
+    end
+
+    return true
+end
+
+function Mutants:_apply_task(se_squad, task, predator_phase)
+    if not (se_squad and task) then return end
+    task.params = type(task.params) == "table" and task.params or {}
+    if predator_phase == PREDATOR_PHASE_DAY or predator_phase == PREDATOR_PHASE_NIGHT then
+        task.params.predator_phase = predator_phase
+    end
+
+    if task.type == "REST_1H" then
+        local hold_target = self:_get_current_smart_name(nil, se_squad)
+        set_scripted_target(se_squad, hold_target)
+        task.params.target_sync_name = nil
+        task.params.target_sync_smart_id = nil
+        task.params.target_sync_started_tg = nil
+        task.params.target_sync_next_tg = nil
+        task.params.online_nudge_stage = nil
+        task.params.online_nudge_next_tg = nil
+        return
+    end
+
+    if type(task.target) ~= "string" or task.target == "" then
+        return
+    end
+
+    local p = task.params
+    local now = tg()
+    if p.target_sync_name ~= task.target then
+        p.target_sync_name = task.target
+        p.target_sync_started_tg = nil
+        p.target_sync_next_tg = 0
+        p.target_sync_due = true
+        p.online_last_progress_tg = nil
+        p.online_last_gvid = nil
+        p.online_nudge_stage = 0
+        p.online_nudge_next_tg = nil
+    end
+
+    local sid = resolve_target_smart_id(task.target)
+    local stgt = se_squad.scripted_target
+    local at = tonumber(se_squad.assigned_target_id) or nil
+    local ca = tonumber(se_squad.current_action) or nil
+    local mismatch = false
+    if stgt ~= task.target then
+        mismatch = true
+    end
+    if sid and at and at ~= sid then
+        mismatch = true
+    end
+    if ca == nil then
+        mismatch = true
+    end
+
+    local needs_sync = mismatch or (tonumber(p.target_sync_started_tg) == nil) or p.target_sync_due == true
+    if not needs_sync then
+        p.target_sync_next_tg = nil
+        p.target_sync_due = nil
+        return
+    end
+
+    local next_sync_tg = tonumber(p.target_sync_next_tg) or 0
+    if now < next_sync_tg then
+        return
+    end
+
+    if not self:_sync_task_target(se_squad, task, mismatch and "mismatch" or "interval") then
+        p.target_sync_next_tg = now + 1000
+    else
+        p.target_sync_due = nil
+    end
+end
+
+function Mutants:_is_target_sync_pending(task)
+    if type(task) ~= "table" then
+        return false
+    end
+    if type(task.target) ~= "string" or task.target == "" then
+        return false
+    end
+    local p = type(task.params) == "table" and task.params or {}
+    if p.target_sync_name ~= task.target then
+        return true
+    end
+    if tonumber(p.target_sync_started_tg) == nil then
+        return true
+    end
+    if p.target_sync_due == true then
+        return true
+    end
+    return tonumber(p.target_sync_next_tg) == 0
+end
+
+function Mutants:_refresh_presence_for_live_squad(se_squad, source)
+    local sid = tonumber(se_squad and se_squad.id) or nil
+    if not sid then
+        return nil
+    end
+    if not read_commander_id(se_squad) then
+        return nil
+    end
+    if siski.memory and siski.memory.update_squad_snapshot_verified then
+        siski.memory.update_squad_snapshot_verified(se_squad, sid)
+    elseif siski.memory and siski.memory.update_squad_snapshot then
+        siski.memory.update_squad_snapshot(se_squad)
+    end
+
+    local entry = siski.memory and siski.memory.get_squad_entry and siski.memory.get_squad_entry(sid) or nil
+    if type(entry) ~= "table" then
+        self:_clear_hunt_presence_for_sid(sid)
+        return nil
+    end
+
+    entry.level = resolve_entry_level(entry, se_squad) or entry.level
+    entry.smart_id = se_squad.smart_id
+    entry.scripted_target = se_squad.scripted_target
+    entry.current_action = se_squad.current_action
+    entry.assigned_target_id = se_squad.assigned_target_id
+
+    if self:_is_stalker_presence_entry(entry) then
+        self:_process_stalker_presence(sid, entry)
+    else
+        self:_clear_hunt_presence_for_sid(sid)
+    end
+    return entry
+end
+
+function Mutants:_mark_mutant_dirty_if_managed(se_squad, reason)
+    local sid = tonumber(se_squad and se_squad.id) or nil
+    if not sid then
+        return false
+    end
+    local entry = self:_refresh_presence_for_live_squad(se_squad, reason)
+    if type(entry) ~= "table" or entry.npc_kind ~= "mutant" then
+        return false
+    end
+    if siski.memory and siski.memory.mark_dirty then
+        siski.memory.mark_dirty(sid, "task")
+    end
+    return true
+end
+
+function Mutants:_update_squad_tasks(se_squad, ctx)
+    if not (siski.memory and siski.memory.set_task_current and (siski.memory.touch_squad_validated or siski.memory.get_squad_entry)) then
+        return
+    end
+    if not se_squad then return end
+    clear_always_arrived(se_squad)
+    if siski.config and siski.config.get and siski.config.get("mutant_sim_enabled", true) == false then
+        return
+    end
+
+    local entry = nil
+    if ctx and ctx.prevalidated == true and se_squad and se_squad.id and siski.memory.get_squad_entry then
+        entry = siski.memory.get_squad_entry(se_squad.id)
+    elseif siski.memory.touch_squad_validated then
+        entry = siski.memory.touch_squad_validated(se_squad, false, "mutants")
+    end
+    if not entry then
+        return
+    end
+    local sid = tonumber(entry.squad_id) or tonumber(se_squad.id)
+    if self:_is_stalker_presence_entry(entry) then
+        self:_process_stalker_presence(sid, entry)
+        return
+    end
+    self:_clear_hunt_presence_for_sid(sid)
+    if entry.npc_kind ~= "mutant" then
+        return
+    end
+
+    self.RUNTIME.updates = (tonumber(self.RUNTIME.updates) or 0) + 1
+    self.RUNTIME.last_update_tg = tg()
+
+    entry.identity_source = entry.identity_source or "mutant_runtime"
+    entry.player_id = read_squad_player_id(se_squad) or entry.player_id
+    entry.level = resolve_entry_level(entry, se_squad) or entry.level
+    entry.smart_id = se_squad.smart_id
+    entry.scripted_target = se_squad.scripted_target
+    entry.current_action = se_squad.current_action
+    entry.assigned_target_id = se_squad.assigned_target_id
+    entry.tasks = type(entry.tasks) == "table" and entry.tasks or { prev = nil, current = nil, next = nil }
+
+    local night_now = is_night_now()
+    local current = entry.tasks.current
+    local force_phase_probe = current and current.type ~= "REST_1H" or false
+    local predator_phase = self:_resolve_predator_phase(se_squad, entry, force_phase_probe)
+    if not predator_phase and type(current) == "table" and type(current.params) == "table" then
+        local task_phase = current.params.predator_phase
+        if task_phase == PREDATOR_PHASE_DAY or task_phase == PREDATOR_PHASE_NIGHT then
+            predator_phase = task_phase
+            entry.predator_phase = task_phase
+            entry.predator_phase_source = entry.predator_phase_source or "task.params"
+        end
+    end
+    if is_predator_phase_inactive(predator_phase, night_now) then
+        local need_rest = (not current) or current.type ~= "REST_1H"
+        if need_rest then
+            local rest = build_rest_task()
+            rest.params = type(rest.params) == "table" and rest.params or {}
+            rest.params.predator_phase = predator_phase
+            siski.memory.set_task_current(entry.squad_id, rest)
+            current = entry.tasks.current or rest
+        end
+        set_scripted_target(se_squad, self:_get_current_smart_name(entry, se_squad))
+        self.RUNTIME.phase_rest_forced_count = (tonumber(self.RUNTIME.phase_rest_forced_count) or 0) + 1
+        if predator_phase == PREDATOR_PHASE_DAY then
+            self.RUNTIME.phase_rest_forced_night_count = (tonumber(self.RUNTIME.phase_rest_forced_night_count) or 0) + 1
+        elseif predator_phase == PREDATOR_PHASE_NIGHT then
+            self.RUNTIME.phase_rest_forced_day_count = (tonumber(self.RUNTIME.phase_rest_forced_day_count) or 0) + 1
+        end
+        self:_log_throttled(
+            "phase_rest:" .. tostring(entry.squad_id or 0),
+            5000,
+            "debug",
+            "MUTANT_PHASE_REST sid=%s phase=%s night_now=%s",
+            tostring(entry.squad_id or "-"),
+            tostring(predator_phase or "-"),
+            tostring(night_now == true)
+        )
+        return
+    end
+
+    if (not night_now) and is_surge_active() then
+        local rest = build_rest_task()
+        siski.memory.set_task_current(entry.squad_id, rest)
+        set_scripted_target(se_squad, self:_get_current_smart_name(entry, se_squad))
+        return
+    end
+
+    current = entry.tasks.current
+
+    if night_now then
+        if current and current.type == "HUNT" then
+            current.params = type(current.params) == "table" and current.params or {}
+            if current.params.night_forced ~= true then
+                self.RUNTIME.night_forced_count = (tonumber(self.RUNTIME.night_forced_count) or 0) + 1
+            end
+            current.params.night_forced = true
+            current.params.source = current.params.source or "night_force"
+        else
+            local forced_hunt = self:_build_hunt_task(se_squad, entry, "night_force", true)
+            if forced_hunt then
+                self.RUNTIME.night_forced_count = (tonumber(self.RUNTIME.night_forced_count) or 0) + 1
+                siski.memory.set_task_current(entry.squad_id, forced_hunt)
+                current = entry.tasks.current or forced_hunt
+            else
+                self.RUNTIME.night_fallback_rest_count = (tonumber(self.RUNTIME.night_fallback_rest_count) or 0) + 1
+                local rest = build_rest_task()
+                rest.params = type(rest.params) == "table" and rest.params or {}
+                rest.params.source = "night_hunt_wait"
+                if predator_phase == PREDATOR_PHASE_DAY or predator_phase == PREDATOR_PHASE_NIGHT then
+                    rest.params.predator_phase = predator_phase
+                end
+                siski.memory.set_task_current(entry.squad_id, rest)
+                current = entry.tasks.current or rest
+            end
+        end
+    else
+        if current and current.type == "HUNT" then
+            self.RUNTIME.day_hunt_released_count = (tonumber(self.RUNTIME.day_hunt_released_count) or 0) + 1
+            local released = self:_rotate_task(se_squad, entry, current, false)
+            siski.memory.set_task_current(entry.squad_id, released)
+            current = entry.tasks.current or released
+        end
+    end
+
+    if not current then
+        current = self:_pick_first_task(se_squad, entry, night_now)
+        siski.memory.set_task_current(entry.squad_id, current)
+        current = entry.tasks.current or current
+    end
+
+    if not self:_is_task_target_valid(current, entry, se_squad) then
+        local rebuilt = self:_rotate_task(se_squad, entry, current, night_now) or build_rest_task()
+        siski.memory.set_task_current(entry.squad_id, rebuilt)
+        current = entry.tasks.current or rebuilt
+    end
+
+    self:_apply_task(se_squad, current, predator_phase)
+    if self:_is_task_completed(se_squad, current, night_now) then
+        self.RUNTIME.completions = (tonumber(self.RUNTIME.completions) or 0) + 1
+        if current.type == "REST_1H" then
+            siski.memory.set_task_current(entry.squad_id, nil)
+            return
+        end
+        local next_task = build_rest_task()
+        if type(next_task.params) == "table" and (predator_phase == PREDATOR_PHASE_DAY or predator_phase == PREDATOR_PHASE_NIGHT) then
+            next_task.params.predator_phase = predator_phase
+        end
+        siski.memory.set_task_current(entry.squad_id, next_task)
+        current = entry.tasks.current or next_task
+        self:_apply_task(se_squad, current, predator_phase)
+    end
+end
+
+function Mutants:_reset_runtime(reason)
+    self.RUNTIME.hunt_presence_by_level = {}
+    self.RUNTIME.hunt_presence_by_sid = {}
+    self.RUNTIME.hunt_cache_tg = 0
+    self.RUNTIME.hunt_level_smarts_cache = {}
+    self.RUNTIME.hunt_level_smarts_rev = {}
+    self.RUNTIME.hunt_pass_obj_cache = {}
+    self.RUNTIME.hunt_pass_level_cache = {}
+    self.RUNTIME.hunt_pass_smart_cache = {}
+    self.RUNTIME.hunt_pass_exists_cache = {}
+    if siski.log and siski.log.warn then
+        siski.log.warn("MUTANTS", "reset_runtime reason=%s", tostring(reason or "-"))
+    end
+end
+
+function Mutants:_reset_presence_runtime()
+    self.RUNTIME.hunt_presence_by_level = {}
+    self.RUNTIME.hunt_presence_by_sid = {}
+    self.RUNTIME.hunt_cache_tg = 0
+    self.RUNTIME.hunt_level_smarts_cache = {}
+    self.RUNTIME.hunt_level_smarts_rev = {}
+    self.RUNTIME.hunt_pass_obj_cache = {}
+    self.RUNTIME.hunt_pass_level_cache = {}
+    self.RUNTIME.hunt_pass_smart_cache = {}
+    self.RUNTIME.hunt_pass_exists_cache = {}
+end
+
+function Mutants:_bootstrap_presence_from_board(source)
+    local board = get_board()
+    local squads = board and board.squads or nil
+    if type(squads) ~= "table" then
+        return
+    end
+
+    local sim = alife and alife() or nil
+    if not sim then
+        return
+    end
+
+    for sid in pairs(squads) do
+        sid = tonumber(sid) or nil
+        if is_valid_server_id(sid) then
+            local ok_obj, se_squad = pcall(function() return sim:object(sid) end)
+            se_squad = ok_obj and se_squad or nil
+            if se_squad then
+                self:_refresh_presence_for_live_squad(se_squad, source or "board_bootstrap")
+            else
+                self:_clear_hunt_presence_for_sid(sid)
+            end
+        end
+    end
+end
+
+function Mutants:_get_runtime_stats()
+    local levels = count_keys(self.RUNTIME.hunt_presence_by_level)
+    return {
+        updates = tonumber(self.RUNTIME.updates) or 0,
+        completions = tonumber(self.RUNTIME.completions) or 0,
+        last_update_tg = tonumber(self.RUNTIME.last_update_tg) or 0,
+        hunt_cache_tg = tonumber(self.RUNTIME.hunt_cache_tg) or 0,
+        hunt_presence_levels = levels,
+        hunt_cache_hits = tonumber(self.RUNTIME.hunt_cache_hits) or 0,
+        hunt_cache_miss = tonumber(self.RUNTIME.hunt_cache_miss) or 0,
+        hunt_targets_picked = tonumber(self.RUNTIME.hunt_targets_picked) or 0,
+        hunt_pick_same_level = tonumber(self.RUNTIME.hunt_pick_same_level) or 0,
+        hunt_pick_neighbor_level = tonumber(self.RUNTIME.hunt_pick_neighbor_level) or 0,
+        hunt_pick_bucket_in_smart = tonumber(self.RUNTIME.hunt_pick_bucket_in_smart) or 0,
+        hunt_pick_bucket_r5 = tonumber(self.RUNTIME.hunt_pick_bucket_r5) or 0,
+        hunt_pick_bucket_r10 = tonumber(self.RUNTIME.hunt_pick_bucket_r10) or 0,
+        hunt_pick_bucket_r30 = tonumber(self.RUNTIME.hunt_pick_bucket_r30) or 0,
+        hunt_pick_bucket_r50 = tonumber(self.RUNTIME.hunt_pick_bucket_r50) or 0,
+        predator_phase_resolved_count = tonumber(self.RUNTIME.predator_phase_resolved_count) or 0,
+        predator_phase_day_count = tonumber(self.RUNTIME.predator_phase_day_count) or 0,
+        predator_phase_night_count = tonumber(self.RUNTIME.predator_phase_night_count) or 0,
+        phase_rest_forced_count = tonumber(self.RUNTIME.phase_rest_forced_count) or 0,
+        phase_rest_forced_day_count = tonumber(self.RUNTIME.phase_rest_forced_day_count) or 0,
+        phase_rest_forced_night_count = tonumber(self.RUNTIME.phase_rest_forced_night_count) or 0,
+        night_forced_count = tonumber(self.RUNTIME.night_forced_count) or 0,
+        night_fallback_rest_count = tonumber(self.RUNTIME.night_fallback_rest_count) or 0,
+        day_hunt_released_count = tonumber(self.RUNTIME.day_hunt_released_count) or 0,
+        target_resync_count = tonumber(self.RUNTIME.target_resync_count) or 0,
+    }
+end
+
+local inst = Mutants.new and Mutants.new() or setmetatable({}, Mutants)
+if not inst.RUNTIME then
+    Mutants.__init(inst)
+end
+
+local function bus_args(payload)
+    if type(payload) ~= "table" then
+        return {}
+    end
+    return type(payload.args) == "table" and payload.args or {}
+end
+
+if siski and siski.bus and siski.bus.subscribe then
+    siski.bus.subscribe("actor_on_first_update", "siski_mutants", function()
+        inst:_reset_presence_runtime()
+        inst:_bootstrap_presence_from_board("actor_first_update")
+    end)
+    siski.bus.subscribe("load_state", "siski_mutants", function()
+        inst:_reset_presence_runtime()
+        inst:_bootstrap_presence_from_board("load_state")
+    end)
+    siski.bus.subscribe("server_entity_on_register", "siski_mutants", function(payload)
+        local args = bus_args(payload)
+        local se_obj = args[1]
+        local type_name = args[2]
+        if type(type_name) == "string" and type_name == "sim_squad_scripted" then
+            inst:_refresh_presence_for_live_squad(se_obj, "server_register")
+        elseif type(type_name) == "string" and type_name == "se_smart_terrain" then
+            inst:_invalidate_hunt_level_smarts_cache(resolve_smart_level_from_obj(se_obj))
+        end
+    end)
+    siski.bus.subscribe("squad_on_first_update", "siski_mutants", function(payload)
+        local args = bus_args(payload)
+        inst:_refresh_presence_for_live_squad(args[1], "first_update")
+    end)
+    siski.bus.subscribe("squad_on_update", "siski_mutants", function(payload)
+        local args = bus_args(payload)
+        inst:_refresh_presence_for_live_squad(args[1], "update")
+    end)
+    siski.bus.subscribe("server_entity_on_unregister", "siski_mutants", function(payload)
+        local args = bus_args(payload)
+        local se_obj = args[1]
+        local type_name = args[2]
+        if type(type_name) == "string" and type_name == "sim_squad_scripted" then
+            inst:_clear_hunt_presence_for_sid(se_obj and se_obj.id or nil)
+        elseif type(type_name) == "string" and type_name == "se_smart_terrain" then
+            inst:_invalidate_hunt_level_smarts_cache(resolve_smart_level_from_obj(se_obj))
+        end
+    end)
+    siski.bus.subscribe("smart_terrain_on_update", "siski_mutants", function(payload)
+        local args = bus_args(payload)
+        inst:_invalidate_hunt_level_smarts_cache(resolve_smart_level_from_obj(args[1]))
+    end)
+    siski.bus.subscribe("squad_on_npc_death", "siski_mutants", function(payload)
+        local args = bus_args(payload)
+        local squad = args[1]
+        inst:_clear_hunt_presence_for_sid(squad and squad.id or nil)
+        inst:_mark_mutant_dirty_if_managed(squad, "npc_death")
+    end)
+end
+
+inst.update_squad_tasks = function(se_squad, ctx) return inst:_update_squad_tasks(se_squad, ctx) end
+inst.get_runtime_stats = function() return inst:_get_runtime_stats() end
+inst.reset_runtime = function(reason) return inst:_reset_runtime(reason) end
+
+siski.mutants = inst

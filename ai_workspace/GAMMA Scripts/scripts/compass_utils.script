@@ -1,0 +1,15 @@
+function calc_angle()
+    local actor_dir = device().cam_dir
+
+    local dir_x = actor_dir.x
+    local dir_z = actor_dir.z
+
+    local radians = math.atan2(dir_x, dir_z)
+    local angle = math.deg(radians)
+
+    if angle < 0 then
+        angle = angle + 360
+    end
+
+    return angle
+end

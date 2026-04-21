@@ -1,0 +1,163 @@
+-- Revised by oleh5230, 24.06.24
+-- Original script by Qudix
+-- Last edit: 28.11.25 
+
+local opt_aim_rattle = true
+local opt_lower_raise_rattle = true
+local volume_aim_rattle = 1
+local volume_lower_raise_rattle = 1
+
+function load_settings()
+    if ui_mcm and grok_casings_sounds_mcm then
+        opt_aim_rattle = ui_mcm.get("grok_casings_sounds/enabled_aim_rattle")
+        opt_lower_raise_rattle = ui_mcm.get("grok_casings_sounds/enabled_lower_raise_rattle")
+        volume_aim_rattle = ui_mcm.get("grok_casings_sounds/volume_aim_rattle") or 1
+        volume_lower_raise_rattle = ui_mcm.get("grok_casings_sounds/volume_lower_raise_rattle") or 1
+    end
+end
+
+wpn_kinds = {
+    ["w_pistol"]            = "pistol",
+    ["w_smg"]               = "pistol",
+    ["w_rifle"]             = "shotgun",
+    ["w_sniper"]            = "shotgun",
+    ["w_shotgun"]           = "shotgun",
+    ["w_explosive"]         = "shotgun",
+}
+
+limit = {
+    ["pistol_aim_in_"]      = 4,
+    ["pistol_aim_out_"]     = 4,
+    ["rifle_aim_in_"]       = 4,
+    ["rifle_aim_out_"]      = 4,
+    ["shotgun_aim_out_"]    = 4,
+    ["shotgun_aim_in_"]     = 4,
+}
+
+count = {
+    ["pistol_aim_in_"]      = 1,
+    ["pistol_aim_out_"]     = 1,
+    ["rifle_aim_in_"]       = 1,
+    ["rifle_aim_out_"]      = 1,
+    ["shotgun_aim_out_"]    = 1,
+    ["shotgun_aim_in_"]     = 1,
+}
+
+-- create sample queues to mitigate the issue of same sample playing multiple time in a row
+queues = {
+    ["pistol_aim_in_"]      = {},
+    ["pistol_aim_out_"]     = {},
+    ["rifle_aim_in_"]       = {},
+    ["rifle_aim_out_"]      = {},
+    ["shotgun_aim_out_"]    = {},
+    ["shotgun_aim_in_"]     = {},
+}
+for k,v in pairs(queues) do
+    for i=1, limit[k] do
+        queues[k][#queues[k]+1] = i
+    end
+    shuffle_table(queues[k])
+end
+
+function play_aim_sound(movement, wpn_kind, volume, frequency)
+    local class = wpn_kind .. movement
+    local sound = sound_object("weapons\\_rattle\\" .. class .. queues[class][count[class]])
+    sound:play(db.actor, 0, sound_object.s2d)
+    sound.volume = volume or 0.5
+    sound.frequency = frequency or 1
+
+    count[class] = count[class] + 1
+    if count[class] > limit[class] then
+        count[class] = 1
+        shuffle_table(queues[class])
+    end
+end
+
+local cached_sec
+local wpn_kind = "rifle"
+local volume, frequency = 0.5, 1
+local weight, aim_time = 3.3, 0.25
+
+function get_wpn_params(wpn)
+    if not wpn then return end
+    local sec = wpn:section()
+    if not cached_sec or sec ~= cached_sec then
+        cached_sec = sec
+        wpn_kind   = wpn_kinds[SYS_GetParam(0, sec, "kind")] or "rifle"
+        weight     = ini_sys:r_string_ex(sec, "inv_weight") or 3.3
+        aim_time   = ini_sys:r_string_ex(sec, "zoom_rotate_time") or 0.25
+        volume     = (0.25 + weight * 0.025)
+        frequency  = clamp(0.25 / aim_time, 0.8, 1.2)
+    end
+end
+
+function actor_on_weapon_zoom_in(wpn)
+    if opt_aim_rattle then
+        get_wpn_params(wpn)
+        play_aim_sound("_aim_in_", wpn_kind, volume * volume_aim_rattle * 0.8, frequency)
+    end
+end
+
+function actor_on_weapon_zoom_out(wpn)
+    if opt_aim_rattle then
+        get_wpn_params(wpn)
+        play_aim_sound("_aim_out_", wpn_kind, volume * volume_aim_rattle * 0.8, frequency)
+    end
+end
+
+function actor_on_weapon_zoom_type_changed(wpn, previous, current)
+    if opt_aim_rattle then
+        get_wpn_params(wpn)
+        -- UBGL on
+        if current == 2 then
+            play_aim_sound("_aim_in_", wpn_kind, volume * volume_aim_rattle * 0.6, frequency)
+        -- UBGL off
+        elseif previous == 2 then
+            play_aim_sound("_aim_out_", wpn_kind, volume * volume_aim_rattle * 0.6, frequency)
+        -- alt aim on
+        elseif current == 1 and axr_main.weapon_is_zoomed then
+            play_aim_sound("_aim_in_", wpn_kind, volume * volume_aim_rattle * 0.6, frequency)
+        -- alt aim off
+        elseif current == 0 and axr_main.weapon_is_zoomed then
+            play_aim_sound("_aim_out_", wpn_kind, volume * volume_aim_rattle * 0.6, frequency)
+        end
+    end
+end
+
+function actor_on_weapon_raise(wpn)
+    if opt_lower_raise_rattle then
+        get_wpn_params(wpn)
+        play_aim_sound("_aim_in_", wpn_kind, volume * volume_lower_raise_rattle, 1)
+    end
+end
+
+function actor_on_weapon_lower(wpn)
+    if opt_lower_raise_rattle then
+        get_wpn_params(wpn)
+        play_aim_sound("_aim_out_", wpn_kind, volume * volume_lower_raise_rattle, 1)
+    end
+end
+
+local wct_raised = false
+play_sound = weapon_cover_tilt_rattle.play_sound
+function weapon_cover_tilt_rattle.play_sound(dir, wpn, coeff)
+    if not weapon_cover_tilt.get_setting("tilt_rattle") or not wpn then return end
+    get_wpn_params(wpn)
+
+    if wct_raised then
+        play_aim_sound("_aim_out_", wpn_kind, volume * volume_lower_raise_rattle, clamp(1.25 - weight * 0.0625, 0.8, 1.2))
+    else
+        play_aim_sound("_aim_in_", wpn_kind, volume * volume_lower_raise_rattle, clamp(1.25 - weight * 0.0625, 0.8, 1.2))
+    end
+    wct_raised = not wct_raised
+end
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_weapon_zoom_in", actor_on_weapon_zoom_in)
+    RegisterScriptCallback("actor_on_weapon_zoom_out", actor_on_weapon_zoom_out)
+    RegisterScriptCallback("actor_on_weapon_zoom_type_changed", actor_on_weapon_zoom_type_changed)
+    RegisterScriptCallback("actor_on_weapon_raise", actor_on_weapon_raise)
+    RegisterScriptCallback("actor_on_weapon_lower", actor_on_weapon_lower)
+    RegisterScriptCallback("on_option_change", load_settings)
+    load_settings()
+end

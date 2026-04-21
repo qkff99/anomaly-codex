@@ -24,6 +24,10 @@
       "path": "ai_workspace/Anomaly-Mod-Configuration-Menu-main",
       "description": "Local Anomaly MCM repository for menu API, option-tree rules, UI XML, and integration behavior."
     },
+    "gamma_scripts": {
+      "path": "ai_workspace/GAMMA Scripts",
+      "description": "Flattened local GAMMA MO2 configs and scripts reference overlay."
+    },
     "user_references": {
       "path": "ai_workspace/user references",
       "description": "User-managed extra references; anything added here should become searchable without manifest edits."
@@ -31,25 +35,25 @@
   },
   "task_roots": {
     "assets-animations": ["workspace", "book"],
-    "bugfix": ["workspace", "vanilla", "lua_api", "engine"],
-    "code-review": ["workspace", "vanilla", "lua_api"],
-    "config-tweak": ["workspace", "vanilla", "book"],
+    "bugfix": ["workspace", "vanilla", "gamma_scripts", "lua_api", "engine"],
+    "code-review": ["workspace", "vanilla", "gamma_scripts", "lua_api"],
+    "config-tweak": ["workspace", "vanilla", "gamma_scripts", "book"],
     "distribution-packaging": ["workspace", "book"],
-    "dxml-dltx": ["workspace", "vanilla", "book"],
+    "dxml-dltx": ["workspace", "vanilla", "gamma_scripts", "book"],
     "engine-capability": ["engine", "lua_api", "book"],
-    "feature": ["workspace", "vanilla", "book", "lua_api"],
-    "log-triage": ["workspace", "vanilla", "lua_api", "engine"],
-    "localization": ["workspace", "vanilla", "engine", "book"],
+    "feature": ["workspace", "vanilla", "gamma_scripts", "book", "lua_api"],
+    "log-triage": ["workspace", "vanilla", "gamma_scripts", "lua_api", "engine"],
+    "localization": ["workspace", "vanilla", "gamma_scripts", "engine", "book"],
     "mapping-sdk": ["workspace", "book"],
-    "merge-conflict-analysis": ["workspace", "vanilla"],
-    "reference-discovery": ["workspace", "vanilla", "book"],
-    "refactor": ["workspace", "vanilla", "lua_api"],
-    "reverse-engineering": ["workspace", "vanilla", "engine", "lua_api"],
-    "save-load": ["workspace", "vanilla", "lua_api", "engine"],
-    "tasks-story-alife": ["workspace", "vanilla", "book", "lua_api"],
+    "merge-conflict-analysis": ["workspace", "vanilla", "gamma_scripts"],
+    "reference-discovery": ["workspace", "vanilla", "gamma_scripts", "book"],
+    "refactor": ["workspace", "vanilla", "gamma_scripts", "lua_api"],
+    "reverse-engineering": ["workspace", "vanilla", "gamma_scripts", "engine", "lua_api"],
+    "save-load": ["workspace", "vanilla", "gamma_scripts", "lua_api", "engine"],
+    "tasks-story-alife": ["workspace", "vanilla", "gamma_scripts", "book", "lua_api"],
     "tutorial": ["book", "vanilla", "workspace"],
-    "ui-mcm": ["workspace", "vanilla", "mcm_repo", "book"],
-    "visible-body-legs": ["workspace", "vanilla", "engine", "lua_api", "book"],
-    "weapons-hud": ["workspace", "vanilla", "engine", "lua_api", "book"]
+    "ui-mcm": ["workspace", "vanilla", "mcm_repo", "gamma_scripts", "book"],
+    "visible-body-legs": ["workspace", "vanilla", "gamma_scripts", "engine", "lua_api", "book"],
+    "weapons-hud": ["workspace", "vanilla", "gamma_scripts", "engine", "lua_api", "book"]
   }
 }

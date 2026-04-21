@@ -1,0 +1,29 @@
+[anim_nvg_transition_hud]
+lh_lead_gun                 = true 
+attach_place_idx            = 1
+
+hands_position				= 0, 0, 0
+hands_orientation			= 0, 0, 0
+hands_position_16x9			= 0, 0, 0
+hands_orientation_16x9		= 0, 0, 0
+
+anm_show_start              = liz_nvg_draw_start_hands
+anm_hide_end                = liz_nvg_hide_end_hands
+cam_show_start              = liz\nvg\liz_nvg_cam_show.anm
+
+
+
+[anim_nvg_hud]
+lh_lead_gun                 = true 
+attach_place_idx            = 1
+
+hands_position				= 0, 0, 0
+hands_orientation			= 0, 0, 0
+hands_position_16x9			= 0, 0, 0
+hands_orientation_16x9		= 0, 0, 0
+
+item_visual                 = dynamics\nvg\liz_nvg_hud.ogf
+
+anm_show                    = liz_nvg_draw_hands, liz_nvg_draw
+anm_hide                    = liz_nvg_hide_hands, liz_nvg_hide
+cam_hide                    = liz\nvg\liz_nvg_cam_hide.anm

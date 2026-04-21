@@ -1,0 +1,13 @@
+local mcm_id = "meat_spoiling"
+
+function on_mcm_load()
+    local options = {
+        id = mcm_id, sh = true,
+        gr = {
+            { id = mcm_id     , type = "slide"             , link = "ui_options_slider_player", text = "ui_mcm_menu_" .. mcm_id, size = {512, 50}, spacing = 20},
+            { id = "expiration_hours_raw",     type = "input", val = 2, def = 48, min = 24, max = 144},
+            { id = "expiration_hours_cooked",     type = "input", val = 2, def = 120, min = 24, max = 360},
+        }
+    }
+    return options
+end

@@ -1,0 +1,140 @@
+--[[
+
+	Script authors are:
+	HarukaSai
+	Ishameel
+	TheMrDemonized
+	
+	Yes I am a cunt.
+	I can't script for shit.
+	I am working on that.
+	That is true.
+	
+	Play a Sound when you change Fire-Modes with guns.
+	
+--]] --
+-- edited by TheMrDemonized 14.08.2021
+-- edited by TheVoidPancake 15.08.2021
+-- added MCM compatibility and volume control of switch sound
+-- default sound in case of not using MCM
+local sound_alt_default
+sound_alt_default = "weapons\\generic\\switch_mode_gfmss0"
+-- sound_alt_default = "weapons\\generic\\switch_mode_gfmss1"
+-- sound_alt_default = "weapons\\generic\\switch_mode_gfmss2"
+-- sound_alt_default = "weapons\\generic\\switch_mode_gfmss3"
+-- sound_alt_default = "weapons\\generic\\switch_mode_gfmss4"
+-- sound_alt_default = "weapons\\generic\\switch_mode_gfmss5"
+
+-- default sound volume in case of not using MCM
+local sound_volume = 1
+
+-- Pitch
+local fire_mode_pitch = {
+    [-1] = 1.15, -- Auto
+    [1] = 0.85,
+    [2] = 1,
+    [3] = 1
+}
+
+-- sound object to play and set properties
+local sound_obj = sound_object(sound_alt_default)
+
+function load_settings()
+    -- if have MCM installed, load settings and override default ones, see void_fmode_sound_mcm.script for options
+    if ui_mcm then
+        sound_alt_default = ui_mcm.get("fmode_sound/sound")
+        sound_volume = ui_mcm.get("fmode_sound/volume")
+    end
+    sound_obj = sound_object(sound_alt_default)
+end
+
+function on_game_start()
+    RegisterScriptCallback("on_key_press", on_key_press)
+    RegisterScriptCallback("actor_on_first_update", load_settings)
+    RegisterScriptCallback("on_option_change", load_settings)
+end
+
+function on_key_press(key)
+    if not actor_menu.is_hud_free() or device():is_paused() then
+        return
+    end
+
+    local bind = dik_to_bind(key)
+    if (bind == key_bindings.kWPN_FIREMODE_PREV or bind == key_bindings.kWPN_FIREMODE_NEXT) then
+        try_play_switch_sound()
+    end
+end
+
+function try_play_switch_sound()
+    local wpn = db.actor:active_item()
+
+    if not is_supported_weapon(wpn) then
+        return
+    end
+
+    if not is_weapon_ready(wpn) then
+        return
+    end
+
+    if not has_multiple_fire_modes(wpn) then
+        return
+    end
+
+    if has_own_switch_animation(wpn:section()) then
+        return
+    end
+    CreateTimeEvent("firemode_switch", "firemode_switch", 0.01, firemode_switch) -- because firemode change is delayed <-- Haruka stuff
+end
+
+function firemode_switch() -- Haruka stuff 
+    local wpn = db.actor:active_item()
+    local fire_mode = wpn:cast_Weapon():GetFireMode()
+    sound_obj:play(db.actor, 0, sound_object.s2d)
+    sound_obj.volume = sound_volume
+    sound_obj.frequency = fire_mode_pitch[fire_mode]
+
+    return true
+end
+
+function is_supported_weapon(wpn)
+    return wpn and IsWeapon(wpn) and (not IsItem("fake_ammo_wpn", wpn:section()))
+end
+
+function is_weapon_ready(wpn)
+    local state = wpn:get_state()
+    return state == 0 -- eIdle
+end
+
+function has_multiple_fire_modes(wpn)
+    section = wpn:section()
+
+    local fire_modes = parse_list(ini_sys, section, "fire_modes")
+
+    if fire_modes and table.getn(fire_modes) > 1 then
+        return true
+    end
+
+    local has_firemode_upgrade = false
+
+    wpn:iterate_installed_upgrades(function(upgr_sec)
+        local upgr_prop_sec = ini_sys:r_string_ex(upgr_sec, "section")
+        if upgr_prop_sec then
+            local upgr_fire_modes = parse_list(ini_sys, upgr_prop_sec, "fire_modes")
+            if upgr_fire_modes and table.getn(upgr_fire_modes) > 1 then
+                has_firemode_upgrade = true
+                return true
+            end
+        end
+    end)
+
+    return has_firemode_upgrade
+end
+
+function has_own_switch_animation(sec)
+
+    if ini_sys:r_string_ex(sec, "snd_switch_mode") then
+        return true
+    end
+
+    return false
+end

@@ -1,0 +1,105 @@
+-- todo: make it pass item id instead of item instance
+
+local uiio = zzzz_liz_fdda_redone_ui_inventory
+local mcm_enable_animatoin = true
+local anim_list = {
+    ["af_kevlar"]       = "ballistic_plate_anm_kevlar_hud",
+    ["af_kevlar_up"]    = "ballistic_plate_anm_kevlar_hud",
+    ["af_plates"]       = "ballistic_plate_anm_plate_hud",
+    ["af_plates_up"]    = "ballistic_plate_anm_plate_hud",
+    ["af_ceramic"]      = "ballistic_plate_anm_ceramic_hud",
+    ["af_ceramic_up"]   = "ballistic_plate_anm_ceramic_hud",
+    ["af_polymer"]      = "ballistic_plate_anm_polymer_hud",
+    ["af_polymer_up"]   = "ballistic_plate_anm_polymer_hud",
+}
+
+function on_game_start()
+    RegisterScriptCallback("on_game_load", initialize)
+    RegisterScriptCallback("on_option_change", initialize)
+end
+
+function initialize()
+    mcm_enable_animatoin = liz_fdda_redone_mcm.get_config("outfit_anm/enable_plate_equip")
+    uiio.Add_Handler("plates", predicate, on_eqiup, on_uneqiup, on_drop, on_swap)
+end
+
+
+function predicate(obj, bag)
+    local section = obj and obj:section() or nil
+    if section and anim_list[section] then
+        return true
+    end
+    return false
+end
+
+
+function on_eqiup(obj, bag)
+    if not mcm_enable_animatoin then
+        uiio.Equip(obj, bag)
+        return
+    end
+    uiio.Set_Item_in_Use(obj:id(), true)
+    lam2.add_action(ta_animation("plate_add", obj, bag, "equip"))
+end
+
+
+function on_uneqiup(obj, bag)
+    if not mcm_enable_animatoin then
+        uiio.Unequip(obj, bag)
+        return
+    end
+    uiio.Set_Item_in_Use(obj:id(), true)
+    lam2.add_action(ta_animation("plate_remove", obj, bag, "unequip"))
+end
+
+
+function on_drop(obj, bag)
+    if not mcm_enable_animatoin or bag ~= "actor_equ" then
+        uiio.Drop(obj, bag)
+        return
+    end
+    uiio.Set_Item_in_Use(obj:id(), true)
+    lam2.add_action(ta_animation("plate_remove", obj, bag, "drop"))
+end
+
+-- not supported for vanilla plates at the moment
+function on_swap(obj_prev, obj_next, bag)
+    if not mcm_enable_animatoin then
+        db.actor:move_to_ruck(obj_prev)
+        uiio.Equip(obj_next, bag)
+        return
+    end
+    uiio.Set_Item_in_Use(obj_next:id(), true)
+    lam2.add_action(ta_animation("replace_old", obj_prev, bag, "move_to_ruck"))
+    lam2.add_action(ta_animation("replace_new", obj_next, bag, "equip"))
+end
+
+
+function ta_animation(name, obj, bag, action)
+    local a = lam2.get_template_action_play_animation()
+    a.sec = anim_list[obj:section()]
+    a.anm = "anm_" .. name
+    a.cam = "cam_" .. name
+    a.snd = "snd_" .. name
+    a.obj_id = obj:id()
+    a.bag = bag
+    a.action = action
+    a.on_exit = function (self)
+        local item_obj = level.object_by_id(self.obj_id)
+        if item_obj then
+            if self.action == "equip" then
+                uiio.Set_Item_in_Use(self.obj_id, false)
+                uiio.Equip(item_obj, self.bag)
+            elseif self.action == "unequip" then
+                uiio.Set_Item_in_Use(self.obj_id, false)
+                uiio.Unequip(item_obj, self.bag)
+            elseif self.action == "drop" then
+                uiio.Set_Item_in_Use(self.obj_id, false)
+                uiio.Drop(item_obj, self.bag)
+            elseif self.action == "move_to_ruck" then
+                db.actor:move_to_ruck(item_obj)
+            end
+        end
+    end
+    return a
+end

@@ -1,0 +1,107 @@
+[section@squad]
+target@base = rad2_prip_teleport
+
+[section@logic]
+logic@boss_1
+logic@boss_2
+logic@bait
+
+;------------------------------
+; Logic
+;------------------------------
+[logic@base]
+net_spawn = pt1
+
+[logic@boss_1]:logic@base
+suitable = {=check_squad_name(squad_lure_prey_controller_1)} true
+active = mob_home@boss_1
+on_death = death@boss_1
+
+[logic@boss_2]:logic@base
+suitable = {=check_squad_name(squad_lure_prey_controller_2)} true
+active = mob_home@boss_2
+on_death = death@boss_2
+
+[logic@bait]:logic@base
+suitable = {=check_squad_name(squad_lure_prey_phantom)} true
+active = {+me_lure_prey_bait_1} beh@bait_1, {+me_lure_prey_bait_2} beh@bait_2, {+me_lure_prey_bait_3} beh@bait_3, {+me_lure_prey_bait_4} beh@bait_4, beh@bait_5
+
+
+;------------------------------
+; Scheme
+;------------------------------
+[mob_home@boss]
+target				= %=mutant_path()% nil
+before_hit			= gameplay_misc_encounter@lure_prey_before_hit
+combat_ignore_cond	= {-me_lure_prey_argo} %=script(gameplay_misc_encounter:kill_common_enemy)% true
+enemy_ignore_cond	= {-me_lure_prey_argo} true
+
+[mob_home@boss_1]:mob_home@boss
+pt1 = pos:660.8,-43.80,168.7 dir:0
+on_info1 = {+me_lure_prey_argo -me_lure_prey_boss} %+me_lure_prey_boss =create_squad(squad_lure_prey_controller_2:rad2_prip_teleport)%
+on_info2 = {-me_lure_prey_argo =see_actor()} %+me_lure_prey_argo%
+
+[mob_home@boss_2]:mob_home@boss
+pt1 = pos:603.4,-43.80,184.8 dir:-90
+
+[death@boss_1]
+on_info1 = {!squad_exist(squad_lure_prey_controller_2) +me_lure_prey_bait_1} %-me_lure_prey_bait_1%
+on_info2 = {!squad_exist(squad_lure_prey_controller_2) +me_lure_prey_bait_2} %-me_lure_prey_bait_2%
+on_info3 = {!squad_exist(squad_lure_prey_controller_2) +me_lure_prey_bait_3} %-me_lure_prey_bait_3%
+on_info4 = {!squad_exist(squad_lure_prey_controller_2) +me_lure_prey_bait_4} %-me_lure_prey_bait_4%
+on_info5 = {!squad_exist(squad_lure_prey_controller_2) +me_lure_prey_argo} %-me_lure_prey_argo%
+on_info6 = {!squad_exist(squad_lure_prey_controller_2)} %+me_lure_prey_dead%
+
+[death@boss_2]
+on_info1 = {!squad_exist(squad_lure_prey_controller_1) +me_lure_prey_bait_1} %-me_lure_prey_bait_1%
+on_info2 = {!squad_exist(squad_lure_prey_controller_1) +me_lure_prey_bait_2} %-me_lure_prey_bait_2%
+on_info3 = {!squad_exist(squad_lure_prey_controller_1) +me_lure_prey_bait_3} %-me_lure_prey_bait_3%
+on_info4 = {!squad_exist(squad_lure_prey_controller_1) +me_lure_prey_bait_4} %-me_lure_prey_bait_4%
+on_info5 = {!squad_exist(squad_lure_prey_controller_1) +me_lure_prey_argo} %-me_lure_prey_argo%
+on_info6 = {!squad_exist(squad_lure_prey_controller_1)} %+me_lure_prey_dead%
+
+
+[beh@base]
+dont_keep_items						= true
+gather_items_enabled				= false
+help_wounded_enabled				= false
+corpse_detection_enabled			= false
+combat_ignore_keep_when_attacked	= true
+path_end							= loop
+walk_dist							= 0
+jog_dist							= 0
+run_anim							= rush
+meet								= no_meet
+before_hit							= invulnerable
+combat_ignore_cond					= true
+enemy_ignore_cond					= true
+
+[beh@bait]:beh@base
+target = %=animpoint()% nil
+on_info3 = %=script(gameplay_misc_encounter:lure_prey_set_stalker)%
+on_info4 = {+me_lure_prey_argo =squad_exist(squad_lure_prey_phantom)} %=remove_squad(squad_lure_prey_phantom)%
+on_info5 = {!squad_exist(squad_lure_prey_controller_1) =squad_exist(squad_lure_prey_phantom)} %=remove_squad(squad_lure_prey_phantom)%
+
+[beh@bait_1]:beh@bait
+pt1 = 999999,hello_wpn | pos:660.1,-43.80,182.0 dir:90
+on_info1 = {=dist_to_actor_le(20) -me_lure_prey_argo} %+me_lure_prey_argo%
+
+[beh@bait_2]:beh@bait
+pt1 = 999999,hello_wpn | pos:603.4,-43.80,184.8 dir:90
+on_info1 = {=dist_to_actor_le(10) -me_lure_prey_bait_1} %+me_lure_prey_bait_1%
+on_info2 = {+me_lure_prey_bait_1} %=script(xr_logic_ex:set_position:beh@bait_1:pt1)% beh@bait_1
+
+[beh@bait_3]:beh@bait
+pt1 = 999999,hello_wpn | pos:557.9,-42.00,172.9 dir:290
+on_info1 = {=dist_to_actor_le(10) -me_lure_prey_bait_2} %+me_lure_prey_bait_2%
+on_info2 = {+me_lure_prey_bait_2} %=script(xr_logic_ex:set_position:beh@bait_2:pt1)% beh@bait_2
+
+[beh@bait_4]:beh@bait
+pt1 = 999999,hello_wpn | pos:528.5,-39.50,131.6 dir:150
+on_info1 = {=dist_to_actor_le(10) -me_lure_prey_bait_3} %+me_lure_prey_bait_3%
+on_info2 = {+me_lure_prey_bait_3} %=script(xr_logic_ex:set_position:beh@bait_3:pt1)% beh@bait_3
+
+[beh@bait_5]:beh@bait
+pt1 = 999999,hello_wpn | pos:560.0,-44.00,51.8 dir:210
+on_info1 = {=dist_to_actor_le(10) -me_lure_prey_bait_4} %+me_lure_prey_bait_4%
+on_info2 = {+me_lure_prey_bait_4} %=script(xr_logic_ex:set_position:beh@bait_4:pt1)% beh@bait_4

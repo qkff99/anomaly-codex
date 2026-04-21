@@ -1,0 +1,77 @@
+local Dart  = dart_core
+local MCM   = dart_mcm
+local Utils = dart_utils
+
+
+local config = {
+  anchor   = {"LEFT", "BOTTOM"},
+  offset   = {-4, -8},
+  safezone = true,
+  scale    = 1,
+  spacing  = 4,
+}
+
+Dart.config.statusIcons = config
+Dart.state.statusIcons  = {}
+
+
+function mcmOnConfig(mcmConfig)
+  local offsetX = ui_mcm.get("dart/dart_statusIcons/offsetX")
+  local offsetY = ui_mcm.get("dart/dart_statusIcons/offsetY")
+  local scale   = ui_mcm.get("dart/dart_statusIcons/scale")
+  local spacing = ui_mcm.get("dart/dart_statusIcons/spacing")
+
+  if scale then
+    mcmConfig.statusIcons.scale = scale
+  end
+
+  if spacing then
+    mcmConfig.statusIcons.spacing = spacing
+  end
+
+  mcmConfig.statusIcons.offset = {
+    offsetX or config.offset[1],
+    offsetY or config.offset[2],
+  }
+end
+
+
+function mcmOnLoad(options)
+  options[4] = {
+    id = "dart_statusIcons",
+    sh = true,
+    gr = {
+      MCM.getTitle(),
+      MCM.getSubtitle({text = "ui_mcm_dart_statusIcons_title"}),
+      MCM.getScaleField({def = config.scale}),
+      MCM.getNote({text = "ui_mcm_dart_scale_note"}),
+      MCM.getLine(),
+      MCM.getOffsetXField({def = config.offset[1]}),
+      MCM.getOffsetYField({def = config.offset[2]}),
+      MCM.getLine(),
+      MCM.getSpacingField({
+        hint = "dart_statusIcons_spacing",
+        def  = config.spacing,
+        min  = -128,
+        max  = 128
+      }),
+    }
+  }
+end
+
+
+function onPreRefresh()
+  actor_status.deactivate_hud()
+  utils_xml.XML_HUD  = nil
+end
+
+
+function onPostRefresh()
+  actor_status.activate_hud()
+end
+
+
+RegisterScriptCallback("on_dart_mcm_load", mcmOnLoad)
+RegisterScriptCallback("on_dart_mcm_config", mcmOnConfig)
+RegisterScriptCallback("on_dart_pre_refresh", onPreRefresh)
+RegisterScriptCallback("on_dart_post_refresh", onPostRefresh)

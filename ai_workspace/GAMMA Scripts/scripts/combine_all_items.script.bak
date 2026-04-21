@@ -1,0 +1,132 @@
+local add_functor = custom_functor_autoinject.add_functor
+local remove_functor = custom_functor_autoinject.remove_functor
+
+function register_combine_items()
+
+	local combiner_func = {
+		check = function(obj, bag, mode)
+			local modes = {
+				["inventory"] = true,
+				["loot"] = true,
+			}
+			local bags = {
+				["actor_bag"] = true,
+				["npc_bag"] = true,
+			}
+			return IsItem("multiuse", obj:section()) and modes[mode] and bags[bag]
+		end,
+		str = function(obj, bag, mode)
+			return "st_cai_combine_all"
+		end,
+		func = function(obj, bag, mode)
+			local actor = obj:parent()
+			local sec = obj:section()
+			local total_uses = 0
+			local item_table = {}
+
+			local function iterate(npc, item)
+				local current_sec = item:section()
+				if not (current_sec == sec) then return end
+				local uses = item:get_remaining_uses()
+				total_uses = total_uses + uses
+				if uses == item:get_max_uses() then return end
+
+				local id = item:id()
+				item_table[id] = {
+					item = item,
+					sec = current_sec,
+					id = id,
+					uses = item:get_remaining_uses(),
+					max_uses = item:get_max_uses()
+				}
+			end
+
+			if IsStalker(actor) then
+				actor:iterate_ruck(iterate, actor)
+			elseif IsInvbox(actor) then
+				actor:iterate_inventory_box(iterate, actor)
+			else
+				printf("item parent is undefined %s, %s", actor:name(), actor:section())
+				return
+			end
+
+			if is_empty(item_table) then
+				printf("Combiner, all items are filled")
+				return
+			end
+
+			local function use_iterator(t, a1, a2)
+				return t[a1].uses < t[a2].uses
+			end
+			
+			local function use_iterator_reverse(t, a1, a2)
+				return t[a1].uses > t[a2].uses
+			end
+
+			-- local i = 0
+			-- local i_inc = 0.05
+			local last_item
+			for k, v in spairs(item_table, use_iterator_reverse) do
+				if item_table[k] then
+					for k1, v1 in spairs(item_table, use_iterator) do
+						if v.uses == v.max_uses then break end
+
+						if k ~= k1 then
+							-- printf("Combiner: item id %s, uses %s, max %s, adding id %s, uses %s", k, v.uses, v.max_uses, k1, v1.uses)
+							local new_uses = math.min(v.max_uses, v.uses + v1.uses)
+							local added_uses = new_uses - v.uses
+							v.uses = new_uses
+							v1.uses = v1.uses - added_uses
+							v.item:set_remaining_uses(v.uses)
+							-- printf("Combiner: id %s new uses %s, removing from id %s, new_uses %s", k, v.uses, k1, v1.uses)
+							
+							if v1.uses <= 0 then
+								-- printf("Combiner: removing from id %s has %s uses, release", k1, v1.uses)
+								alife_release(v1.item)
+								item_table[k1] = nil
+							else
+								v1.item:set_remaining_uses(v1.uses)
+							end
+						end
+					end
+					last_item = v.item
+				end
+			end
+			
+			if last_item then itms_manager.play_item_sound(last_item) end -- play sound
+
+			-- Sanity check new uses
+			local function sanity_check()
+				local old_total_uses = total_uses
+				total_uses = 0
+				empty_table(item_table)
+				if IsStalker(actor) then
+					actor:iterate_ruck(iterate, actor)
+				elseif IsInvbox(actor) then
+					actor:iterate_inventory_box(iterate, actor)
+				else
+					printf("item parent is undefined %s, %s", actor:name(), actor:section())
+					return
+				end
+				printf("old uses %s, new uses %s, diff %s", old_total_uses, total_uses, total_uses - old_total_uses)
+				empty_table(item_table)
+			end
+
+			CreateTimeEvent("cai_combine_all_check", "cai_combine_all_check", 0.2, function()
+				sanity_check()
+				if bag == "npc_bag" and ui_inventory.GUI then
+					ui_inventory.GUI:UpdateInfo(true)
+				end
+				return true
+			end)
+			
+		end
+	}
+
+	add_functor("cai_combine_all", combiner_func.check, combiner_func.str, nil, combiner_func.func, true)
+
+end
+
+function on_game_start()
+	register_combine_items()
+end

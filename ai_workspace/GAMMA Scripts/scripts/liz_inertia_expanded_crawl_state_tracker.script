@@ -1,0 +1,30 @@
+local accel_health_trigger_min = 0.09
+local accel_health_trigger_max = 0.12
+local accel_stamina_trigger_min = .18
+local accel_stamina_trigger_max = .29
+local is_exausted = false
+local is_health_critical = false
+local is_low_crouch = false
+
+function is_crawling()
+   return is_low_crouch and not is_exausted and not is_health_critical
+end
+
+function actor_on_update()
+    local actor = db.actor
+    local health = actor and actor.health or -1
+    local stamina = actor and actor.power or -1
+    if health == -1 or stamina == -1 then return end
+
+    if not is_exausted and stamina < accel_stamina_trigger_min then is_exausted = true end
+    if is_exausted and stamina > accel_stamina_trigger_max then is_exausted = false end
+
+    if not is_health_critical and health < accel_health_trigger_min then is_health_critical = true end
+    if is_health_critical and health > accel_health_trigger_max then is_health_critical = false end
+
+    is_low_crouch = IsMoveState("mcCrouch") and IsMoveState("mcAccel")
+end
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_update", actor_on_update)
+end

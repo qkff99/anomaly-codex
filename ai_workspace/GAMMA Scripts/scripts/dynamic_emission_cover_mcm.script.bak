@@ -1,0 +1,380 @@
+-- Script by Utjan
+-- Uses raycasts to estimate cover during emissions and makes you sheltered if enough cover is found
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_update", actor_on_update)
+    RegisterScriptCallback("on_game_load", init)
+    RegisterScriptCallback("on_option_change", init)
+
+    -- Monkey patch for compatibiltiy with Coordinate Based Safe Zones
+    if tb_coordinate_based_safe_zones then
+        local base_tb_update = tb_coordinate_based_safe_zones.actor_on_update
+        function tb_coordinate_based_safe_zones.actor_on_update()
+            base_tb_update()
+            if dynamic_is_safe then
+                SetEvent("underground", true)
+            end
+        end
+    end
+
+    -- Monkey patch surge_manager to protect companions when in cover
+    local base_pos_in_cover = surge_manager.CSurgeManager.pos_in_cover
+    function surge_manager.CSurgeManager.pos_in_cover(self, pos, by_name)
+        local result = base_pos_in_cover(self, pos, by_name)
+        if result then
+            return result
+        end
+
+        if protect_companions_range == 0 or not dynamic_is_safe then
+            return false
+        end
+
+        local pos = vector():set(pos)
+        for id,squad in pairs(axr_companions.companion_squads) do
+            if (squad and squad.commander_id) then
+                for k in squad:squad_members() do
+                    local member = db.storage[k.id] and db.storage[k.id].object or level.object_by_id(k.id)
+                    if (member and member:alive()) then
+                        local dist = pos:distance_to(vector():set(member:position()))
+                        if dist == 0 then
+                            local dist_to_actor = db.actor:position():distance_to(vector():set(pos))
+                            if dist_to_actor <= protect_companions_range then
+                                --printf("Sheltered companion")
+                                return true
+                            else
+                                return false
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        return false
+    end
+end
+
+local ray_table = {}
+ray_count_circle = 16
+ray_count_vertical = 8
+
+-- MCM options
+rays_per_update = 10
+ray_range = 8
+north_facing_bonus = 0.01
+cover_prcnt_needed = 0.85
+show_cover_bar = true
+debug_mode = false
+protect_companions_range = 15
+grace_period = 1
+hud_delay = 0
+
+function init()
+    -- Get options from MCM
+    rays_per_update = get_config("rays_per_update")
+    ray_range = get_config("cover_range")
+    north_facing_bonus = get_config("north_cover_bonus")
+    cover_prcnt_needed = get_config("distance_factor")
+    debug_mode = get_config("debug_mode")
+    show_cover_bar = get_config("show_cover_bar")
+    protect_companions_range = get_config("protect_companions")
+    grace_period = get_config("grace_period")
+    hud_delay = get_config("hud_show_delay")
+
+    -- Build a table of ray directions
+    ray_table = {}
+    local counter = 1
+    for i=1, ray_count_circle do
+        for ii=0, ray_count_vertical-1 do
+            if not (ii == ray_count_vertical-1 and i % 3 ~= 0) and not(ii == ray_count_vertical-2 and i % 2 == 0) then -- reduce rays at top angles
+                local ray_dir = vector():set(0,0,1)
+                local angle = (ii / (ray_count_vertical - 1)) * 82 -- 82 degrees to not shoot many rays straight up in the same direction
+
+                ray_dir.y = math.sin(angle * 0.017453292519943295769236907684886)
+                ray_dir.z = math.cos(angle * 0.017453292519943295769236907684886)
+
+                local rot_angle = (i/ray_count_circle) * 360
+                ray_dir = vector_rotate_y(ray_dir, rot_angle):normalize()
+
+                ray_table[counter] = vector():set(ray_dir)
+                counter = counter + 1
+            end
+        end
+    end
+end
+
+excluded_maps = {
+	["jupiter_underground"] = true,
+	["l03u_agr_underground"] = true,
+	["l04u_labx18"] = true,
+	["l08u_brainlab"] = true,
+	["l10u_bunker"] = true,
+	["l12u_control_monolith"] = true,
+	["l12u_sarcofag"] = true,
+	["l13u_warlab"] = true,
+	["labx8"] = true,
+}
+
+dynamic_is_safe = false
+
+local HUD = nil
+local ray_counter = 1
+local points_table = {}
+local emission_first_update = true
+local hud_delay_hide = false
+local grace_period_start_time = 0
+
+function actor_on_update()
+    if excluded_maps[level.name()] or size_table(ray_table) == 0 then return end
+
+    local surge_state = GetEvent("surge", "state")
+	local psi_storm_state = GetEvent("psi_storm", "state")
+
+    if debug_mode then
+        surge_state = true
+    end
+
+	if (surge_state) or (psi_storm_state) then
+        if emission_first_update then
+            emission_first_update = false
+            if hud_delay > 0 then
+                hud_delay_hide = true
+                CreateTimeEvent("dynamic_cover", "hud_show_delay", hud_delay, function ()
+                    --printf("-hud_delay_hide end")
+                    hud_delay_hide = false
+                    return true
+                end)
+            end
+        end
+
+        if show_cover_bar then
+            activate_hud()
+        else
+            deactivate_hud()
+        end
+
+        local pos = db.actor:position()
+        if IsMoveState("mcCrouch") and IsMoveState("mcAccel") then -- Prone
+            pos.y = pos.y + 0.25
+        elseif IsMoveState("mcCrouch") then
+            pos.y = pos.y + 0.5
+        else
+            pos.y = pos.y + 0.75
+        end
+
+        -- Do rays_per_update raycasts per update while cycling through the ray directions table
+        for i = 1, rays_per_update do
+            local ray_args = {
+                ray_range = ray_range,
+                contact_range = ray_range - 0.01,
+                flags = (1+2+4+8),
+                ignore_object = db.actor
+            }
+
+            local ray = demonized_geometry_ray.geometry_ray(ray_args)
+            local ray_dir = ray_table[ray_counter]
+            local result = ray:get(vector():set(pos), ray_dir)
+            
+            -- This loop checks if the contact surface is a bush, and re-casts the ray just inside it if it is
+            while result.in_contact and result.result.material_name do
+                local name = result.result.material_name
+                if not (string.find(name, "bush") or string.find(name, "water")) then
+                    break -- break out of the loop if contact is not a bush
+                end
+                ray_args.ray_range = ray_args.ray_range - result.distance
+                ray_args.contact_range = ray_args.contact_range - result.distance
+                ray = demonized_geometry_ray.geometry_ray(ray_args)
+                local new_pos = vector():set(result.position):add(vector():set(ray_dir):mul(0.01))
+                result = ray:get(new_pos, ray_dir)
+            end
+
+            if debug_mode then
+                local vis_end = vector():set(result.position):sub(vector():set(ray_dir):mul(0.2))
+                demonized_geometry_ray.VisualizeRay(vector():set(pos), vis_end, 1, 100)
+            end
+
+            if result.in_contact then
+                points_table[ray_counter] = 1
+                if surge_state and north_facing_bonus > 0 then
+                    local pos_delta = vec_set(result.position:sub(pos)):normalize()
+                    if pos_delta.z > 0 then
+                        local cover_bonus = 1 * pos_delta.z * north_facing_bonus
+                        --printf("north bonus " .. cover_bonus)
+                        points_table[ray_counter] = points_table[ray_counter] + cover_bonus
+                    end
+                end
+            else
+                points_table[ray_counter] = 0
+            end
+
+            if ray_counter + 1 > size_table(ray_table) then
+                ray_counter = 1
+            else
+                ray_counter = ray_counter + 1
+            end
+        end
+
+        local total_points = get_total_points(points_table)
+        local cover_percentage = total_points / size_table(ray_table)
+        local in_dynamic_cover = cover_percentage >= cover_prcnt_needed
+        --printf("points " .. total_points .. "  max points " .. size_table(ray_table) .. "  need points " .. size_table(ray_table) * get_config("distance_factor"))
+        if in_dynamic_cover and not dynamic_is_safe then
+            dynamic_is_safe = true
+            grace_period_start_time = 0
+            SetEvent("underground", true)
+            RemoveTimeEvent("dynamic_cover", "cover_remove_delay") -- Remove grace period time event
+        elseif dynamic_is_safe and not in_dynamic_cover then
+            -- Grace period of cover after leaving dynamic cover
+            if grace_period > 0 then
+                if grace_period_start_time == 0 then
+                    grace_period_start_time = time_global()
+                elseif time_global() >= grace_period_start_time + (grace_period * 1000) then
+                    --printf("-Grace period end")
+                    dynamic_is_safe = false
+                    if not tb_coordinate_based_safe_zones then
+                        SetEvent("underground", false)
+                    end
+                end
+            else
+                dynamic_is_safe = false
+                if not tb_coordinate_based_safe_zones then
+                    SetEvent("underground", false)
+                end
+            end
+        end
+
+        if GetEvent("underground") or GetEvent("current_safe_cover") or hud_delay_hide then
+            hide_hud()
+        else
+            show_hud()
+        end
+    end
+
+    if not ((surge_state) or (psi_storm_state)) then
+        deactivate_hud()
+        emission_first_update = true
+        points_table = {}
+		if dynamic_is_safe then
+            dynamic_is_safe = false
+            SetEvent("underground", false)
+        end
+	end
+end
+
+function get_total_points(t)
+    local points = 0
+    for k, v in pairs(t) do
+        points = points + v
+    end
+    return points
+end
+
+-- MCM
+local defaults = {
+    ["distance_factor"] = 0.85,
+    ["north_cover_bonus"] = 0.01,
+    ["cover_range"] = 8,
+    ["rays_per_update"] = 10,
+    ["show_cover_bar"] = true,
+    ["protect_companions"] = 15,
+    ["grace_period"] = 1,
+    ["hud_show_delay"] = 0,
+    ["debug_mode"] = false,
+}
+
+function get_config(key)
+    local opt = ui_mcm and ui_mcm.get("dynamic_cover/"..key) 
+    if opt ~= nil then return opt else return defaults[key] end
+ end
+
+function on_mcm_load()
+    op = { id= "dynamic_cover",sh=true ,gr={
+            {id = "title",type= "slide",link= "ui_options_slider_gameplay_diff",text="ui_mcm_dynamic_cover_title",size= {512,50},spacing= 20 },
+            {id = "distance_factor", type = "track", val = 2, min=0.1,max=1,step=0.01, def = 0.85},
+            {id = "north_cover_bonus", type = "track", val = 2, min=0,max=0.5,step=0.01, def = 0.01},
+            {id = "cover_range", type = "track", val = 2, min=2,max=10,step=0.2, def = 8},
+            {id = "rays_per_update", type = "track", val = 2, min=1,max=30,step=1, def = 10},
+            {id = "show_cover_bar", type = "check", val = 1, def = true},
+            {id = "hud_show_delay", type = "track", val = 2, min=0,max=15,step=1, def = 0},
+            {id = "protect_companions", type = "track", val = 2, min=0,max=500,step=5, def = 15},
+            {id = "grace_period", type = "track", val = 2, min=0,max=5,step=0.2, def = 1},
+            {id = "debug_mode", type = "check", val = 1, def = false},
+        }
+    }
+    return op
+end
+----------------------------------------
+
+-- HUD STUFF
+function activate_hud()
+	if HUD == nil then
+		HUD = DynamicCoverUI()
+		get_hud():AddDialogToRender(HUD)
+        --RegisterScriptCallback("GUI_on_show",update_hud)
+        RegisterScriptCallback("GUI_on_hide",update_hud)
+	end
+end
+
+function deactivate_hud()
+	if HUD ~= nil then
+		get_hud():RemoveDialogToRender(HUD)
+		HUD = nil
+        --UnregisterScriptCallback("GUI_on_show",update_hud)
+        UnregisterScriptCallback("GUI_on_hide",update_hud)
+	end
+end
+
+function show_hud()
+    if HUD ~= nil then
+		HUD:ShowUI()
+	end
+end
+
+function hide_hud()
+    if HUD ~= nil then
+		HUD:HideUI()
+	end
+end
+
+function update_hud()
+	if HUD ~= nil then
+		HUD:Update()
+	end
+end
+
+-- COVER BAR UI CLASS
+class "DynamicCoverUI" (CUIScriptWnd)
+
+function DynamicCoverUI:__init() super()
+    local xml  = CScriptXmlInit()
+	xml:ParseFile("ui_dynamic_cover.xml")
+
+	self.dialog = xml:InitStatic("cover_hud", self)
+    self.cover_bar_bg = xml:InitStatic("cover_hud:cover_bar_bg", self.dialog)
+	self.cover_bar = xml:InitProgressBar("cover_hud:cover_bar", self.dialog)
+
+    local bg_color = GetARGB(255,55,55,55)
+	self.cover_bar_bg:SetTextureColor(bg_color)
+    local bar_color = GetARGB(255,255,200,200)
+	self.cover_bar:SetColor(bar_color)
+end
+
+function DynamicCoverUI:Update()
+	CUIScriptWnd.Update(self)
+
+    if (not (main_hud_shown())) or (not db.actor:alive())  then
+		self.dialog:Show(false)
+		return
+	end
+
+    if size_table(ray_table) == 0 then return end
+    local bar_percentage = get_total_points(points_table) / (size_table(ray_table) * cover_prcnt_needed)
+    self.cover_bar:SetProgressPos(bar_percentage)
+end
+
+function DynamicCoverUI:ShowUI()
+    self.dialog:Show(true)
+end
+
+function DynamicCoverUI:HideUI()
+    self.dialog:Show(false)
+end

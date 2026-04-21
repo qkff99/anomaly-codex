@@ -1,0 +1,59 @@
+-- =======================================================================
+--[[	Custom Companion Squad Size
+-- ===================================================================--]]
+script_version 	= "1.4"
+release_date 	= 20240907
+--[[======================================================================
+	Author: Catspaw (CatspawMods @ ModDB)
+ 	Source: https://www.moddb.com/mods/stalker-anomaly/addons/custom-companion-squad-size
+
+	You may modify any part of this mod and do whatever you like with it, 
+	just give credit where due. 
+-- ===================================================================--]]
+
+use_custom_squad_size	= false -- Edit this to true to use without MCM
+squad_size_normal		= 2 	-- Default actor squad size
+squad_size_folkhero 	= 4 	-- Actor squad size with Patriarch achievement
+debuglogs				= false -- Enables debug logging
+
+function dl(logtext, ...)
+	if not (logtext and debuglogs) then return end
+    printf(logtext, ...)
+end
+
+function dialogs_axr_companion.is_room_in_actor_squad(actor, npc)
+	local max_size = 0
+	local actor_is_folkhero = game_achievements.has_achievement("patriarch")
+	if use_custom_squad_size then
+		max_size = actor_is_folkhero and squad_size_folkhero or squad_size_normal
+	else
+		max_size = axr_companions.max_actor_squad_size + (actor_is_folkhero and 2 or 0)
+	end
+	return (axr_companions.get_companion_count() + utils_obj.get_squad_count(npc) <= max_size)
+end
+
+function update_settings()
+	if ui_mcm then 
+		squad_size_normal 			= ui_mcm.get("customsquadsize/maxsquadsize")
+		squad_size_folkhero			= ui_mcm.get("customsquadsize/maxsquadsize_folkhero")
+		use_custom_squad_size		= true
+		local actor_is_folkhero 	= game_achievements.has_achievement("patriarch")
+		dl(	"custom_companion_squad_size.script - updating settings\n" ..
+			"Current axr_companions.max_actor_squad_size: %s\n" ..
+			"Normal Squad Size = %s | Folk Hero = %s | Actor is Folk Hero: %s",
+			axr_companions.max_actor_squad_size,
+			squad_size_normal,
+			squad_size_folkhero, 
+			actor_is_folkhero
+		)
+		axr_companions.max_actor_squad_size = actor_is_folkhero and squad_size_folkhero or squad_size_normal
+		dl("New axr_companions.max_actor_squad_size: %s", axr_companions.max_actor_squad_size)
+	else
+		dl("MCM not found, cannot load custom squad size settings!")
+	end
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_game_load", update_settings)
+	RegisterScriptCallback("on_option_change", update_settings)
+end

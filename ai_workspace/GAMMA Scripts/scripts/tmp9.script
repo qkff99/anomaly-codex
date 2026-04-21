@@ -1,0 +1,31 @@
+local no_lights_t = {
+	["veteran"] = true, ["expert"] = true, ["master"] = true, ["legend"] = true,
+}
+
+some_sr_light_patch = sr_light.check_light
+function sr_light.check_light(npc)
+	local hrs = level.get_time_hours() + level.get_time_minutes() / 60
+	local is_night = (hrs <= 5 or hrs >= 19)
+
+	local rank_name = ranks.get_obj_rank_name(npc)
+	local rank_allowed = rank_name and no_lights_t[rank_name]
+
+	if not (rank_allowed and is_night) then
+		return some_sr_light_patch(npc)
+	end
+
+	local st = db.storage[npc:id()]
+	local tg = time_global()
+	if not (st) then return end
+
+	if (st and st.srlight_timer and tg < st.srlight_timer) then
+		return
+	end
+	st.srlight_timer = tg + 2000 + math.random(100)
+
+	local torch = npc:object("device_torch")
+	if (torch and torch:attachable_item_enabled()) then
+		torch:enable_attachable_item(false)
+	end
+
+end

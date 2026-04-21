@@ -1,0 +1,32 @@
+-- Script created by ChatGPT prompted by Sickhowl
+-- for Melancholy Weathers
+-- Any bugs please report to Grok via DMs
+local override_weather = {}
+setmetatable(override_weather, { __index = _G.weather })
+
+local og_get_value_numeric = weather.get_value_numric
+
+function override_weather.get_value_numric(key)
+	local value = og_get_value_numeric(key)
+
+	if key ~= "wind_velocity" then
+		return value
+	end
+
+	-- No wind below 350
+	if value < 350 then
+		return 0
+	end
+
+	-- Ease-in ramp: 350 -> 0, 730 -> 1000
+	if value < 730 then
+		local t = (value - 350) / (730 - 350) -- normalize 0..1
+		t = t * t                            -- quadratic ease-in
+		return t * 1000
+	end
+
+	-- Above 730 unchanged
+	return value
+end
+
+sound_ambient.weather = override_weather

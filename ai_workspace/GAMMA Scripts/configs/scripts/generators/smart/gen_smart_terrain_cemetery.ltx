@@ -1,0 +1,22 @@
+[smart_terrain]
+squad_id = 1
+max_population = 1
+respawn_params = respawn@gen_smart_terrain_cemetery
+respawn_idle = 345600
+
+[respawn@gen_smart_terrain_cemetery]
+spawn_zombied
+spawn_snork
+spawn_greh
+
+[spawn_zombied]
+spawn_squads = simulation_chimera_squad, simulation_chimera_squad
+spawn_num = {+living_legend_psy_helmet} 1, 0
+
+[spawn_snork]
+spawn_squads = simulation_gigant_squad, simulation_gigant_squad
+spawn_num = {+living_legend_psy_helmet} 1, 0
+
+[spawn_greh]
+spawn_squads = greh_sim_squad_veteran
+spawn_num = {=is_warfare} 0,{+ms_decisive_blow} 1, {+mortal_sin} 2, 2

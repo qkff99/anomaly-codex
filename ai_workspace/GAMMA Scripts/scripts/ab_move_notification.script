@@ -1,0 +1,18 @@
+notify_icon_x = 13
+notify_icon_y = 620
+
+function monkey() end
+	monkey = actor_menu.set_notification
+
+function monkey_notify(typ, texture, tm, snd)
+	monkey(typ, texture, tm, snd)
+	local hud = get_hud()
+	if(hud) then
+		cs = hud:GetCustomStatic("notify_icon")
+		pos = cs:wnd():GetWndPos()
+		pos.x = notify_icon_x
+		pos.y = notify_icon_y
+		cs:wnd():SetWndPos(pos)
+	end
+end
+actor_menu.set_notification	= monkey_notify

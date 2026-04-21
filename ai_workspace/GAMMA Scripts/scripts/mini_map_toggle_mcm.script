@@ -1,0 +1,95 @@
+--RavenAscendant
+--Public Domain as i kindof posted the entier thing to discord once
+--Adapted to be demonstration of all the keybind utilities provided by MCM 1.6.0
+
+
+
+local KEY = DIK_keys.DIK_SLASH --change this if you don't use MCM or havn't updated to the curent version
+
+
+
+local mode = 0
+local modifier = 0
+local mcm_keybinds = ui_mcm and ui_mcm.key_hold --there will be a better way to test for MCM versions soon, but this will always be a solid way to check for keybind support
+
+
+function on_mcm_load()
+
+    local options = {
+        id = "rax_mmt",
+        sh = true,
+        gr = {
+            {id = "rax_mmt", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_menu_rax_mmt", size = {512, 50}, spacing = 20},
+			{id = "keybind", type = "key_bind", val = 2, def= KEY},
+	        {id = "modifier", type = ui_mcm.kb_mod_radio, val = 2, def = 0, hint = "mcm_kb_modifier" , content= { {0,"mcm_kb_mod_none"} , {1,"mcm_kb_mod_shift"} ,{3,"mcm_kb_mod_alt"}}}, --I removed control from the list, note the values of the other options were unchanged.
+            {id = "mode", type = ui_mcm.kb_mod_radio, val = 2, def = 0, hint = "mcm_kb_mode" , content= { {0,"mcm_kb_mode_press"} , {1,"mcm_kb_mode_dtap"} , {2,"mcm_kb_mode_hold"}}},
+			{ id= "desc_mcm"    	 	,type= "desc"     ,text= "ui_mcm_rax_mmt_update_mcm"			 ,clr= {255,175,0,0}, precondition = {function() return not mcm_keybinds end}	}, --warning message that will only show with pre 1.6.0 versions of mcm explaining why there seems to be no settings
+			
+			
+        }
+    }
+    
+    return options
+end
+
+function on_option_change(mcm) --new in mcm 1.6.0 mcm passes true to the on_option_change callback
+	if mcm then
+		KEY = ui_mcm.get("rax_mmt/keybind") or KEY -- if it can't find the option it will return nil this form insures that with old versions of mcm the key doesn't get reset
+		mode = ui_mcm.get("rax_mmt/mode")
+		modifier = ui_mcm.get("rax_mmt/modifier")
+	end
+end
+
+
+function on_key_hold(key)
+	if mcm_keybinds and (key == KEY) and (mode == 2) and  ui_mcm.get_mod_key(modifier)    and ui_mcm.key_hold("rax_mmt",key, 5) then --repeating after 5 seconds for demo pourposes.
+		toggle_mm()
+	end	
+end
+
+function on_key_press(key)
+	if (key == KEY) then
+		if (not mcm_keybinds) then --No MCM case
+			
+			toggle_mm()
+			return
+		end
+--[[
+		if (mode == 0) and  ui_mcm.get_mod_key(modifier) and not ui_mcm.double_tap("rax_mmt",key, true) then -- single tap with blocking so that it only fires once if this key is multitaped. It will fire once if the key is held as well. More responsive than using the simple_press function but at the loss of exclusivity, not recomended
+			toggle_mm()
+			return
+		end
+--]]
+		if mode == 0 then
+			ui_mcm.simple_press("rax_mmt", key, toggle_mm)
+		end
+
+		if (mode == 1) and  ui_mcm.get_mod_key(modifier)    and ui_mcm.double_tap("rax_mmt",key) then 
+			toggle_mm()
+			return
+		end
+		
+		
+	end
+end
+
+
+
+function on_game_start()
+    RegisterScriptCallback("on_option_change",on_option_change)
+    RegisterScriptCallback("on_key_hold",on_key_hold)
+    RegisterScriptCallback("on_key_press",on_key_press)
+	on_option_change(mcm_keybinds)--
+end
+
+function toggle_mm()
+
+    minimap_enabled = ui_options.get("video/hud/show_minimap")
+    ui_options.set("video/hud/show_minimap", not minimap_enabled )
+    local maingameui = ActorMenu.get_maingame()
+    if (maingameui and maingameui.UIZoneMap) then
+        maingameui.UIZoneMap.disabled = minimap_enabled
+        maingameui.UIMotionIcon:Show(maingameui.UIZoneMap.disabled == false)
+    end
+
+end

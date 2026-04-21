@@ -1,0 +1,691 @@
+<?xml version="1.0" encoding="windows-1252"?>
+
+<string_table>
+
+<!--
+F.R.I.T.E.S | Thundard
+Dernière révision : 24 novembre 2025
+-->
+
+<!-- 
+	MCM
+-->
+
+<string id="ui_mcm_menu_dynahud">
+	<text>Dynahud</text>
+</string>
+<!-- General -->
+<string id="ui_mcm_dynahud_menu_general">
+	<text>Général</text>
+</string>
+<string id="ui_mcm_dynahud_general_title">
+	<text>Dynahud</text>
+</string>
+<string id="ui_mcm_dynahud_general_help1">
+	<text>Bienvenue dans Dynahud. Avec ce mod, profitez d'un HUD dynamique qui réagit à l'état du joueur et à ses actions. Finies les gestions manuelles : personnalisez votre niveau d'immersion en jeu</text>
+</string>	
+<string id="ui_mcm_dynahud_general_help2">
+	<text>Parcourez chaque menu à gauche pour configurer chaque module Dynahud</text>
+</string>	
+<string id="ui_mcm_dynahud_general_help3">
+	<text>Certains modules nécessitent le mod HUD de base Dynahud pour fonctionner et que leur configuration soit effective</text>
+</string>	
+<string id="ui_mcm_dynahud_general_help4">
+	<text>La plupart des options affichent une infobulle d'aide complémentaire</text>
+</string>
+<string id="ui_mcm_dynahud_general_help5">
+	<text>Merci d'utiliser Dynahud. Continuez d'en profiter et laissez un retour si possible !</text>
+</string>	
+<!-- Dynahud Notifications -->
+<string id="ui_mcm_dynahud_general_notifications_title">
+	<text>Notifications Dynahud</text>
+</string>
+<string id="ui_mcm_dynahud_general_notifications_help">
+	<text>Dynahud notifie certains événements, les changements BHS et quand vous désactivez certaines fonctions ici. Il est recommandé de les garder affichées au début pour comprendre comment Dynahud gère les modules HUD</text>
+</string>
+<string id="ui_mcm_dynahud_general_notifications_enable">
+	<text>Activer les notifications</text>
+</string>
+<string id="ui_mcm_dynahud_general_notifications_enable_desc">
+	<text>Désactivez pour ne plus recevoir de notifications de Dynahud (non recommandé au début)</text>
+</string>
+<string id="ui_mcm_dynahud_general_debuglogs_enable">
+	<text>Activer les logs debug</text>
+</string>
+<string id="ui_mcm_dynahud_general_debuglogs_enable_desc">
+	<text>Laissez désactivé sauf pour le débogage du mod</text>
+</string>
+<!-- Dynamic Main Hud -->
+<string id="ui_mcm_dynahud_menu_main_hud">
+	<text>HUD principal dynamique</text>
+</string>
+<string id="ui_mcm_dynahud_main_hud_title">
+	<text>HUD principal dynamique</text>
+</string>
+<string id="ui_mcm_dynahud_main_hud_help1">
+	<text>Si le HUD principal dynamique est activé, les barres de vie, psy et énergie sont cachées automatiquement si leur valeur dépasse certains seuils</text>
+</string>
+<string id="ui_mcm_dynahud_main_hud_autohide">
+	<text>Activer HUD principal dynamique</text>
+</string>
+<string id="ui_mcm_dynahud_main_hud_autohide_desc">
+	<text>Quand activé, les éléments du HUD principal se masquent selon les conditions définies ci-dessous</text>
+</string>
+<string id="ui_mcm_dynahud_main_hud_hide_health_threshold">
+	<text>Seuil minimum vie (1 = 100%) pour ne pas masquer la barre</text>
+</string>
+<string id="ui_mcm_dynahud_main_hud_hide_health_threshold_desc">
+	<text>À chaque variation de vie, la barre est visible, mais sous ce seuil elle n'est jamais cachée</text>
+</string>
+<string id="ui_mcm_dynahud_main_hud_hide_health_autohide_timeout">
+	<text>Délai (s) avant masquage auto de la barre de vie</text>
+</string>
+<string id="ui_mcm_dynahud_main_hud_hide_health_autohide_timeout_desc">
+	<text>Si la vie ne varie plus et reste au-dessus du seuil, la barre disparaît au bout de ce délai</text>
+</string>
+<string id="ui_mcm_dynahud_main_hud_hide_power_threshold">
+	<text>Seuil énergie minimum (1 = 100%) pour afficher la barre</text>
+</string>	
+<string id="ui_mcm_dynahud_main_hud_hide_power_threshold_desc">
+	<text>Quand l'énergie passe sous ce seuil, la barre devient visible, sinon elle reste cachée</text>
+</string>	
+<string id="ui_mcm_dynahud_main_hud_hide_psy_threshold">
+	<text>Seuil psy minimum (1 = 100%) pour afficher la barre psy</text>
+</string>
+<string id="ui_mcm_dynahud_main_hud_hide_psy_threshold_desc">
+	<text>Quand la psy descend sous ce seuil, la barre apparaît ; sinon elle reste masquée (0,9 recommandé : la psy chute vite)</text>
+</string>
+<string id="ui_mcm_dynahud_main_hud_enable_radiation_bar">
+	<text>Activer la barre de radiation</text>
+</string>
+<string id="ui_mcm_dynahud_main_hud_enable_radiation_bar_desc">
+	<text>Affiche la barre de radiation lors d'une exposition. Fonctionne uniquement avec la HUD officielle Dynahud</text>
+</string>
+<string id="ui_mcm_dynahud_main_hud_bg_autohide_timeout">
+	<text>Délai (s) avant masquage du fond HUD principal</text>
+</string>
+<string id="ui_mcm_dynahud_main_hud_bg_autohide_timeout_desc">
+	<text>Si toutes les barres (santé, rad, stamina, psy) sont cachées, le fond disparaît aussi après ce délai. Mettre au max pour désactiver</text>
+</string>
+<string id="ui_mcm_dynahud_main_hud_bg_preview_on_show">
+	<text>Prévisualisation des jauges</text>
+</string>
+<string id="ui_mcm_dynahud_main_hud_bg_preview_on_show_desc">
+	<text>Quand le fond HUD principal apparaît, toutes les jauges sont affichées en préview (vie, stamina, psy) ; puis disparaîtront après la durée ci-dessous</text>
+</string>
+<string id="ui_mcm_dynahud_main_hud_bg_preview_time">
+	<text>Durée (s) de la prévisualisation</text>
+</string>
+<string id="ui_mcm_dynahud_main_hud_bg_preview_time_desc">
+	<text>Après ce délai, les jauges se masquent selon les règles ci-dessus</text>
+</string>
+<!-- Dynamic Status Icons -->
+<string id="ui_mcm_dynahud_menu_icons_hud">
+	<text>HUD dynamique statuts</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_title">
+	<text>HUD dynamique statuts</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_help1">
+	<text>Si activé, les icônes d'état sont masquées après un certain délai une fois le HUD principal masqué</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_help2">
+	<text>À chaque usage d'objet, ouverture inventaire ou affichage du HUD principal, les icônes d'état réapparaissent. Vous pouvez aussi activer une prévisualisation périodique configurée par un timer</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_help3">
+	<text>Les icônes de statut HUD se déplacent selon la visibilité du HUD principal : s'il est masqué, les icônes prennent sa place ; sinon elles se placent à droite. Un reskin Dynahud ne gère pas forcément ce mécanisme</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_autohide">
+	<text>Activer HUD statuts dynamique</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_autohide_desc">
+	<text>Quand activé, les icônes sont cachées après quelques secondes si le HUD principal est masqué</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_autohide_timeout">
+	<text>Délai (s) avant masquage auto des icônes de statut</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_autohide_timeout_desc">
+	<text>Quand le HUD principal est masqué, après ce temps, les icônes sont masquées aussi</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_preview">
+	<text>Prévisualiser le HUD statuts</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_preview_desc">
+	<text>En mode prévisualisation, le HUD statuts sera affiché périodiquement puis masqué à nouveau après le délai de preview</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_preview_timer">
+	<text>Durée (s) avant affichage du HUD statuts en prévisualisation</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_preview_timer_desc">
+	<text>Une fois masqué, le HUD statuts sera affiché automatiquement après ce délai. Cela déclenche la prévisualisation temporaire des icônes.</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_preview_time">
+	<text>Durée (s) de la prévisualisation du HUD statuts</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_preview_time_desc">
+	<text>À la fin de ce délai, le HUD statuts sera à nouveau masqué, mettant fin à la prévisualisation</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_inventory_preview">
+	<text>Afficher la prévisualisation à la fermeture de l'inventaire</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_inventory_preview_desc">
+	<text>À la fermeture de l'inventaire, une prévisualisation des icônes de statut s'affiche</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_enable_timers">
+	<text>Afficher les timers des icônes</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_enable_timers_desc">
+	<text>Affiche un timer sur les icônes de statut si les mods [AltIcons] et [Hud Icons Time] sont disponibles</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_show_only_expiring">
+	<text>Afficher les timers uniquement sur les icônes en expiration</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_show_only_expiring_desc">
+	<text>Affiche le timer sur les icônes seulement si leur durée restante est inférieure à cette valeur (0 = toujours afficher le timer). Attention : cette valeur définit aussi l'état d'"expiration". Les icônes expirantes seront toujours affichées</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_position">
+	<text>Ajustement position icônes de statut</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_help4">
+	<text>Vous pouvez ajuster la position des icônes statuts selon que le HUD principal est masqué ou visible. Leur taille peut aussi être modulée selon ce même critère</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_xy_multiply_by">
+	<text>Multiplicateur XY</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_xy_multiply_by_desc">
+	<text>Multiplie les valeurs ci-dessous, utile en haute résolution pour placer plus facilement les icônes</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_main_hud_on_x">
+	<text>Position X HUD principal affiché</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_main_hud_on_x_desc">
+	<text>Décale les icônes à partir de leur position par défaut. Valeur négative : vers la gauche, positive : vers la droite. Ne concerne que le HUD principal affiché</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_main_hud_on_y">
+	<text>Position Y HUD principal affiché</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_main_hud_on_y_desc">
+	<text>Décale les icônes à partir de leur position par défaut. Valeur négative : vers le haut, positive : vers le bas. Ne concerne que le HUD principal affiché</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_main_hud_on_size_mul">
+	<text>Taille HUD principal affiché</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_main_hud_on_size_mul_desc">
+	<text>Modifie la taille des icônes de statut. Négative : réduit, positive : augmente. Ne concerne que le HUD principal affiché</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_main_hud_on_spacing">
+	<text>Espacement des icônes HUD principal affiché</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_main_hud_on_spacing_desc">
+	<text>Augmente l'espace entre les icônes (uniquement HUD principal affiché)</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_main_hud_off_x">
+	<text>Position X HUD principal masqué</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_main_hud_off_x_desc">
+	<text>Décale les icônes à partir de leur position par défaut. Négatif : gauche, positif : droite. Ne concerne que HUD principal masqué</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_main_hud_off_y">
+	<text>Position Y HUD principal masqué</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_main_hud_off_y_desc">
+	<text>Décale les icônes à partir de leur position par défaut. Négatif : haut, positif : bas. Ne concerne que HUD principal masqué</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_main_hud_off_size_mul">
+	<text>Taille HUD principal masqué</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_main_hud_off_size_mul_desc">
+	<text>Modifie la taille des icônes. Négatif : réduit, positif : augmente. (HUD principal masqué)</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_main_hud_off_spacing">
+	<text>Espacement icônes HUD principal masqué</text>
+</string>
+<string id="ui_mcm_dynahud_icons_hud_main_hud_off_spacing_desc">
+	<text>Augmente l'espace entre les icônes (HUD principal masqué uniquement)</text>
+</string>
+<!-- Dynamic Weapon Hud -->
+<string id="ui_mcm_dynahud_menu_weapon_hud">
+	<text>HUD arme dynamique</text>
+</string>
+<string id="ui_mcm_dynahud_weapon_hud_title">
+	<text>HUD arme dynamique</text>
+</string>
+<string id="ui_mcm_dynahud_weapon_hud_help">
+	<text>Si le HUD arme dynamique est activé, le compteur de munitions et l'icône sont masqués après un délai configurable</text>
+</string>
+<string id="ui_mcm_dynahud_weapon_hud_help1">
+	<text>À chaque tir, visée, rechargement ou vérification, le HUD arme s'affiche à nouveau</text>
+</string>	
+<string id="ui_mcm_dynahud_weapon_hud_autohide">
+	<text>Activer HUD arme dynamique</text>
+</string>
+<string id="ui_mcm_dynahud_weapon_hud_autohide_desc">
+	<text>Quand cette option est activée, le compteur de munitions et l'icône se masquent automatiquement après un délai. Ils réapparaissent lors de certaines actions</text>
+</string>
+<string id="ui_mcm_dynahud_weapon_hud_autohide_timeout">
+	<text>Délai (s) avant masquage auto du HUD arme</text>
+</string>
+<string id="ui_mcm_dynahud_weapon_hud_autohide_timeout_desc">
+	<text>Temps en secondes avant disparition du compteur/icone. Tirer réinitialise ce délai</text>
+</string>
+<string id="ui_mcm_dynahud_weapon_hud_aim_show">
+	<text>Afficher HUD arme en visant</text>
+</string>
+<string id="ui_mcm_dynahud_weapon_hud_aim_show_quickhide">
+	<text>Masquage rapide du HUD arme en relâchant la visée</text>
+</string>	
+<string id="ui_mcm_dynahud_weapon_hud_aim_show_quickhide_desc">
+	<text>Quand on cesse de viser, le HUD arme se masque immédiatement au lieu d'attendre le délai</text>
+</string>
+<string id="ui_mcm_dynahud_weapon_hud_reload_show">
+	<text>Afficher HUD arme en rechargeant</text>
+</string>
+<string id="ui_mcm_dynahud_weapon_hud_weaponcheck_show">
+	<text>Afficher HUD arme en vérifiant les munitions</text>
+</string>
+<string id="ui_mcm_dynahud_weapon_hud_always_hide">
+	<text>Masquer toujours le HUD munitions (compteur, type et icône)</text>
+</string>
+<!-- Dynamic Companion Hud -->
+<string id="ui_mcm_dynahud_companion_hud">
+	<text>HUD compagnon dynamique</text>
+</string>
+<string id="ui_mcm_dynahud_companion_hud_title">
+	<text>HUD compagnon dynamique</text>
+</string>
+<string id="ui_mcm_dynahud_companion_hud_help1">
+	<text>Si le HUD compagnon dynamique est activé, il se masque si tous les compagnons sont hors combat, et s'affiche si l'un d'eux combat</text>
+</string>
+<string id="ui_mcm_dynahud_companion_hud_help2">
+	<text>Mais si un compagnon est en "Ignorer le combat", le HUD s'affiche malgré tout : ça évite qu'un compagnon vulnérable se fasse attaquer sans que vous le sachiez</text>
+</string>
+<string id="ui_mcm_dynahud_companion_hud_help3">
+	<text>De plus, si l'un de vos compagnons est trop loin (distance de sécurité configurable ci-dessous), le HUD s'affiche quelle que soit sa situation de combat. Cela permet de repérer rapidement un compagnon bloqué ou immobilisé</text>
+</string>
+<string id="ui_mcm_dynahud_companion_hud_help4">
+	<text>Attention : certains objectifs ajoutent des PNJ invisibles à votre groupe, par exemple la mission Recherche et Sauvetage. Même s'il n'apparaît pas sur le HUD, la distance de ce PNJ peut le rendre visible quand il est trop loin</text>
+</string>
+<string id="ui_mcm_dynahud_companion_hud_help5">
+	<text>Vous pouvez désactiver la vérification de la distance (ci-dessous) pour que le HUD compagnon reste caché, utile si vous "gare" vos compagnons à la base et explorez seul, ou lors de ces missions spécifiques</text>
+</string>	
+<string id="ui_mcm_dynahud_companion_hud_help6">
+	<text>Enfin, quand le HUD compagnon est masqué, garder la touche "Companion Wheel" enfoncée fait apparaître brièvement le HUD (durée configurable)</text>
+</string>
+<string id="ui_mcm_dynahud_companion_hud_enable">
+	<text>Activer HUD compagnon dynamique</text>
+</string>
+<string id="ui_mcm_dynahud_companion_hud_enable_desc">
+	<text>Si désactivé, le HUD compagnon reste toujours affiché</text>
+</string>	
+<string id="ui_mcm_dynahud_companion_hud_check_distance">
+	<text>Prendre en compte la distance comme état de danger</text>
+</string>
+<string id="ui_mcm_dynahud_companion_hud_check_distance_desc">
+	<text>La distance du compagnon sert aussi à décider d'afficher/cacher le HUD</text>
+</string>
+<string id="ui_mcm_dynahud_companion_hud_safe_distance">
+	<text>Distance de sécurité compagnon</text>
+</string>
+<string id="ui_mcm_dynahud_companion_hud_safe_distance_desc">
+	<text>Si un compagnon est hors de cette distance (mètres), le HUD compagnon s'affiche</text>
+</string>
+<string id="ui_mcm_dynahud_companion_hud_preview_time">
+	<text>Durée (s) de prévisualisation HUD compagnon</text>
+</string>
+<string id="ui_mcm_dynahud_companion_hud_preview_time_desc">
+	<text>À la fin de ce délai, le HUD compagnon est de nouveau masqué, à moins qu'un compagnon soit en combat</text>
+</string>
+<!-- Dynamic BHS Hud -->
+<string id="ui_mcm_dynahud_menu_bhs_hud">
+	<text>HUD BHS dynamique</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_title">
+	<text>HUD BHS dynamique</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_help1">
+	<text>Si le HUD BHS dynamique est activé, il reste masqué tant que tous les membres sont intacts. Dès qu'un membre est blessé, le HUD s'affiche</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_help2">
+	<text>Dès que tous les membres sont guéris (santé blanche), le HUD BHS disparaît à nouveau</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_help3">
+	<text>Le HUD BHS s'affiche toujours à l'ouverture de l'inventaire, quels que soient vos blessures</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_help4">
+	<text>Laisser appuyé la touche H masque provisoirement le HUD BHS en cas de blessure. Il revient au bout d'un délai (configurable) pour vous rappeler les blessures restantes. Mettez la valeur au max pour rendre le masquage permanent jusqu'à la prochaine blessure</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_help5">
+	<text>Un appui sur H (par défaut) bascule entre les modes dynamiques BHS : quand il est désactivé, le HUD ne se masque jamais ; réappuyez pour réactiver l'automasquage. Différent de la désactivation totale ci-dessous</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_hotkey">
+	<text>Touche HUD BHS dynamique</text>
+</string>	
+<string id="ui_mcm_dynahud_bhs_hud_hotkey_desc">
+	<text>Raccourci pour contrôler le HUD BHS dynamique : appuyer pour basculer dynamique/pas dynamique, garder enfoncé pour masquer blessure</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_autohide">
+	<text>Activer BHS dynamique</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_autohide_desc">
+	<text>Désactive le BHS dynamique : le HUD BHS se comportera comme dans Body Health System, touche H pour basculer entre les anciens modes</text>
+</string>	
+<string id="ui_mcm_dynahud_bhs_hud_update_hide_timeout">
+	<text>Délai (s) avant masquage auto BHS si pas de blessure</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_update_hide_timeout_desc">
+	<text>Quand tous les membres sont guéris, le HUD BHS se masque automatiquement après ce délai</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_dismiss_timeout">
+	<text>Durée (min) avant rappel BHS après masquage</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_dismiss_timeout_desc">
+	<text>Après un masquage, le HUD BHS réapparaît au bout de ce délai pour rappeler une blessure à traiter. Impossible pour blessure trop sévère. Mettre la valeur au max pour rendre le masquage permanent jusqu'à la prochaine blessure</text>
+</string>		
+<string id="ui_mcm_dynahud_bhs_hud_dismiss_force">
+	<text>Masquage forcé en cas de blessure grave</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_dismiss_force_desc">
+	<text>Permet le masquage du HUD BHS même en cas de blessure grave</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_help6">
+	<text>Installer Dynahud avec l'option patch BHS (standalone ou GAMMA) + Body Health System installé sous Anomaly pour paramétrer ce module</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_dismiss_on_mapload">
+	<text>Masquer le HUD BHS au chargement carte ou partie</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_dismiss_on_mapload_desc">
+	<text>Le HUD BHS est masqué automatiquement à l'arrivée sur une nouvelle carte ou partie. Ne marche pas si Text BHS ou Hybrid BHS activés</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_always_hide">
+	<text>Toujours masquer le HUD BHS</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_always_hide_desc">
+	<text>Le HUD BHS reste caché, s'affiche uniquement dans l'inventaire</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_text_bhs_title">
+	<text>HUD Text BHS et Hybrid BHS</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_help_text_bhs_requirements">
+	<text>Les HUD Text BHS et Hybrid BHS sont disponibles si une reskin officielle Dynahud est installée + le patch "Hybrid BHS for GAMMA". Options actuellement désactivées !!</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_help_text_bhs1">
+	<text>Le HUD Text BHS remplace le HUD BHS classique (texture mannequin, barres de membres) par des indicateurs texte colorés dynamiques - TÊTE, CORPS, BRAS(G), BRAS(D), JAMBE(G), JAMBE(D). Couleur selon santé du membre. Blanc (santé max), jaune, orange, rouge (critiques), gris (fracture). Pour BHSRO, violet (chirurgie)</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_help_text_bhs2">
+	<text>Si un membre est traité (médecine hp jaune) l'indicateur clignote pour signaler qu'il a une santé temporaire et nécessite un soin (hp blanche)</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_help_text_bhs3">
+	<text>Par défaut, la couleur de l'indicateur traité reflète la santé réelle+temporaire (si le patch remet la santé à max la couleur devient bleue)</text>
+</string>		
+<string id="ui_mcm_dynahud_bhs_hud_help_bhs_choice">
+	<text>Toutes les options HUD ci-dessous (Par défaut, Text BHS, Hybrid BHS, Debug BHS) OBLIGENT à recharger la partie pour appliquer</text>
+</string>	
+<string id="ui_mcm_dynahud_bhs_hud_bhs_choice">
+	<text>Choix HUD BHS</text>
+</string>
+<string id="ui_mcm_lst_dynahud_default_bhs">
+	<text>Par défaut</text>
+</string>
+<string id="ui_mcm_lst_dynahud_text_bhs">
+	<text>Text BHS</text>
+</string>
+<string id="ui_mcm_lst_dynahud_hybrid_bhs">
+	<text>Hybrid BHS</text>
+</string>	
+<string id="ui_mcm_dynahud_bhs_hud_text_bhs">
+	<text>HUD Text BHS</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_text_bhs_desc">
+	<text>Remplace le HUD BHS classique par Text BHS</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_text_bhs_show_realhp_when_patched">
+	<text>Afficher la vraie santé dans indicateurs clignotants</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_text_bhs_show_realhp_when_patched_desc">
+	<text>Quand un membre est traité (santé temporaire), afficher aussi la santé réelle (couleur alterne santé réelle/temporaire)</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_position_x">
+	<text>Position X HUD Text BHS</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_position_y">
+	<text>Position Y HUD Text BHS</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_hybrid_bhs">
+	<text>Hybrid BHS</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_hybrid_bhs_desc">
+	<text>Hybrid BHS combine Text BHS (visible en HUD joueur) et HUD BHS classique (dans inventaire)</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_med_bhs">
+	<text>HUD Medical BHS</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_med_bhs_desc">
+	<text>Remplace la texture HUD BHS classique par Medical BHS (uniquement inventaire)</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_debug_bhs_health">
+	<text>Mode Debug BHS</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_hud_debug_bhs_health_desc">
+	<text>Active le debug des dégâts membres/HUD BHS dans inventaire (recharge partie OBLIGATOIRE). Passe aussi en Hybrid BHS. Numpad 1 à 6 : dégâts sur chaque membre. Désactivez la fonction après usage !</text>
+</string>
+<!-- Dynamic Minimap -->
+<string id="ui_mcm_dynahud_menu_minimap">
+	<text>Minicarte dynamique</text>
+</string>
+<string id="ui_mcm_dynahud_minimap_title">
+	<text>Minicarte dynamique</text>
+</string>
+<string id="ui_mcm_dynahud_minimap_help1">
+	<text>Si la minicarte dynamique est activée, armer une arme la cache automatiquement. La remettre au holster la réaffiche</text>
+</string>
+<string id="ui_mcm_dynahud_minimap_help2">
+	<text>Pistolet, jumelles, détecteur ou glowstick n'y touchent pas</text>
+</string>
+<string id="ui_mcm_dynahud_minimap_help3">
+	<text>En mode arme sortie, la minicarte reste cachée même en changeant d'arme. Avec le mod Minimap Toggle, on peut la réafficher temporairement dans ce mode (pratique dans certains cas)</text>
+</string>	
+<string id="ui_mcm_dynahud_minimap_help4">
+	<text>Vous pouvez aussi contrôler le comportement de la minicarte lors de la descente de l'arme ou du sprint armé</text>
+</string>
+<string id="ui_mcm_dynahud_minimap_autohide">
+	<text>Activer minicarte dynamique</text>
+</string>
+<string id="ui_mcm_dynahud_minimap_autohide_desc">
+	<text>Avec la minicarte dynamique activée, la touche de toggle fonctionne normalement. Sinon, la touche ne peut que masquer la carte</text>
+</string>	
+<string id="ui_mcm_dynahud_minimap_help5">
+	<text>Vous pouvez aussi personnaliser finement la minicarte avec ces options</text>
+</string>
+<string id="ui_mcm_dynahud_minimap_hide">
+	<text>Cacher la minicarte en équipant une arme</text>
+</string>
+<string id="ui_mcm_dynahud_minimap_hide_desc">
+	<text>Désactiver si vous ne voulez pas la cacher automatiquement</text>
+</string>
+<string id="ui_mcm_dynahud_minimap_show">
+	<text>Afficher la minicarte en rangeant l'arme</text>
+</string>
+<string id="ui_mcm_dynahud_minimap_show_desc">
+	<text>Décochez si vous ne souhaitez pas la réafficher après avoir holster l'arme</text>
+</string>
+<string id="ui_mcm_dynahud_minimap_autohide_timeout">
+	<text>Délai (s) avant réaffichage minicarte après avoir rangé arme/PDA</text>
+</string>
+<string id="ui_mcm_dynahud_minimap_autohide_timeout_desc">
+	<text>Délai en secondes avant affichage de la minicarte après avoir rangé arme ou PDA</text>
+</string>
+<string id="ui_mcm_dynahud_minimap_hide_on_pda">
+	<text>Cacher la minicarte à l'ouverture du PDA</text>
+</string>
+<string id="ui_mcm_dynahud_minimap_hide_on_pda_desc">
+	<text>Activez pour cacher la minicarte à chaque accès au PDA</text>
+</string>
+<string id="ui_mcm_dynahud_minimap_show_on_wpn_lowered">
+	<text>Afficher minicarte en baissant l'arme</text>
+</string>
+<string id="ui_mcm_dynahud_minimap_show_on_wpn_lowered_desc">
+	<text>Activez pour afficher la minicarte automatiquement lorsque vous baissez votre arme. Elle se masque dès que vous la levez. Timeout configurable pour afficher la carte</text>
+</string>
+<string id="ui_mcm_dynahud_minimap_show_on_actor_sprint">
+	<text>Afficher la minicarte en sprintant</text>
+</string>
+<string id="ui_mcm_dynahud_minimap_show_on_actor_sprint_desc">
+	<text>Activez pour afficher la minicarte automatiquement en sprintant avec une arme. Elle se masque à la fin du sprint</text>
+</string>	
+<string id="ui_mcm_dynahud_minimap_show_on_wpn_lowered_timeout">
+	<text>Délai (s) d'affichage minicarte après début sprint</text>
+</string>
+<string id="ui_mcm_dynahud_minimap_show_on_wpn_lowered_timeout_desc">
+	<text>Dès le début du sprint, la minicarte s'affiche après ce délai. Mettre à zéro pour affichage instantané</text>
+</string>
+<string id="ui_mcm_dynahud_minimap_hide_on_end_sprint_timeout">
+	<text>Délai (s) masquage minicarte après fin sprint</text>
+</string>
+<string id="ui_mcm_dynahud_minimap_hide_on_end_sprint_timeout_desc">
+	<text>À la fin du sprint, la minicarte se cache après ce délai. Mettre à zéro pour masquage instantané. Idéal : réglez en fonction du délai de départ sprint</text>
+</string>
+<!-- Dynamic Magazine Hud -->
+<string id="ui_mcm_dynahud_menu_mags">
+	<text>HUD chargeurs dynamique</text>
+</string>
+<string id="ui_mcm_dynahud_mags_title">
+	<text>HUD chargeurs dynamique</text>
+</string>
+<string id="ui_mcm_dynahud_mags_help">
+	<text>Gérez votre HUD chargeurs, affichez les infos chargeur uniquement quand nécessaire et masquez-les automatiquement sinon</text>
+</string>
+<string id="ui_mcm_dynahud_mags_enable">
+	<text>Activer HUD chargeurs dynamique</text>
+</string>
+<string id="ui_mcm_dynahud_mags_enable_desc">
+	<text>Si activé, le HUD chargeur reste masqué sauf lors d'un rechargement ou vérification de munitions</text>
+</string>	
+<string id="ui_mcm_dynahud_mags_show_reload">
+	<text>Afficher lors du rechargement</text>
+</string>
+<string id="ui_mcm_dynahud_mags_show_ammocheck">
+	<text>Afficher lors de la vérification munitions</text>
+</string>
+<string id="ui_mcm_dynahud_mags_autohide_timeout">
+	<text>Délai (s) avant masquage HUD chargeurs après reload/vérification</text>
+</string>
+<string id="ui_mcm_dynahud_mags_weapon_check">
+	<text>Activer HUD vérif mode tir dynamique</text>
+</string>
+<string id="ui_mcm_dynahud_mags_weapon_check_desc">
+	<text>Si le mod FiremodeCheck est installé, chaque vérification de munitions vérifie aussi le mode de tir ; changement du mode de tir : toujours via touche Firemode</text>
+</string>
+<string id="ui_mcm_dynahud_mags_help1">
+	<text>Installez Dynahud avec l'option HUD chargeurs et Anomaly Magazines pour profiter de ce module</text>
+</string>
+<!-- Notifications Strings -->
+<string id="ui_mcm_dynahud_dynamic_main_hud_enabled">
+	<text>HUD principal dynamique activé</text>
+</string>
+<string id="ui_mcm_dynahud_dynamic_main_hud_disabled">
+	<text>HUD principal dynamique désactivé</text>
+</string>
+<string id="ui_mcm_dynahud_main_hud_on">
+	<text>HUD principal affiché</text>
+</string>
+<string id="ui_mcm_dynahud_main_hud_off">
+	<text>HUD principal masqué</text>
+</string>
+<string id="ui_mcm_dynahud_dynamic_bhs_hud_on">
+	<text>HUD BHS dynamique affiché</text>
+</string>
+<string id="ui_mcm_dynahud_dynamic_bhs_hud_off">
+	<text>HUD BHS dynamique masqué</text>
+</string>
+<string id="ui_mcm_dynahud_dynamic_bhs_hud_enabled">
+	<text>HUD BHS dynamique activé</text>
+</string>
+<string id="ui_mcm_dynahud_dynamic_bhs_hud_disabled">
+	<text>HUD BHS dynamique désactivé</text>
+</string>
+<string id="ui_mcm_dynahud_dynamic_minimap_enabled">
+	<text>Minicarte dynamique activée</text>
+</string>
+<string id="ui_mcm_dynahud_dynamic_minimap_disabled">
+	<text>Minicarte dynamique désactivée</text>
+</string>
+<string id="ui_mcm_dynahud_dynamic_minimap_global_visible">
+	<text>Préférence minicarte : visible</text>
+</string>
+<string id="ui_mcm_dynahud_dynamic_minimap_global_hidden">
+	<text>Préférence minicarte : masquée</text>
+</string>	
+<string id="ui_mcm_dynahud_dynamic_minimap_global_auto">
+	<text>Préférence minicarte : auto</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_dismissed">
+	<text>HUD BHS masqué (blessure ignorée)</text>
+</string>
+<string id="ui_mcm_dynahud_bhs_dismiss_not_allowed">
+	<text>Impossible de masquer HUD BHS, blessure grave</text>
+</string>	
+<string id="ui_mcm_dynahud_dynamic_bhs_off_dismiss_not_allowed">
+	<text>HUD BHS dynamique désactivé. Masquage non autorisé</text>
+</string>
+<string id="ui_mcm_dynahud_dynamic_bhs_hud_on_noinjuries">
+	<text>Aucune blessure : HUD BHS caché jusqu'à la prochaine blessure</text>
+</string>
+<string id="ui_mcm_dynahud_dynamic_bhs_hud_on_injuried">
+	<text>Vous êtes blessé ! Maintenez H pour masquer/ignorer le HUD BHS temporairement. Pour le cacher définitivement, soignez-vous</text>
+</string>
+<string id="ui_mcm_dynahud_dynamic_bhs_hud_off_help1">
+	<text>Le HUD BHS restera toujours affiché. Appuyez sur H pour le rendre dynamique</text>
+</string>
+<!-- Cold System Hud -->
+<string id="ui_mcm_dynahud_menu_cold_system">
+	<text>HUD système froid dynamique</text>
+</string>
+<string id="ui_mcm_dynahud_cold_system_title">
+	<text>HUD système froid dynamique</text>
+</string>
+<string id="ui_mcm_dynahud_cold_system_help">
+	<text>Avec le système froid dynamique activé, le HUD froid reste masqué tant que la valeur de froid ne dépasse pas le seuil de sécurité</text>
+</string>
+<string id="ui_mcm_dynahud_cold_system_help1">
+	<text>Au-delà du seuil, le HUD froid apparaît quelques secondes puis se remasque jusqu'au prochain palier. Palier configurable ci-dessous</text>
+</string>
+<string id="ui_mcm_dynahud_cold_system_help2">
+	<text>En cas de baisse du froid, le HUD froid passe en mode "récupération" et reste affiché (ex : feu de camp). Dès que le froid remonte, il se remet en mode dynamique</text>
+</string>	
+<string id="ui_mcm_dynahud_cold_system_enable">
+	<text>Activer HUD système froid dynamique</text>
+</string>
+<string id="ui_mcm_dynahud_cold_system_enable_desc">
+	<text>En activant, le HUD froid s'affichera selon les conditions ci-dessous</text>
+</string>
+<string id="ui_mcm_dynahud_cold_system_safe_threshold">
+	<text>Seuil de sécurité HUD froid</text>
+</string>
+<string id="ui_mcm_dynahud_cold_system_safe_threshold_desc">
+	<text>Quand le froid dépasse ce seuil, le HUD froid s'affiche périodiquement. Tant que le froid reste sous cette valeur, le HUD reste masqué.\n
+		  \n600 = valeur système par défaut où la fièvre peut survenir</text>
+</string>
+<string id="ui_mcm_dynahud_cold_system_critical_threshold">
+	<text>Seuil critique HUD froid</text>
+</string>
+<string id="ui_mcm_dynahud_cold_system_critical_threshold_desc">
+	<text>Au-delà de ce seuil, le HUD froid reste affiché jusqu'à redescendre sous le seuil critique.\n
+		\n1800 = valeur système par défaut de risque d'engelure</text>
+</string>
+<string id="ui_mcm_dynahud_cold_system_breakpoint">
+	<text>Palier d'incrément froid</text>
+</string>
+<string id="ui_mcm_dynahud_cold_system_breakpoint_desc">
+	<text>Au-dessus du seuil de sécurité, le HUD froid s'affiche périodiquement à chaque palier atteint (ex : seuil 600 et palier 200, HUD affiché à 800, 1.000, 1200...)</text>
+</string>
+<string id="ui_mcm_dynahud_cold_system_show_recovery">
+	<text>Afficher HUD froid en récupération</text>
+</string>
+<string id="ui_mcm_dynahud_cold_system_show_recovery_desc">
+	<text>Si activé, le HUD froid reste toujours affiché tant que le froid baisse (ex : près d'un feu)</text>
+</string>
+<string id="ui_mcm_dynahud_cold_system_help_not_installed">
+	<text>Le mod Cold System doit être installé pour configurer ce module</text>
+</string>
+							
+</string_table> 

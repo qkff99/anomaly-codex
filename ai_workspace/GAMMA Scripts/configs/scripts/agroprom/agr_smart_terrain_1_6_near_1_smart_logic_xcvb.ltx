@@ -1,0 +1,275 @@
+; =======================
+; ------------- DAY ---------------
+; =======================
+; blockpost guard 1
+[logic@near1_xcvb_day_1]
+active = walker@day_1
+suitable = {!surge_started !is_night} true
+prior = 59
+
+[walker@day_1]
+path_walk = guard_1_walk
+path_look = guard_1_look
+
+
+; blockpost guard 2
+[logic@near1_xcvb_day_2]
+active = walker@day_2
+suitable = {!surge_started !is_night} true
+prior = 59
+
+[walker@day_2]
+path_walk = guard_2_walk
+path_look = guard_2_look
+
+
+; blockpost guard 3 (walking)
+[logic@near1_xcvb_day_3]
+active = walker@day_3
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[walker@day_3]
+path_walk = walker_1_walk
+
+
+; guard far
+[logic@near1_xcvb_day_4]
+active = walker@day_4
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[walker@day_4]
+path_walk = home_2
+path_look = home_1
+on_timer = 90000 | walker@day_4_2
+
+[walker@day_4_2]
+path_walk = home_1
+path_look = guard_2_look
+on_timer = 50000 | walker@day_4
+
+
+; blockpost guard 4
+[logic@near1_xcvb_day_5]
+active = walker@day_5
+suitable = {!surge_started !is_night} true
+prior = 57
+
+[walker@day_5]
+path_walk = kamp_2
+path_look = guard_2_look
+
+
+; guard angars
+[logic@near1_xcvb_day_6]
+active = walker@day_6
+suitable = {!surge_started !is_night} true
+prior = 56
+
+[walker@day_6]
+path_walk = home_3
+path_look = walker_2_walk
+on_timer = 30000 | walker@day_6_2
+
+[walker@day_6_2]
+path_walk = walker_2_walk
+path_look = home_3
+on_timer = 30000 | walker@day_6
+
+
+; blockpost guard 5
+[logic@near1_xcvb_day_7]
+active = walker@day_7
+suitable = {!surge_started !is_night} true
+prior = 55
+
+[walker@day_7]
+path_walk = walker_2_look
+path_look = guard_1_walk
+
+
+
+; =======================
+; ------------ NIGHT -------------
+; =======================
+[beh@general]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+gather_items_enabled = false
+help_wounded_enabled = false
+corpse_detection_enabled = false
+meet = no_meet
+wounded = wounded@ignore
+use_camp = false
+
+[meet@general]
+close_anim 		= nil
+close_victim 	= nil
+far_anim 		= nil
+far_victim 		= nil
+close_distance  = 0
+far_distance 	= 0
+use = {=actor_enemy} false, {=dist_to_actor_le(3)} true, false
+snd_on_use = {!dist_to_actor_le(3)} nil
+meet_on_talking = false
+
+[wounded@ignore]
+hp_state        = 0|wounded_heavy@help_heavy
+hp_state_see    = 0|wounded_heavy@help_heavy
+hp_victim       = 0|nil
+hp_fight        = 0|false
+hp_cover        = 0|false
+
+
+; blockpost guard 1
+[logic@near1_xcvb_night_1]
+active = walker@night_1
+suitable = {!surge_started =is_night} true
+prior = 59
+
+[walker@night_1]
+path_walk = guard_1_walk
+path_look = guard_1_look
+
+
+; blockpost guard 2
+[logic@near1_xcvb_night_2]
+active = walker@night_2
+suitable = {!surge_started =is_night} true
+prior = 59
+
+[walker@night_2]
+path_walk = guard_2_walk
+path_look = guard_2_look
+
+
+; sleep second building
+[logic@near1_xcvb_night_3]
+active = beh@night_3
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[beh@night_3]:beh@general
+pt1 = 20000, sleep | 		pos: -180.755, 0.1385, -171.565 		look: -180.397, 0.1385, -172.9946
+path_end = loop
+turn_on_campfire = true
+
+
+; sleep barracks 1
+[logic@near1_xcvb_night_4]
+active = beh@night_4
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[beh@night_4]:beh@general
+pt1 = 20000, sleep | 		pos: -150.5944, 1.180466, -153.9333 		look: -151.1883, 1.180466, -152.641
+path_end = loop
+
+
+; guard far
+[logic@near1_xcvb_night_5]
+active = walker@night_5
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[walker@night_5]
+path_walk = home_2
+path_look = home_1
+on_timer = 60000 | walker@night_5_2
+
+[walker@night_5_2]
+path_walk = home_1
+path_look = guard_2_look
+on_timer = 50000 | walker@night_5
+
+
+; sleep barracks 2
+[logic@near1_xcvb_night_6]
+active = beh@night_6
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[beh@night_6]:beh@general
+pt1 = 20000, sleep | 		pos: -153.376, 1.1171, -149.3194 		look: -152.94474, 1.117, -150.2148
+path_end = loop
+
+
+; sleep angar
+[logic@near1_xcvb_night_7]
+active = beh@night_7
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[beh@night_7]:beh@general
+pt1 = 20000, sleep | 		pos: -131.74286, -0.001483, -155.31653 		look: -132.3951, -0.001483, -154.5729
+path_end = loop
+
+
+; blockpost guard 3 (walking)
+[logic@near1_xcvb_night_8]
+active = walker@night_8
+suitable = {!surge_started =is_night} true
+prior = 55
+
+[walker@night_8]
+path_walk = walker_1_walk
+
+
+; guard angars
+[logic@near1_xcvb_night_9]
+active = walker@night_9
+suitable = {!surge_started =is_night} true
+prior = 55
+
+[walker@night_9]
+path_walk = home_3
+path_look = walker_2_walk
+on_timer = 30000 | walker@night_9_2
+
+[walker@night_9_2]
+path_walk = walker_2_walk
+path_look = home_3
+on_timer = 30000 | walker@night_9
+
+
+; sleep angar 2
+[logic@near1_xcvb_night_10]
+active = beh@night_10
+suitable = {!surge_started =is_night} true
+prior = 54
+
+[beh@night_10]:beh@general
+pt1 = 20000, sleep_sit | 		pos: -134.417, -0.0007345, -153.971		 look: -133.455, -0.0007345, -154.17573
+path_end = loop
+help_wounded_enabled = true
+
+
+; blockpost guard 4
+[logic@near1_xcvb_night_11]
+active = walker@night_11
+suitable = {!surge_started =is_night} true
+prior = 53
+
+[walker@night_11]
+path_walk = kamp_2
+path_look = guard_2_look
+
+
+; blockpost guard 5
+[logic@near1_xcvb_night_12]
+active = walker@night_12
+suitable = {!surge_started =is_night} true
+prior = 52
+
+[walker@night_12]
+path_walk = walker_2_look
+path_look = guard_1_walk

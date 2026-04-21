@@ -1,0 +1,48 @@
+; DotMarks unlocalizers
+; Requires modded exes, but then so does the whole damn addon
+[game_setup]
+world_itm_num
+world_itm_on
+actor_on_item_take
+[ui_mcm]
+hold
+tap
+; The table MCM uses to track how long a key is held
+[z_auto_looter]
+load_settings
+ammo_parts_sections
+valid_modes
+; Hook into iTheon's Auto Looter
+[ui_sleep_dialog]
+sleep_zones
+; The sleep_zones table
+[zz_glowstick_mcm]
+glowsticks
+; Keep track of active glowsticks
+[npc_loot_claim]
+actor_looting
+check_claim
+loot_claims
+; Claim table and functions to check them
+[hf_furniture_types]
+TYPE2FUNC
+; So we can properly override HF's init_stash func
+[txr_mines]
+EXPLOSIVE_SECTION_LOOKUP
+EXPLOSIVE_TYPE
+MIN_FORGET_TIME
+MAX_FORGET_TIME
+TRIGGER_RADIUS
+FX_BY_SECTION
+FUSE_TIME
+; For handling IEDs
+[a_rax_wd]
+save_detected
+; For cooperating with the watchdog script and logging data
+[haru_skills]
+rank_table
+; Skill System
+[liz_fdda_redone_body_search]
+is_haruka_scav_skill_add
+haruka_scav_skill_npc
+; For fixing a bug in FDDAR

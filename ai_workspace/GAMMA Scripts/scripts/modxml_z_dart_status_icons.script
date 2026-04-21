@@ -1,0 +1,53 @@
+local Dart   = dart_core
+local Module = dart_module
+
+
+local mod = "statusIcons"
+
+
+function parseUIHud(XML, config, state)
+  local indicators = XML:query("indicators")[1]
+  if not indicators then
+    return
+  end
+
+  state.xmlAspectRatio = XML.aspectRatio
+
+  local scaleSettings = {
+    bounds   = XML:getBounds(indicators),
+    safezone = config.safezone,
+    anchor   = config.anchor,
+    offset   = config.offset,
+    scale    = config.scale,
+  }
+
+  XML:correctX(indicators, scaleSettings)
+  XML:correctY(indicators, scaleSettings)
+
+  -- width is already aspect-ratio corrected, so we just need
+  -- to account for the custom scale
+  XML:safeSetAttrs(indicators, function(attrs)
+    return {
+      width  = attrs.width  * config.scale,
+      height = attrs.height * config.scale,
+    }
+  end)
+
+  XML:safeIterate(indicators, function(child)
+    XML:correctX(child, {scale = config.scale})
+    XML:correctY(child, {scale = config.scale})
+
+    -- width is already aspect-ratio correct here as well
+    XML:safeSetAttrs(child, function(attrs)
+      return {
+        width  = attrs.width  * config.scale,
+        height = attrs.height * config.scale,
+      }
+    end)
+  end)
+end
+
+
+function on_xml_read()
+  Module.registerModule(mod, "ui_hud", parseUIHud)
+end

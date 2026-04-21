@@ -1,0 +1,201 @@
+pmain = pda_inter_gui
+local gt = game.translate_string
+local CustomPDAX = pda_inter_gui.CustomPDAX
+local pr = pda_inter_gui.pr
+
+function CustomPDAX:BuildRaidUpperMenu()
+	local xml = self.xml
+
+	self.selected_map_raid = nil		-- selected map to pass further, resets on this menu open and OnClickSend
+
+	-- header
+	self.map_header_raid = xml:InitStatic("mid_container_1:map_header", self.pda_t[1].mid_cont)
+	self.map_header_raid:TextControl():SetText(gt("pda_raid_choose"))
+
+	-- level list
+	self.list_map_raid = xml:InitListBox("mid_container_1:list_map", self.pda_t[1].mid_cont)
+	self.list_map_raid:SetAutoDelete(true)
+	self:Register(self.list_map_raid, "list_map")
+
+	-- raid table sorted by val
+	self.table_map_raid = pmain.t_to_ar_by_val(pmain.pdax_level_list, true, "k")
+
+	-- map image spot
+	self.map_img_raid = xml:InitStatic("mid_container_1:map_img", self.pda_t[1].mid_cont)
+	self.map_img_raid:Show(false)
+
+	-- difficulty
+	self.raid_diff = xml:InitStatic("mid_container_1:raid_diff", self.pda_t[1].mid_cont)
+	self.raid_diff:Show(false)
+
+end
+
+function CustomPDAX:InitRaidCallbacks()
+	if not pmain.pda_2d then
+		self:AddCallback("list_map", ui_events.LIST_ITEM_CLICKED, self.OnSelectRaidMap, self)
+	else
+		self:AddCallback("list_map", ui_events.LIST_ITEM_SELECT, self.OnSelectRaidMap, self)
+	end
+end
+
+class "list_item" (CUIListBoxItem)
+function list_item:__init(di) super(di)
+	self:SetTextColor(GetARGB(255, 170, 170, 170))
+	self.fn = self:GetTextItem()
+	self.fn:SetFont(GetFontLetterica18Russian())
+	self.fn:SetEllipsis(true)
+	self:SetWndSize		(vector2():set(201,21))
+
+	self.fn:SetWndPos(vector2():set(0,0))
+	self.fn:SetWndSize	(vector2():set(201,21))
+	--self.fn:SetText		(gt(GUI.table_map_raid[di]))
+	--self.map_id = GUI.table_map_raid[di]
+end
+
+function list_item:__finalize()
+end
+
+function CustomPDAX:ResetRaidMenu()
+	self.selected_map_raid = nil
+
+	self.list_map_raid:RemoveAll()
+
+	for i = 1, #self.table_map_raid do
+		local _itm = list_item(i)
+		_itm.fn:SetText		(gt(self.table_map_raid[i]))
+		_itm.map_id = self.table_map_raid[i]
+		self.list_map_raid:AddExistingItem(_itm)
+	end
+
+	self.map_img_raid:Show(false)
+	self.raid_diff:Show(false)
+
+end
+
+--leftovers from 2D
+--[[function CustomPDAX:ResetRaidMenu()
+	self.selected_map_raid = nil
+
+	self.list_map_raid:ClearList()
+
+	for i = 1, #self.table_map_raid do
+		self.list_map_raid:AddItem(gt(self.table_map_raid[i]), i)
+	end
+
+	self.list_map_raid:SetText("")
+
+	self.map_img_raid:Show(false)
+	self.raid_diff:Show(false)
+
+end]]
+
+function CustomPDAX:OnClickSendRaid()
+	local map = self.selected_map_raid
+
+	pmain.pda_msg_states[self.cur_tree].state = 5
+
+	-- save current map for strings
+	pmain.pda_msg_states[self.cur_tree].active_str = map
+
+	-- disable buttons of ALL big menus till cancelled/failed
+	self:UpdMenuButtons()
+
+	-- launch squads search (make sure it goes before "state = 5" which then starts saving and updating squads for GUI)
+	pda_inter_x_raid.launch_squad_search()
+
+	-- set active message
+	self.active_text:SetText(gt("pda_cur_active") .. "    " .. gt("pda_cur_active_raid") .. " " .. (gt(map)))
+end
+
+function CustomPDAX:OnClickExecRaid(num)
+	-- check if squad is viable and actor has enough money, else dont do anything and wait till upd_squad() updates squad or removes from the table
+	local squad_id, squad_commander = pda_inter_x_raid.get_available_squad_id_and_commander_by_idx(num)
+
+	local price = pda_inter_x_raid.Raid_available_squads[num].price
+	local has_enough_money = db.actor:money() > price
+	local can_join = squad_commander and (size_table(axr_companions.non_task_companions) + utils_obj.get_squad_count(squad_commander) <= axr_companions.max_actor_squad_size) or false
+
+	-- also check if actor has enough space for squad
+	if squad_id and can_join and has_enough_money then
+
+		-- hide bottom containers
+		self:ResetLowerMenus()
+
+		-- set state to 10
+		pmain.pda_msg_states[1].state = 10
+
+		-- take actor money
+		db.actor:give_money(-price)
+
+		-- update money text
+		self:UpdMoneyText()
+
+		-- reset active message
+		self.active_text:SetText(gt("pda_cur_active") .. "    " .. gt("pda_cur_active_none"))
+
+		-- add as companion
+		pda_inter_x_raid.add_companion_raid_squad(squad_id, squad_commander, num)
+
+		-- clear tables
+		pda_inter_x_raid.clear_raid_tables()
+
+	end
+
+end
+
+function CustomPDAX:OnSelectRaidMap()
+	--self.selected_map_raid = self.table_map_raid[self.list_map_raid:CurrentID()] OLD
+	local itm = self.list_map_raid:GetSelectedItem()
+	self.selected_map_raid = itm.map_id
+
+	--local level_map = pmain.pdax_level_list[self.selected_map_raid] OLD
+	local level_map = pmain.pdax_level_list[itm.map_id]
+
+	-- map
+	self.map_img_raid:InitTexture("encyclopedia_locations_" .. level_map[2] .. "_image")
+	self.map_img_raid:Show(true)
+
+	-- difficulty
+	local get_diff, get_color = pmain.diff_to_str(level_map[1])
+	if get_diff and get_color then
+		self.raid_diff:TextControl():SetText(gt("ui_mm_difficulty") .. ": " .. gt("pda_raid_diff_" .. get_diff))
+		self.raid_diff:TextControl():SetTextColor(get_color)
+	end
+	self.raid_diff:Show(true)
+
+	-- enable "Send" button
+	self.send_btn:Enable(true)
+
+end
+
+function CustomPDAX:UpdRaidLowerMenu()
+	-- called from pda_inter_x_raid script to refresh character info
+	local squads_t = pda_inter_x_raid.Raid_available_squads
+
+	-- reset menu first
+	self:ResetLowerMenus()
+
+	for i = 1, #squads_t do
+
+		-- show character container
+		if not (self.bottom[i].big:IsShown()) then
+			self.bottom[i].big:Show(true)
+		end
+
+		-- update icon
+		self.bottom[i].icon:InitTexture(squads_t[i].icon)
+
+		-- update description
+		local faction = gt("st_mm_new_game_faction_2")
+		local comm = gt("st_faction_" .. squads_t[i].comm)
+		local size = gt("pda_squad_size")
+		local rank = gt("ui_st_rank")
+		local time = gt("ui_inv_time")
+
+		self.bottom[i].descr:SetText(faction .. " " .. comm .. "\\n" .. size .. ": " .. squads_t[i].size .. "\\n" .. rank .. ": " .. gt("st_rank_" .. squads_t[i].rank) .. "\\n" .. time .. ": " .. squads_t[i].time .. " "..gt("ui_st_days"))
+
+		-- update button
+		self.bottom[i].btn:TextControl():SetText(gt("pda_squad_hire") .. "  " .. squads_t[i].price .. "  RU")
+	end
+
+end

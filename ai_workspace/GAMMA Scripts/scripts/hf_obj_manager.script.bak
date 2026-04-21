@@ -1,0 +1,63 @@
+local varname = "hf_data"
+
+-- Soft update
+function update_data(id, data)
+    local hf_data = se_load_var(id, nil, varname) or {}
+    for index, datum in pairs(data) do
+        hf_data[index] = datum
+    end
+    se_save_var(id, nil, varname, hf_data)
+end
+
+-- Override
+function set_data(id, data)
+    se_save_var(id, nil, varname, data)
+end
+
+-- Getter
+function get_data(id) -- need to add code to binders to update data before access
+    return se_load_var(id, nil, varname)
+end
+
+-- Destroy
+function delete_data(id)
+    se_save_var(id, nil, varname, nil)
+end
+
+-- Debugging print
+function print_data(id)
+    printf("print_data(id):"..id)
+    local hf_data = se_load_var(id, nil, varname)
+    if not hf_data then
+        printf("no data")
+        return
+    end
+    for index, datum in pairs(hf_data) do
+        printf("index:"..index..", datum:"..datum)
+    end
+end
+
+function save_state(mdata)
+    -- Try to save data from online objects
+    local function save_data(obj)
+        local wrapper = bind_hf_base.get_wrapper(obj:id())
+        if not wrapper then return end
+
+        if not wrapper.save_data then return end
+        wrapper:save_data()
+    end
+
+    for obj in game_objects_iter() do
+        save_data(obj)
+    end
+end
+
+function cleanup_data(id)
+    SendScriptCallback("hf_on_before_furniture_release", id)
+
+    delete_data(id)
+end
+
+function on_game_start()
+	RegisterScriptCallback("save_state",save_state)
+end

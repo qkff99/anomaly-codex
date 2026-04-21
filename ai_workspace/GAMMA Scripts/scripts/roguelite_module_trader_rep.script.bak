@@ -1,0 +1,201 @@
+--[[
+	Jabbers
+	16FEB2022
+	Jabbers Ironman Roguelite
+--]]
+
+local m_data = {
+    trader_rep_version = 1,
+    trader_rep = {}
+}
+
+--------------------------------
+-- Private stuff and things
+--------------------------------
+
+local function update_character_rep(data, npc)
+    local rept = data.trader_rep[npc:character_name()]
+
+    if not rept then
+        return
+    end
+
+    local abs_rept = math.abs(rept)
+    local rept_loss = abs_rept * roguelite_manager_mcm.get_config("trader_rep_penalty_percent", 0.02)
+
+    rept = rept - rept_loss
+
+    if rept < -4000 then
+        rept = -4000
+    end
+
+    local ncp_rept = npc:character_reputation()
+
+    -- Only set the npc rept if it will not go below the new game value
+    if rept > ncp_rept then
+        roguelite_manager.debug_write("Updating repuation for trader "..npc:character_name().." to "..tostring(rept)..".")
+        npc:set_character_reputation(rept)
+    else
+        roguelite_manager.debug_write("Reputation "..tostring(rept).." not set for trader "..npc:character_name().." as it is below the starting rep of "..tostring(ncp_rept)..".")
+    end
+end
+
+local function restore_prior_state_trader_rep_v1(data)
+	for i=1, #db.OnlineStalkers do
+		local npc = db.storage[db.OnlineStalkers[i]]
+		npc = npc and npc.object or level.object_by_id(db.OnlineStalkers[i])
+		if (npc and IsStalker(npc) and npc:alive()) then
+			if utils_obj.is_trader(npc) then
+				if npc:relation(db.actor) ~= game_object.enemy then
+                    if data.trader_rep and data.trader_rep[npc:character_name()] then
+                        update_character_rep(data, npc)
+                    end
+				end
+			end
+		end
+	end
+
+    local function update_by_story_id(story_id)
+        local id = story_objects.object_id_by_story_id[story_id]
+        if id then
+            local npc = db.storage[id] and db.storage[id].object
+            if npc then
+                update_character_rep(data, npc)
+            end
+        end
+    end
+
+    update_by_story_id("esc_m_trader")
+    update_by_story_id("red_tech_forester")
+end
+
+local function get_player_trader_rep()
+    local alife_state = alife_storage_manager.get_state()
+    local trader_rep = {}
+
+	for i=1, #db.OnlineStalkers do
+		local npc = db.storage[db.OnlineStalkers[i]]
+		npc = npc and npc.object or level.object_by_id(db.OnlineStalkers[i])
+		if (npc and IsStalker(npc) and npc:alive()) then
+			if utils_obj.is_trader(npc) then
+				if npc:relation(db.actor) ~= game_object.enemy then
+                    if (alife_state.actor_contacts and alife_state.actor_contacts[db.OnlineStalkers[i]]) then
+                        local rep = npc:character_reputation()
+                        roguelite_manager.debug_write("Storing trader "..npc:character_name().." with rep "..tostring(rep)..".")
+					    trader_rep[npc:character_name()] = rep
+                    end
+				end
+			end
+		end
+	end
+
+    local function add_by_story_id(story_id)
+        local id = story_objects.object_id_by_story_id[story_id]
+        if id then
+            local npc = db.storage[id] and db.storage[id].object
+            if npc then
+                local rep = npc:character_reputation()
+                roguelite_manager.debug_write("Storing trader "..npc:character_name().." with rep "..tostring(rep)..".")
+                trader_rep[npc:character_name()] = rep
+            end
+        end
+    end
+
+    add_by_story_id("esc_m_trader")
+    add_by_story_id("red_tech_forester")
+
+    return trader_rep
+end
+
+--------------------------------
+-- Game Callbacks
+--------------------------------
+function roguelite_save_state(save_data)
+    save_data.trader_rep_version = m_data.trader_rep_version
+    save_data.trader_rep = get_player_trader_rep()
+end
+
+function roguelite_load_state(save_data)
+    if roguelite_manager_mcm.get_config("is_trader_rep_restore_enabled", true) then
+        if save_data.trader_rep_version == 1 then
+            restore_prior_state_trader_rep_v1(save_data)
+        end
+    end
+end
+
+function append_mcm_options(gr)
+    roguelite_manager.debug_write("Appending trader rep module mcm options.")
+    --Charater Reputation Settings
+    table.insert(gr, { id = "line", type = "line" })
+    table.insert(gr, {
+        id = "desc_mcm",
+        type = "desc",
+        text = "ui_mcm_roguelite_trader_rep_description",
+        clr = {255, 255 ,255 ,0},
+    })
+    table.insert(gr, {
+        id = "is_trader_rep_restore_enabled",
+        type = "check",
+        val = 1,
+        def = true
+    })
+    table.insert(gr, {
+        id = "trader_rep_penalty_percent",
+        type = "track",
+        val = 2,
+        min = 0,
+        max = 1,
+        step = 0.02,
+        def = 0.02
+    })
+end
+
+function on_option_change()
+    local get_config = roguelite_manager_mcm.get_config
+
+    roguelite_manager.debug_write("is_trader_rep_restore_enabled = "..tostring(get_config("is_trader_rep_restore_enabled", true)))
+    roguelite_manager.debug_write("trader_rep_penalty_percent = "..tostring(get_config("trader_rep_penalty_percent", 0.02)))
+end
+
+function on_game_load()
+    if ui_mcm then
+	    on_option_change()
+    end
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_game_load", on_game_load)
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

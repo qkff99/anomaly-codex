@@ -1,0 +1,485 @@
+-- Fair Autocomplete - Utility Functions
+
+local ini_trade = ini_file([[items\trade\trade_generic.ltx]])
+
+-- ### DEBUG
+
+function dbg_printf(...)
+    local get_config = fair_autocomplete_mcm and fair_autocomplete_mcm.get_config
+    if not get_config then return end
+    if not get_config(nil, "debug") then return end
+    -- printf(...)
+end
+
+local function get_mcm_config(category, key)
+    if fair_autocomplete_mcm and fair_autocomplete_mcm.get_config then
+        return fair_autocomplete_mcm.get_config(category, key)
+    end
+    return nil
+end
+
+-- ### PDA CHECK
+
+function has_pda(who)
+    local valid_pda_devices = {
+        ["device_pda_1"] = true,
+        ["device_pda_2"] = true,
+        ["device_pda_3"] = true,
+        ["device_pda_milspec"] = true
+    }
+
+    who = who or db.actor
+
+    for k, v in pairs(valid_pda_devices) do
+        if (who:object(k)) and (v) then
+            return true
+        end
+    end
+
+    return false
+end
+
+-- ### ITEM PRICE CALCULATION
+
+function get_generic_sell_discount()
+    local condlist = ini_trade:r_string_to_condlist("trader", "discounts")
+    local sec = (condlist) and (xr_logic.pick_section_from_condlist(db.actor, nil, condlist))
+    if (not sec) or (sec == "") then
+        return 1
+    end
+
+    local factor = ini_trade:r_float_ex(sec, "sell") or 1
+    local eco_factor = game_difficulties.get_eco_factor("sell") or 1
+    
+    return factor * eco_factor
+end
+
+function get_base_cost(itm)
+    local sec, amount = string.match(itm, "(.*)__([1-9])")
+    if not sec then
+        return ini_sys:r_float(itm, "cost") or 0
+    end
+
+    local max_uses = ini_sys:r_float(sec, "max_uses") or amount
+    local cost = ini_sys:r_float(sec, "cost") or 0
+    return cost * (amount / max_uses)
+end
+
+-- ### NPC/SQUAD UTILITIES
+
+function stop_talk_squad(squad)
+    if not squad then
+        return
+    end
+
+    for k in squad:squad_members() do 
+        local npc = db.storage[k.id] and db.storage[k.id].object
+        if (npc) and (npc:is_talking()) then
+            db.actor:stop_talk()
+            npc:stop_talk()
+        end
+    end
+end
+
+function get_npc_name(npc_id)
+    local se_obj = alife_object(npc_id)
+    if not se_obj then return "Unknown" end
+    
+    if se_obj.character_name then
+        return se_obj:character_name()
+    end
+    
+    return se_obj:name() or "Unknown"
+end
+
+function get_npc_community(npc_id)
+    local se_obj = alife_object(npc_id)
+    if not se_obj then return "unknown" end
+    
+    if se_obj.community then
+        return se_obj:community()
+    end
+    
+    return "unknown"
+end
+
+-- ### TASK TARGET EXTRACTION
+
+local TARGET_FUNCTORS = {
+    ["bounty"] = "general_bounty_task",
+    ["assault"] = "assault_task_target_functor",
+    ["hostage"] = "simulation_task_target",
+    ["spy"] = "spy_task_target_functor",
+    ["fate"] = "general_fate",
+    ["stash"] = "drx_sl_quest_item_task_target",
+    ["delivery"] = "general_delivery",
+    ["measure"] = "general_measure",
+    ["mutant_hunt"] = "mutants_in_map_target",
+}
+
+function get_task_target_via_functor(task_id, task_type, tsk_info)
+    if task_type == "bounty" then
+        local bounty_id = axr_task_manager and axr_task_manager.bounties_by_id and axr_task_manager.bounties_by_id[task_id]
+        if bounty_id then
+            dbg_printf("[FA-Utils] Bounty target from axr_task_manager: %s", bounty_id)
+            return bounty_id
+        end
+    end
+    
+    local functor_name = TARGET_FUNCTORS[task_type]
+    if functor_name and task_functor and task_functor[functor_name] then
+        local success, result = pcall(function()
+            return task_functor[functor_name](task_id, "target", "", tsk_info)
+        end)
+        
+        if success and result and type(result) == "number" then
+            if tsk_info and result == tsk_info.task_giver_id then
+                dbg_printf("[FA-Utils] Target is task_giver_id, task at reward stage")
+                return nil, "reward_stage"
+            end
+            dbg_printf("[FA-Utils] Target from functor %s: %s", functor_name, result)
+            return result
+        end
+    end
+    
+    local var = load_var(db.actor, task_id)
+    if var then
+        if var.target_id then
+            dbg_printf("[FA-Utils] Target from load_var: %s", var.target_id)
+            return var.target_id
+        end
+        if var.spy_id then
+            return var.spy_id
+        end
+        if var.squad_id then
+            return var.squad_id
+        end
+    end
+    
+    dbg_printf("[FA-Utils] No target found for task %s (type: %s)", task_id, task_type)
+    return nil
+end
+
+function get_task_targets(task_id, target_functor)
+    local var = load_var(db.actor, task_id)
+    
+    if target_functor == "general_bounty_task" then
+        local bounty_id = axr_task_manager and axr_task_manager.bounties_by_id and axr_task_manager.bounties_by_id[task_id]
+        if bounty_id then
+            return { bounty_id }, "bounty"
+        end
+        if var and var.target_id then
+            return { var.target_id }, "bounty"
+        end
+        return nil, "bounty"
+    end
+    
+    -- Assault tasks - smart terrain with multiple enemies
+    if target_functor == "assault_task_target_functor" 
+       or target_functor == "task_targets_lostzone_all" then
+        if var and var.smart then
+            return { smart = var.smart }, "assault"
+        end
+        return nil, "assault"
+    end
+    
+    -- Hostage/simulation tasks
+    if target_functor == "simulation_task_target" then
+        if var and var.squad_id then
+            return { var.squad_id }, "hostage"
+        end
+        return nil, "hostage"
+    end
+    
+    -- Spy extraction
+    if target_functor == "spy_task_target_functor" then
+        if var and var.spy_id then
+            return { var.spy_id }, "spy"
+        end
+        return nil, "spy"
+    end
+    
+    -- Fate tasks
+    if target_functor == "general_fate" then
+        if var and var.target_id then
+            return { var.target_id }, "fate"
+        end
+        return nil, "fate"
+    end
+    
+    -- Mutant hunting tasks (Spring Clean, etc.)
+    if target_functor == "mutants_in_map_target" then
+        if var then
+            return { smart = var.smart, section = var.mutant_type }, "mutant_hunt"
+        end
+        return nil, "mutant_hunt"
+    end
+    
+    -- Research hunt (Sakharov's mutant tasks)
+    if target_functor == "yan_ecolog_semenov_task_target_1" then
+        if var and var.target_id then
+            return { var.target_id }, "mutant_single"
+        end
+        return nil, "mutant_single"
+    end
+    
+    -- Recover tracker (mutant with tracker)
+    if target_functor == "recover_mutant_data_target" then
+        if var and var.target_id then
+            return { var.target_id }, "mutant_single"
+        end
+        return nil, "mutant_single"
+    end
+    
+    -- Default - no target tracking
+    return nil, "unknown"
+end
+
+-- get smart terrain name from task
+function get_task_smart_terrain(task_id, target_functor)
+    local var = load_var(db.actor, task_id)
+    
+    if not var then return nil end
+    
+    if var.smart then
+        return var.smart
+    end
+    
+    if var.smart_name then
+        return var.smart_name
+    end
+    
+    if var.target_smart then
+        return var.target_smart
+    end
+    
+    if target_functor == "assault_task_target_functor" and task_functor and task_functor.assault_task_target_functor then
+        local tm = task_manager.get_task_manager()
+        local tsk_info = tm and tm.task_info and tm.task_info[task_id]
+        if tsk_info then
+            local success, result = pcall(function()
+                return task_functor.assault_task_target_functor(task_id, "target", "", tsk_info)
+            end)
+            if success and result and type(result) == "string" then
+                return result
+            end
+        end
+    end
+    
+    return nil
+end
+
+-- ### TASK GIVER UTILITIES
+
+function is_task_giver_valid(task_giver_id)
+    if not task_giver_id then return false end
+    
+    local se_obj = alife_object(task_giver_id)
+    if not se_obj then return false end
+    
+    if se_obj.alive then
+        local success, is_alive = pcall(function()
+            return se_obj:alive()
+        end)
+        if success and not is_alive then
+            return false
+        end
+    end
+    
+    return true
+end
+
+-- ### MESSAGE DISPLAY
+
+function show_task_stolen_message(task_id, task_giver_id)
+    local sender_obj = alife_object(task_giver_id)
+    if not sender_obj then
+        db.actor:give_game_news(
+            game.translate_string("st_fa_task_stolen_title"),
+            game.translate_string("st_fa_task_stolen_generic"),
+            "ui_inGame2_PD_Torgovec_otryad",
+            0, 5000, 0
+        )
+        return
+    end
+    
+    if sender_obj:clsid() == clsid.online_offline_group_s then
+        local commander_obj = alife_object(sender_obj:commander_id())
+        if commander_obj then
+            sender_obj = commander_obj
+        end
+    end
+    
+    xr_sound.set_sound_play(AC_ID, "pda_tips")
+    
+    local message_title = "PDA"
+    if sender_obj.character_name and sender_obj.community then
+        message_title = string.format("%s, %s", 
+            sender_obj:character_name(), 
+            game.translate_string(sender_obj:community()))
+    end
+    
+    local message_body = game.translate_string("st_fa_task_stolen_message")
+    
+    local icon = "ui_inGame2_PD_Torgovec_otryad"
+    if sender_obj.character_icon then
+        icon = sender_obj:character_icon()
+    end
+    
+    db.actor:give_game_news(message_title, message_body, icon, 0, 5000, 0)
+end
+
+function show_task_complete_message(task_id, task_giver_id, finish_message)
+    if not finish_message then
+        dbg_printf("[FA-Utils] Couldn't send confirmation message: finish message doesn't exist")
+        return
+    end
+    
+    local sender_obj = alife_object(task_giver_id)
+    if not sender_obj then
+        printf("![FA-Utils] Couldn't send confirmation message: task giver is nil")
+        return
+    end
+    
+    if sender_obj:clsid() == clsid.online_offline_group_s then
+        local commander_obj = alife_object(sender_obj:commander_id())
+        if not commander_obj then
+            printf("![FA-Utils] Couldn't send confirmation message: task giver is an invalid squad")
+            return
+        end
+        sender_obj = commander_obj
+    end
+    
+    if (not sender_obj.character_name) or (not sender_obj.community) or (not sender_obj.character_icon) then
+        printf("![FA-Utils] Couldn't send confirmation message: task giver is invalid")
+        return
+    end
+    
+    xr_sound.set_sound_play(AC_ID, "pda_tips")
+    local message_title = string.format("%s, %s", 
+        sender_obj:character_name(), 
+        game.translate_string(sender_obj:community()))
+    db.actor:give_game_news(message_title, game.translate_string(finish_message), sender_obj:character_icon(), 0, 5000, 0)
+end
+
+-- ### LIST UTILITIES
+
+function is_in_list(list_string, task_id)
+    if not list_string or list_string == "none" or list_string == "" then 
+        return false 
+    end
+    
+    local items = str_explode(list_string, ",")
+    for i = 1, #items do
+        local item = items[i]:gsub("^%s*(.-)%s*$", "%1")
+        if item == task_id then
+            return true
+        end
+    end
+    
+    return false
+end
+
+-- ### TASK STATE HELPERS
+
+function cancel_task_no_penalty(task_id)
+    local tm = task_manager.get_task_manager()
+    if not tm then 
+        dbg_printf("[FA-Utils] cancel_task_no_penalty: task_manager not available")
+        return false 
+    end
+    
+    local task_info = tm.task_info and tm.task_info[task_id]
+    if not task_info then 
+        dbg_printf("[FA-Utils] cancel_task_no_penalty: task %s not found", task_id)
+        return false 
+    end
+    
+    -- Clear on_fail effects before failing to prevent reputation loss
+    dbg_printf("[FA-Utils] Cancelling task %s without penalty", task_id)
+    local success, err = pcall(function()
+        -- Store and clear on_fail to prevent reputation loss
+        -- The on_fail typically contains things like:
+        -- %=dec_faction_goodwill_to_actor(actor_faction:10)%
+        task_info.on_fail = nil
+        
+        -- Fail the task
+        tm:set_task_failed(task_id)
+    end)
+    
+    if not success then
+        -- printf("![FA-Utils] Error cancelling task %s: %s", task_id, tostring(err))
+        return false
+    end
+    
+    dbg_printf("[FA-Utils] Cancelled task %s without penalty", task_id)
+    return true
+end
+
+-- Force fail a task (with penalty) - for cases where we want normal failure
+function fail_task_with_penalty(task_id)
+    local tm = task_manager.get_task_manager()
+    if not tm then return false end
+    
+    local task_info = tm.task_info and tm.task_info[task_id]
+    if not task_info then return false end
+    
+    local success, err = pcall(function()
+        tm:set_task_failed(task_id)
+    end)
+    
+    if not success then
+        -- printf("![FA-Utils] Error failing task %s: %s", task_id, tostring(err))
+        return false
+    end
+    
+    return true
+end
+
+-- Complete task but with no rewards (for edge cases)
+function complete_task_no_reward(task_id)
+    local tm = task_manager.get_task_manager()
+    if not tm then return false end
+    
+    local task_info = tm.task_info and tm.task_info[task_id]
+    if not task_info then return false end
+    
+    local success, err = pcall(function()
+        -- Clear rewards
+        task_info.on_complete = nil
+        
+        -- Complete the task
+        tm:set_task_completed(task_id)
+    end)
+    
+    if not success then
+        -- printf("![FA-Utils] Error completing task %s: %s", task_id, tostring(err))
+        return false
+    end
+    
+    dbg_printf("[FA-Utils] Completed task %s without rewards", task_id)
+    return true
+end
+
+-- Check if a task is still in progress (stage < 250)
+function is_task_in_progress(task_id)
+    local tm = task_manager.get_task_manager()
+    if not tm or not tm.task_info then return false end
+    
+    local task_info = tm.task_info[task_id]
+    if not task_info then return false end
+    
+    local stage = task_info.stage
+    return stage and stage < 250
+end
+
+-- Get task stage safely
+function get_task_stage(task_id)
+    local tm = task_manager.get_task_manager()
+    if not tm or not tm.task_info then return nil end
+    
+    local task_info = tm.task_info[task_id]
+    if not task_info then return nil end
+    
+    return task_info.stage
+end

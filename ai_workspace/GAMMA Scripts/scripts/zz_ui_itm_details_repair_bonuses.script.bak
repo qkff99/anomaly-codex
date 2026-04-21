@@ -1,0 +1,133 @@
+--Supported Repair Kits for Material table
+function build_repair_kits_by_material()
+	local result = {}
+	for k,v in pairs(GetItemList("repair")) do
+		local repair_parts_sections = parse_list(ini_sys, k, "repair_parts_sections")
+		if repair_parts_sections and (#repair_parts_sections > 0) then
+			for i,part in ipairs(repair_parts_sections) do
+				--Check if part definition exist in game
+				if (ini_sys:section_exist(part)) then
+					if (not result[part]) then
+						result[part] = {}
+					end
+					result[part][#result[part]+1] = k
+				end
+			end
+		end
+	end
+	return result
+end
+
+local repair_kits_by_material = repair_kits_by_material or build_repair_kits_by_material()
+
+--Clone function function
+local function clone_function(fn)
+  local dumped = string.dump(fn)
+  local cloned = loadstring(dumped)
+  local i = 1
+  while true do
+    local name = debug.getupvalue(fn, i)
+    if not name then
+      break
+    end
+    debug.upvaluejoin(cloned, i, fn, i)
+    i = i + 1
+  end
+  return cloned
+end
+
+--Cloning original function to make super()-like function
+ui_itm_details.UIItemSheet.ResetSuper = clone_function(ui_itm_details.UIItemSheet.Reset)
+
+ui_itm_details.UIItemSheet.Reset = function(self, obj)
+	printf("calling override ui_itm_details.UIItemSheet.Reset")
+	--Call super function first
+	ui_itm_details.UIItemSheet.ResetSuper(self, obj)
+	printf("Super function ui_itm_details.UIItemSheet.Reset called")
+
+	--MOD Item Details Repair Bonuses edit
+	local xml = self.xml
+	local sec = ini_sys:r_string_ex(obj:section(),"parent_section") or obj:section()
+
+	if (self.CC["support"]) then
+		--some items such as Light Outfit Repait Kit have repair parts
+		--that don't exist in a game and when CellContainer is created
+		--those parts are still added causing buggy behaviour of 
+		--CellItems to manipulate them, resulting in CTD.
+		--
+		--This code creates default area field for such CellItems to 
+		--fix them and use CellContainer ReInit without CTD
+		for idx,ci in pairs(self.CC["support"].cell) do
+			ci.area = ci.area or {
+				y = 0,
+				x = 0,
+				w = 0,
+				h = 0
+			}
+		end
+		-- Supported repair material
+		local repair_parts = parse_list(ini_sys, sec, "repair_parts_sections")
+		if repair_parts and (#repair_parts > 0) then
+			--Get repair material bonus
+			local inf = {}
+			local valid_repair_parts = {}
+			local sec_part_bonus = ini_sys:r_float_ex(sec, "repair_part_bonus")
+			local sec_parts_multi = ini_sys:r_float_ex(sec, "repair_parts_multi") or 1
+			for i,part in ipairs(repair_parts) do
+				--Check if part definition exist in game
+				if (ini_sys:section_exist(part)) then
+					valid_repair_parts[#valid_repair_parts+1] = part
+					local part_bonus = ini_sys:r_float_ex(part, "repair_part_bonus") or sec_part_bonus
+					--printf("part %s bonus - %s", part, part_bonus)
+					part_bonus = (game_achievements.has_achievement("mechanized_warfare")) and (part_bonus + 0.02) or part_bonus
+					part_bonus = clamp(math.floor(part_bonus*100)*sec_parts_multi, 0, 100)
+					inf[#inf+1] = part_bonus
+				end
+			end
+
+			if (#valid_repair_parts ~= 0) then
+				self.CC["support"]:Reinit(valid_repair_parts, inf)
+				--Add +<bonus> text to repair material
+				local clr_b = utils_xml.get_color("pda_blue",true)
+				local fnt = GetFontSmall()
+				for idx,ci in pairs(self.CC["support"].cell) do
+					if (ci:IsShown() and ci.flags.info) then
+						local con100 = ci.flags.info
+						local con = ci.flags.info / 100
+						ci:Add_CustomText( ("+"..con100), nil, nil, clr_b, fnt)
+					end
+				end
+			end
+		end
+	end
+	
+	--Supported Repair Kits
+	local repair_kits = {}
+	local string_find = string.find
+
+	--Check if useable material is a container with artefact
+	--and get it without the artefact
+	local useable_material = sec
+	if string_find(useable_material,"af_") then
+		if (string_find(useable_material, "(lead.-_box)",3)) then
+			useable_material = "lead_box"
+		elseif (string_find(useable_material, "(af.-_iam)",3)) then
+			useable_material = "af_iam"
+		elseif (string_find(useable_material, "(af.-_aac)",3)) then
+			useable_material = "af_aac"
+		elseif (string_find(useable_material, "(af.-_aam)",3)) then
+			useable_material = "af_aam"
+		end
+	end
+
+	if (repair_kits_by_material[useable_material]) then
+		printf('Repair part %s has supported repair kits', useable_material)
+		repair_kits = repair_kits_by_material[useable_material]
+	end
+	
+	if (#repair_kits > 0) then
+		self:AddText(xml, "text_b_l", 0, game.translate_string("st_ui_repair_kits_by_material")) 
+		self.CC["repair_kits"] = self:AddContainer(xml, "cont", 0, repair_kits)
+		self:AddLine(xml, 0)
+	end
+end

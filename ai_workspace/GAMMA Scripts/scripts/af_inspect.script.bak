@@ -1,0 +1,182 @@
+af_anim_item = nil
+active_slot = nil
+particle = nil
+pos = nil
+-- fov = nil
+ini = ini_file("mod_system_af_inspect_anim.ltx")
+particle = particles_object("artefact\\effects\\af_idle_dist")
+
+containers = {
+    "af_aac",
+    "af_aam",
+    "af_iam",
+    "lead_box"
+}
+
+function inspect(itm)
+	local function contains_container(item_section)
+		for _, container in ipairs(containers) do
+			if string.find(item_section, container) then
+				return true
+			end
+		end
+		return false
+	end
+
+	if contains_container(itm:section()) then
+		if system_ini():line_exist(itm:section(), "1icon_layer") then
+			local art = system_ini():r_string_ex(itm:section(), "1icon_layer", "")
+			af_anim_item = art .. "_hud"
+		end
+	else
+		af_anim_item = itm:section() .. "_hud"
+	end
+	
+	if not ini:section_exist("tch_"..af_anim_item) then
+		af_anim_item = nil
+		active_slot = nil
+		get_hud():HideActorMenu()
+		return
+	end
+
+	active_slot = db.actor:active_slot()
+	----------------------------------------
+	
+	get_hud():HideActorMenu()
+	level.disable_input()
+	
+	give_object_to_actor("tch_"..af_anim_item)	
+	level.add_call( function () return db.actor:object("tch_"..af_anim_item) end, function ()
+		db.actor:activate_slot(14)
+	end)
+	
+	level.add_call( function () return db.actor:active_slot() == 14 end, function ()
+		particle:play_at_pos(get_play_pos())
+		level.enable_input()
+		local r, g, b = get_light_rgb(af_anim_item)
+		light_on(r,g,b,1,50,0.2,0.3)
+	end)
+end
+
+function get_light_rgb(af_anim_item)
+	local not_hud_itm = string.gsub(af_anim_item, "_hud$", "")
+    if system_ini():line_exist(not_hud_itm, "trail_light_color") then
+        local rgb = system_ini():r_string_ex(not_hud_itm,"trail_light_color","")
+        local r, g, b = rgb:match("([^,]+),([^,]+),([^,]+)")
+        r = tonumber(r)
+        g = tonumber(g)
+        b = tonumber(b)
+        return r, g, b
+    end
+end
+
+function get_play_pos()
+	pos = db.actor:bone_position("jaw_1"):add(device().cam_dir:mul(0.3))
+	pos.y = pos.y - 0.1
+	return pos
+end
+
+function release_af()
+	level.disable_input()
+	db.actor:activate_slot(active_slot)
+	
+	level.add_call( function () return db.actor:active_slot() == active_slot end, function ()
+		alife():release(alife():object(db.actor:object("tch_"..af_anim_item):id()), true)
+		af_anim_item = nil
+		active_slot = nil
+		particle:stop()
+		light_off()
+		level.enable_input()
+	end)
+end
+
+function light_on(r,g,b,range,bright,y_pos,dirmult)
+	light = script_light()
+	light.type = 1
+	light.range = range
+	light_bright = bright
+	light_range = range
+	light.lanim = "koster_01_electra"
+	light.lanim_brightness = 1
+	light.hud_mode = false
+	light.shadow = false
+	light.volumetric = false
+	light.enabled = true
+	light.color = fcolor():set(r,g,b,bright)
+	local dir = device().cam_dir
+	local pos = device().cam_pos
+	pos = pos:add(dir:mul(dirmult))
+	pos.y = pos.y - y_pos
+	light:set_position(pos)
+	light:set_direction(dir)
+	light:update()
+	CreateTimeEvent("l_move", "l_move", 0, light_move,r,g,b,y_pos,dirmult)
+	light_flag = true
+	return true
+end
+
+function light_move(r,g,b,y_pos,dirmult)
+	light_bright = light_bright
+	light_range = light_range
+	light.range = light_range
+	light.color = fcolor():set(r,g,b,light_bright)
+	local dir = device().cam_dir
+	local pos = device().cam_pos
+	pos = pos:add(dir:mul(dirmult))
+	pos.y = pos.y - y_pos
+	light:set_position(pos)
+	light:set_direction(dir)
+	light:update()
+	if light_flag then
+		return false
+	else
+		return true
+	end
+end
+
+function light_off()
+	if not light then return end
+
+	light.enabled = false
+	light:update()
+	light_flag = false
+	return true
+end
+
+function on_key_press()
+	if af_anim_item == nil then return end
+	
+	release_af()
+end
+
+function actor_on_update()
+	if af_anim_item then
+		particle:move_to(get_play_pos(),device().cam_dir)
+	end
+end
+
+function actor_on_first_update()
+	if db.actor:item_in_slot(14) then
+		alife():release(alife():object(db.actor:object(db.actor:item_in_slot(14):section()):id()), true)
+	end
+end
+
+
+function st_inspect(itm)
+	local containersSet = {}
+	for _, itm in ipairs(containers) do
+		containersSet[itm] = true
+	end
+
+	if containersSet[itm:section()] then
+		return
+	end
+	
+	return game.translate_string("st_inspect")
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_key_press",on_key_press)
+	RegisterScriptCallback("actor_on_update",actor_on_update)
+	RegisterScriptCallback("actor_on_first_update",actor_on_first_update)
+end

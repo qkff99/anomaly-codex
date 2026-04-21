@@ -1,0 +1,47 @@
+<!-- 
+	Anomaly Modconfiguration Menu strings
+	
+-->
+
+<string_table>
+
+	<string id="ui_mcm_menu_bountysquads">
+		<text>Expansión de escuadrones cazarrecompensas</text>
+	</string>
+	<string id="ui_mcm_title_bountysquads">
+		<text>Expansión de escuadrones cazarrecompensas</text>
+	</string>
+
+	<string id="ui_mcm_bountysquads_delay">
+		<text>Retardo entre posibles apariciones</text>
+	</string>
+	<string id="ui_mcm_bountysquads_delay_desc">
+		<text>La cantidad mínima de tiempo (en horas del juego) que debe pasar antes de considerar siquiera generar un escuadrón cazarrecompensas. Que aparezca un escuadrón cazarrecompensas o no depende de las posibilidades de cada facción de generar un escuadrón cazarrecompensas.</text>
+	</string>
+	<string id="ui_mcm_bountysquads_delay_spawn">
+		<text>Tiempo entre actualizaciones de aparición</text>
+	</string>
+	<string id="ui_mcm_bountysquads_delay_spawn_desc">
+		<text>Cantidad de tiempo (en segundos reales) entre actualizaciones de la facción, reputación y comprobación de apariciones del jugador. El tiempo se cuenta desde que se carga la partida, así que el jugador debe estar a una distancia razonable de una posición hostil durante esta cantidad de tiempo antes de que un escuadrón cazarrecompensas tenga alguna posibilidad de aparecer.</text>
+	</string>
+	<string id="ui_mcm_bountysquads_delay_state">
+		<text>Tiempo entre actualizaciones de ubicación del jugador</text>
+	</string>
+	<string id="ui_mcm_bountysquads_delay_state_desc">
+		<text>Cantidad de tiempo (en segundos reales) entre actualizaciones de la ubicación del jugador. Los escuadrones cazarrecompensas volverán a triangular la ubicación actual del jugador después de este tiempo. También se retirarán si el jugador se encuentra en un lugar «seguro» con aliados cercanos.</text>
+	</string>
+	<string id="ui_mcm_bountysquads_base_spawn_chance">
+		<text>Probabilidad de aparición de base (%)</text>
+	</string>
+	<string id="ui_mcm_bountysquads_base_spawn_chance_desc">
+		<text>Esta es la probabilidad de aparición de base, el porcentaje que tiene un escuadrón cazarrecompensas de aparecer tras una actualización si el jugador no ha matado a ningún miembro de esa facción. La probabilidad de aparición total para que aparezca un escuadrón cazarrecompensas se calcula como base_spawn_chance * faction_multiplier, donde el multiplicador de facción depende de cuántos miembros de la facción han muerto a manos del jugador. Se recomienda mantener este valor bajo, ya que el multiplicador de facción garantizará que sea muy probable que acaben apareciendo los escuadrones cazarrecompensas.</text>
+	</string>
+	<string id="ui_mcm_bountysquads_spawn_mult_attacked_increment">
+		<text>Incremento de multiplicador por muerte</text>
+	</string>
+	<string id="ui_mcm_bountysquads_spawn_mult_attacked_increment_desc">
+		<text>Si el jugador es especialmente beligerante con una facción específica, esta tendrá una mayor probabilidad de enviar escuadrones cazarrecompensas. Cada vez que el jugador mata a un stalker, la facción de la víctima aumentará su multiplicador para generar un escuadrón cazarrecompensas, faction_multiplier, en esta cantidad. Por ejemplo, si el valor está fijado en 0,5, la primera vez que el jugador mate a un miembro de una facción el multiplicador subirá a 1,5. La siguiente víctima lo subirá a 2,0, y así sucesivamente. Este valor se multiplica por la probabilidad de aparición de base cuando esa facción considere necesario generar un escuadrón cazarrecompensas.</text>
+	</string>
+
+
+</string_table>

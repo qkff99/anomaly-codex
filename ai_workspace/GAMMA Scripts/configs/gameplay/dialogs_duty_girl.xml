@@ -1,0 +1,152 @@
+
+<dialog id="duty_girl_companion_join_dialog">
+	<precondition>dialogs_duty_girl.duty_girl_companion_join_dialog_con</precondition>
+	<init_func>dialogs_duty_girl.duty_girl_companion_join_dialog</init_func>
+</dialog>
+
+<dialog id="duty_girl_companion_leave_dialog">
+	<precondition>dialogs_duty_girl.duty_girl_companion_leave_dialog_con</precondition>
+	<init_func>dialogs_duty_girl.duty_girl_companion_leave_dialog</init_func>
+</dialog>
+
+<dialog id="duty_girl_actor_ask_companion_dialog">
+	<precondition>dialogs_duty_girl.duty_girl_actor_ask_companion_dialog_con</precondition>
+	<init_func>dialogs_duty_girl.duty_girl_actor_ask_companion_dialog</init_func>
+</dialog>
+
+<dialog id="duty_girl_first_meet">
+	<dont_has_info>duty_girl_first_meet</dont_has_info>
+	<init_func>dialogs_duty_girl.duty_girl_first_meet</init_func>
+</dialog>
+
+<dialog id="duty_girl_chat">
+	<has_info>duty_girl_first_meet</has_info>
+	<phrase_list>
+	    <phrase id="0">
+		    <text>duty_girl_chat_0</text>
+			<next>1</next>
+		</phrase>
+		<phrase id="1">
+		    <text>duty_girl_chat_1</text>
+			<next>10</next>
+			<next>20</next>
+			<next>30</next>
+			<next>40</next>
+			<next>50</next>
+		</phrase>
+		<phrase id="10">
+		    <has_info>duty_girl_hunting_chimera_done</has_info>
+		    <text>duty_girl_chat_hunting_chimera_0</text>
+			<next>11</next>
+		</phrase>
+		<phrase id="11">
+		    <text>duty_girl_chat_hunting_chimera_1</text>
+			<next>50</next>
+		</phrase>
+		<phrase id="20">
+		    <has_info>duty_girl_monolith_elite_done</has_info>
+		    <text>duty_girl_chat_monolith_elite_0</text>
+			<next>21</next>
+		</phrase>
+		<phrase id="21">
+		    <text>duty_girl_chat_monolith_elite_1</text>
+			<next>50</next>
+		</phrase>
+		<phrase id="30">
+		    <has_info>duty_girl_capture_the_brirge_done</has_info>
+		    <text>duty_girl_chat_capture_the_brirge_0</text>
+			<next>31</next>
+		</phrase>
+		<phrase id="31">
+		    <text>duty_girl_chat_capture_the_brirge_1</text>
+			<next>50</next>
+		</phrase>
+		<phrase id="40">
+		    <has_info>duty_girl_capture_the_brirge_done</has_info>
+		    <text>duty_girl_chat_capture_the_brirge_2</text>
+			<next>41</next>
+		</phrase>
+		<phrase id="41">
+		    <text>duty_girl_chat_capture_the_brirge_3</text>
+			<next>50</next>
+		</phrase>
+		<phrase id="50">
+		    <text>duty_girl_chat_2</text>
+		</phrase>
+	</phrase_list>
+</dialog>
+
+<dialog id="duty_girl_no_more_quest_suggest_companion">
+	<precondition>dialogs_duty_girl.duty_girl_no_more_quest_suggest_companion_con</precondition>
+	<init_func>dialogs_duty_girl.duty_girl_no_more_quest_suggest_companion</init_func>
+</dialog>
+
+<!----------------------------------------------------------------------------------------------------
+	Quests
+------------------------------------------------------------------------------------------------------>
+<dialog id="duty_girl_hunting_chimera_init">
+	<precondition>dialogs_duty_girl.duty_girl_hunting_chimera_init_con</precondition>
+	<init_func>dialogs_duty_girl.duty_girl_hunting_chimera_init</init_func>
+</dialog>
+<dialog id="duty_girl_hunting_chimera_move">
+	<precondition>dialogs_duty_girl.duty_girl_hunting_chimera_move_con</precondition>
+	<init_func>dialogs_duty_girl.duty_girl_hunting_chimera_move</init_func>
+</dialog>
+<dialog id="duty_girl_hunting_chimera_done">
+	<precondition>dialogs_duty_girl.duty_girl_hunting_chimera_done_con</precondition>
+	<init_func>dialogs_duty_girl.duty_girl_hunting_chimera_done</init_func>
+</dialog>
+
+<dialog id="duty_girl_monolith_elite_init">
+	<precondition>dialogs_duty_girl.duty_girl_monolith_elite_init_con</precondition>
+	<init_func>dialogs_duty_girl.duty_girl_monolith_elite_init</init_func>
+</dialog>
+
+<dialog id="duty_girl_monolith_elite_join">
+	<precondition>dialogs_duty_girl.duty_girl_monolith_elite_join_con</precondition>
+	<phrase_list>
+	    <phrase id="0">
+		    <script_text>dialogs_duty_girl.get_phrase_monolith_elite_join_0</script_text>
+			<next>1</next>
+		</phrase>
+		<phrase id="1">
+		    <script_text>dialogs_duty_girl.get_phrase_monolith_elite_join_1</script_text>
+			<action>dialogs_duty_girl.action_monolith_elite_join</action>
+		</phrase>
+	</phrase_list>
+</dialog>
+
+<dialog id="duty_girl_monolith_elite_done">
+	<precondition>dialogs_duty_girl.duty_girl_monolith_elite_done_con</precondition>
+	<init_func>dialogs_duty_girl.duty_girl_monolith_elite_done</init_func>
+</dialog>
+
+<dialog id="duty_girl_loot_stash_init">
+	<precondition>dialogs_duty_girl.duty_girl_loot_stash_init_con</precondition>
+	<init_func>dialogs_duty_girl.duty_girl_loot_stash_init</init_func>
+</dialog>
+
+<dialog id="duty_girl_capture_the_brirge_init">
+	<precondition>dialogs_duty_girl.duty_girl_capture_the_brirge_init_con</precondition>
+	<init_func>dialogs_duty_girl.duty_girl_capture_the_brirge_init</init_func>
+</dialog>
+
+<dialog id="duty_girl_capture_the_brirge_join">
+	<precondition>dialogs_duty_girl.duty_girl_capture_the_brirge_join_con</precondition>
+	<phrase_list>
+	    <phrase id="0">
+		    <script_text>dialogs_duty_girl.get_phrase_capture_the_brirge_join_0</script_text>
+			<next>1</next>
+		</phrase>
+		<phrase id="1">
+		    <script_text>dialogs_duty_girl.get_phrase_capture_the_brirge_join_1</script_text>
+			<action>dialogs_duty_girl.action_capture_the_brirge_join</action>
+		</phrase>
+	</phrase_list>
+</dialog>
+
+<dialog id="duty_girl_capture_the_brirge_done">
+	<precondition>dialogs_duty_girl.duty_girl_capture_the_brirge_done_con</precondition>
+	<init_func>dialogs_duty_girl.duty_girl_capture_the_brirge_done</init_func>
+</dialog>
+

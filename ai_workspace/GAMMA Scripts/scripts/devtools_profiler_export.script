@@ -1,0 +1,377 @@
+--[[
+=======================================================================================
+    DevTools Profiler - Export Module
+    
+    Handles CSV export and flamegraph data collection/export.
+    
+    Depends on:
+    - devtools_profiler_state (shared state)
+    - devtools_profiler_stats (statistics access)
+=======================================================================================
+--]]
+
+-- Reference to shared state
+local S = devtools_profiler_state
+
+-- Reference to stats module
+local Stats = devtools_profiler_stats
+
+-- ============================================================================
+-- CSV EXPORT
+-- ============================================================================
+
+-- Escape CSV field (handles commas, quotes, newlines)
+local function escape_csv_field(field)
+	local str = tostring(field)
+	if string.find(str, '[,"\n\r]') then
+		str = string.gsub(str, '"', '""')
+		return '"' .. str .. '"'
+	end
+	return str
+end
+
+-- Export all statistics to CSV file
+function export_to_csv(filepath)
+	local all_stats = Stats.get_all_stats()
+	local names = Stats.get_tracked_functions()
+
+	if #names == 0 then
+		printf("[DEVTOOLS] No statistics to export")
+		return false
+	end
+
+	local path = filepath
+	if not path or path == "" then
+		local appdata = getFS():update_path("$app_data_root$", "")
+		local devtools_dir
+		if appdata and appdata ~= "" then
+			devtools_dir = appdata .. "devtools\\"
+		else
+			devtools_dir = getFS():update_path("$logs$", "") .. "devtools\\"
+		end
+		path = devtools_dir .. "devtools_profiler_export.csv"
+	end
+
+	local file = io.open(path, "w")
+	if not file then
+		printf("[DEVTOOLS] Failed to open file for CSV export: " .. tostring(path))
+		return false
+	end
+
+	file:write("Function,Parent Function,Call Count,Avg (ms),Median (ms),Min (ms),Max (ms),Total (ms),Last (ms),Self Total (ms),Self Avg (ms),Self Median (ms),Self Min (ms),Self Max (ms)\n")
+
+	table.sort(names, function(a, b)
+		local stats_a = all_stats[a]
+		local stats_b = all_stats[b]
+		if stats_a and stats_b then
+			return stats_a.total_ms > stats_b.total_ms
+		end
+		return a < b
+	end)
+
+	for _, name in ipairs(names) do
+		local s = all_stats[name]
+		if s then
+			file:write(
+				string.format(
+					"%s,%s,%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n",
+					escape_csv_field(name),
+					escape_csv_field(s.most_common_parent or ""),
+					s.call_count,
+					s.avg_ms,
+					s.median_ms,
+					s.min_ms == math.huge and 0 or s.min_ms,
+					s.max_ms,
+					s.total_ms,
+					s.last_ms,
+					s.self_total_ms or 0,
+					s.self_avg_ms or 0,
+					s.self_median_ms or 0,
+					s.self_min_ms == math.huge and 0 or s.self_min_ms,
+					s.self_max_ms or 0
+				)
+			)
+		end
+	end
+
+	file:close()
+	printf("[DEVTOOLS] CSV export saved to: " .. tostring(path) .. " (" .. tostring(#names) .. " functions)")
+	return true, path
+end
+
+-- Get default CSV export path
+function get_csv_export_path()
+	local appdata = getFS():update_path("$app_data_root$", "")
+	local devtools_dir
+	if appdata and appdata ~= "" then
+		devtools_dir = appdata .. "devtools\\"
+	else
+		devtools_dir = getFS():update_path("$logs$", "") .. "devtools\\"
+	end
+	return devtools_dir .. "devtools_profiler_export.csv"
+end
+
+-- ============================================================================
+-- FLAMEGRAPH
+-- ============================================================================
+
+function enable_flamegraph()
+	S.flamegraph_enabled = true
+	S.flamegraph_samples = {}
+	S.flamegraph_total_samples = 0
+	printf("[DEVTOOLS] Flamegraph data collection ENABLED")
+end
+
+function disable_flamegraph()
+	S.flamegraph_enabled = false
+	printf("[DEVTOOLS] Flamegraph data collection DISABLED")
+end
+
+function is_flamegraph_enabled()
+	return S.flamegraph_enabled
+end
+
+function get_flamegraph_sample_count()
+	return S.flamegraph_total_samples
+end
+
+function reset_flamegraph()
+	S.flamegraph_samples = {}
+	S.flamegraph_total_samples = 0
+end
+
+function export_flamegraph(filepath)
+	if not S.flamegraph_enabled or S.flamegraph_total_samples == 0 then
+		printf("[DEVTOOLS] No flamegraph data to export (enable flamegraph collection first)")
+		return false
+	end
+
+	local path = filepath
+	if not path or path == "" then
+		local appdata = getFS():update_path("$app_data_root$", "")
+		local devtools_dir
+		if appdata and appdata ~= "" then
+			devtools_dir = appdata .. "devtools\\"
+		else
+			devtools_dir = getFS():update_path("$logs$", "") .. "devtools\\"
+		end
+		path = devtools_dir .. "devtools_flamegraph.folded"
+	end
+
+	local file = io.open(path, "w")
+	if not file then
+		printf("[DEVTOOLS] Failed to open file for flamegraph export: " .. tostring(path))
+		return false
+	end
+
+	local sorted_stacks = {}
+	for stack_key, time_ms in pairs(S.flamegraph_samples) do
+		table.insert(sorted_stacks, { key = stack_key, time = time_ms })
+	end
+	table.sort(sorted_stacks, function(a, b)
+		return a.key < b.key
+	end)
+
+	for _, entry in ipairs(sorted_stacks) do
+		local time_us = math.floor(entry.time * 1000)
+		file:write(string.format("%s %d\n", entry.key, time_us))
+	end
+
+	file:close()
+	printf(
+		"[DEVTOOLS] Flamegraph exported to: %s (%s unique stacks, %s total samples)",
+		path,
+		tostring(#sorted_stacks),
+		tostring(S.flamegraph_total_samples)
+	)
+	return true, path
+end
+
+function get_flamegraph_export_path()
+	local appdata = getFS():update_path("$app_data_root$", "")
+	local devtools_dir
+	if appdata and appdata ~= "" then
+		devtools_dir = appdata .. "devtools\\"
+	else
+		devtools_dir = getFS():update_path("$logs$", "") .. "devtools\\"
+	end
+	return devtools_dir .. "devtools_flamegraph.folded"
+end
+
+-- ============================================================================
+-- DOT CALL GRAPH EXPORT
+-- ============================================================================
+
+-- Escape DOT identifier (wrap in quotes if needed)
+local function escape_dot_id(id)
+	local str = tostring(id)
+	-- Escape backslashes and quotes
+	str = string.gsub(str, "\\", "\\\\")
+	str = string.gsub(str, '"', '\\"')
+	return '"' .. str .. '"'
+end
+
+-- Build call graph from parent tracking data
+local function build_call_graph()
+	local nodes = {} -- { [func_name] = { calls=, total_ms=, ... } }
+	local edges = {} -- { { from=, to=, weight= } }
+	local edge_map = {} -- { ["from->to"] = weight }
+
+	local all_stats = Stats.get_all_stats()
+
+	-- Collect all nodes
+	for func_name, s in pairs(all_stats) do
+		nodes[func_name] = s
+
+		-- Build edges from parent_counts
+		if s.parent_counts then
+			for parent_name, count in pairs(s.parent_counts) do
+				local edge_key = parent_name .. "->" .. func_name
+				edge_map[edge_key] = count
+			end
+		end
+	end
+
+	-- Convert edge_map to edges array
+	for edge_key, weight in pairs(edge_map) do
+		local from, to = string.match(edge_key, "^(.+)->(.+)$")
+		if from and to then
+			table.insert(edges, { from = from, to = to, weight = weight })
+		end
+	end
+
+	return nodes, edges
+end
+
+-- Export call graph to DOT format for Graphviz visualization
+function export_callgraph_dot(filepath, options)
+	options = options or {}
+	local min_calls = options.min_calls or 1 -- Filter edges with fewer calls
+	local min_total_ms = options.min_total_ms or 0 -- Filter nodes with less time
+
+	local nodes, edges = build_call_graph()
+
+	if not next(nodes) then
+		printf("[DEVTOOLS] No call graph data to export")
+		return false
+	end
+
+	-- Determine file path
+	local path = filepath
+	if not path or path == "" then
+		local appdata = getFS():update_path("$app_data_root$", "")
+		local devtools_dir
+		if appdata and appdata ~= "" then
+			devtools_dir = appdata .. "devtools\\"
+		else
+			devtools_dir = getFS():update_path("$logs$", "") .. "devtools\\"
+		end
+		path = devtools_dir .. "devtools_callgraph.dot"
+	end
+
+	local file = io.open(path, "w")
+	if not file then
+		printf("[DEVTOOLS] Failed to open file for DOT export: " .. tostring(path))
+		return false
+	end
+
+	-- Write DOT header
+	file:write("digraph CallGraph {\n")
+	file:write("    // Graphviz call graph export from DevTools Profiler\n")
+	file:write("    // Generated: " .. os.date("%Y-%m-%d %H:%M:%S") .. "\n")
+	file:write("    rankdir=TB;\n")
+	file:write("    node [shape=box, style=filled, fillcolor=lightblue, fontname=\"Arial\"];\n")
+	file:write("    edge [color=gray, fontname=\"Arial\", fontsize=10];\n")
+	file:write("\n")
+
+	-- Write nodes
+	file:write("    // Nodes (functions)\n")
+	local node_count = 0
+	for func_name, s in pairs(nodes) do
+		if s.total_ms >= min_total_ms then
+			local label = string.format("%s\\nCalls: %d\\nTotal: %.2fms", func_name, s.call_count, s.total_ms)
+
+			-- Color code by total time (using valid X11 colors)
+			local fillcolor = "lightblue"
+			if s.total_ms > 100 then
+				fillcolor = "salmon"
+			elseif s.total_ms > 50 then
+				fillcolor = "lightyellow"
+			elseif s.total_ms > 10 then
+				fillcolor = "palegreen"
+			end
+
+			file:write(string.format("    %s [label=\"%s\", fillcolor=%s];\n", escape_dot_id(func_name), label, fillcolor))
+			node_count = node_count + 1
+		end
+	end
+
+	file:write("\n")
+	file:write("    // Edges (call relationships)\n")
+
+	-- Write edges
+	local edge_count = 0
+	for _, edge in ipairs(edges) do
+		if edge.weight >= min_calls then
+			local from_node = nodes[edge.from]
+			local to_node = nodes[edge.to]
+
+			-- Only write edge if both nodes pass filters
+			if from_node and to_node and from_node.total_ms >= min_total_ms and to_node.total_ms >= min_total_ms then
+				file:write(
+					string.format(
+						"    %s -> %s [label=\"%d\", weight=%d];\n",
+						escape_dot_id(edge.from),
+						escape_dot_id(edge.to),
+						edge.weight,
+						edge.weight
+					)
+				)
+				edge_count = edge_count + 1
+			end
+		end
+	end
+
+	file:write("}\n")
+	file:close()
+
+	printf("[DEVTOOLS] DOT call graph exported to: %s (%d nodes, %d edges)", path, node_count, edge_count)
+	return true, path
+end
+
+-- Get default DOT export path
+function get_callgraph_dot_path()
+	local appdata = getFS():update_path("$app_data_root$", "")
+	local devtools_dir
+	if appdata and appdata ~= "" then
+		devtools_dir = appdata .. "devtools\\"
+	else
+		devtools_dir = getFS():update_path("$logs$", "") .. "devtools\\"
+	end
+	return devtools_dir .. "devtools_callgraph.dot"
+end
+
+-- ============================================================================
+-- MODULE EXPORTS
+-- ============================================================================
+
+devtools_profiler_export = devtools_profiler_export or {}
+local M = devtools_profiler_export
+
+-- CSV
+M.export_to_csv = export_to_csv
+M.get_csv_export_path = get_csv_export_path
+M.escape_csv_field = escape_csv_field
+
+-- Flamegraph
+M.enable_flamegraph = enable_flamegraph
+M.disable_flamegraph = disable_flamegraph
+M.is_flamegraph_enabled = is_flamegraph_enabled
+M.get_flamegraph_sample_count = get_flamegraph_sample_count
+M.reset_flamegraph = reset_flamegraph
+M.export_flamegraph = export_flamegraph
+M.get_flamegraph_export_path = get_flamegraph_export_path
+
+-- DOT Call Graph
+M.export_callgraph_dot = export_callgraph_dot
+M.get_callgraph_dot_path = get_callgraph_dot_path

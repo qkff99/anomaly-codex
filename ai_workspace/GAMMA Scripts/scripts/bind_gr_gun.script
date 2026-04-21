@@ -1,0 +1,1028 @@
+----------------------------------------------------------
+------------ Gravigun binder for Anomaly 1.5.3 -----------
+----------------------------------------------------------
+
+local time_global = time_global
+local math_abs = math.abs
+local math_max = math.max
+local math_floor = math.floor
+local string_find = string.find
+local string_len = string.len
+local string_sub = string.sub
+local tonumber = tonumber
+local type = type
+
+local STATE_IDLE = "idle"
+local STATE_AIMING = "aiming_no_target"
+local STATE_PULLING = "pulling"
+local STATE_HOLDING = "holding"
+local STATE_COOLDOWN = "cooldown"
+
+local SAVE_VERSION = 1
+local THROW_TRACK_START_DELAY = 500
+local HOLD_CAPTURE_DIST_SQR = 0.25
+local HOLD_RELEASE_DIST_SQR = 1.0
+local LOW_SPEED_THRESHOLD = 0.5
+local ANGULAR_DROP_THRESHOLD = 35
+local GRAVITY_COMPENSATION = 19.62
+
+local DEFAULTS = {
+	scan_radius = 20,
+	punt_radius = 4,
+	capture_cone_hold = 0.999,
+	capture_cone_punt = 0.99,
+	max_mass = 1000,
+	hold_distance = 1.6,
+	hold_right_offset = 0,
+	hold_up_offset = 0,
+	pull_gain = 0.7,
+	velocity_damping = 1.0,
+	vertical_bias = 1.15,
+	scan_interval_ms = 100,
+	release_grace_ms = 250,
+	stuck_timeout_ticks = 3,
+}
+
+local STATE_TO_ID = {
+	[STATE_IDLE] = 1,
+	[STATE_AIMING] = 2,
+	[STATE_PULLING] = 3,
+	[STATE_HOLDING] = 4,
+	[STATE_COOLDOWN] = 5,
+}
+
+local ID_TO_STATE = {
+	[1] = STATE_IDLE,
+	[2] = STATE_AIMING,
+	[3] = STATE_PULLING,
+	[4] = STATE_HOLDING,
+	[5] = STATE_COOLDOWN,
+}
+
+local visible_body_sections = {
+	actor_legs = true,
+	actor_legs_hd = true,
+}
+
+local binders = {}
+local check_on_level
+
+local function ends_with(str, suffix)
+	return type(str) == "string" and string_sub(str, -string_len(suffix)) == suffix
+end
+
+local function copy_vector(src)
+	return vector():set(src.x, src.y, src.z)
+end
+
+local function get_view_pos()
+	if db.actor then
+		local head_pos = db.actor:bone_position("bip01_head")
+		if head_pos then
+			return head_pos
+		end
+	end
+
+	return device().cam_pos
+end
+
+local function get_targeting_pos()
+	return device().cam_pos
+end
+
+local function build_gun_end_pos()
+	local dev = device()
+	local pos = vector():mad(get_view_pos(), dev.cam_dir, 0.75)
+	pos:mad(pos, dev.cam_top, -0.3)
+	pos:mad(pos, dev.cam_right, 0.3)
+	return pos
+end
+
+local function read_cfg_float(ini, section, line, default)
+	if ini and ini:line_exist(section, line) then
+		local value = tonumber(ini:r_float(section, line))
+		if value ~= nil then
+			return value
+		end
+	end
+
+	return default
+end
+
+local function read_cfg_int(ini, section, line, default)
+	if ini and ini:line_exist(section, line) then
+		local value = tonumber(ini:r_u32(section, line))
+		if value ~= nil then
+			return value
+		end
+	end
+
+	return default
+end
+
+local function is_explosive_object(obj)
+	return obj and type(obj.section) == "function" and string_find(obj:section(), "explosive", 1, true) ~= nil
+end
+
+local function is_visible_body_dummy(obj)
+	if not obj then
+		return false
+	end
+
+	local cls = obj:clsid()
+	if clsid and clsid.legs_s and cls == clsid.legs_s then
+		return true
+	end
+
+	local section = obj:section()
+	if visible_body_sections[section] then
+		return true
+	end
+
+	return ends_with(section, "_legs")
+		or ends_with(section, "_legs_hd")
+		or ends_with(section, "_legs_hd_armorupg")
+end
+
+local function get_binder_for_weapon(wpn)
+	if not wpn then
+		return nil
+	end
+
+	return binders[wpn:id()]
+end
+
+local function on_actor_weapon_zoom_in(wpn)
+	local binder = get_binder_for_weapon(wpn)
+	if binder then
+		binder:on_zoom_in(wpn)
+	end
+end
+
+local function on_actor_weapon_zoom_out(wpn)
+	local binder = get_binder_for_weapon(wpn)
+	if binder then
+		binder:on_zoom_out(wpn)
+	end
+end
+
+local function on_actor_weapon_fired(actor_obj, wpn, ammo_elapsed, grenade_elapsed, ammo_type, grenade_type)
+	local binder = get_binder_for_weapon(wpn)
+	if binder then
+		binder:on_weapon_fired(wpn, ammo_elapsed, grenade_elapsed, ammo_type, grenade_type)
+	end
+end
+
+RegisterScriptCallback("actor_on_weapon_zoom_in", on_actor_weapon_zoom_in)
+RegisterScriptCallback("actor_on_weapon_zoom_out", on_actor_weapon_zoom_out)
+RegisterScriptCallback("actor_on_weapon_fired", on_actor_weapon_fired)
+
+function init(obj)
+	local new_binder = gravi_gun_binder(obj)
+	obj:bind_object(new_binder)
+end
+
+class "gravi_gun_binder" (object_binder)
+
+function gravi_gun_binder:__init(obj)
+	super(obj)
+	self.loaded = false
+end
+
+function gravi_gun_binder:_load_config(section)
+	local ini = system_ini()
+
+	self.ammo_max = read_cfg_int(ini, section, "ammo_mag_size", 1)
+	self.impulse_max = read_cfg_int(ini, section, "hit_impulse", 5000)
+
+	self.cfg_scan_radius = read_cfg_float(ini, section, "gg_scan_radius", DEFAULTS.scan_radius)
+	self.cfg_punt_radius = read_cfg_float(ini, section, "gg_punt_radius", DEFAULTS.punt_radius)
+	self.cfg_capture_cone_hold = read_cfg_float(ini, section, "gg_capture_cone_hold", DEFAULTS.capture_cone_hold)
+	self.cfg_capture_cone_punt = read_cfg_float(ini, section, "gg_capture_cone_punt", DEFAULTS.capture_cone_punt)
+	self.cfg_max_mass = read_cfg_float(ini, section, "gg_max_mass", DEFAULTS.max_mass)
+	self.cfg_hold_distance = read_cfg_float(ini, section, "gg_hold_distance", DEFAULTS.hold_distance)
+	self.cfg_hold_right_offset = read_cfg_float(ini, section, "gg_hold_right_offset", DEFAULTS.hold_right_offset)
+	self.cfg_hold_up_offset = read_cfg_float(ini, section, "gg_hold_up_offset", DEFAULTS.hold_up_offset)
+	self.cfg_pull_gain = read_cfg_float(ini, section, "gg_pull_gain", DEFAULTS.pull_gain)
+	self.cfg_velocity_damping = read_cfg_float(ini, section, "gg_velocity_damping", DEFAULTS.velocity_damping)
+	self.cfg_vertical_bias = read_cfg_float(ini, section, "gg_vertical_bias", DEFAULTS.vertical_bias)
+	self.cfg_scan_interval_ms = read_cfg_int(ini, section, "gg_scan_interval_ms", DEFAULTS.scan_interval_ms)
+	self.cfg_release_grace_ms = read_cfg_int(ini, section, "gg_release_grace_ms", DEFAULTS.release_grace_ms)
+	self.cfg_stuck_timeout_ticks = read_cfg_int(ini, section, "gg_stuck_timeout_ticks", DEFAULTS.stuck_timeout_ticks)
+end
+
+function gravi_gun_binder:_reset_runtime_state()
+	self.state = STATE_IDLE
+	self.zoom_active = false
+	self.fire_requested = false
+	self.first_update = true
+	self.last_in_slot = false
+	self.target_id = nil
+	self.capture_nomove_counter = self.cfg_stuck_timeout_ticks
+	self.next_scan_time = 0
+	self.cooldown_until = 0
+	self.nohold_notified = false
+	self.nofire_stop_time = 0
+	self.gun_end_pos = build_gun_end_pos()
+
+	self.thrown_id = nil
+	self.throw_time = nil
+	self.throw_reacquire_time = 0
+	self.last_pulse = nil
+	self.last_lvel = nil
+	self.last_avel = nil
+end
+
+function gravi_gun_binder:_is_active_item(wpn)
+	if not db.actor then
+		return false
+	end
+
+	local active_item = db.actor:active_item()
+	if not active_item then
+		return false
+	end
+
+	local target = wpn or self.object
+	return target and active_item:id() == target:id()
+end
+
+function gravi_gun_binder:_set_state(state)
+	self.state = state
+end
+
+function gravi_gun_binder:_remaining_time(deadline)
+	if not deadline or deadline <= 0 then
+		return 0
+	end
+
+	local remain = deadline - time_global()
+	return remain > 0 and remain or 0
+end
+
+function gravi_gun_binder:_play_hold_particle()
+	if not self.particle_hold:playing() then
+		self.particle_hold:play_at_pos(self.gun_end_pos)
+	end
+end
+
+function gravi_gun_binder:_stop_hold_particle()
+	if self.particle_hold:playing() then
+		self.particle_hold:stop()
+	end
+end
+
+function gravi_gun_binder:_stop_hold_sound()
+	if self.sound_hold:playing() then
+		self.sound_hold:stop_deffered()
+	end
+end
+
+function gravi_gun_binder:_ensure_hold_loop()
+	if self.state == STATE_HOLDING and not self.sound_pickup:playing() and not self.sound_hold:playing() then
+		self.sound_hold:play_at_pos(db.actor, self.gun_end_pos, 0, 1)
+	end
+end
+
+function gravi_gun_binder:_play_open_fx()
+	self.nohold_notified = false
+	if not self.sound_open:playing() then
+		self.sound_open:play_at_pos(db.actor, self.gun_end_pos)
+	end
+	self:_play_hold_particle()
+end
+
+function gravi_gun_binder:_play_close_fx()
+	self:_stop_hold_sound()
+	if not self.sound_close:playing() then
+		self.sound_close:play_at_pos(db.actor, self.gun_end_pos)
+	end
+	self:_stop_hold_particle()
+end
+
+function gravi_gun_binder:_build_hold_anchor()
+	local dev = device()
+	local anchor = copy_vector(get_targeting_pos())
+	anchor:mad(anchor, dev.cam_dir, self.cfg_hold_distance)
+	anchor:mad(anchor, dev.cam_right, self.cfg_hold_right_offset)
+	anchor:mad(anchor, dev.cam_top, self.cfg_hold_up_offset)
+	return anchor
+end
+
+function gravi_gun_binder:_clear_target()
+	self.target_id = nil
+	self.capture_nomove_counter = self.cfg_stuck_timeout_ticks
+	self:_stop_hold_sound()
+end
+
+function gravi_gun_binder:_release_target(play_drop_sound)
+	local was_holding = self.state == STATE_HOLDING
+	self:_clear_target()
+
+	if play_drop_sound and was_holding and not self.sound_drop:playing() then
+		self.sound_drop:play_at_pos(db.actor, self.gun_end_pos)
+	end
+
+	if self.zoom_active then
+		self:_set_state(STATE_AIMING)
+	else
+		self:_set_state(STATE_IDLE)
+	end
+end
+
+function gravi_gun_binder:_enter_cooldown()
+	self:_clear_target()
+	self.cooldown_until = time_global() + self.cfg_release_grace_ms
+	self.next_scan_time = self.cooldown_until
+	self:_set_state(STATE_COOLDOWN)
+end
+
+function gravi_gun_binder:_begin_aim(play_open)
+	if play_open then
+		self:_play_open_fx()
+	else
+		self:_play_hold_particle()
+	end
+
+	self.nohold_notified = false
+	self.next_scan_time = 0
+	self:_set_state(STATE_AIMING)
+end
+
+function gravi_gun_binder:_end_aim(play_close)
+	self.zoom_active = false
+	self.fire_requested = false
+
+	if self.target_id then
+		self:_release_target(true)
+	end
+
+	if play_close then
+		self:_play_close_fx()
+	else
+		self:_stop_hold_sound()
+		self:_stop_hold_particle()
+	end
+
+	self:_set_state(STATE_IDLE)
+end
+
+function gravi_gun_binder:_can_target_object(obj)
+	if not obj then
+		return false
+	end
+
+	local id = obj:id()
+	if not id then
+		return false
+	end
+
+	if db.actor and id == db.actor:id() then
+		return false
+	end
+
+	if self.object and id == self.object:id() then
+		return false
+	end
+
+	if self.thrown_id and id == self.thrown_id and time_global() < (self.throw_reacquire_time or 0) then
+		return false
+	end
+
+	if is_visible_body_dummy(obj) then
+		return false
+	end
+
+	if obj:parent() then
+		return false
+	end
+
+	if obj:is_inventory_owner() then
+		return false
+	end
+
+	local ps = obj:get_physics_shell()
+	if not ps then
+		return false
+	end
+
+	local mass = obj:mass()
+	return type(mass) == "number" and mass > 0 and mass <= self.cfg_max_mass
+end
+
+function gravi_gun_binder:_resolve_target()
+	if not self.target_id then
+		return nil
+	end
+
+	local obj = level.object_by_id(self.target_id)
+	if not self:_can_target_object(obj) then
+		return nil
+	end
+
+	return obj
+end
+
+function gravi_gun_binder:_pick_crosshair_target(radius)
+	local obj = level.get_target_obj()
+	if not self:_can_target_object(obj) then
+		return nil
+	end
+
+	local dist = level.get_target_dist()
+	if type(dist) ~= "number" or dist <= 0.05 or dist > radius then
+		return nil
+	end
+
+	return obj, obj:id(), dist
+end
+
+function gravi_gun_binder:_score_candidate(obj, origin, view_dir, radius, cone)
+	local center = obj:center()
+	local to_obj = copy_vector(center)
+	to_obj:sub(origin)
+
+	local forward_dist = to_obj:dotproduct(view_dir)
+	if forward_dist <= 0.05 or forward_dist > radius then
+		return nil
+	end
+
+	local direct_dist = to_obj:magnitude()
+	if direct_dist <= 0.25 then
+		return nil
+	end
+
+	local cos_a = forward_dist / direct_dist
+	if cos_a < cone then
+		return nil
+	end
+
+	local lateral = vector()
+	lateral:crossproduct(to_obj, view_dir)
+
+	return lateral:magnitude(), forward_dist, direct_dist
+end
+
+function gravi_gun_binder:_find_target(radius, cone)
+	local crosshair_obj, crosshair_id = self:_pick_crosshair_target(radius)
+	if crosshair_obj and crosshair_id then
+		return crosshair_obj, crosshair_id
+	end
+
+	local origin = get_targeting_pos()
+	local dev = device()
+	local best_obj = nil
+	local best_id = nil
+	local best_lateral = nil
+	local best_forward = nil
+	local best_dist = nil
+
+	level.iterate_nearest(origin, radius, function(obj)
+		if self:_can_target_object(obj) then
+			local lateral, forward, dist = self:_score_candidate(obj, origin, dev.cam_dir, radius, cone)
+			if lateral then
+				local is_better = not best_obj
+					or lateral < (best_lateral - 0.01)
+					or (math_abs(lateral - best_lateral) <= 0.01 and forward < (best_forward - 0.05))
+					or (math_abs(lateral - best_lateral) <= 0.01 and math_abs(forward - best_forward) <= 0.05 and dist < best_dist)
+
+				if is_better then
+					best_obj = obj
+					best_id = obj:id()
+					best_lateral = lateral
+					best_forward = forward
+					best_dist = dist
+				end
+			end
+		end
+
+		return false
+	end)
+
+	return best_obj, best_id
+end
+
+function gravi_gun_binder:_start_pull(obj, obj_id)
+	self.target_id = obj_id
+	self.capture_nomove_counter = self.cfg_stuck_timeout_ticks
+	self.nohold_notified = false
+	self:_set_state(STATE_PULLING)
+end
+
+function gravi_gun_binder:_play_nohold_once()
+	if self.nohold_notified then
+		return
+	end
+
+	if not self.sound_nohold:playing() then
+		self.sound_nohold:play_at_pos(db.actor, self.gun_end_pos)
+	end
+
+	self.nohold_notified = true
+end
+
+function gravi_gun_binder:_play_nofire_fx()
+	self.nofire_stop_time = time_global() + 100
+	self.sound_nofire:play_at_pos(db.actor, self.gun_end_pos)
+end
+
+function gravi_gun_binder:_apply_throw_to_target(obj, ps)
+	local mass = obj:mass()
+	local force = copy_vector(device().cam_dir)
+	force:mul(mass * self.impulse_max)
+
+	ps:apply_force(force.x, force.y, force.z)
+
+	self.last_pulse = force
+	self.thrown_id = obj:id()
+	self.throw_time = time_global()
+	self.throw_reacquire_time = self.throw_time + THROW_TRACK_START_DELAY
+	self.last_lvel = nil
+	self.last_avel = nil
+
+	self.sound_fire:play_at_pos(db.actor, self.gun_end_pos)
+	self.particle_fire:play_at_pos(self.gun_end_pos)
+end
+
+function gravi_gun_binder:_handle_fire_request()
+	self.fire_requested = false
+
+	local target = self:_resolve_target()
+	if target then
+		local ps = target:get_physics_shell()
+		if ps then
+			self:_apply_throw_to_target(target, ps)
+			self:_enter_cooldown()
+			return
+		end
+	end
+
+	local punt_obj, punt_id = self:_find_target(self.cfg_punt_radius, self.cfg_capture_cone_punt)
+	if punt_obj and punt_id then
+		local ps = punt_obj:get_physics_shell()
+		if ps then
+			self:_apply_throw_to_target(punt_obj, ps)
+			self:_enter_cooldown()
+			return
+		end
+	end
+
+	self:_play_nofire_fx()
+end
+
+function gravi_gun_binder:_update_hold(delta)
+	local obj = self:_resolve_target()
+	if not obj then
+		self:_release_target(false)
+		return
+	end
+
+	local ps = obj:get_physics_shell()
+	if not ps then
+		self:_release_target(false)
+		return
+	end
+
+	local center = obj:center()
+	local anchor = self:_build_hold_anchor()
+	local pull_vec = copy_vector(anchor)
+	pull_vec:sub(center)
+	pull_vec.y = pull_vec.y * self.cfg_vertical_bias
+
+	local distance = pull_vec:magnitude()
+	local distance_sqr = distance * distance
+	if self.state == STATE_HOLDING and distance_sqr > HOLD_RELEASE_DIST_SQR then
+		self:_set_state(STATE_PULLING)
+	elseif self.state ~= STATE_HOLDING and distance_sqr <= HOLD_CAPTURE_DIST_SQR then
+		self:_set_state(STATE_HOLDING)
+		self.capture_nomove_counter = self.cfg_stuck_timeout_ticks
+		if not self.sound_pickup:playing() then
+			self.sound_pickup:play_at_pos(db.actor, self.gun_end_pos)
+		end
+	end
+
+	local linear_vel = vector()
+	ps:get_linear_vel(linear_vel)
+
+	local angular_vel = vector()
+	ps:get_angular_vel(angular_vel)
+	if angular_vel:magnitude() > ANGULAR_DROP_THRESHOLD then
+		self:_release_target(false)
+		return
+	end
+
+	local mass = obj:mass()
+	local dt = math_max(delta * 0.001, 0.001)
+	local desired_impulse = copy_vector(pull_vec)
+	desired_impulse:mul((self.cfg_pull_gain * mass) / dt)
+
+	local current_impulse = copy_vector(linear_vel)
+	current_impulse:mul(mass * self.cfg_velocity_damping)
+
+	local result_force = desired_impulse:sub(current_impulse)
+	result_force:mul(100)
+	result_force.y = result_force.y + (mass * GRAVITY_COMPENSATION)
+
+	local max_force = self.impulse_max * mass * math_max(distance, 0.5) * 0.1
+	if self.state == STATE_HOLDING then
+		max_force = max_force * 2
+	end
+
+	local magnitude = result_force:magnitude()
+	if magnitude > max_force then
+		result_force:set_length(max_force)
+	end
+
+	ps:apply_force(result_force.x, result_force.y, result_force.z)
+
+	if self.state ~= STATE_HOLDING and distance > 0.75 then
+		if linear_vel:magnitude() < LOW_SPEED_THRESHOLD then
+			self.capture_nomove_counter = self.capture_nomove_counter - 1
+		else
+			self.capture_nomove_counter = self.cfg_stuck_timeout_ticks
+		end
+
+		if self.capture_nomove_counter <= 0 then
+			self:_release_target(false)
+			return
+		end
+	end
+
+	self:_ensure_hold_loop()
+end
+
+function gravi_gun_binder:_update_aiming(delta)
+	if self.target_id then
+		self:_update_hold(delta)
+		return
+	end
+
+	if time_global() < self.next_scan_time then
+		return
+	end
+
+	self.next_scan_time = time_global() + self.cfg_scan_interval_ms
+
+	local target, target_id = self:_find_target(self.cfg_scan_radius, self.cfg_capture_cone_hold)
+	if target and target_id then
+		self:_start_pull(target, target_id)
+	else
+		self:_play_nohold_once()
+	end
+end
+
+function gravi_gun_binder:_sync_state()
+	if not self.zoom_active then
+		if self.state ~= STATE_IDLE then
+			self:_end_aim(true)
+		end
+		return
+	end
+
+	self:_play_hold_particle()
+
+	if self.state == STATE_IDLE then
+		self:_begin_aim(true)
+		return
+	end
+
+	if self.state == STATE_COOLDOWN and time_global() >= self.cooldown_until then
+		self:_begin_aim(false)
+	end
+end
+
+function gravi_gun_binder:reload(section)
+	object_binder.reload(self, section)
+	self:_load_config(section)
+
+	self.particle_hold = particles_object([[anomaly2\electra_entrance_small]])
+	self.particle_fire = particles_object([[weapons\effects\rpg7_rocket_glow]])
+	self.sound_hold = sound_object([[weapons\gravigun\gravigun_hold]])
+	self.sound_fire = sound_object([[weapons\gravigun\gravigun_fire]])
+	self.sound_open = sound_object([[weapons\gravigun\gravigun_open]])
+	self.sound_close = sound_object([[weapons\gravigun\gravigun_close]])
+	self.sound_pickup = sound_object([[weapons\gravigun\gravigun_pickup]])
+	self.sound_drop = sound_object([[weapons\gravigun\gravigun_drop]])
+	self.sound_nohold = sound_object([[weapons\gravigun\gravigun_nohold]])
+	self.sound_nofire = sound_object([[weapons\gravigun\gravigun_nofire]])
+end
+
+function gravi_gun_binder:reinit()
+	object_binder.reinit(self)
+end
+
+function gravi_gun_binder:net_spawn(data)
+	if not object_binder.net_spawn(self, data) then
+		return false
+	end
+
+	binders[self.object:id()] = self
+	self:_reset_runtime_state()
+	return true
+end
+
+function gravi_gun_binder:update(delta)
+	object_binder.update(self, delta)
+
+	if not self.object or not db.actor then
+		return
+	end
+
+	self.gun_end_pos = build_gun_end_pos()
+
+	if self.first_update then
+		self.first_update = false
+		return
+	end
+
+	if not self:_is_active_item() then
+		if self.last_in_slot then
+			self.last_in_slot = false
+			self:OnRemove()
+		end
+		return
+	end
+
+	self.last_in_slot = true
+	self:OnHold(delta)
+
+	self.object:set_fastcall(self.sound_particle_fastcall, self)
+
+	if self.fire_requested then
+		self:_handle_fire_request()
+	end
+
+	self:_sync_state()
+
+	if self.state == STATE_AIMING or self.state == STATE_PULLING or self.state == STATE_HOLDING then
+		self:_update_aiming(delta)
+	elseif self.state == STATE_COOLDOWN and time_global() < self.cooldown_until then
+		self:_stop_hold_sound()
+	end
+
+	if self.thrown_id then
+		self:track_thrown()
+	end
+end
+
+function gravi_gun_binder:net_destroy()
+	binders[self.object:id()] = nil
+	self:_stop_hold_sound()
+	self:_stop_hold_particle()
+	object_binder.net_destroy(self)
+end
+
+function gravi_gun_binder:net_save_relevant()
+	return true
+end
+
+function gravi_gun_binder:save(packet)
+	object_binder.save(self, packet)
+
+	packet:w_u8(SAVE_VERSION)
+	packet:w_u8(STATE_TO_ID[self.state] or STATE_TO_ID[STATE_IDLE])
+	packet:w_bool(self.zoom_active == true)
+	packet:w_u16(self.target_id or 65535)
+	packet:w_u16(self.thrown_id or 65535)
+	packet:w_u32(self:_remaining_time(self.cooldown_until))
+	packet:w_u32(self:_remaining_time(self.next_scan_time))
+	packet:w_u32(self:_remaining_time(self.throw_reacquire_time))
+	packet:w_u8(self.capture_nomove_counter or self.cfg_stuck_timeout_ticks)
+end
+
+function gravi_gun_binder:load(reader)
+	self.loaded = true
+	object_binder.load(self, reader)
+	self:_reset_runtime_state()
+
+	if reader:r_elapsed() <= 0 then
+		return
+	end
+
+	local version = reader:r_u8()
+	if version ~= SAVE_VERSION or reader:r_elapsed() <= 0 then
+		return
+	end
+
+	self.state = ID_TO_STATE[reader:r_u8()] or STATE_IDLE
+	self.zoom_active = reader:r_bool()
+
+	local target_id = reader:r_u16()
+	if target_id ~= 65535 then
+		self.target_id = target_id
+	end
+
+	local thrown_id = reader:r_u16()
+	if thrown_id ~= 65535 then
+		self.thrown_id = thrown_id
+		self.throw_time = time_global()
+	end
+
+	self.cooldown_until = time_global() + reader:r_u32()
+	self.next_scan_time = time_global() + reader:r_u32()
+	self.throw_reacquire_time = time_global() + reader:r_u32()
+	self.capture_nomove_counter = reader:r_u8()
+end
+
+function gravi_gun_binder:on_zoom_in(wpn)
+	if self:_is_active_item(wpn) then
+		self.zoom_active = true
+	end
+end
+
+function gravi_gun_binder:on_zoom_out(wpn)
+	if self:_is_active_item(wpn) or self.last_in_slot then
+		self.zoom_active = false
+	end
+end
+
+function gravi_gun_binder:on_weapon_fired(wpn)
+	if self:_is_active_item(wpn) then
+		self.fire_requested = true
+	end
+end
+
+function gravi_gun_binder:track_thrown()
+	local obj = self.thrown_id and level.object_by_id(self.thrown_id)
+	if not obj then
+		self.thrown_id = nil
+		self.throw_time = nil
+		self.last_pulse = nil
+		self.last_lvel = nil
+		self.last_avel = nil
+		self.throw_reacquire_time = 0
+		return
+	end
+
+	local pos = obj:position()
+	if not check_on_level(pos) then
+		alife():release(alife():object(self.thrown_id), true)
+		self.thrown_id = nil
+		self.throw_time = nil
+		self.last_pulse = nil
+		self.last_lvel = nil
+		self.last_avel = nil
+		self.throw_reacquire_time = 0
+		return
+	end
+
+	local ps = obj:get_physics_shell()
+	if not ps then
+		self.thrown_id = nil
+		self.throw_time = nil
+		self.last_pulse = nil
+		self.last_lvel = nil
+		self.last_avel = nil
+		self.throw_reacquire_time = 0
+		return
+	end
+
+	if self.throw_time and time_global() <= self.throw_time + THROW_TRACK_START_DELAY then
+		return
+	end
+
+	if not is_explosive_object(obj) then
+		self.thrown_id = nil
+		self.throw_time = nil
+		self.last_pulse = nil
+		self.last_lvel = nil
+		self.last_avel = nil
+		self.throw_reacquire_time = 0
+		return
+	end
+
+	local linear_vel = vector()
+	ps:get_linear_vel(linear_vel)
+	local angular_vel = vector()
+	ps:get_angular_vel(angular_vel)
+
+	if not self.last_lvel or not self.last_avel then
+		self.last_lvel = self.last_pulse or linear_vel
+		self.last_avel = angular_vel
+		return
+	end
+
+	local dist = pos:distance_to(get_view_pos())
+	local lvel_mag = linear_vel:magnitude()
+	local last_lvel_mag = self.last_lvel:magnitude()
+	local avel_mag = angular_vel:magnitude()
+	local last_avel_mag = self.last_avel:magnitude()
+
+	if lvel_mag > 0 and last_lvel_mag > 0 then
+		local lvel_norm = copy_vector(linear_vel):normalize()
+		local last_lvel_norm = copy_vector(self.last_lvel):normalize()
+		local cos_l = lvel_norm:dotproduct(last_lvel_norm)
+
+		local cos_a = 1
+		if avel_mag > 0 and last_avel_mag > 0 then
+			local avel_norm = copy_vector(angular_vel):normalize()
+			local last_avel_norm = copy_vector(self.last_avel):normalize()
+			cos_a = avel_norm:dotproduct(last_avel_norm)
+		end
+
+		if (cos_l < 0.86 or (cos_l < 0.99 and dist > 3)) and ((cos_a < 0.99 and last_avel_mag ~= 0 and avel_mag ~= 0) or (last_avel_mag == 0 and avel_mag ~= 0)) then
+			obj:explode()
+			self.thrown_id = nil
+			self.throw_time = nil
+			self.last_pulse = nil
+			self.last_lvel = nil
+			self.last_avel = nil
+			self.throw_reacquire_time = 0
+			return
+		end
+	end
+
+	self.last_lvel = linear_vel
+	self.last_avel = angular_vel
+end
+
+function check_on_level(pos)
+	return pos.y > level.get_bounding_volume().min.y
+end
+
+function gravi_gun_binder:OnLButtonHold(delta)
+end
+
+function gravi_gun_binder:OnLButtonUp()
+end
+
+function gravi_gun_binder:OnTake()
+end
+
+function gravi_gun_binder:OnHold(delta)
+	local ammo = self.object:get_ammo_in_magazine()
+	if ammo < self.ammo_max then
+		ammo = ammo + 1
+		self.object:set_ammo_elapsed(ammo)
+	end
+end
+
+function gravi_gun_binder:OnRemove()
+	self.zoom_active = false
+	self.fire_requested = false
+	self:_end_aim(false)
+	self.last_in_slot = false
+end
+
+function gravi_gun_binder:sound_particle_fastcall()
+	local update_fx = self.zoom_active
+		or self.sound_hold:playing()
+		or self.sound_fire:playing()
+		or self.sound_open:playing()
+		or self.sound_close:playing()
+		or self.sound_pickup:playing()
+		or self.sound_drop:playing()
+		or self.sound_nohold:playing()
+		or self.sound_nofire:playing()
+		or self.particle_hold:playing()
+		or self.particle_fire:playing()
+
+	if update_fx then
+		self.gun_end_pos = build_gun_end_pos()
+
+		if self.sound_hold:playing() then
+			self.sound_hold:set_position(self.gun_end_pos)
+		end
+		if self.sound_fire:playing() then
+			self.sound_fire:set_position(self.gun_end_pos)
+		end
+		if self.sound_open:playing() then
+			self.sound_open:set_position(self.gun_end_pos)
+		end
+		if self.sound_close:playing() then
+			self.sound_close:set_position(self.gun_end_pos)
+		end
+		if self.sound_pickup:playing() then
+			self.sound_pickup:set_position(self.gun_end_pos)
+		end
+		if self.sound_drop:playing() then
+			self.sound_drop:set_position(self.gun_end_pos)
+		end
+		if self.sound_nohold:playing() then
+			self.sound_nohold:set_position(self.gun_end_pos)
+		end
+		if self.sound_nofire:playing() then
+			self.sound_nofire:set_position(self.gun_end_pos)
+		end
+
+		if self.zoom_active then
+			if self.particle_hold:playing() then
+				self.particle_hold:stop()
+			end
+			self.particle_hold:play_at_pos(self.gun_end_pos)
+		elseif self.particle_hold:playing() then
+			self.particle_hold:stop()
+			if time_global() < self.nofire_stop_time then
+				self.particle_hold:play_at_pos(self.gun_end_pos)
+			end
+		end
+
+		if self.particle_fire:playing() then
+			self.particle_fire:move_to(self.gun_end_pos, vector():set(0, 0, 0))
+		end
+
+		return false
+	end
+
+	return true
+end

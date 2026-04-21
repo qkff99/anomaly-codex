@@ -1,0 +1,153 @@
+-- UTILS
+--Protected function call to prevent crashes to desktop
+--Prints error in console if occured, otherwise proceed normally
+--Use for test only, slower than usual
+local try = try or function(func, ...)
+	local status, error_or_result = pcall(func, ...)
+	if not status then
+		printf(error_or_result)
+		return false
+	else
+		return error_or_result
+	end
+end
+
+claimed_monsters = {}
+
+function find_looting_stalker(obj)
+
+	local claim_radius_sqr = 6
+
+	-- Uncomment for strict monster check, might lead to unlootable monsters
+	if claimed_monsters[obj:name()] then
+		local stalker_obj = level.object_by_id(claimed_monsters[obj:name()])
+		if not stalker_obj or obj:position():distance_to_sqr(stalker_obj:position()) > claim_radius_sqr then
+			claimed_monsters[obj:name()] = nil
+		else
+			-- printf("%s claimed_by_stalker %s", obj:name(), stalker_obj:name())
+			if stalker_obj and stalker_obj ~= 0 and stalker_obj:id() ~= AC_ID and IsStalker(stalker_obj) and stalker_obj:alive() then
+				return stalker_obj 
+			end
+		end
+	end
+
+	-- Find id of looting stalker of this corpse
+	local npc_id = db.storage[obj:id()] and db.storage[obj:id()].claimed_by_stalker
+
+	-- printf("%s test", obj:name())
+
+	if npc_id then
+		local stalker_obj = level.object_by_id(npc_id)
+		-- printf("%s claimed_by_stalker %s", obj:name(), stalker_obj:name())
+		if stalker_obj and stalker_obj ~= 0 and stalker_obj:id() ~= AC_ID and IsStalker(stalker_obj) and stalker_obj:alive() then
+
+			-- Check if stalker is actually looting
+			local state = state_mgr.get_state(stalker_obj)
+			if (IsStalker(obj) and (state == "search_corpse" or state == "field_dress" or state == "scaner_crouch")) then
+				return stalker_obj
+			end
+
+			if (IsMonster(obj) and (claimed_monsters[obj:name()] or state == "field_dress" or state == "scaner_crouch" or obj:position():distance_to_sqr(stalker_obj:position()) < claim_radius_sqr)) then
+				claimed_monsters[obj:name()] = stalker_obj:id()
+				return stalker_obj
+			end
+
+		end
+	end
+end
+
+-- Rude messages provided by NPC Loot Claim mod by Vintar
+function send_rude_message(npc)
+	local sender = npc
+	local faction = character_community(npc)
+
+	local sender_header = strformat("%s, %s", sender:character_name(), game.translate_string("st_dyn_news_comm_" .. faction .. "_" .. 6))
+	local rnd_warn = round_idp(math.random()*5)+1
+	local msg = game.translate_string("st_npc_loot_claim_warn_"..rnd_warn)
+	dynamic_news_helper.send_tip( msg, sender_header, 0, 10, sender:character_icon(), "beep_1", "npc" )
+end
+
+-- Check if corpse is claimed
+function check_for_claim(obj)
+	-- Find stalker that already looting it
+	local npc = find_looting_stalker(obj)
+
+	-- If found, prevent to open inventory and add message
+	if npc then
+		-- printf("looting stalker %s", npc:name())
+		send_rude_message(npc)
+		return npc
+	end
+end
+
+ui_inventory_start = ui_inventory.start
+ui_inventory.start = function(mode, obj)
+	ui_inventory_start(mode, obj)
+	if ui_inventory.GUI then
+		if mode == "loot" and ui_inventory.GUI:IsShown() and try(check_for_claim, obj) then
+			ui_inventory.GUI.box_init_update.state = false
+			ui_inventory.GUI:LMode_ResetInventories()
+			ui_inventory.GUI:UpdateInfo(true)
+			ui_inventory.GUI:LMode_TransferInfo(obj)
+			ui_inventory.GUI:Close()
+		end
+	end
+end
+
+ui_mutant_loot.on_game_start = function()
+	function monster_on_actor_use_callback(obj, who) -- Open mutant loot UI
+		-- Return if mutant is already looted
+		local looted = se_load_var(obj:id(),obj:name(),"looted")
+		if (looted) then
+			return
+		end
+
+		-- Return if stalker claimed a monster
+		if (enhanced_animations and try(find_looting_stalker, obj) or try(check_for_claim, obj)) then
+			return
+		end
+
+		local ini_mutant = ini_file("items\\settings\\mutant_loot.ltx")
+		local MutantLootDecayTime = ini_mutant:r_float_ex("mutant_loot_mod","decay_time") or 7200
+
+		-- This is important so NPCs don't try to loot the corpse the player is looting
+		if (obj:clsid() == clsid.crow) then
+			save_var(obj, "looted", true)
+		else
+			se_save_var(obj:id(),obj:name(),"looted",true)
+		end
+		xr_corpse_detection.set_valuable_loot(obj:id(),false)
+
+		-- if mutant corpse is lefted for long time, body is decayed
+		local st = db.storage[obj:id()]
+		if (st and st.death_time and game.get_game_time():diffSec(st.death_time) > MutantLootDecayTime) then
+			actor_menu.set_msg(1, game.translate_string("st_body_decayed"),4)
+			
+		-- Start the Mutant Loot UI
+		else
+			ui_mutant_loot.start(obj, obj:id(), obj:section(), obj:clsid())
+		end
+	end
+
+	RegisterScriptCallback("monster_on_actor_use_callback", monster_on_actor_use_callback)
+	RegisterScriptCallback("monster_on_loot_init", ui_mutant_loot.monster_on_loot_init)
+end
+
+-- FDDA patch
+if enhanced_animations then
+	fdda_monster_use = enhanced_animations.monster_on_actor_use
+	enhanced_animations.monster_on_actor_use = function(obj)
+		local res = try(check_for_claim, obj)
+		if not res then fdda_monster_use(obj) end
+	end
+end
+
+function npc_on_get_all_from_corpse(npc, corpse_npc, item, lootable_table)
+	if corpse_npc then
+		claimed_monsters[corpse_npc:name()] = nil
+	end
+end
+
+function on_game_start()
+	RegisterScriptCallback("npc_on_get_all_from_corpse", npc_on_get_all_from_corpse)
+end

@@ -1,0 +1,334 @@
+-- TODO: 
+-- - limp on low helath animation? Kinda don't wanna overdo this mod
+
+animate_hand = 2
+wpn_all_configs = {}
+mask_layers = {
+    none = 0,
+    wpn_aim = 1,
+    wpn_reload = 2,
+    wpn_lower = 4,
+    wpn_knife = 8,
+    not_weapon = 16,
+    anm_plays = 32,
+    is_crawling = 64
+}
+local is_initialized = false
+local lerps = {}
+local block_mask = 0
+local hit_anims = {
+    "liz\\liz_hands_hit1_additive.anm",
+    "liz\\liz_hands_hit2_additive.anm",
+    "liz\\liz_hands_hit3_additive.anm",
+}
+local valid_hit_types = {
+    -- [0] = true, -- burn
+    -- [1] = true, -- shock
+    -- [2] = true, -- chemical burn
+    -- [3] = true, -- radiation
+    -- [4] = true, -- telepathic
+    [5] = true, -- wound
+    [6] = true, -- fire wound
+    [7] = true, -- strike
+    [8] = true, -- explosion
+    [9] = true, -- wound2
+    -- [10] = true, -- light burn
+}
+local last_wpn_section = "init" --some dummy value to force update on particular conditions
+local wpn_config = { l = 1, r = 1, c = 1, u = 1 }
+local is_valid_hit_type
+local look_up_factor = 0
+local look_up_max = 1.5
+local mcm_lean_l_power
+local mcm_lean_r_power
+local mcm_crouch_power
+local mcm_jump_speed
+local mcm_jump_power
+local mcm_land_speed
+local mcm_land_power
+local mcm_crouch_jitter_blocket_by_aim
+local mcm_crouch_jitter_speed
+local mcm_crouch_jitter_power
+local mcm_noise_only_for_weapon
+local mcm_noise_speed
+local mcm_noise_power
+local mcm_breathing_only_for_weapon
+local mcm_breathing_speed_min
+local mcm_breathing_speed_max
+local mcm_breathing_power_min
+local mcm_breathing_power_max
+local mcm_lower_weapon_on_look_up
+local mcm_look_up_trigger_at
+local mcm_look_up_power
+local mcm_device_lean_enable
+local mcm_hit_anm_enable
+local mcm_crawl_anm_enable
+
+
+function lerp(from, to, power)
+    return (from * (1 - power)) + (to * power)
+end
+
+function new_lerp(name, from, to, power, mask)
+    lerps[name] = {
+        from = from,
+        to = to,
+        power = power,
+        mask = mask,
+    }
+end
+
+function remove_lerp(name)
+    lerps[name] = nil
+end
+
+function get_lerp(name)
+    return lerps[name]
+end
+
+function set_lerp(name, to, power)
+    local lp = lerps[name]
+    if lp then
+        lp.to = to
+        if power then lp.power = power end
+    end
+end
+
+function set_mask_flag(flag, value)
+    if value then
+        block_mask = bit_or(block_mask, flag)
+    else
+        block_mask = bit_and(block_mask, bit_not(flag))
+    end
+end
+
+function new_mask(...)
+    local a = { ... }
+    local mask = 0
+    for i = 1, #a do
+        mask = bit_or(mask, a[i])
+    end
+    return mask
+end
+
+function is_overriden(mask)
+    if bit_and(block_mask, mask) == 0 then return false else return true end
+end
+
+
+
+function initialize()
+    mcm_lean_l_power = liz_inertia_expanded_mcm.get_config("lean/l_power")
+    mcm_lean_r_power = liz_inertia_expanded_mcm.get_config("lean/r_power")
+    mcm_crouch_power = liz_inertia_expanded_mcm.get_config("lean/crouch_power")
+    mcm_jump_speed = liz_inertia_expanded_mcm.get_config("jumpland/jump_speed")
+    mcm_jump_power = liz_inertia_expanded_mcm.get_config("jumpland/jump_power")
+    mcm_land_speed = liz_inertia_expanded_mcm.get_config("jumpland/land_speed")
+    mcm_land_power = liz_inertia_expanded_mcm.get_config("jumpland/land_power")
+    mcm_crouch_jitter_blocket_by_aim = liz_inertia_expanded_mcm.get_config("crouch_jitter/blocket_by_aim")
+    mcm_crouch_jitter_speed = liz_inertia_expanded_mcm.get_config("crouch_jitter/speed")
+    mcm_crouch_jitter_power = liz_inertia_expanded_mcm.get_config("crouch_jitter/power")
+    mcm_noise_only_for_weapon = liz_inertia_expanded_mcm.get_config("noise/only_for_weapon")
+    mcm_noise_power = liz_inertia_expanded_mcm.get_config("noise/power")
+    mcm_noise_speed = liz_inertia_expanded_mcm.get_config("noise/speed")
+    mcm_breathing_only_for_weapon = liz_inertia_expanded_mcm.get_config("breathing/only_for_weapon")
+    mcm_breathing_speed_min = liz_inertia_expanded_mcm.get_config("breathing/speed_min")
+    mcm_breathing_speed_max = liz_inertia_expanded_mcm.get_config("breathing/speed_max")
+    mcm_breathing_power_min = liz_inertia_expanded_mcm.get_config("breathing/power_min")
+    mcm_breathing_power_max = liz_inertia_expanded_mcm.get_config("breathing/power_max")
+    mcm_lower_weapon_on_look_up = liz_inertia_expanded_mcm.get_config("look_up/enabled")
+    mcm_look_up_trigger_at = liz_inertia_expanded_mcm.get_config("look_up/trigger_at")
+    mcm_look_up_power = liz_inertia_expanded_mcm.get_config("look_up/power")
+    mcm_device_lean_enable = liz_inertia_expanded_mcm.get_config("other/device_lean_enable")
+    mcm_hit_anm_enable = liz_inertia_expanded_mcm.get_config("other/hit_anm_enable")
+    mcm_crawl_anm_enable = liz_inertia_expanded_mcm.get_config("other/crawl_anm_enable")
+
+    local breathing_mask = mcm_breathing_only_for_weapon and new_mask(
+        mask_layers.wpn_aim,
+        mask_layers.not_weapon
+    ) or mask_layers.wpn_aim
+
+    local noise_mask = mcm_noise_only_for_weapon and new_mask(
+        mask_layers.wpn_aim,
+        mask_layers.not_weapon
+    ) or mask_layers.wpn_aim
+
+    local lean_mask = mcm_crawl_anm_enable and new_mask(
+        mask_layers.wpn_aim,
+        mask_layers.wpn_lower,
+        mask_layers.not_weapon,
+        mask_layers.wpn_knife,
+        mask_layers.anm_plays,
+        mask_layers.is_crawling
+    ) or new_mask(
+        mask_layers.wpn_aim,
+        mask_layers.wpn_lower,
+        mask_layers.not_weapon,
+        mask_layers.wpn_knife,
+        mask_layers.anm_plays
+    )
+
+    local crouch_mask = mcm_crawl_anm_enable and new_mask(
+        mask_layers.wpn_aim,
+        mask_layers.wpn_lower,
+        mask_layers.not_weapon,
+        mask_layers.anm_plays,
+        mask_layers.is_crawling
+    ) or new_mask(
+        mask_layers.wpn_aim,
+        mask_layers.wpn_lower,
+        mask_layers.not_weapon,
+        mask_layers.anm_plays
+    )
+
+    new_lerp("lean_l", 0, 0, .5, lean_mask)
+    new_lerp("lean_r", 0, 0, .5, lean_mask)
+    new_lerp("crouch", 0, 0, .5, crouch_mask)
+    new_lerp("breathing_power", 0, 0, .8, breathing_mask)
+    new_lerp("breathing_speed", 0, 0, .8, breathing_mask)
+    new_lerp("noise", mcm_noise_power, mcm_noise_power, 1, noise_mask)
+
+    is_initialized = true
+end
+
+
+
+function actor_on_update(_, delta)
+    if not is_initialized then initialize() end -- prevents super rare bug when actor updae called before first actor update
+
+    local dt = delta / 100
+
+    for key, val in pairs(lerps) do
+        local target_val = is_overriden(val.mask) and 0 or val.to
+        local target_pow = is_overriden(val.mask) and 0.9 or val.power
+        val.from = lerp(val.from, target_val, target_pow * dt)
+    end
+
+    --update lerps targets
+    local actor = db.actor
+    update_weapon_info(actor)
+    update_device_info(actor)
+    update_stamina_info(actor)
+    update_move_state_info()
+    update_look_up_factor()
+
+    --update animations
+    game.play_hud_anm("liz\\liz_hands_breathing_additive.anm", 2, lerps["breathing_speed"].from, lerps["breathing_power"].from, true, true)
+    game.play_hud_anm("liz\\liz_hands_noise_additive.anm", 2, mcm_noise_speed, lerps["noise"].from, true, true)
+    game.play_hud_anm("liz\\liz_hands_crouch_additive.anm", animate_hand, 1, lerps["crouch"].from, true, true)
+    game.play_hud_anm("liz\\liz_hands_lean_l_additive.anm", animate_hand, 1, lerps["lean_l"].from, true, true)
+    game.play_hud_anm("liz\\liz_hands_lean_r_additive.anm", animate_hand, 1, lerps["lean_r"].from, true, true)
+end
+
+
+function update_move_state_info()
+    local block_crouch = false
+    if IsMoveState('mcLLookout') then set_lerp("lean_l", mcm_lean_l_power * wpn_config.l); block_crouch = true else set_lerp("lean_l", 0) end
+    if IsMoveState('mcRLookout') then set_lerp("lean_r", mcm_lean_r_power * wpn_config.r); block_crouch = true else set_lerp("lean_r", 0) end
+    if not block_crouch then
+        if IsMoveState('mcCrouch') then set_lerp("crouch", mcm_crouch_power * wpn_config.c) else set_lerp("crouch", mcm_lower_weapon_on_look_up and look_up_factor * wpn_config.u or 0) end
+    else
+        set_lerp("crouch", 0)
+    end
+end
+
+
+function update_stamina_info(actor)
+    if actor then 
+        set_lerp("breathing_speed", mcm_breathing_speed_min + (mcm_breathing_speed_max - mcm_breathing_speed_min) * (1 - actor.power))
+        set_lerp("breathing_power", mcm_breathing_power_min + (mcm_breathing_power_max - mcm_breathing_power_min) * (1 - actor.power))
+    end
+end
+
+
+function update_look_up_factor()
+    local angle = device().cam_dir:getP() -- -1.5 is down, 0 is forward, 1.5 is up
+    look_up_factor = clamp((angle - mcm_look_up_trigger_at) / (look_up_max - mcm_look_up_trigger_at), 0, 1) * mcm_look_up_power
+end
+
+
+function update_weapon_info(actor)
+    local wpn = actor and actor:active_item()
+    local sec = wpn and wpn:section()
+    if sec ~= last_wpn_section then
+        if IsWeapon(wpn) then
+            last_wpn_section = sec
+            set_mask_flag(mask_layers.not_weapon, false)
+            if IsMelee(wpn) then
+                set_mask_flag(mask_layers.wpn_knife, true)
+            else
+                set_mask_flag(mask_layers.wpn_knife, false)
+            end
+            wpn_config = { l = 1, r = 1, c = 1, u = 1 }
+            if wpn_all_configs[sec] then
+                for key, val in pairs(wpn_all_configs[sec]) do
+                    wpn_config[key] = val
+                end
+            end
+        else
+            last_wpn_section = ""
+            set_mask_flag(mask_layers.not_weapon, true)
+            set_mask_flag(mask_layers.wpn_knife, false)
+            wpn_config = { l = 1, r = 1, c = 1, u = 1 }
+        end
+    end
+end
+
+
+function update_device_info(actor)
+    if not mcm_device_lean_enable and actor and actor:active_detector() then
+        animate_hand = 0
+    else
+        animate_hand = 2
+    end
+end
+
+
+
+function on_key_press(key)
+    if key == bind_to_dik(key_bindings.kCROUCH) then
+        if mcm_crouch_jitter_blocket_by_aim and is_overriden(mask_layers.wpn_aim) then return end
+        if IsMoveState('mcCrouch') then
+            game.play_hud_anm("liz\\liz_hands_crouch_end_additive.anm", 2, mcm_crouch_jitter_speed, mcm_crouch_jitter_power, false, false)
+        else
+            game.play_hud_anm("liz\\liz_hands_crouch_start_additive.anm", 2, mcm_crouch_jitter_speed, mcm_crouch_jitter_power, false, false)
+        end
+    end
+end
+
+-- fix for those who use press to crouch instead of toggle crouch
+function on_key_release(key)
+    if key == bind_to_dik(key_bindings.kCROUCH) then
+        if mcm_crouch_jitter_blocket_by_aim and is_overriden(mask_layers.wpn_aim) then return end
+        local crouch_type_toggle = get_console_cmd(1, "g_crouch_toggle")
+        if not crouch_type_toggle then
+            game.play_hud_anm("liz\\liz_hands_crouch_end_additive.anm", 2, mcm_crouch_jitter_speed, mcm_crouch_jitter_power, false, false)
+        end
+    end
+end
+
+
+function actor_on_hit_callback()
+    if not mcm_hit_anm_enable then return end
+    if not is_valid_hit_type then return end
+    if is_overriden(mask_layers.wpn_aim) then return end
+    local hit_anim = hit_anims[math.random(1, #hit_anims)]
+    game.play_hud_anm(hit_anim, 2, 1, 1, false, true)
+end
+
+
+function on_game_start()
+    RegisterScriptCallback("on_option_change", initialize)
+    RegisterScriptCallback("actor_on_first_update", initialize)
+    RegisterScriptCallback("actor_on_update", actor_on_update)
+    RegisterScriptCallback("on_key_press", on_key_press)
+    RegisterScriptCallback("on_key_release", on_key_release)
+    RegisterScriptCallback("actor_on_before_hit", function (hit) is_valid_hit_type = valid_hit_types[hit.type] end)
+    RegisterScriptCallback("actor_on_hit_callback", actor_on_hit_callback)
+    RegisterScriptCallback("actor_on_jump", function () game.play_hud_anm("liz\\liz_hands_jump_additive.anm", 2, mcm_jump_speed, mcm_jump_power, false, false) end)
+    RegisterScriptCallback("actor_on_land", function () game.play_hud_anm("liz\\liz_hands_landing_additive.anm", 2, mcm_land_speed, mcm_land_power, false, false) end)
+    RegisterScriptCallback("actor_on_weapon_lower", function () set_mask_flag(mask_layers.wpn_lower, true) end)
+    RegisterScriptCallback("actor_on_weapon_raise", function () set_mask_flag(mask_layers.wpn_lower, false) end)
+    RegisterScriptCallback("actor_on_weapon_zoom_in", function () set_mask_flag(mask_layers.wpn_aim, true) end)
+    RegisterScriptCallback("actor_on_weapon_zoom_out", function () set_mask_flag(mask_layers.wpn_aim, false) end)
+end

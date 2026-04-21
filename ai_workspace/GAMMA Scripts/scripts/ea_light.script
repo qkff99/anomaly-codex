@@ -1,0 +1,71 @@
+--[[ for light test
+function on_game_start()
+	RegisterScriptCallback("on_key_press",on_key_press)
+end
+
+local keybind = 47
+function on_key_press(key)
+	if (key == keybind) then
+		hit_key()
+	end
+end
+function hit_key()
+	CreateTimeEvent("ea_cig_light","ea_cig_light",0,ea_light.light_on,1,0.9,0.2,1,0.1,0.15,0.25,0.2)
+	CreateTimeEvent("ea_cig_light2","ea_cig_light2",0.5,ea_light.light_on,0.8,0.5,0,3,0.5,1.3,0.7,0.1)
+end
+--]]
+local light,light_flag,light_bright,light_range = nil
+function light_on(r,g,b,range,bright,time,y_pos,dirmult)
+	--printf("light call "..r.." "..g.." "..b.." "..range.." "..bright.." "..time.." ")
+	light = script_light() -- Create a light source
+	light.type = 1 -- 1 = Point ; 2 = Spot
+	light.range = range --1
+	light_bright = bright --0.1
+	light_range = range --1
+	light.lanim = "koster_01_electra"
+	light.lanim_brightness = 0.025
+	light.hud_mode = false
+	light.shadow = true -- Turn on/off
+	light.volumetric = false
+	light.enabled = true
+	-- Pos/Rot
+	light.color = fcolor():set(r,g,b,bright)
+	--light.color = fcolor():set(1,0.9,0.2,0.05)
+	local dir = device().cam_dir
+	local pos = device().cam_pos
+	pos = pos:add(dir:mul(dirmult)) --0.2
+	pos.y = pos.y - y_pos--0.2
+	light:set_position(pos)
+	light:set_direction(dir)
+	light:update()
+	CreateTimeEvent("ea_s_l1", "ea_s_l1", time, light_off)
+	CreateTimeEvent("ea_s_l_2move", "ea_l_2move", 0, light_move,r,g,b,y_pos,dirmult)
+	light_flag = true
+	return true
+end
+
+function light_move(r,g,b,y_pos,dirmult)
+	light_bright = light_bright - 0.02
+	light_range = light_range - 0.06
+	light.range = light_range
+	light.color = fcolor():set(r,g,b,light_bright)
+	local dir = device().cam_dir
+	local pos = device().cam_pos
+	pos = pos:add(dir:mul(dirmult))
+	pos.y = pos.y - y_pos
+	light:set_position(pos)
+	light:set_direction(dir)
+	light:update()
+	if light_flag then
+		return false
+	else
+		return true
+	end
+end
+
+function light_off()
+	light.enabled = false
+	light:update()
+	light_flag = false
+	return true
+end

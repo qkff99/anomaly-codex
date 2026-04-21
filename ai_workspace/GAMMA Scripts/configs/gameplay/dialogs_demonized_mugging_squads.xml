@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="windows-1251" ?>
+<game_dialogs>
+
+	<dialog id="muggingDialogGiveMeYourShit">
+		<phrase_list>
+			<phrase id="0">
+				<script_text>dialogs.demonized_mugging_squads_text_stop_right_there</script_text>
+				<action>dialogs.demonized_mugging_squads_prepare_dialog_info</action>
+				<next>1</next>
+			</phrase>
+			<phrase id="1">
+				<script_text>dialogs.demonized_mugging_squads_text_who_are_you</script_text>
+				<next>2</next>
+			</phrase>
+			<phrase id="2">
+				<script_text>dialogs.demonized_mugging_squads_text_give_me_stuff</script_text>
+				<next>10</next>
+				<next>20</next>
+			</phrase>
+
+			<!-- Give my stuff dialog -->
+			<phrase id="10">
+				<script_text>dialogs.demonized_mugging_squads_text_here_is_my_stuff</script_text>
+				<action>dialogs.demonized_mugging_squads_give_my_stuff</action>
+				<next>11</next>
+			</phrase>
+			<phrase id="11">
+				<script_text>dialogs.demonized_mugging_squads_text_thank_you_and_gtfo</script_text>
+				<next>12</next>
+			</phrase>
+			<phrase id="12">
+				<script_text>dialogs.demonized_mugging_squads_text_ok</script_text>
+				<action>dialogs.demonized_mugging_squads_break_dialog</action>
+			</phrase>
+
+			<!-- Fuck you and start fight dialog -->
+			<phrase id="20">
+				<script_text>dialogs.demonized_mugging_squads_text_fuck_you_and_start_fight</script_text>
+				<action>dialogs.demonized_mugging_squads_fuck_you_and_start_fight</action>
+			</phrase>
+		</phrase_list>
+	</dialog>
+	
+</game_dialogs>

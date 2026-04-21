@@ -1,0 +1,53 @@
+-- ======================================================================
+--[[	Barrier Defense Task Emission Fix
+-- ======================================================================
+	Author: Catspaw (CatspawMods @ ModDB)
+	Source: https://www.moddb.com/mods/stalker-anomaly/addons/barrier-defense-task-emission-fix
+	https://www.youtube.com/channel/UCtG8fiWPUZEzWlkUn60btAw
+
+	1.1: 	Rewritten as a monkeypatch to eliminate conflicts with any 
+			other addon modifying tasks_defense.script.
+
+	Note: due to the necessity of unlocalizing tasks_defense.MDATA, this
+	addon now requires modded exes. Get them here if you don't have them:
+
+	https://github.com/themrdemonized/STALKER-Anomaly-modded-exes
+
+	If you don't want to use modded exes, you'll need to use version 1.0
+	of this addon.
+-- ===================================================================--]]
+script_version 			= "1.1"
+release_date    		= 20240806
+local send_tip 			= dynamic_news_helper.send_tip
+
+function enable_emissions()
+	-- You can run this function using debug mode to fix your emissions if they're already broken.
+	-- 		z_barrier_defense_emission_fix.enable_emissions()
+	printf("Barrier defense task fix: re-enabling emissions")
+	tasks_defense.MDATA.allow_surge = true
+end
+
+function xr_effects.barrier_defense_news(a, b, c)
+	if c and c[1] and c[2] and (c[2] == 'monolith' or c[2] == 'zombie') then
+		local x = c[1]
+		if x == 'start' then
+			send_tip(game.translate_string('barrier_defense_'..c[2]..'_start_announce'),game.translate_string("mil_freedom_leader_name"),nil,nil, 'ui_inGame2_lukash', nil, 'npc')
+			return
+		end
+		
+		if x == 'end' then
+			enable_emissions()
+			send_tip(game.translate_string('barrier_defense_'..c[2]..'_end_announce'),game.translate_string("mil_freedom_leader_name"),nil,nil, 'ui_inGame2_lukash', nil, 'npc')
+			return
+		end
+		
+		if x == 'escape' then
+			enable_emissions()
+			send_tip(game.translate_string('barrier_defense_'..c[2]..'_run_announce'),game.translate_string("mil_freedom_leader_name"),nil,nil, 'ui_inGame2_lukash', nil, 'npc')
+			return
+		end
+		printf('barrier_defense_news: first argument must be "start", "end" or "escape"')
+	else
+		printf('barrier_defense_news: missing or wrong arguments, must be ([start,end,escape]:[zombie,monolith])')
+	end
+end

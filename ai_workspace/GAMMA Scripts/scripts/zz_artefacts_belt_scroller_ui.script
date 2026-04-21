@@ -1,0 +1,164 @@
+local maxArtefactsHud = 100
+
+------------------------------------------------
+-- HUD
+uibelt_controls = item_artefact.UIBelt.InitControls
+item_artefact.UIBelt.InitControls = function(self)
+	local xml = utils_xml.get_hud_xml()
+	
+	self.dialog = xml:InitStatic("belt", self)
+	--utils_xml.correct_ratio(self.dialog)
+	self.dialog:Show(false)
+	
+	for i=1, maxArtefactsHud do
+		local x = (i-1)*(self.W + self.offset)
+		if self.mirrored then
+			x = (1-i)*(self.W + self.offset)
+		end
+		
+		self.slot[i] = {}
+		self.slot[i].ico = xml:InitStatic("belt:slot", self.dialog)
+		self.slot[i].layer = xml:InitStatic("belt:slot", self.dialog)
+		
+		for k, ele in pairs(self.slot[i]) do
+			ele:SetWndPos( vector2():set( x , 0 ) )
+			utils_xml.correct_ratio(ele)
+		end
+	end
+end
+
+uibelt_clear = item_artefact.UIBelt.Clear
+item_artefact.UIBelt.Clear = function(self)
+	for i=1, maxArtefactsHud do
+		self.slot[i].ico:Show(false)
+		self.slot[i].layer:Show(false)
+	end
+end
+
+uibelt_refresh = item_artefact.UIBelt.Refresh
+item_artefact.UIBelt.Refresh = function(self)	
+	self:Clear()
+	
+	if not main_hud_shown() then
+		return
+	end
+
+	local artefacts = zz_artefacts_belt_scroller_data.refreshArtefacts()
+
+	for cnt, obj in ipairs(artefacts) do
+		local sec = obj:section()
+		self.slot[cnt].ico:InitTexture( utils_xml.get_icons_texture(sec) )
+		self.slot[cnt].ico:SetTextureRect(Frect():set( utils_xml.get_item_axis(sec, nil, true) ))
+		self.slot[cnt].ico:Show(true)
+		
+		-- Set up indicator icon if found
+		local ico_layer = ini_sys:r_string_ex(sec,"1icon_layer")
+		if ico_layer then
+			local ico_layer_x = ini_sys:r_float_ex(sec,"1icon_layer_x")
+			local ico_layer_y = ini_sys:r_float_ex(sec,"1icon_layer_y")
+			local ico_layer_scale = ini_sys:r_float_ex(sec,"1icon_layer_scale")
+
+			local pos = self.slot[cnt].ico:GetWndPos()
+			local w = self.slot[cnt].ico:GetWidth()
+			local h = self.slot[cnt].ico:GetHeight()
+			local ratio = w/50
+			--print_dbg("UIBelt: icon [%s](%s) | x = %s / y = %s / w = %s / h = %s", sec, cnt, pos.x , pos.y , w , h )
+			
+			local x_i = pos.x + math.ceil(ico_layer_x * ico_layer_scale * ratio)
+			local y_i = pos.y + math.ceil(ico_layer_y * ico_layer_scale * ratio)
+			local w_i = math.ceil(w * ico_layer_scale)
+			local h_i = math.ceil(h * ico_layer_scale)
+			self.slot[cnt].layer:InitTexture( utils_xml.get_icons_texture(ico_layer) )
+			self.slot[cnt].layer:SetWndPos(vector2():set( x_i , y_i ))
+			self.slot[cnt].layer:SetWndSize(vector2():set( w_i , h_i ))
+			--print_dbg("UIBelt: indicator [%s](%s) | scale: %s / x = %s / y = %s / w = %s / h = %s", sec, cnt, ico_layer_scale, x_i , y_i , w_i , h_i )
+			
+			self.slot[cnt].layer:SetTextureRect(Frect():set( utils_xml.get_item_axis(ico_layer, nil, true) ))
+			self.slot[cnt].layer:Show(true)
+		end
+	end
+
+	self.dialog:Show(#artefacts > 0)
+end
+------------------------------------------------
+
+
+------------------------------------------------
+-- Inventory
+uiinventory_updatebelt = ui_inventory.UIInventory.UpdateBelt
+ui_inventory.UIInventory.UpdateBelt = function(self)
+	uiinventory_updatebelt(self)
+
+	self:Print(nil, "UpdateBelt")
+	local cc = self.CC["actor_belt"]
+
+	-- update items
+	local actor = db.actor
+	local outfit = actor:item_in_slot(7)
+	local cnt_arty = actor:belt_count()
+	local cnt_arty_slot = outfit and outfit:cast_CustomOutfit():get_artefact_count() or 0
+
+	local artefacts = zz_artefacts_belt_scroller_data.refreshArtefacts()
+	
+	for i=1,5 do
+		self.blocker_arty[i]:Show(i > cnt_arty_slot)
+		local item = i <= cnt_arty and artefacts[i + zz_artefacts_belt_scroller_data.artefactsOffset]
+		if item then
+			cc:AddItemManual(item, nil, i)
+		else
+			cc:RemoveItemManual(i)
+		end
+	end
+
+	if #artefacts <= 5 then
+		self.scroll_next:Show(false)
+		self.scroll_prev:Show(false)
+	else
+		self.scroll_prev:Show(true)
+		self.scroll_next:Show(true)
+		if #artefacts - 5 == zz_artefacts_belt_scroller_data.artefactsOffset then
+			self.scroll_next:Show(false)
+		elseif zz_artefacts_belt_scroller_data.artefactsOffset == 0 then
+			self.scroll_prev:Show(false)
+		end
+	end
+end
+
+ui_inventory.UIInventory.ScrollNext = function(self)
+	zz_artefacts_belt_scroller_data.artefactsOffset = zz_artefacts_belt_scroller_data.artefactsOffset + 1
+	self:UpdateBelt()
+end
+
+ui_inventory.UIInventory.ScrollPrev = function(self)
+	zz_artefacts_belt_scroller_data.artefactsOffset = zz_artefacts_belt_scroller_data.artefactsOffset - 1
+	self:UpdateBelt()
+end
+
+uiinventory_controls = ui_inventory.UIInventory.InitControls
+ui_inventory.UIInventory.InitControls = function(self)
+	uiinventory_controls(self)
+	local xml = CScriptXmlInit()
+	xml:ParseFile("ui_inventory_belt_scroll.xml")
+
+	-- Set scroll next button at the right of last belt cell, add some vertical offset to look better
+	local rect = Frect():set(0,0,0,0)
+	self.blocker_arty[5]:GetAbsoluteRect(rect)
+
+	self.scroll_next = xml:Init3tButton("ui_belt_scroll_button_right", self)
+	self.scroll_next:SetWndPos(vector2():set(rect.x2, rect.y1))
+
+	-- Set scroll prev button at the left of first belt cell
+	local rect = Frect():set(0,0,0,0)
+	self.blocker_arty[1]:GetAbsoluteRect(rect)
+
+	-- Window pos is top left of first cell - button width + some offset to look better
+	self.scroll_prev = xml:Init3tButton("ui_belt_scroll_button_left", self)
+	self.scroll_prev:SetWndPos(vector2():set(rect.x1 - self.scroll_prev:GetWidth(), rect.y1))
+
+	self:Register(self.scroll_next, "scroll_next")
+	self:Register(self.scroll_prev, "scroll_prev")
+
+	self:AddCallback("scroll_next", ui_events.BUTTON_CLICKED, self.ScrollNext, self)
+	self:AddCallback("scroll_prev", ui_events.BUTTON_CLICKED, self.ScrollPrev, self)
+end
+------------------------------------------------

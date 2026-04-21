@@ -1,0 +1,116 @@
+-- ======================================================================
+--[[    RF accessibility widget
+
+    Author: Catspaw
+    Credits: based on code by RavenAscendant
+
+-- ======================================================================
+    This file is required for the RF receiver accessibility widget 
+    included with NERFS.
+
+    It takes no action of its own unless called, and will not conflict
+    with anything whatsoever--but if you don't need it, you can safely
+    delete this file without any ill effects to NERFS.
+-- ===================================================================--]]
+
+class "UIRFWidget" (CUIScriptWnd)
+
+function UIRFWidget:__init(xmlfile,element,texture,pos) super()
+    self:InitControls(xmlfile,element,texture,pos)
+    RegisterScriptCallback("actor_on_net_destroy", self)
+end
+
+
+function UIRFWidget:__finalize()
+end
+
+
+function UIRFWidget:InitControls(xmlfile,element,texture,pos)
+    self.colors = {
+        em          = {r = 200, g = 0,   b = 0,  a = 128},
+        lo          = {r = 50,  g = 50,  b = 50, a = 255},
+        hi          = {r = 50,  g = 250, b = 50, a = 255},
+    }
+    local clr = self.colors
+    self.signal_pulse_fade  = 10
+    self.int_alpha_loss_max = 0.5
+    self.pos = pos or {x=491,y=670}
+    self:SetAutoDelete(true)
+    self.xml        = CScriptXmlInit()
+    self.xml:ParseFile(xmlfile or "rax_rf_indicator.xml")
+    self.indicator  = self.xml:InitStatic(element or "indicator",self)
+    if texture then self.indicator:InitTexture(texture) end
+    self.indicator:SetTextureColor(GetARGB(clr.lo.a, clr.lo.r, clr.lo.g, clr.lo.b))
+    self.indicator:SetWndPos(vector2():set(self.pos.x, self.pos.y))
+    self.indicator:EnableHeading(true)
+    self:ShowIndicator(false)
+end
+
+
+function UIRFWidget:SetSignalColor(sigstr,colors)
+    if colors and self.colors[sigstr] then
+        self.colors[sigstr] = colors
+    end
+end
+
+
+function UIRFWidget:Destroy()
+    get_hud():RemoveDialogToRender(self)
+end
+
+
+function UIRFWidget:actor_on_net_destroy()
+    get_hud():RemoveDialogToRender(self)
+end
+
+
+function UIRFWidget:ShowIndicator(onoff)
+    self.indicator:Show(onoff)
+end
+
+
+function UIRFWidget:SetPos(x,y)
+    self.pos.x = x or self.pos.x
+    self.pos.y = y or self.pos.y
+    self.indicator:SetWndPos(vector2():set(self.pos.x, self.pos.y))
+end
+
+
+function UIRFWidget:SetIndicatorColor(signal, interference,emission, tg)
+    local tg_emission_noise = math.random(100,400)
+    local emission_str      = 0
+    local colors            = self.colors
+
+    local red   = colors.lo.r
+    local green = colors.lo.g
+    local blue  = colors.lo.b
+    local alpha = colors.lo.a
+
+    red     = ((colors.lo.r  + (colors.hi.r - colors.lo.r) * signal) + red   * self.signal_pulse_fade) / (self.signal_pulse_fade + 1)
+    green   = ((colors.lo.g  + (colors.hi.g - colors.lo.g) * signal) + green * self.signal_pulse_fade) / (self.signal_pulse_fade + 1)
+    blue    = ((colors.lo.b  + (colors.hi.b - colors.lo.b) * signal) + blue  * self.signal_pulse_fade) / (self.signal_pulse_fade + 1)
+    alpha   = (((colors.lo.a + (colors.hi.a - colors.lo.a) * signal) - 255   * self.int_alpha_loss_max * interference) + alpha * self.signal_pulse_fade) / (self.signal_pulse_fade +1)
+
+    local clr = GetARGB(alpha,red,green,blue)
+    if emission then
+        if tg > tg_emission_noise then
+            emission_str = clamp(emission_str+ math.random(-0.1,0.2),0,1) or 0
+            tg_emission_noise = math.random(100,400)
+        end
+        local r = clamp(red     + colors.em.r * emission_str, 0, 255)
+        local g = clamp(green   + colors.em.g * emission_str, 0, 255)
+        local b = clamp(blue    + colors.em.b * emission_str, 0, 255)
+        local a = clamp(alpha   + colors.em.a * emission_str, 0, 255)
+        clr = GetARGB(a,r,g,b)
+    else
+        emission_str = 0
+    end
+    
+    self.indicator:SetTextureColor(clr)
+end
+
+
+function UIRFWidget:Update()
+    if not db.actor then return end
+    CUIScriptWnd.Update(self)
+end

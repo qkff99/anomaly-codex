@@ -1,0 +1,221 @@
+local Dart  = dart_core
+local Utils = dart_utils
+local DXML  = dart_dxml
+
+
+-- config() cache
+local CURRENT_CONFIG = nil
+
+
+-- merges Dart.config with MCM values and caches
+function config(mod)
+  if not CURRENT_CONFIG then
+    CURRENT_CONFIG = _G.dup_table(Dart.config)
+    SendScriptCallback("on_dart_mcm_config", CURRENT_CONFIG)
+  end
+
+  return mod
+    and CURRENT_CONFIG[mod]
+    or  CURRENT_CONFIG
+end
+
+
+-- does nothing special at the moment
+function state(mod)
+  return mod and Dart.state[mod] or Dart.state
+end
+
+
+-- spam-supressing logger
+function createLogger(mod)
+  mod = (mod and string.upper(mod) ~= "DART")
+    and "DART:" .. mod
+    or  "DART"
+
+  local calls = {}
+
+  local function log(formatter, ...)
+    local message = string.format(formatter, ...)
+
+    if not calls[message] then
+      calls[message] = 0
+    end
+
+    if calls[message] >= Dart.config.logLimit then
+      return
+    end
+
+    calls[message] = calls[message] + 1
+
+    local note = calls[message] == Dart.config.logLimit
+      and " (suppressing)"
+      or  ""
+
+    printdbg("[%s] %s%s", mod, message, note)
+  end
+
+  local function clear()
+    calls = {}
+  end
+
+  RegisterScriptCallback("on_dart_pre_refresh", clear)
+  return log, clear
+end
+
+
+-- per-module cache of parsed DXML
+function createCache(mod)
+  local cache = {}
+
+  local function has(path)
+    return cache[path] ~= nil
+  end
+
+  local function set(path, XML)
+    cache[path] = XML
+  end
+
+  local function apply(path, XML)
+    DXML.transferXML(cache[path], XML)
+  end
+
+  local function clear()
+    cache = {}
+  end
+
+  RegisterScriptCallback("on_dart_pre_refresh", clear)
+
+  return {
+    has   = has,
+    set   = set,
+    apply = apply,
+    clear = clear,
+  }
+end
+
+
+function createXMLCallback(mod, targetAlias, ...)
+  local log   = createLogger(mod)
+  local cache = createCache(mod)
+  local fns   = {...}
+
+  return function(path, XML)
+    -- Workaround for PAW parsing XML while mcm is still gathering
+    if ui_mcm and ui_mcm.is_gathering() then
+      return
+    end
+
+    local _, alias = DXML.splitPath(path)
+    if targetAlias ~= alias then
+      return
+    end
+
+    local replacement = Dart.xmlFileReplacements[path]
+
+    if replacement then
+      log("Replacing %s with %s", path, replacement)
+
+      if DXML.requestReplacement(XML, replacement) then
+        log("Done with %s", path)
+        return
+      else
+        log("Unable to replace %s with %s", path, replacement)
+      end
+    end
+
+    if cache.has(path) then
+      return cache.apply(path, XML)
+    end
+
+    DXML.extendXMLObject(XML, path)
+
+    local ratioLabel = Utils.getAspectRatioLabel(XML.aspectRatio)
+    local clock      = os.clock()
+
+    for _, fn in ipairs(fns) do
+      fn(XML, config(mod), state(mod))
+    end
+
+    log("Parsed %s (%s) in %.3fs", path, ratioLabel, os.clock() - clock)
+    cache.set(path, XML)
+
+    if DXML.getQueuedReplacement(path) then
+      DXML.settleReplacement(XML, path)
+    end
+  end
+end
+
+
+function registerModule(mod, alias, ...)
+  RegisterScriptCallback("on_xml_read",
+    createXMLCallback(mod, alias, ...)
+  )
+end
+
+
+-- refresh UI
+function refresh()
+  DestroyAll_UI()
+  SendScriptCallback("on_dart_pre_refresh")
+
+  CURRENT_CONFIG = nil
+  game.reload_ui_xml()
+
+  SendScriptCallback("on_dart_post_refresh")
+end
+
+
+-- refresh UI if a dart option changed
+function mcmOnOptionChange(changes)
+  for key in pairs(changes) do
+    if (key:match("^dart/")) then
+      return refresh()
+    end
+  end
+end
+
+
+-- resolution from previous on_change event
+local LAST_RESOLUTION = nil
+
+
+-- refresh UI via resolution change only if it *actually* changed
+function onResolutionChange()
+  local resolution = Utils.getDeviceResolution()
+
+  if resolution ~= LAST_RESOLUTION then
+    LAST_RESOLUTION = resolution
+    refresh()
+  end
+end
+
+
+-- refresh via keybind
+-- closes PDA if open instead to avoid stuck UI
+function onKeyRelease(key)
+  if not ui_mcm then
+    return
+  end
+
+  local refreshKey = ui_mcm.get("dart/dart_core/refreshKey")
+
+  if
+    refreshKey > -1
+    and key == refreshKey
+    and not hide_hud_pda()
+  then
+    refresh()
+  end
+end
+
+
+AddScriptCallback("on_dart_mcm_config")
+AddScriptCallback("on_dart_pre_refresh")
+AddScriptCallback("on_dart_post_refresh")
+
+
+function on_game_start()
+  RegisterScriptCallback("on_screen_resolution_changed", onResolutionChange)
+  RegisterScriptCallback("mcm_option_change", mcmOnOptionChange)
+  RegisterScriptCallback("on_key_release", onKeyRelease)
+end

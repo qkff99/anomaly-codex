@@ -1,0 +1,47 @@
+<w>
+    <container  x="0"   y="-160"    width="50" height="50" stretch="1"/>
+    
+    <cont_item x="0" y="0" width="1024" height="768" stretch="1">
+        <st width="1024" height="768" stretch="1"/>
+        <scroll width="1024" height="768" stretch="1" right_ident="0" left_ident="0" top_indent ="0" bottom_indent="0" vert_interval="0" always_show_scroll="0"/>
+        
+        <cell stretch="1">
+            <upgrade x="0" y="0" width="10" height="12" stretch="1">
+                <texture a="180">ui_upgrade_arrow2</texture>
+            </upgrade>
+            <cnt x="-2" y="-1" width="21" height="11" stretch="1">
+				<texture a="200">ui_item_count_back</texture>
+				<text x="0" y="0" width="21" height="11" font="arial_14" color="ui_2" align="c" vert_align="c"/>
+			</cnt>
+            <highlight stretch="1">
+                <texture>ui_button_inv_h</texture>
+            </highlight>
+            <pic stretch="1" align="c" alignment="c"/>
+		</cell>
+        
+    	<cell_1 x="0" y="0" width="41" height="41" stretch="1">
+            <pic stretch="1" align="c" alignment="c"/>
+            
+            <highlight stretch="1">
+				<texture>ui_inGame2_detector_highlighter</texture>
+			</highlight>
+            
+            <bar x="0" y="0" width="25" height="3" horz="1" min="0" max="1" pos="1" stretch="1">
+				<background width="27" height="3" stretch="1">
+					<texture r="62" g="74" b="74">ui_inGame2_inventory_item_status_bar</texture>
+				</background>
+				<progress stretch="1">
+					<texture r="142" g="149" b="149">ui_inGame2_inventory_item_status_bar</texture>
+				</progress>
+			</bar>
+		</cell_1>
+    </cont_item>
+    
+    <hover_bg x="0" y="0" width="100" height="100" stretch="1">
+        <texture>ui_qaw_opt_hover</texture>
+    </hover_bg>
+
+    <selected_bg x="0" y="0" width="100" height="100" stretch="1">
+        <texture>ui_qaw_opt_selected</texture>
+    </selected_bg>
+</w>

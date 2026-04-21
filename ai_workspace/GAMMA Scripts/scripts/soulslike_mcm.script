@@ -1,0 +1,1238 @@
+--[[
+    Jabbers
+    05APR2023
+    Jabbers' Soulslike Anomaly Mod
+--]]
+
+
+function on_mcm_load()
+    local op = {
+        id = "soulslike",
+        gr = { }
+    }
+
+    local general = {
+        id = "general", 
+        text = "ui_mcm_soulslike_general",
+        sh = true,
+        gr = {           
+            {
+                id = "title",
+                type = "slide",
+                link = "ui_options_slider_gameplay_diff",
+                text = "ui_mcm_soulslike_general_title",
+                size = {512,50},
+                spacing = 20
+            }, 
+            {
+                id = "desc_mcm",
+                type = "desc",
+                text = "ui_mcm_soulslike_general_description",
+                clr = {255, 255 ,255 ,255},
+            },
+            {
+                id = "desc_mcm",
+                type = "desc",
+                text = "ui_mcm_soulslike_general_disclaimer",
+                clr = {255, 255 ,255 ,0},
+            },
+        },
+    }
+
+    op.gr[#op.gr+1] = general
+
+    local character = {
+        id = "character", 
+        text = "ui_mcm_soulslike_character",
+        sh = true,
+        gr = {          
+            {
+                id = "title",
+                type = "slide",
+                link = "ui_options_slider_gameplay_diff",
+                text = "ui_mcm_soulslike_character_title",
+                size = {512,50},
+                spacing = 20
+            },
+            {
+                id = "health_loss_on_respawn",
+                type = "track",
+                val = 2,
+                min = 0.0,
+                max = 0.75,
+                step = 0.01,
+                def = 0.75
+            }, 
+            {
+                id = "allow_rank_loss",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_character_allow_rank_loss"
+            },
+            {
+                id = "rank_loss_percent",
+                type = "track",
+                val = 2,
+                min = 0,
+                max = 0.75,
+                step = 0.01,
+                def = 0.02
+            },
+            {
+                id = "allow_rep_loss",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_character_allow_rep_loss"
+            },
+            {
+                id = "rep_loss_percent",
+                type = "track",
+                val = 2,
+                min = 0.01,
+                max = 0.90,
+                step = 0.01,
+                def = 0.05
+            },
+            {
+                id = "allow_nighttime_respawn",
+                type = "check",
+                val = 1,
+                def = true,
+            }
+        },
+    }
+
+    op.gr[#op.gr+1] = character
+
+    local items = {
+        id = "items", 
+        text = "ui_mcm_soulslike_items",
+        sh = true,
+        gr = {  
+            {
+                id = "title",
+                type = "slide",
+                link = "ui_options_slider_gameplay_diff",
+                text = "ui_mcm_soulslike_items_title",
+                size = {512,50},
+                spacing = 20
+            },
+            {
+                id = "keep_equipped_items_on_death",
+                type = "check",
+                val = 1,
+                def = false
+            },
+            {
+                id = "desc_mcm",
+                type = "desc",
+                text = "ui_mcm_soulslike_items_allow_desc",
+                clr = {255, 255 ,255 ,255},
+            },
+            {
+                id = "allow_weapon_loss",
+                type = "check",
+                val = 1,
+                def = true,
+            },
+            {
+                id = "weapon_keep_chance",
+                type = "track",
+                val = 2,
+                min = 0.0,
+                max = 1.0,
+                step = 0.01,
+                def = 0.25,
+            },
+            {
+                id = "weapon_keep_chance_desc",
+                type = "desc",
+                text = "ui_mcm_soulslike_items_weapon_keep_chance_desc",
+                clr = {255,255,255,0}
+            },
+            {
+                id = "allow_outfit_loss",
+                type = "check",
+                val = 1,
+                def = true,
+            },
+            {
+                id = "outfit_keep_chance",
+                type = "track",
+                val = 2,
+                min = 0.0,
+                max = 1.0,
+                step = 0.01,
+                def = 0.25,
+            },
+            {
+                id = "outfit_keep_chance_desc",
+                type = "desc",
+                text = "ui_mcm_soulslike_items_outfit_keep_chance_desc",
+                clr = {255,255,255,0}
+            },
+            {
+                id = "allow_headgear_loss",
+                type = "check",
+                val = 1,
+                def = true,
+            },
+            {
+                id = "headgear_keep_chance",
+                type = "track",
+                val = 2,
+                min = 0.0,
+                max = 1.0,
+                step = 0.01,
+                def = 0.25,
+            },
+            {
+                id = "headgear_keep_chance_desc",
+                type = "desc",
+                text = "ui_mcm_soulslike_items_headgear_keep_chance_desc",
+                clr = {255,255,255,0}
+            },
+            {
+                id = "allow_artifact_loss",
+                type = "check",
+                val = 1,
+                def = true,
+            },
+            {
+                id = "artifact_keep_chance",
+                type = "track",
+                val = 2,
+                min = 0.0,
+                max = 1.0,
+                step = 0.01,
+                def = 0.25,
+                text = "ui_mcm_soulslike_items_artifact_keep_chance"
+            },
+            {
+                id = "artifact_keep_chance_desc",
+                type = "desc",
+                text = "ui_mcm_soulslike_items_artifact_keep_chance_desc",
+                clr = {255,255,255,0}
+            },
+            {
+                id = "allow_tool_loss",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_items_allow_tool_loss"
+            },
+            {
+                id = "allow_money_loss",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_items_allow_money_loss"
+            },
+            {
+                id = "desc_mcm",
+                type = "desc",
+                text = "ui_mcm_soulslike_items_scalar_description",
+                clr = {255, 255 ,255 ,255},
+            },
+            {
+                id = "item_loss_scalar",
+                type = "track",
+                val = 2,
+                min = 0,
+                max = 0.75,
+                step = 0.01,
+                def = 0.20,
+                text = "ui_mcm_soulslike_items_item_loss_scalar"
+            },
+            {
+                id = "item_condition_loss_scalar",
+                type = "track",
+                val = 2,
+                min = 0,
+                max = 0.25,
+                step = 0.01,
+                def = 0.05,
+                text = "ui_mcm_soulslike_items_item_condition_loss_scalar"
+            },
+            {
+                id = "desc_mcm",
+                type = "desc",
+                text = "ui_mcm_soulslike_items_loss_chance_per_type_desc",
+                clr = {255, 255 ,255 ,255},
+            },
+            {
+                id = "outfit_loss_chance",
+                type = "track",
+                val = 2,
+                min = 0,
+                max = 1.0,
+                step = 0.01,
+                def = 1.0,
+                text = "ui_mcm_soulslike_items_outfit_loss_chance"
+            },
+            {
+                id = "weapon_loss_chance",
+                type = "track",
+                val = 2,
+                min = 0,
+                max = 1.0,
+                step = 0.01,
+                def = 1.0,
+                text = "ui_mcm_soulslike_items_weapon_loss_chance"
+            },
+            {
+                id = "artefact_loss_chance",
+                type = "track",
+                val = 2,
+                min = 0,
+                max = 1.0,
+                step = 0.01,
+                def = 1.0,
+                text = "ui_mcm_soulslike_items_artefact_loss_chance"
+            },
+            {
+                id = "headgear_loss_chance",
+                type = "track",
+                val = 2,
+                min = 0,
+                max = 1.0,
+                step = 0.01,
+                def = 1.0,
+                text = "ui_mcm_soulslike_items_headgear_loss_chance"
+            },
+            {
+                id = "toolkit_loss_chance",
+                type = "track",
+                val = 2,
+                min = 0,
+                max = 1.0,
+                step = 0.01,
+                def = 1.0,
+                text = "ui_mcm_soulslike_items_toolkit_loss_chance"
+            },
+            {
+                id = "other_loss_chance",
+                type = "track",
+                val = 2,
+                min = 0,
+                max = 1.0,
+                step = 0.01,
+                def = 1.0,
+                text = "ui_mcm_soulslike_items_other_loss_chance"
+            },
+            {
+                id = "desc_mcm",
+                type = "desc",
+                text = "ui_mcm_soulslike_items_condition_loss_per_type_desc",
+                clr = {255, 255 ,255 ,255},
+            },
+            {
+                id = "outfit_condition_loss_chance",
+                type = "track",
+                val = 2,
+                min = 0,
+                max = 1.0,
+                step = 0.01,
+                def = 1.0,
+                text = "ui_mcm_soulslike_items_outfit_condition_loss_chance"
+            },
+            {
+                id = "weapon_condition_loss_chance",
+                type = "track",
+                val = 2,
+                min = 0,
+                max = 1.0,
+                step = 0.01,
+                def = 1.0,
+                text = "ui_mcm_soulslike_items_weapon_condition_loss_chance"
+            },
+            {
+                id = "artefact_condition_loss_chance",
+                type = "track",
+                val = 2,
+                min = 0,
+                max = 1.0,
+                step = 0.01,
+                def = 1.0,
+                text = "ui_mcm_soulslike_items_artefact_condition_loss_chance"
+            },
+            {
+                id = "headgear_condition_loss_chance",
+                type = "track",
+                val = 2,
+                min = 0,
+                max = 1.0,
+                step = 0.01,
+                def = 1.0,
+                text = "ui_mcm_soulslike_items_headgear_condition_loss_chance"
+            },
+            {
+                id = "ignore_rank_when_computing_item_loss_chance",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_items_ignore_rank_when_computing_item_loss_chance"
+            },
+            {
+                id = "ignore_rank_when_computing_item_condition_loss",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_items_ignore_rank_when_computing_item_condition_loss"
+            },
+            {
+                id = "money_loss_max_percent",
+                type = "track",
+                val = 2,
+                min = 0.01,
+                max = 0.90,
+                step = 0.01,
+                def = 0.10,
+                text = "ui_mcm_soulslike_items_money_loss_max_percent"
+            },
+            {
+                id = "money_loss_chance",
+                type = "track",
+                val = 2,
+                min = 0.01,
+                max = 1.0,
+                step = 0.01,
+                def = 0.5,
+                text = "ui_mcm_soulslike_items_money_loss_chance"
+            },
+        },
+    }
+
+    op.gr[#op.gr+1] = items
+
+    -- Ignored Items Section
+    local ignored_items = {
+        id = "ignored_items",
+        text = "ui_mcm_soulslike_ignored_items",
+        sh = true,
+        gr = {
+            {
+                id = "title",
+                type = "slide",
+                link = "ui_options_slider_gameplay_diff",
+                text = "ui_mcm_soulslike_ignored_items_title",
+                size = {512,50},
+                spacing = 20
+            },
+            {
+                id = "desc_mcm",
+                type = "desc",
+                text = "ui_mcm_soulslike_ignored_items_desc",
+                clr = {255, 255 ,255 ,255},
+            },
+            {
+                id = "bolt",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_ignored_items_bolt"
+            },
+            {
+                id = "itm_actor_backpack",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_ignored_items_itm_actor_backpack"
+            },
+            {
+                id = "device_pda",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_ignored_items_device_pda"
+            },
+            {
+                id = "device_pda_1",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_ignored_items_device_pda_1"
+            },
+            {
+                id = "device_pda_2",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_ignored_items_device_pda_2"
+            },
+            {
+                id = "device_pda_3",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_ignored_items_device_pda_3"
+            },
+            {
+                id = "detector_radio",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_ignored_items_detector_radio"
+            },
+            {
+                id = "wpn_knife",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_ignored_items_wpn_knife"
+            },
+            {
+                id = "wpn_knife2",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_ignored_items_wpn_knife2"
+            },
+            {
+                id = "wpn_knife3",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_ignored_items_wpn_knife3"
+            },
+            {
+                id = "wpn_knife4",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_ignored_items_wpn_knife4"
+            },
+            {
+                id = "wpn_knife5",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_ignored_items_wpn_knife5"
+            },
+            {
+                id = "wpn_knife6",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_ignored_items_wpn_knife6"
+            },
+            {
+                id = "wpn_knife7",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_ignored_items_wpn_knife7"
+            },
+            {
+                id = "wpn_knife8",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_ignored_items_wpn_knife8"
+            },
+            {
+                id = "wpn_knife9",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_ignored_items_wpn_knife9"
+            },
+            {
+                id = "wpn_axe",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_ignored_items_wpn_axe"
+            },
+            {
+                id = "wpn_axe2",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_ignored_items_wpn_axe2"
+            },
+            {
+                id = "wpn_axe3",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_ignored_items_wpn_axe3"
+            },
+            {
+                id = "bandage",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_ignored_items_bandage"
+            },
+            {
+                id = "medkit",
+                type = "check",
+                val = 1,
+                def = true,
+                text = "ui_mcm_soulslike_ignored_items_medkit"
+            }
+        },
+    }
+    
+    op.gr[#op.gr+1] = ignored_items
+
+    local scenarios = {
+        id = "scenarios", 
+        text = "ui_mcm_soulslike_scenarios",
+        sh = true,
+        gr = {
+            {
+                id = "title",
+                type = "slide",
+                link = "ui_options_slider_gameplay_diff",
+                text = "ui_mcm_soulslike_scenarios_title",
+                size = {512,50},
+                spacing = 20
+            },
+            {
+                id = "desc_mcm",
+                type = "desc",
+                text = "ui_mcm_soulslike_scenarios_description",
+                clr = {255, 255 ,255 ,255},
+            },
+            -- {
+            --     id = "rf_detector_scenario_weight",
+            --     type = "track",
+            --     val = 2,
+            --     min = 0.0,
+            --     max = 1.0,
+            --     step = 0.01,
+            --     def = 0.10
+            -- },
+            -- {
+            --     id = "hidden_stash_scenario_weight",
+            --     type = "track",
+            --     val = 2,
+            --     min = 0.0,
+            --     max = 1.0,
+            --     step = 0.01,
+            --     def = 0.10
+            -- },
+            {
+                id = "looter_npcs_marked",
+                type = "check",
+                val = 1,
+                def = false
+            }
+        },
+    }
+
+    op.gr[#op.gr+1] = scenarios
+
+    local ambush = {
+        id = "ambush", 
+        text = "ui_mcm_soulslike_ambush",
+        sh = true,
+        gr = {
+            {
+                id = "title",
+                type = "slide",
+                link = "ui_options_slider_gameplay_diff",
+                text = "ui_mcm_soulslike_ambush_title",
+                size = {512,50},
+                spacing = 20
+            },
+            {
+                id = "desc_mcm",
+                type = "desc",
+                text = "ui_mcm_soulslike_ambush_description",
+                clr = {255, 255 ,255 ,255},
+            },
+            {
+                id = "mutant_ambush_chance",
+                type = "track",
+                val = 2,
+                min = 0.0,
+                max = 1.0,
+                step = 0.01,
+                def = 0.25
+            },
+            {
+                id = "allow_boar_ambush",
+                type = "check",
+                val = 1,
+                def = true
+            },
+            {
+                id = "allow_flesh_ambush",
+                type = "check",
+                val = 1,
+                def = true
+            },
+            {
+                id = "allow_dogs_ambush",
+                type = "check",
+                val = 1,
+                def = true
+            },
+             {
+                id = "allow_cats_ambush",
+                type = "check",
+                val = 1,
+                def = true
+            },
+            {
+                id = "allow_snorks_ambush",
+                type = "check",
+                val = 1,
+                def = true
+            },
+            {
+                id = "allow_bloodsucker_ambush",
+                type = "check",
+                val = 1,
+                def = true
+            },
+            {
+                id = "allow_burer_ambush",
+                type = "check",
+                val = 1,
+                def = true
+            },
+            {
+                id = "allow_chimera_ambush",
+                type = "check",
+                val = 1,
+                def = true
+            },
+            {
+                id = "allow_controller_ambush",
+                type = "check",
+                val = 1,
+                def = true
+            },
+            {
+                id = "stalker_ambush_chance",
+                type = "track",
+                val = 2,
+                min = 0.0,
+                max = 1.0,
+                step = 0.01,
+                def = 0.25
+            },
+            {
+                id = "allow_stalker_novice_ambush",
+                type = "check",
+                val = 1,
+                def = true
+            },
+            {
+                id = "allow_stalker_advanced_ambush",
+                type = "check",
+                val = 1,
+                def = true
+            },
+            {
+                id = "allow_stalker_veteran_ambush",
+                type = "check",
+                val = 1,
+                def = true
+            },
+            {
+                id = "allow_stalker_sniper_ambush",
+                type = "check",
+                val = 1,
+                def = true
+            }
+        },
+    }
+
+    op.gr[#op.gr+1] = ambush
+
+    local hardcore = {
+        id = "hardcore", 
+        text = "ui_mcm_soulslike_hardcore",
+        sh = true,
+        gr = {
+            {
+                id = "title",
+                type = "slide",
+                link = "ui_options_slider_gameplay_diff",
+                text = "ui_mcm_soulslike_hardcore_title",
+                size = {512,50},
+                spacing = 20
+            },
+            {
+                id = "desc_mcm",
+                type = "desc",
+                text = "ui_mcm_soulslike_hardcore_save_description",
+                clr = {255, 255 ,255 ,0},
+            },
+            {
+                id = "is_enabled",
+                type = "check",
+                val = 1,
+                def = false
+            },
+            {
+                id = "lose_all_items_on_death",
+                type = "check",
+                val = 1,
+                def = false,
+                text = "Lose all items on death",
+            },
+            {
+                id = "lose_all_items_on_death_desc",
+                type = "desc",
+                text = "If enabled, you will lose ALL items on death. This setting overrides all other settings in the Items category.",
+                clr = {255, 255 ,255 ,0},
+            },
+            {
+                id = "override_campfire_hardcore_saves",
+                type = "check",
+                val = 1,
+                def = false
+            }
+        },
+    }
+
+    op.gr[#op.gr+1] = hardcore
+
+    local debug = {
+        id = "debug", 
+        text = "ui_mcm_soulslike_debug",
+        sh = true,
+        gr = {
+            {
+                id = "title",
+                type = "slide",
+                link = "ui_options_slider_gameplay_diff",
+                text = "ui_mcm_soulslike_debug_title",
+                size = {512,50},
+                spacing = 20
+            },
+            {
+                id = "is_enabled",
+                type = "check",
+                val = 1,
+                def = false
+            },
+            {
+                id = "enable_tips",
+                type = "check",
+                val = 1,
+                def = false
+            },
+            -- {
+            --     id = "debug_hidden_stashes",
+            --     type = "check",
+            --     val = 1,
+            --     def = false
+            -- },
+            {
+                id = "debug_squad_spawns",
+                type = "check",
+                val = 1,
+                def = false
+            },
+            {
+                id = "debug_item_loss",
+                type = "check",
+                val = 1,
+                def = false
+            },
+            {
+                id = "debug_the_tarkov_looter",
+                type = "check",
+                val = 1,
+                def = false
+            },
+            {
+                id = "debug_the_noloss_scenario",
+                type = "check",
+                val = 1,
+                def = false
+            },
+            {
+                id = "debug_the_default_scenario",
+                type = "check",
+                val = 1,
+                def = false
+            },
+            -- {
+            --     id = "debug_the_rf_scenario",
+            --     type = "check",
+            --     val = 1,
+            --     def = false
+            -- },
+            -- {
+            --     id = "debug_the_hidden_stash_scenario",
+            --     type = "check",
+            --     val = 1,
+            --     def = false
+            -- },
+            {
+                id = "debug_always_spawn_ambush",
+                type = "check",
+                val = 1,
+                def = false
+            }
+        },
+    }
+
+    op.gr[#op.gr+1] = debug
+
+    return op
+end
+
+local function get_config(key, default_when_nil)
+    local opt = ui_mcm and ui_mcm.get("soulslike/"..key)
+    if opt == nil then
+        opt = default_when_nil
+    end
+    return opt
+end
+
+-- Hardcore
+function is_hardcore_save_enabled() 
+    return get_config("hardcore/is_enabled", false)
+end
+
+function override_campfire_hardcore_saves() 
+    return get_config("hardcore/override_campfire_hardcore_saves", false)
+end
+
+-- Scenarios
+function are_looter_npcs_marked()
+    return get_config("scenarios/looter_npcs_marked", false)
+end 
+
+function rf_detector_scenario_weight()
+    return  0.0 --get_config("scenarios/rf_detector_scenario_weight", 0.10)
+end 
+
+function hidden_stash_scenario_weight()
+    return 0.0 --get_config("scenarios/hidden_stash_scenario_weight", 0.10)
+end 
+
+function scattered_stash_scenario_weight()
+    return  0.0 --get_config("scenarios/scattered_stash_scenario_weight", 0.02)
+end 
+
+function nearby_dead_stalker_scenario_weight()
+    return  get_config("scenarios/nearby_dead_stalker_scenario_weight", 0.10)
+end 
+
+-- Items
+function get_item_loss_scalar()
+    return get_config("items/item_loss_scalar", 0.2)
+end
+
+function get_item_condition_loss_percent()
+    return get_config("items/item_condition_loss_scalar", 0.05)
+end
+
+function get_keep_artifact_chance()
+    return get_config("items/artifact_keep_chance", true)
+end
+
+function get_keep_headgear_chance()
+    return get_config("items/headgear_keep_chance", true)
+end
+
+function get_keep_outfit_chance()
+    return get_config("items/outfit_keep_chance", true)
+end
+
+function get_keep_weapon_chance()
+    return get_config("items/weapon_keep_chance", true)
+end
+
+function allow_toolkit_loss()
+    return get_config("items/allow_tool_loss", true)
+end 
+
+function allow_artifact_loss()
+    return get_config("items/allow_artifact_loss", true)
+end 
+
+function allow_headgear_loss()
+    return get_config("items/allow_headgear_loss", true)
+end 
+
+function allow_outfit_loss()
+    return get_config("items/allow_outfit_loss", true)
+end 
+
+function allow_weapon_loss()
+    return get_config("items/allow_weapon_loss", true)
+end 
+
+function get_keep_equipped_items_on_death()
+    return get_config("items/keep_equipped_items_on_death", false)
+end
+
+function ignore_rank_when_computing_item_loss_chance()
+    return get_config("items/ignore_rank_when_computing_item_loss_chance", false)
+end
+
+function ignore_rank_when_computing_item_condition_loss()
+    return get_config("items/ignore_rank_when_computing_item_condition_loss", false)
+end
+
+-- Ambush
+function mutant_ambush_chance()
+    return get_config("ambush/mutant_ambush_chance", 0.5)
+end 
+
+function stalker_ambush_chance()
+    return get_config("ambush/stalker_ambush_chance", 0.5)
+end 
+
+function allow_boar_ambush()
+    return get_config("ambush/allow_boar_ambush", true)
+end 
+function allow_flesh_ambush()
+    return get_config("ambush/allow_flesh_ambush", true)
+end 
+function allow_dogs_ambush()
+    return get_config("ambush/allow_dogs_ambush", true)
+end 
+function allow_cats_ambush()
+    return get_config("ambush/allow_cats_ambush", true)
+end 
+function allow_snorks_ambush()
+    return get_config("ambush/allow_snorks_ambush", true)
+end 
+function allow_bloodsucker_ambush()
+    return get_config("ambush/allow_bloodsucker_ambush", true)
+end 
+function allow_burer_ambush()
+    return get_config("ambush/allow_burer_ambush", true)
+end 
+function allow_chimera_ambush()
+    return get_config("ambush/allow_chimera_ambush", true)
+end 
+function allow_controller_ambush()
+    return get_config("ambush/allow_controller_ambush", true)
+end 
+function allow_stalker_novice_ambush()
+    return get_config("ambush/allow_stalker_novice_ambush", true)
+end 
+function allow_stalker_advanced_ambush()
+    return get_config("ambush/allow_stalker_advanced_ambush", true)
+end 
+function allow_stalker_veteran_ambush()
+    return get_config("ambush/allow_stalker_veteran_ambush", true)
+end 
+function allow_stalker_sniper_ambush()
+    return get_config("ambush/allow_stalker_sniper_ambush", true)
+end 
+
+-- Character
+function get_health_loss_percent()
+    return get_config("character/health_loss_on_respawn", 0.75)
+end
+
+function rank_loss_percent()
+    return get_config("character/rank_loss_percent", 0.05)
+end 
+
+function rep_loss_percent()
+    return get_config("character/rep_loss_percent", 0.02)
+end 
+
+function allow_nighttime_respawn()
+    return get_config("character/allow_nighttime_respawn", true)
+end
+
+
+-- Debug
+function is_debug_enabled() 
+    return get_config("debug/is_enabled", false)
+end
+
+function show_debug_tips() 
+    return get_config("debug/enable_tips", false)
+end
+
+function debug_hidden_stashes()
+    return is_debug_enabled() and get_config("debug/debug_hidden_stashes", false)
+end 
+
+function debug_squad_spawns()
+    return is_debug_enabled() and get_config("debug/debug_squad_spawns", false)
+end 
+
+function debug_item_loss()
+    return is_debug_enabled() and get_config("debug/debug_item_loss", false)
+end 
+
+function debug_remove_default_scenario()
+    return is_debug_enabled() and get_config("debug/debug_remove_default_scenario", false)
+end 
+
+function debug_the_tarkov_looter()
+    return is_debug_enabled() and get_config("debug/debug_the_tarkov_looter", false)
+end 
+
+function debug_the_noloss_scenario()
+    return is_debug_enabled() and get_config("debug/debug_the_noloss_scenario", false)
+end 
+
+function debug_the_default_scenario()
+    return is_debug_enabled() and get_config("debug/debug_the_default_scenario", false)
+end 
+
+function debug_the_rf_scenario()
+    return false -- is_debug_enabled() and get_config("debug/debug_the_rf_scenario", false)
+end 
+
+function debug_the_hidden_stash_scenario()
+    return false -- is_debug_enabled() and get_config("debug/debug_the_hidden_stash_scenario", false)
+end 
+
+function debug_always_spawn_ambush()
+    return is_debug_enabled() and get_config("debug/debug_always_spawn_ambush", false)
+end
+
+-- Getter functions for per-type loss chance
+function get_outfit_loss_chance()
+    return get_config("items/outfit_loss_chance", 1.0)
+end
+function get_weapon_loss_chance()
+    return get_config("items/weapon_loss_chance", 1.0)
+end
+function get_artefact_loss_chance()
+    return get_config("items/artefact_loss_chance", 1.0)
+end
+function get_headgear_loss_chance()
+    return get_config("items/headgear_loss_chance", 1.0)
+end
+function get_toolkit_loss_chance()
+    return get_config("items/toolkit_loss_chance", 1.0)
+end
+function get_other_loss_chance()
+    return get_config("items/other_loss_chance", 1.0)
+end
+
+-- Getter functions for per-type condition loss
+function get_outfit_condition_loss_chance()
+    return get_config("items/outfit_condition_loss_chance", 1.0)
+end
+function get_weapon_condition_loss_chance()
+    return get_config("items/weapon_condition_loss_chance", 1.0)
+end
+function get_artefact_condition_loss_chance()
+    return get_config("items/artefact_condition_loss_chance", 1.0)
+end
+function get_headgear_condition_loss_chance()
+    return get_config("items/headgear_condition_loss_chance", 1.0)
+end
+
+-- Getter functions for ignored items
+function ignore_bolt() 
+    return get_config("ignored_items/ignore_bolt", true)
+ end
+ 
+function ignore_itm_actor_backpack()
+     return get_config("ignored_items/ignore_itm_actor_backpack", true) 
+end
+
+function ignore_device_pda() 
+    return get_config("ignored_items/ignore_device_pda", true)
+ end
+
+function ignore_device_pda_1() 
+    return get_config("ignored_items/ignore_device_pda_1", true) 
+end
+
+function ignore_device_pda_2() 
+    return get_config("ignored_items/ignore_device_pda_2", true)
+ end
+function ignore_device_pda_3() 
+    return get_config("ignored_items/ignore_device_pda_3", true) 
+end
+
+function ignore_detector_radio() 
+    return get_config("ignored_items/ignore_detector_radio", true) 
+end
+
+function ignore_wpn_knife() 
+    return get_config("ignored_items/ignore_wpn_knife", true) 
+end
+
+function ignore_wpn_knife2() 
+    return get_config("ignored_items/ignore_wpn_knife2", true) 
+end
+
+function ignore_wpn_knife3() 
+    return get_config("ignored_items/ignore_wpn_knife3", true) 
+end
+
+function ignore_wpn_knife4() 
+    return get_config("ignored_items/ignore_wpn_knife4", true) 
+end
+
+function ignore_wpn_knife5() 
+    return get_config("ignored_items/ignore_wpn_knife5", true) 
+end
+
+function ignore_wpn_knife6() 
+    return get_config("ignored_items/ignore_wpn_knife6", true) 
+end
+
+function ignore_wpn_knife7() 
+    return get_config("ignored_items/ignore_wpn_knife7", true) 
+end
+
+function ignore_wpn_knife8() 
+    return get_config("ignored_items/ignore_wpn_knife8", true) 
+end
+
+function ignore_wpn_knife9()
+     return get_config("ignored_items/ignore_wpn_knife9", true) 
+end
+
+function ignore_wpn_axe()
+     return get_config("ignored_items/ignore_wpn_axe", true)     
+end
+
+function ignore_wpn_axe2() 
+    return get_config("ignored_items/ignore_wpn_axe2", true) 
+end
+
+function ignore_wpn_axe3() 
+    return get_config("ignored_items/ignore_wpn_axe3", true) 
+end
+
+function ignore_bandage() 
+    return get_config("ignored_items/ignore_bandage", true) 
+end
+
+function ignore_medkit() 
+    return get_config("ignored_items/ignore_medkit", true) 
+end
+
+function allow_money_loss()
+    return get_config("items/allow_money_loss", true)
+end
+
+function get_money_loss_max_percent()
+    return get_config("items/money_loss_max_percent", 0.10)
+end
+
+function get_money_loss_chance()
+    return get_config("items/money_loss_chance", 0.5)
+end
+
+function allow_rep_loss()
+    return get_config("character/allow_rep_loss", true)
+end
+
+function allow_rank_loss()
+    return get_config("character/allow_rank_loss", true)
+end
+
+-- Hardcore lose all items option
+function lose_all_items_on_death()
+    return get_config("hardcore/lose_all_items_on_death", false)
+end

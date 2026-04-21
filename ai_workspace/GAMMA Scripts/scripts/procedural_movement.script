@@ -1,0 +1,116 @@
+--[[
+	=====================================================================
+	Addon      : Procedural Movement Animations
+	Link       : https://www.moddb.com/mods/stalker-anomaly/addons/procedural-movement-animations
+	Author     : party_50
+	Date       : 22.02.2026
+	Last Edit  : 03.01.2026
+	=====================================================================
+--]]
+
+local reload_finished_mark = false
+
+function stop()
+	game.stop_hud_anm("movement\\idle.anm", false)
+	game.stop_hud_anm("movement\\idle_aim.anm", false)
+	game.stop_hud_anm("movement\\walk.anm", false)
+	game.stop_hud_anm("movement\\sprint_generic.anm", false)
+	game.stop_hud_anm("movement\\sprint_pistol.anm", false)
+	game.stop_hud_anm("movement\\sprint_rifle.anm", false)
+end
+
+function play(wpn, act, act_pre)
+	local single_handed = ini_sys:r_float_ex(wpn:section(), "single_handed") or 0
+	local class = ini_sys:r_string_ex(wpn:section(), "class")
+	local reloading = wpn:get_state() == 7
+	
+	local hands = 2
+	if db.actor:active_detector() and not (act == "aim_walk" or act == "aim_crouch") then
+		hands = 0
+	end
+	
+	if act_pre == "idle" then
+		game.play_hud_anm("movement\\idle.anm", hands, 0.5, 0.7, true, true, "lead_gun")
+	elseif act_pre == "aim_idle" then
+		game.play_hud_anm("movement\\idle_aim.anm", hands, 0.5, 0.2, true, true, "lead_gun")
+	end
+	
+	if act == "aim_crouch" then
+		game.play_hud_anm("movement\\walk.anm", hands, 0.7, 0.2, true, true, "lead_gun")
+	elseif act == "aim_walk" then
+		game.play_hud_anm("movement\\walk.anm", hands, 1, 0.2, true, true, "lead_gun")
+	elseif act == "crouch" then
+		game.play_hud_anm("movement\\walk.anm", hands, 1, 0.3, true, true, "lead_gun")
+	elseif act == "sprint" then
+		if game.actor_weapon_lowered() or (reloading and not reload_finished_mark) or class == "II_BOLT" or class == "WP_BINOC" or class == "WP_KNIFE" or class == "G_F1" or class == "G_F1_S" or class == "G_RGD5_S" or class == "D_PDA" then
+			game.play_hud_anm("movement\\sprint_generic.anm", hands, 0.8, 0.5, true, true, "lead_gun")
+		elseif single_handed == 1 then
+			game.play_hud_anm("movement\\sprint_pistol.anm", hands, 0.8, 0.8, true, true, "lead_gun")
+		else
+			game.play_hud_anm("movement\\sprint_rifle.anm", hands, 0.8, 0.8, true, true, "lead_gun")
+		end
+	elseif act == "walk" then
+		game.play_hud_anm("movement\\walk.anm", hands, 1, 0.5, true, true, "lead_gun")
+	elseif act == "run" then
+		game.play_hud_anm("movement\\walk.anm", hands, 1, 0.6, true, true, "lead_gun")
+	end
+end
+
+function on_state_change()
+	stop()
+	
+	local wpn = db.actor:active_item()
+	if not wpn then
+		return
+	end
+	
+	if wpn:get_state() ~= 7 then
+		reload_finished_mark = false
+	end
+	
+	local c_wpn = wpn:cast_Weapon()
+
+	local act_pre
+	if c_wpn and c_wpn:IsZoomed() then
+		act_pre = "aim_idle"
+	else
+		act_pre = "idle"
+	end
+	
+	local act
+	if IsMoveState("mcAnyMove") then
+		if c_wpn and c_wpn:IsZoomed() then
+			if IsMoveState("mcCrouch") then
+				act = "aim_crouch"
+			else
+				act = "aim_walk"
+			end
+		elseif IsMoveState("mcCrouch") then
+			act = "crouch"
+		elseif IsMoveState("mcSprint") then
+			act = "sprint"
+		elseif IsMoveState("mcLookout") or IsMoveState("mcAccel") then
+			act = "walk"
+		else
+			act = "run"
+		end
+	end
+	
+	play(wpn, act, act_pre)
+end
+
+function on_mark(state, mark)
+	if state == 7 and mark == "rld" then
+		reload_finished_mark = true
+		on_state_change()
+	end
+end
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_movement_changed", on_state_change)
+    RegisterScriptCallback("actor_on_weapon_zoom_in", on_state_change)
+    RegisterScriptCallback("actor_on_weapon_zoom_out", on_state_change)
+    RegisterScriptCallback("actor_on_changed_slot", on_state_change)
+    RegisterScriptCallback("actor_on_item_state_switch", on_state_change)
+	RegisterScriptCallback("actor_on_hud_animation_mark", on_mark)
+end

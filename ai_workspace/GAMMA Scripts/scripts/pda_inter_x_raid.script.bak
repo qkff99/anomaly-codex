@@ -1,0 +1,438 @@
+Raid_available_squads = {}
+Hired_squad = { id = false, start_time = false, duration = false, danger = false, icon = "default" }
+local viable_squads_list = {}
+local tmr_search, tmr_comp
+local ctime_to_t = utils_data.CTime_to_table
+local t_to_ctime = utils_data.CTime_from_table
+
+local chance_to_offer_mult = pda_inter_mcm.get_config("raid_offer_mult")		-- multiplier for chance to appear in raid window
+local base_price_mult = pda_inter_mcm.get_config("raid_base_price")		-- multiplier for hiring price
+local price_power = pda_inter_mcm.get_config("raid_price_power")				-- price power (not to be too ridiculous for very high ranks)
+local raid_time = pda_inter_mcm.get_config("raid_max_time")
+
+local gt = game.translate_string
+
+---------------------------- State 5 -------------------------------
+function launch_squad_search()
+	-- get all non-enemy squads in the radius of 150 meters from actor and store them as potential mercs
+	for i = 1, 65534 do
+		local squad = alife_object(i)
+		if squad then
+			local is_squad = string.find(squad:section_name(), "_sim_squad_")
+			local squad_pos = squad.position
+			local ac_pos = db.actor:position()
+			local squad_not_comp = axr_companions.companion_squads[squad.id] == nil
+			if is_squad and squad.online and (ac_pos:distance_to(squad_pos) <= 150) and squad_not_comp then
+				local squad_comm = squad:get_squad_community()
+				local ac_true_comm = get_actor_true_community()
+				if (game_relations.is_factions_neutrals(squad_comm, ac_true_comm)) or (game_relations.is_factions_friends(squad_comm, ac_true_comm)) then
+					table.insert(viable_squads_list, squad.id)
+				end
+			end
+		end
+	end
+
+end
+
+function update_squads_gui()
+	local tg = time_global()
+	if (tmr_search and tg < tmr_search) then return end
+	tmr_search = tg + 1000
+
+	local state = pda_inter_gui.pda_msg_states[1] and pda_inter_gui.pda_msg_states[1].state
+	if (not state) or state ~= 5 then return end
+
+	-- add new squads till limit
+	add_squad()
+
+	-- update added squads
+	upd_squad()
+
+end
+
+function add_squad()
+	if #Raid_available_squads >= 6 then return end
+
+	-- get picked map name and its danger level
+	local map = pda_inter_gui.pda_msg_states[1].active_str
+	local danger = pda_inter_gui.pdax_level_list[map][1]
+
+	-- get random squad and its index from viable squads list
+	local squad, squad_index = pick_squad(viable_squads_list)		-- this also checks if squad is still alife_object
+	if not (squad and squad_index) then return end
+	if not (squad.commander_id) then return end
+	if not (squad.online) then return end		-- for rare case of squad going offline in this 1 sec interval
+
+	-- get size, rank and rank name
+	local squad_size, average_rank, rank_name = get_size_and_rank(squad)
+	if not (squad_size and average_rank and rank_name) then return end
+
+	-- get chance to join, price and time
+	local chance, price, time = get_chance_and_price(squad_size, average_rank, danger)
+	if not (chance and price and time) then return end
+
+	-- likelihood of squad to offer their service
+	pr("raid chance to join: %s", chance)
+	if chance <= math.random() then return end
+
+	-- get commander name and icon
+	local commander_name, commander_icon = get_commander_name_and_icon(squad)
+	pr("commander_icon: %s", commander_icon)
+	if not (commander_name and commander_icon) then return end
+
+	-- save this squad's info to Raid_available_squads if it reaches the final round (easier to see the whole picture when its all inside function)
+	table.insert(Raid_available_squads, {})
+	Raid_available_squads[#Raid_available_squads].id = squad.id
+	Raid_available_squads[#Raid_available_squads].comm = squad:get_squad_community()
+	Raid_available_squads[#Raid_available_squads].size = squad_size
+	Raid_available_squads[#Raid_available_squads].rank = rank_name
+	Raid_available_squads[#Raid_available_squads].time = time
+	Raid_available_squads[#Raid_available_squads].icon = commander_icon
+	Raid_available_squads[#Raid_available_squads].price = price
+	Raid_available_squads[#Raid_available_squads].danger = pda_inter_gui.pdax_level_list[map][1]
+
+	-- and remove from viable_squads_list
+	table.remove(viable_squads_list, squad_index)
+
+	-- send message from NPC (msg, header, timeout, showtime, sender, sound, icon_by)
+	local def_clr = strformat("%c[%s,%s,%s,%s]", 255, 190, 190, 190)
+	local inc_clr = strformat("%c[%s,%s,%s,%s]", 255, 0, 140, 180)
+	local msg = inc_clr .. gt("pda_private_msg") .. " " .. def_clr .. gt("pda_raid_to_join_" .. math.random(1, 4))
+	dynamic_news_helper.send_tip(msg, commander_name, nil, 5, commander_icon, "news", "npc")
+
+	-- update GUI
+	pda_inter_gui.GUI:UpdRaidLowerMenu()
+
+end
+
+function upd_squad()
+	if #Raid_available_squads <= 0 then return end
+
+	for idx, t in ipairs(Raid_available_squads) do
+
+		-- check if squad still exist, still online and viable
+		local squad = alife_object(t.id)
+		if squad and squad.online and squad.commander_id then
+
+			-- get squad size
+			local squad_size = 0
+			for member in squad:squad_members() do
+				local npc = level.object_by_id(member.id)		-- db.storage[member.id] and db.storage[member.id].object or level.object_by_id(member.id)
+				if npc and npc:alive() then
+					squad_size = squad_size + 1
+				end
+			end
+
+			-- update size and price
+			if squad_size > 0 and t.size ~= squad_size then
+				local old_size = t.size
+				t.size = squad_size
+				t.price = t.price * (squad_size / old_size)
+			end
+
+			-- update commander_icon
+			if squad:commander_id() then
+				local commander = level.object_by_id(squad:commander_id())
+				if commander and commander:alive() and commander:character_icon()then
+					t.icon = t.icon ~= commander:character_icon() and commander:character_icon() or t.icon
+				end
+			end
+
+		-- else remove it from the table
+		else
+			table.remove(Raid_available_squads, idx)
+		end
+
+	end
+
+	-- update GUI
+	pda_inter_gui.GUI:UpdRaidLowerMenu()
+
+end
+
+function clear_raid_tables()
+	iempty_table(viable_squads_list)
+	iempty_table(Raid_available_squads)
+
+end
+
+
+---------------------------- State 10 -------------------------------
+function update_raid_companions()
+	local tg = time_global()
+	if (tmr_comp and tg < tmr_comp) then return end
+	tmr_comp = tg + 3000
+
+	local state = pda_inter_gui.pda_msg_states[1].state
+	if state ~= 10 then return end
+
+	-- remove from squad when time out
+	check_companion_time()
+
+	-- remove from squad if dismissed (already have addon that override dialogue function, so here will be different)
+	local squad_id = Hired_squad.id
+	if not squad_id then return end		-- if this was already resetted by time out function
+
+	if (axr_companions.companion_squads[squad_id] == nil) then
+		cancel_active_raid()
+	end
+
+end
+
+-- companions leave the squad on time out
+function check_companion_time()
+	if not Hired_squad.start_time then return end
+	if not Hired_squad.duration then return end
+
+	local cur_time = game.get_game_time()
+	pr( "hired companions time left: %s", Hired_squad.duration - (cur_time:diffSec(t_to_ctime(Hired_squad.start_time))) )
+
+	if cur_time:diffSec(t_to_ctime(Hired_squad.start_time)) > (Hired_squad.duration) then
+		-- send message
+		local msg = gt("pda_raid_timeout")
+		dynamic_news_helper.send_tip(msg, nil, nil, 10, Hired_squad.icon, "news", "npc")
+
+		-- and remove from squad
+		remove_companion_raid_squad()
+	end
+
+end
+
+-- cancel and dismiss if companion stays for too long on a map with higher danger
+function check_level_danger()
+	local state = pda_inter_gui.pda_msg_states[1].state
+	if state ~= 10 then return end
+
+	-- start timer if current level's danger is higher and then dismiss companion
+	local function dismiss_by_danger()
+		remove_companion_raid_squad()
+		return true
+	end
+
+	if pda_inter_gui.pdax_level_list[level.name()][1] > Hired_squad.danger then
+		local msg = gt("pda_raid_high_danger")
+		dynamic_news_helper.send_tip(msg, nil, nil, 5, Hired_squad.icon, "news", "npc")
+		CreateTimeEvent("raid_danger_check_e", "raid_danger_check_a", 300 + math.random(-60, 60), dismiss_by_danger)
+	end
+
+end
+
+function add_companion_raid_squad(squad_id, npc, idx)
+	-- store hired squad_id (save_state)
+	Hired_squad.id = squad_id
+
+	-- and time and convert it into ctime
+	local time = Raid_available_squads[idx].time
+	local cur_time = game.get_game_time()
+
+	Hired_squad.start_time = ctime_to_t(cur_time)
+
+	Hired_squad.duration = time * 60 * 60 * 24
+
+	Hired_squad.danger = Raid_available_squads[idx].danger
+
+	Hired_squad.icon = Raid_available_squads[idx].icon
+
+	-- add npc's squad as companion
+	dialogs_axr_companion.become_actor_companion(db.actor, npc)
+
+end
+
+function remove_companion_raid_squad()
+	local npc
+
+	-- get current hired commander
+	for id, _ in pairs(axr_companions.companion_squads) do		-- scared to get squad object from it, better to get it again from id
+		if Hired_squad.id and Hired_squad.id == id then
+			local squad = alife_object(id)
+			if squad and squad.commander_id then
+				local commander = alife_object(squad:commander_id())
+				if commander and commander.alive and commander:alive() then
+					npc = commander
+				end
+			end
+		end
+	end
+
+	pr("Removing companion squad id: %s || npc_exist: %s", Hired_squad.id, npc and true or false)
+	if not npc then return end
+
+	-- remove companion squad
+	dialogs_axr_companion.remove_companions_from_squad(db.actor, npc)
+
+	-- reset raid menu
+	cancel_active_raid()
+
+end
+
+function cancel_active_raid()
+	-- for Raid state = 10, called on dismiss/timeout/death
+	-- also if they stay for too long on a map that is harder than the one u choose
+
+	pda_inter_gui.pda_msg_states[1].state = 0
+
+	-- clear hired squad variable
+	pda_inter_x_raid.Hired_squad = { id = false, start_time = false, duration = false, danger = false, icon = "default" }
+
+	-- update menu buttons
+	if pda_inter_gui.GUI then
+		pda_inter_gui.GUI:UpdMenuButtons()
+	end
+
+end
+
+---------------------- misc ----------------------
+local rank_to_val = {
+	["novice"] = 0.1,
+	["trainee"] = 0.2,
+	["experienced"] = 0.3,
+	["professional"] = 0.4,
+	["veteran"] = 0.5,
+	["expert"] = 0.6,
+	["master"] = 0.7,
+	["legend"] = 0.8,
+}
+
+function pick_squad(t)
+	local squad, picked_idx		-- idx is needed later to remove this from array
+
+	if is_not_empty(t) then
+		picked_idx = math.random(1, #t)
+		squad = alife_object(t[picked_idx])
+	end
+
+	return squad, picked_idx
+end
+
+function get_size_and_rank(squad)
+	local size, rank = 0, 0
+	local rank_name = ""
+
+	-- get size and summary rank
+	for member in squad:squad_members() do
+		local npc = level.object_by_id(member.id)		-- db.storage[member.id] and db.storage[member.id].object or level.object_by_id(member.id)
+		if npc and npc:alive() then
+			local npc_rank = ranks.get_obj_rank_name(npc)
+			size = size + 1
+			rank = rank + rank_to_val[npc_rank]
+		end
+	end
+
+	if size > 0 then
+		-- get average rank
+		rank = rank / size
+		-- get rank name
+		local rounded_rank = math.floor(rank * 10 + 0.5)
+		for k, val in pairs(rank_to_val) do
+			if rounded_rank == (val * 10) then
+				rank_name = k
+			end
+		end
+	end
+
+	return size, rank, rank_name
+end
+
+function get_commander_name_and_icon(squad)
+	local name, icon
+
+	if squad:commander_id() then
+		local commander = level.object_by_id(squad:commander_id())
+		if commander and commander:alive() then
+			name = commander:character_name()
+			icon = commander:character_icon()
+		end
+	end
+
+	return name, icon
+end
+
+function get_chance_and_price(squad_size, average_rank, danger)
+	local chance, price, time
+
+	local diff = (danger > average_rank) and (danger - average_rank) or (average_rank - danger)
+	chance = (1 - diff) * chance_to_offer_mult
+
+	time = raid_time
+	local price_range = math.random(8, 12) / 10		-- 80% to 120%
+	price = (squad_size * average_rank * danger * time * base_price_mult * price_range)^price_power
+	price = math.floor(price)
+
+	return chance, price, time
+end
+
+function get_available_squad_id_and_commander_by_idx(idx)
+	local picked_elem = Raid_available_squads[idx]
+	local squad_id = picked_elem and picked_elem.id
+	if not squad_id then return end
+
+	local squad = alife_object(squad_id)
+	local squad_online = squad and squad.online and squad.commander_id
+	if not squad_online then return end
+
+	local commander_id = squad:commander_id()
+	local commander = commander_id and level.object_by_id(commander_id)
+	if not (commander and commander:alive()) then return end
+
+	pr("Hired squad id: %s || commander id: %s", squad_id, commander_id)
+
+	return squad_id, commander, commander_id
+end
+
+function server_entity_on_unregister(squad)
+	local state = pda_inter_gui.pda_msg_states[1].state
+	if state < 5 then return end
+
+	-- remove already showed squads
+	for idx, _ in ipairs(Raid_available_squads) do
+		if squad.id == Raid_available_squads[idx].id then
+			-- remove element from array if squad dies
+			table.remove(Raid_available_squads, idx)
+			-- and update gui menu
+			pda_inter_gui.GUI:UpdRaidLowerMenu()
+		end
+	end
+
+	-- remove from viable squads list
+	for idx, _ in ipairs(viable_squads_list) do
+		if squad.id == viable_squads_list[idx] then
+			table.remove(viable_squads_list, idx)
+		end
+	end
+
+	-- if hired squad all ded then reset raid menu
+	if state == 10 and Hired_squad.id and squad.id == Hired_squad.id then
+		cancel_active_raid()
+	end
+
+end
+
+function pr(...)
+	if not pda_inter_gui.Custom_PDA_debug then return end
+	printf(...)
+end
+
+function save_state(m_data)
+	m_data.Hired_squad = Hired_squad
+end
+
+function load_state(m_data)
+	Hired_squad = m_data.Hired_squad or { id = false, start_time = false, duration = false, danger = false, icon = "default" }
+end
+
+function on_option_change()
+	chance_to_offer_mult = pda_inter_mcm.get_config("raid_offer_mult")
+	base_price_mult = pda_inter_mcm.get_config("raid_base_price")
+	price_power = pda_inter_mcm.get_config("raid_price_power")
+	raid_time = pda_inter_mcm.get_config("raid_max_time")
+end
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_update", update_squads_gui)
+	RegisterScriptCallback("actor_on_update", update_raid_companions)
+	RegisterScriptCallback("actor_on_first_update", check_level_danger)
+	RegisterScriptCallback("server_entity_on_unregister", server_entity_on_unregister)
+	RegisterScriptCallback("save_state", save_state)
+	RegisterScriptCallback("load_state", load_state)
+	RegisterScriptCallback("on_option_change", on_option_change)
+end

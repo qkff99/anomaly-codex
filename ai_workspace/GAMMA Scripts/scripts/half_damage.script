@@ -1,0 +1,29 @@
+function creature_on_before_hit(npc, shit, bone_id, flags)
+    if not (shit.draftsman and shit.draftsman:id() == AC_ID) then return end
+    local wpn = db.actor:active_item()
+    if not wpn then return end
+    if (not db.actor:active_detector()) then return end
+    if (not new_axes[wpn:section()]) then return end
+        local one_handed_attacks = 0.4
+        shit.power = shit.power * one_handed_attacks
+end
+
+new_axes = {
+    wpn_axe = true,
+    wpn_axe2 = true,
+    wpn_axe3 = true,
+}
+
+function actor_on_hud_animation_play(anm_table, item)
+	if not item then return end
+    if (not new_axes[item:section()]) then return end
+	if anm_table.anm_name == "anm_show" and db.actor:active_detector() then
+	    anm_table.anm_name = "anm_1h_show"
+    end
+end
+
+function on_game_start()
+    RegisterScriptCallback("npc_on_before_hit", creature_on_before_hit)
+    RegisterScriptCallback("monster_on_before_hit", creature_on_before_hit)
+	RegisterScriptCallback("actor_on_hud_animation_play", actor_on_hud_animation_play)
+end

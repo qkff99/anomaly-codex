@@ -1,0 +1,94 @@
+-- Solution - bind zoom out (wpn_zoom_dec) to DIK_KANJI (kKANJI), use bind_to_dik(33) to get key and press action to auto zoom out
+
+current_obj = nil
+saved_magnifications = {}
+
+function actor_on_first_update()
+	exec_console_cmd(string.format("bind %s %s", "wpn_zoom_dec", "kKANJI"))
+end
+
+function save_magnification()
+	if current_obj then
+		local zoom_factor = current_obj:cast_Weapon():GetZoomFactor()
+		saved_magnifications[current_obj:name()] = zoom_factor > 0 and zoom_factor 
+	end
+end
+
+function register_saving(obj)
+	current_obj = obj
+	RegisterScriptCallback("actor_on_update", save_magnification)
+end
+
+function unregister_saving()
+	UnregisterScriptCallback("actor_on_update", save_magnification)
+	current_obj = nil
+end
+
+function reset_state()
+	RemoveTimeEvent("scope_zoom_out", "scope_zoom_out")
+	unregister_saving()
+end
+
+function actor_on_weapon_zoom_in(obj)
+	reset_state()
+
+	local c_obj = obj:cast_Weapon()
+	if not c_obj:IsScopeAttached() then return end
+
+	local i = 0
+	local i_limit = 6
+	local rotate_time = math.max(0, SYS_GetParam(2, obj:section(), "zoom_rotate_time", 0) - 0.02)
+
+	if saved_magnifications[obj:name()] then
+		CreateTimeEvent("scope_zoom_out", "scope_zoom_out", rotate_time, function()
+			if fakelens then -- Shader Scopes Shenanigans
+				if i < i_limit then
+					-- printf("press_action")
+					level.press_action(bind_to_dik(33))
+					i = i + 1
+					return false
+				end
+				if c_obj:GetZoomFactor() > 0 then c_obj:SetZoomFactor(saved_magnifications[obj:name()]) end
+				register_saving(obj)
+				return true
+			else
+				if c_obj:GetZoomFactor() > 0 then c_obj:SetZoomFactor(saved_magnifications[obj:name()]) end
+				register_saving(obj)
+				return true
+			end
+		end)
+	else
+		CreateTimeEvent("scope_zoom_out", "scope_zoom_out", rotate_time, function()
+			if i < i_limit then
+				-- printf("press_action")
+				level.press_action(bind_to_dik(33))
+				i = i + 1
+				return false
+			end
+
+			register_saving(obj)
+			return true
+		end)
+	end
+end
+
+function actor_on_weapon_zoom_out(obj)
+	-- printf("reset")
+	reset_state()
+end
+
+function save_state(m_data)
+	m_data.zoomed_out_scope_draw_saved_magnifications = saved_magnifications
+end
+
+function load_state(m_data)
+	saved_magnifications = m_data.zoomed_out_scope_draw_saved_magnifications or {}
+end
+
+function on_game_start()
+	RegisterScriptCallback("save_state", save_state)
+	RegisterScriptCallback("load_state", load_state)
+	RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+	RegisterScriptCallback("actor_on_weapon_zoom_in", actor_on_weapon_zoom_in)
+	RegisterScriptCallback("actor_on_weapon_zoom_out", actor_on_weapon_zoom_out)
+end

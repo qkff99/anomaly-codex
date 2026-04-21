@@ -1,0 +1,2177 @@
+siski = siski or {}
+siski.smart_tasks = siski.smart_tasks or {}
+
+local smart_tasks = siski.smart_tasks
+
+local type = _G.type
+local pcall = _G.pcall
+local tonumber = _G.tonumber
+local tostring = _G.tostring
+local pairs = _G.pairs
+local next = _G.next
+local time_global = _G.time_global
+local game_graph = _G.game_graph
+local alife = _G.alife
+local db = _G.db
+local level = _G.level
+local setmetatable = _G.setmetatable
+
+local table_sort = table.sort
+local string_gsub = string.gsub
+local string_lower = string.lower
+
+local TASKTYPE_CONTROL = "control"
+local TASK_GO_TO_CONTROL = "SMART TASK: GO TO CONTROL"
+local TASK_CONTROL = "SMART TASK: CONTROL"
+local CONTROL_MODE_AGGRESSIVE = "aggressive"
+local CONTROL_MODE_PASSIVE = "passive"
+local DIRTY_BATCH_PER_UPDATE = 1
+local DISTANCE_FALLBACK = 1000000000
+local PASSIVE_CONTROL_RADIUS_M = 100
+
+local RUNTIME = {
+    claims_by_smart = {},
+    claims_by_smart_identity = {},
+    claim_by_sid = {},
+    dirty_smarts = {},
+    reserved_squads = {},
+    surge_cache_active = false,
+    surge_cache_next_tg = 0,
+    processing_dirty = false,
+    bootstrapped = false,
+}
+
+local function tg()
+    return (time_global and time_global()) or 0
+end
+
+local function trim(value)
+    if type(value) ~= "string" then
+        return nil
+    end
+    value = string_gsub(value, "^%s*(.-)%s*$", "%1")
+    if value == "" then
+        return nil
+    end
+    return value
+end
+
+local function lower_trim(value)
+    value = trim(value)
+    if not value then
+        return nil
+    end
+    return string_lower(value)
+end
+
+local function log_info(fmt, ...)
+    if siski.log and siski.log.info then
+        siski.log.info("SMART_TASKS", fmt, ...)
+    end
+end
+
+local function log_warn(fmt, ...)
+    if siski.log and siski.log.warn then
+        siski.log.warn("SMART_TASKS", fmt, ...)
+    end
+end
+
+local function get_board()
+    if SIMBOARD then return SIMBOARD end
+    if sim_board and sim_board.get_sim_board then
+        local ok, board = pcall(function() return sim_board.get_sim_board() end)
+        if ok then
+            return board
+        end
+    end
+    return nil
+end
+
+local function now_level_name_by_gvid(gvid)
+    if not (gvid and alife and game_graph) then
+        return nil
+    end
+    local ok, res = pcall(function()
+        local gv = game_graph():vertex(gvid)
+        if not gv then return nil end
+        return alife():level_name(gv:level_id())
+    end)
+    if ok then
+        return res
+    end
+    return nil
+end
+
+local function resolve_smart_by_name(smart_name)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return nil
+    end
+    local board = get_board()
+    if not (board and board.smarts_by_names) then
+        return nil
+    end
+    return board.smarts_by_names[smart_name]
+end
+
+local function resolve_smart_level_name(smart_name, fallback_level)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return fallback_level
+    end
+    if siski.board_index and siski.board_index.get_smart_level then
+        local indexed = siski.board_index.get_smart_level(smart_name)
+        if type(indexed) == "string" and indexed ~= "" then
+            return indexed
+        end
+    end
+    local smart = resolve_smart_by_name(smart_name)
+    local gvid = smart and tonumber(smart.m_game_vertex_id) or nil
+    if gvid then
+        return now_level_name_by_gvid(gvid) or fallback_level
+    end
+    return fallback_level
+end
+
+local function resolve_smart_id(smart_name)
+    local smart = resolve_smart_by_name(smart_name)
+    return tonumber(smart and smart.id) or nil, smart
+end
+
+local function resolve_squad_object(sid)
+    sid = tonumber(sid)
+    if not (sid and alife) then
+        return nil
+    end
+    local sim = alife()
+    if not sim then
+        return nil
+    end
+    local ok, se_obj = pcall(function()
+        return sim:object(sid)
+    end)
+    if ok then
+        return se_obj
+    end
+    return nil
+end
+
+local function safe_obj_by_id(id)
+    id = tonumber(id)
+    if not id then
+        return nil
+    end
+    if level and level.object_by_id then
+        local ok, obj = pcall(function() return level.object_by_id(id) end)
+        if ok and obj then
+            return obj
+        end
+    end
+    if db and db.storage and db.storage[id] then
+        local obj = db.storage[id].object
+        if obj then
+            return obj
+        end
+    end
+    return nil
+end
+
+local function safe_object_name(se_obj)
+    if not se_obj then
+        return nil
+    end
+    if type(se_obj.name) == "function" then
+        local ok, name = pcall(function() return se_obj:name() end)
+        if ok and type(name) == "string" and name ~= "" then
+            return name
+        end
+    end
+    if type(se_obj.name) == "string" and se_obj.name ~= "" then
+        return se_obj.name
+    end
+    return nil
+end
+
+local function get_squad_commander_id(se_squad, entry)
+    local cid = nil
+    if se_squad and se_squad.commander_id then
+        local ok, res = pcall(function() return se_squad:commander_id() end)
+        cid = ok and tonumber(res) or nil
+    end
+    if not cid then
+        cid = tonumber(se_squad and se_squad.commander_id) or nil
+    end
+    if not cid then
+        cid = tonumber(entry and entry.commander_id) or nil
+    end
+    return cid
+end
+
+local function extract_member_candidate_id_local(k, v)
+    if type(v) == "table" then
+        local idv = tonumber(v.id) or tonumber(v.object_id) or tonumber(v.squad_id)
+        if idv and idv > 0 then
+            return idv
+        end
+    end
+
+    local id = tonumber(v)
+    if id and id > 0 then
+        return id
+    end
+
+    id = tonumber(k)
+    if id and id > 0 then
+        return id
+    end
+
+    return nil
+end
+
+local function iter_online_squad_member_ids(se_squad, entry)
+    local out = {}
+    if not se_squad then
+        return out
+    end
+
+    local seen = {}
+    local function push(id)
+        id = tonumber(id)
+        if not id or id <= 0 or seen[id] then
+            return
+        end
+        if not safe_obj_by_id(id) then
+            return
+        end
+        seen[id] = true
+        out[#out + 1] = id
+    end
+
+    local ok_members, a, b, c = pcall(function() return se_squad:squad_members() end)
+    if ok_members and a ~= nil then
+        local ok_iter = pcall(function()
+            for member in a, b, c do
+                push(extract_member_candidate_id_local(nil, member))
+            end
+        end)
+        if (not ok_iter) and type(a) == "table" then
+            for k, v in pairs(a) do
+                push(extract_member_candidate_id_local(k, v))
+            end
+        end
+    end
+
+    if #out <= 0 then
+        push(get_squad_commander_id(se_squad, entry))
+    end
+
+    return out
+end
+
+local function normalize_community_key(name)
+    if type(name) ~= "string" then return nil end
+    local key = lower_trim(name)
+    if not key then return nil end
+    if key == "mutant" or key == "mutants" or key == "monsters" then
+        key = "monster"
+    end
+    local cfg = siski.config
+    if cfg and cfg.get_faction_alias then
+        local alias = cfg.get_faction_alias(key)
+        alias = lower_trim(alias)
+        if alias then
+            key = alias
+        end
+    end
+    if key == "mutant" or key == "mutants" or key == "monsters" then
+        key = "monster"
+    end
+    return key
+end
+
+local function normalize_section_key(name)
+    return lower_trim(name)
+end
+
+local function is_target_sync_enabled()
+    if not (siski.config and siski.config.get) then
+        return true
+    end
+    return siski.config.get("target_sync_enabled", true) ~= false
+end
+
+local function get_online_intent_enforce_enabled()
+    if not (siski.config and siski.config.get) then
+        return true
+    end
+    return siski.config.get("online_intent_enforce_enabled", true) ~= false
+end
+
+local function set_squad_always_arrived(se_squad, should_hold)
+    if not se_squad then
+        return
+    end
+    pcall(function()
+        se_squad.always_arrived = should_hold == true
+    end)
+end
+
+local function clear_task_apply_state(task)
+    if type(task) ~= "table" then
+        return
+    end
+    task.params = type(task.params) == "table" and task.params or {}
+    task.params._applied = nil
+    task.params.online_intent_next_tg = nil
+end
+
+local function should_enforce_online_intent(task, now, entry)
+    if siski.tasks and type(siski.tasks._should_enforce_online_intent) == "function" then
+        return siski.tasks._should_enforce_online_intent(task, now, entry) == true
+    end
+    return false
+end
+
+local function resolve_target_smart_id(smart_name)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return nil, nil
+    end
+    return resolve_smart_id(smart_name)
+end
+
+local function set_scripted_target(se_squad, smart_name, params, opts)
+    if not se_squad then return false end
+    se_squad.scripted_target = smart_name
+    if se_squad.task_target_id ~= nil then
+        se_squad.task_target_id = nil
+    end
+
+    if not is_target_sync_enabled() then
+        return true
+    end
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return true
+    end
+
+    params = type(params) == "table" and params or nil
+    local now = tg()
+    local sid = nil
+    sid = resolve_target_smart_id(smart_name)
+    local force_sync = opts and opts.force_sync == true
+
+    local changed = false
+    if params then
+        changed = params.target_sync_name ~= smart_name
+        params.target_sync_name = smart_name
+        if sid then
+            params.target_sync_smart_id = sid
+        else
+            params.target_sync_smart_id = nil
+        end
+        if changed then
+            params.target_sync_started_tg = now
+            params.target_last_progress_tg = now
+            params.target_last_gvid = tonumber(se_squad.m_game_vertex_id) or nil
+            params.target_last_assigned_id = tonumber(se_squad.assigned_target_id) or nil
+            params.target_last_current_id = tonumber(se_squad.current_target_id) or nil
+            params.target_last_action = tonumber(se_squad.current_action) or nil
+        end
+    end
+
+    if changed or force_sync then
+        se_squad.current_action = 0
+        se_squad.current_target_id = nil
+        if sid then
+            se_squad.assigned_target_id = sid
+        end
+        se_squad.stay_time = nil
+        se_squad.arrive_time = nil
+        if params then
+            params.target_last_progress_tg = now
+            params.target_last_gvid = tonumber(se_squad.m_game_vertex_id) or nil
+            params.target_last_assigned_id = tonumber(se_squad.assigned_target_id) or nil
+            params.target_last_current_id = tonumber(se_squad.current_target_id) or nil
+            params.target_last_action = tonumber(se_squad.current_action) or nil
+        end
+    end
+
+    return true
+end
+
+local function is_online_squad(se_squad)
+    if not se_squad then
+        return false
+    end
+    local ok, online = pcall(function() return se_squad.online end)
+    return ok and online == true
+end
+
+local function smart_supports_stalker_jobs(smart)
+    local jobs = smart and smart.stalker_jobs or nil
+    if type(jobs) ~= "table" or #jobs <= 0 then
+        return false
+    end
+    if type(smart.npc_info) ~= "table" then
+        return false
+    end
+    if type(smart.select_npc_job) ~= "function" then
+        return false
+    end
+    return true
+end
+
+local function try_soft_register_squad_to_smart(se_squad, smart, board)
+    if not (se_squad and smart and board and board.assign_squad_to_smart) then
+        return false
+    end
+    local smart_id = tonumber(smart.id) or nil
+    if not smart_id then
+        return false
+    end
+    if tonumber(se_squad.smart_id) == smart_id then
+        return true
+    end
+    local ok = pcall(function() board:assign_squad_to_smart(se_squad, smart_id) end)
+    return ok == true
+end
+
+local function try_soft_assign_free_stalker_jobs_once(se_squad, smart, entry)
+    if not smart_supports_stalker_jobs(smart) then
+        return false
+    end
+
+    local member_ids = iter_online_squad_member_ids(se_squad, entry)
+    for i = 1, #member_ids do
+        local npc_id = member_ids[i]
+        local npc_info = smart.npc_info[npc_id] or smart.npc_info[tostring(npc_id)]
+        if npc_info and npc_info.job == nil then
+            pcall(function() smart:select_npc_job(npc_info, true) end)
+        end
+    end
+
+    return true
+end
+
+local function enforce_online_task_intent(se_squad, entry, task)
+    if not get_online_intent_enforce_enabled() then return end
+    if not (se_squad and entry and type(task) == "table") then return end
+    if not is_online_squad(se_squad) then return end
+    if type(task.target) ~= "string" or task.target == "" then return end
+
+    local sid = resolve_target_smart_id(task.target)
+    local stgt = se_squad.scripted_target
+    local at = tonumber(se_squad.assigned_target_id) or nil
+    local ca = tonumber(se_squad.current_action) or nil
+    local mismatch = false
+
+    if stgt ~= task.target then mismatch = true end
+    if sid and at and at ~= sid then mismatch = true end
+    if ca == nil then mismatch = true end
+
+    if mismatch then
+        set_scripted_target(se_squad, task.target, task.params, { force_sync = true, reason = "online_intent_enforce" })
+        log_warn("ONLINE_WANDER_DETECTED sid=%s task=%s target=%s cur_level=%s gvid=%s",
+            tostring(entry and entry.squad_id or "-"),
+            tostring(task and task.type or "-"),
+            tostring(task and task.target or "-"),
+            tostring(entry and entry.level or "-"),
+            tostring(se_squad and se_squad.m_game_vertex_id or "-")
+        )
+    end
+end
+
+local function clear_live_task_state(se_squad)
+    if not se_squad then
+        return
+    end
+    set_squad_always_arrived(se_squad, false)
+    pcall(function() se_squad.scripted_target = nil end)
+    pcall(function() se_squad.assigned_target_id = nil end)
+    pcall(function() se_squad.current_target_id = nil end)
+    pcall(function() se_squad.task_target_id = nil end)
+    pcall(function() se_squad.current_action = 0 end)
+    pcall(function() se_squad.stay_time = nil end)
+    pcall(function() se_squad.arrive_time = nil end)
+end
+
+local function get_arrive_dist_cap_m()
+    if not (siski.config and siski.config.get) then return 5 end
+    local value = tonumber(siski.config.get("task_arrive_dist_cap_m", 5)) or 5
+    if value < 0 then value = 0 end
+    return value
+end
+
+local function vanilla_am_i_reached(se_squad, smart)
+    if not (se_squad and smart) then return false end
+
+    local sgvid = tonumber(se_squad.m_game_vertex_id) or nil
+    local tgvid = tonumber(smart.m_game_vertex_id) or nil
+    if sgvid and tgvid and sgvid == tgvid then
+        return true
+    end
+
+    if sgvid and tgvid and game_graph then
+        local ok_lvl, same_level = pcall(function()
+            return game_graph():vertex(sgvid):level_id() == game_graph():vertex(tgvid):level_id()
+        end)
+        if ok_lvl and same_level == false then
+            return false
+        end
+    end
+
+    local cap_m = get_arrive_dist_cap_m()
+    if cap_m <= 0 then
+        return false
+    end
+
+    local pos_s = siski.safe and siski.safe.safe_position and siski.safe.safe_position(se_squad) or nil
+    local pos_t = smart.position
+    if not (pos_s and pos_t and pos_s.distance_to_sqr) then
+        return false
+    end
+
+    local arrive_dist = tonumber(smart.arrive_dist) or cap_m
+    if arrive_dist > cap_m then
+        arrive_dist = cap_m
+    end
+
+    local ok_alw, alw = pcall(function() return se_squad.always_arrived end)
+    if ok_alw and alw == true then
+        return true
+    end
+
+    local ok_d2, d2 = pcall(function() return pos_s:distance_to_sqr(pos_t) end)
+    d2 = ok_d2 and tonumber(d2) or nil
+    if not d2 then
+        return false
+    end
+    return d2 <= (arrive_dist * arrive_dist)
+end
+
+local function is_squad_arrived_to_smart_live(se_squad, smart_name)
+    local smart = resolve_smart_by_name(smart_name)
+    if not (se_squad and smart) then
+        return false
+    end
+
+    local ca = tonumber(se_squad.current_action) or nil
+    local ct = tonumber(se_squad.current_target_id) or nil
+    local ss = tonumber(se_squad.smart_id) or nil
+    local smart_id = tonumber(smart.id) or nil
+
+    if ca == 1 and smart_id and ((ct and ct == smart_id) or (ss and ss == smart_id)) then
+        return true
+    end
+
+    if smart.am_i_reached then
+        local ok, res = pcall(function() return smart:am_i_reached(se_squad) end)
+        if ok and res == true then
+            return true
+        end
+    end
+
+    return vanilla_am_i_reached(se_squad, smart)
+end
+
+local function try_game_graph_distance(sgvid, tgvid)
+    sgvid = tonumber(sgvid)
+    tgvid = tonumber(tgvid)
+    if not (sgvid and tgvid and game_graph) then
+        return nil
+    end
+    local ok, distance = pcall(function()
+        local gg = game_graph()
+        if not gg then return nil end
+        return gg:distance(sgvid, tgvid)
+    end)
+    distance = ok and tonumber(distance) or nil
+    return distance
+end
+
+local function is_surge_active_now()
+    local xc = _G.xr_conditions
+    local xf = xc and xc.surge_started or nil
+    if type(xf) == "function" then
+        local ok, res = pcall(xf)
+        if ok and res == true then return true, false end
+        if ok and res == false then return false, false end
+    end
+
+    local fallback_used = false
+
+    local f = _G.surge_started
+    if type(f) == "function" then
+        fallback_used = true
+        local ok, res = pcall(f)
+        if ok and res == true then return true, fallback_used end
+        if ok and res == false then return false, fallback_used end
+    end
+
+    local psm = _G.psi_storm_manager
+    if psm and type(psm.is_loaded) == "function" and type(psm.is_started) == "function" then
+        fallback_used = true
+        local okL, loaded = pcall(function() return psm.is_loaded() end)
+        if okL and loaded == true then
+            local okS, started = pcall(function() return psm.is_started() end)
+            if okS and started == true then return true, fallback_used end
+        end
+    end
+
+    local sm = _G.surge_manager
+    if sm and type(sm.is_loaded) == "function" and type(sm.is_started) == "function" then
+        fallback_used = true
+        local okL, loaded = pcall(function() return sm.is_loaded() end)
+        if okL and loaded == true then
+            local okS, started = pcall(function() return sm.is_started() end)
+            if okS and started == true then return true, fallback_used end
+        end
+    end
+
+    if _G.level and type(_G.level.is_surge) == "function" then
+        fallback_used = true
+        local ok, res = pcall(function() return _G.level.is_surge() end)
+        if ok and res == true then return true, fallback_used end
+    end
+
+    return false, fallback_used
+end
+
+local function is_surge_active()
+    local now = tg()
+    if now < (tonumber(RUNTIME.surge_cache_next_tg) or 0) then
+        return RUNTIME.surge_cache_active == true
+    end
+
+    local active, fallback_used = is_surge_active_now()
+    local cache_ms = 250
+    if siski.config and siski.config.get then
+        cache_ms = tonumber(siski.config.get("surge_check_cache_ms", 250)) or 250
+        if cache_ms < 0 then
+            cache_ms = 0
+        end
+    end
+    RUNTIME.surge_cache_active = active == true
+    RUNTIME.surge_cache_next_tg = now + cache_ms
+
+    if fallback_used then
+        log_warn("SURGE_CHECK_FALLBACK source=smart_tasks")
+    end
+
+    return active == true
+end
+
+local function smart_tasks_enabled_now()
+    local switches = siski.switches
+    if not switches or switches.core ~= true or switches.smart_tasks ~= true then
+        return false
+    end
+    if not (siski.config and siski.config.get) then
+        return true
+    end
+    if siski.config.get("enabled", true) == false then
+        return false
+    end
+    return siski.config.get("smart_tasks_enabled", true) ~= false
+end
+
+local function is_tasktype_enabled(tasktype)
+    if tasktype ~= TASKTYPE_CONTROL then
+        return false
+    end
+    if not smart_tasks_enabled_now() then
+        return false
+    end
+    if not (siski.config and siski.config.get) then
+        return true
+    end
+    return siski.config.get("smart_tasks_control_enabled", true) ~= false
+end
+
+local function get_control_cap()
+    if not (siski.config and siski.config.get) then
+        return 1
+    end
+    local value = tonumber(siski.config.get("smart_tasks_control_max_squads_per_faction", 1)) or 1
+    if value < 1 then
+        value = 1
+    end
+    return value
+end
+
+local function is_level_globally_blacklisted(level_name)
+    if type(level_name) ~= "string" or level_name == "" then
+        return false
+    end
+    local cfg = siski.config
+    if cfg and cfg.is_level_globally_blacklisted then
+        return cfg.is_level_globally_blacklisted(level_name) == true
+    end
+    return false
+end
+
+local function smart_blacklists_global_set()
+    local cfg = siski.config
+    if cfg and cfg.get_smart_blacklists_global_set then
+        local res = cfg.get_smart_blacklists_global_set()
+        if type(res) == "table" then
+            return res
+        end
+    end
+    return nil
+end
+
+local function smart_blacklists_rule(level_name)
+    local cfg = siski.config
+    if cfg and cfg.get_smart_blacklists_rule then
+        local res = cfg.get_smart_blacklists_rule(level_name)
+        if type(res) == "table" then
+            return res
+        end
+    end
+    return nil
+end
+
+local function faction_level_blacklists_rule(community)
+    local cfg = siski.config
+    if not (cfg and cfg.get_faction_level_blacklist_rule) then
+        return nil
+    end
+    local key = normalize_community_key(community)
+    if not key then return nil end
+    local res = cfg.get_faction_level_blacklist_rule(key)
+    if type(res) == "table" then
+        return res
+    end
+    return nil
+end
+
+local function faction_smart_blacklists_rule(community)
+    local cfg = siski.config
+    if not (cfg and cfg.get_faction_smart_blacklist_rule) then
+        return nil
+    end
+    local key = normalize_community_key(community)
+    if not key then return nil end
+    local res = cfg.get_faction_smart_blacklist_rule(key)
+    if type(res) == "table" then
+        return res
+    end
+    return nil
+end
+
+local function section_level_blacklists_rule(section_name)
+    local cfg = siski.config
+    if not (cfg and cfg.get_section_level_blacklist_rule) then
+        return nil
+    end
+    local key = normalize_section_key(section_name)
+    if not key then return nil end
+    local res = cfg.get_section_level_blacklist_rule(key)
+    if type(res) == "table" then
+        return res
+    end
+    return nil
+end
+
+local function section_smart_blacklists_rule(section_name)
+    local cfg = siski.config
+    if not (cfg and cfg.get_section_smart_blacklist_rule) then
+        return nil
+    end
+    local key = normalize_section_key(section_name)
+    if not key then return nil end
+    local res = cfg.get_section_smart_blacklist_rule(key)
+    if type(res) == "table" then
+        return res
+    end
+    return nil
+end
+
+local function is_level_blacklisted_for_faction(level_name, community, section_name)
+    if type(level_name) ~= "string" or level_name == "" then
+        return false
+    end
+    if is_level_globally_blacklisted(level_name) then
+        return true
+    end
+
+    local rule = faction_level_blacklists_rule(community)
+    if rule and rule.all == true then
+        return true
+    end
+    local set = rule and rule.set or nil
+    if set and set[level_name] then
+        return true
+    end
+
+    local s_rule = section_level_blacklists_rule(section_name)
+    if s_rule and s_rule.all == true then
+        return true
+    end
+    local s_set = s_rule and s_rule.set or nil
+    if s_set and s_set[level_name] then
+        return true
+    end
+    return false
+end
+
+local function is_smart_blacklisted_for_faction(smart_name, community, level_name, section_name)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return false
+    end
+    if is_level_blacklisted_for_faction(level_name, community, section_name) then
+        return true
+    end
+
+    local rule = faction_smart_blacklists_rule(community)
+    if rule and rule.all == true then
+        return true
+    end
+    local set = rule and rule.set or nil
+    if set and set[smart_name] then
+        return true
+    end
+
+    local s_rule = section_smart_blacklists_rule(section_name)
+    if s_rule and s_rule.all == true then
+        return true
+    end
+    local s_set = s_rule and s_rule.set or nil
+    if s_set and s_set[smart_name] then
+        return true
+    end
+
+    return false
+end
+
+local function smart_is_blacklisted_for_level(level_name, smart_name, community, section_name)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return false
+    end
+
+    local gset = smart_blacklists_global_set()
+    if gset and gset[smart_name] then
+        return true
+    end
+
+    local rule = level_name and smart_blacklists_rule(level_name) or nil
+    if rule and rule.all == true then
+        return true
+    end
+    local set = rule and rule.set or nil
+    if set and set[smart_name] then
+        return true
+    end
+
+    if is_smart_blacklisted_for_faction(smart_name, community, level_name, section_name) then
+        return true
+    end
+
+    return false
+end
+
+local function get_tasktype_for_smart(smart_name)
+    if not (siski.config and siski.config.get_smart_task_type) then
+        return nil
+    end
+    return siski.config.get_smart_task_type(smart_name)
+end
+
+local function get_tasktype_allowed_tokens(tasktype)
+    if not (siski.config and siski.config.get_smart_task_allowed_tokens) then
+        return {}
+    end
+    local list = siski.config.get_smart_task_allowed_tokens(tasktype)
+    if type(list) == "table" then
+        return list
+    end
+    return {}
+end
+
+local function normalize_control_mode(mode)
+    mode = lower_trim(mode)
+    if mode == "agressive" then
+        mode = CONTROL_MODE_AGGRESSIVE
+    end
+    if mode == nil then
+        return CONTROL_MODE_PASSIVE
+    end
+    if mode == CONTROL_MODE_PASSIVE then
+        return CONTROL_MODE_PASSIVE
+    end
+    return CONTROL_MODE_AGGRESSIVE
+end
+
+local function get_tasktype_mode(tasktype, smart_name)
+    if not (siski.config and siski.config.get_smart_task_mode) then
+        return CONTROL_MODE_PASSIVE
+    end
+    return normalize_control_mode(siski.config.get_smart_task_mode(tasktype, smart_name))
+end
+
+local function get_tasktype_blacklist_tokens(tasktype, smart_name)
+    if not (siski.config and siski.config.get_smart_task_blacklist_tokens) then
+        return {}
+    end
+    local list = siski.config.get_smart_task_blacklist_tokens(tasktype, smart_name)
+    if type(list) == "table" then
+        return list
+    end
+    return {}
+end
+
+local function get_tasktype_whitelist_tokens(tasktype, smart_name)
+    if not (siski.config and siski.config.get_smart_task_whitelist_tokens) then
+        return {}
+    end
+    local list = siski.config.get_smart_task_whitelist_tokens(tasktype, smart_name)
+    if type(list) == "table" then
+        return list
+    end
+    return {}
+end
+
+local function entry_npc_kind(entry)
+    if type(entry) ~= "table" then
+        return nil
+    end
+    if entry.npc_kind == "mutant" then
+        return "mutant"
+    end
+    if entry.npc_kind == "stalker" then
+        return "stalker"
+    end
+    return nil
+end
+
+local function entry_matches_token(entry, token)
+    token = lower_trim(token)
+    if not token or type(entry) ~= "table" then
+        return false
+    end
+
+    local npc_kind = entry_npc_kind(entry)
+    local community_key = normalize_community_key(entry.community)
+    local section_key = normalize_section_key(entry.section)
+    local token_community_key = normalize_community_key(token)
+    local token_section_key = normalize_section_key(token)
+
+    if token == "human" then
+        return npc_kind == "stalker"
+    end
+    if token == "monster" then
+        return npc_kind == "mutant"
+    end
+    if community_key and token_community_key and token_community_key == community_key then
+        return true
+    end
+    if section_key and token_section_key and token_section_key == section_key then
+        return true
+    end
+    return false
+end
+
+local function entry_allowed_for_smart_task(entry, smart_name, tasktype, smart_level)
+    if type(entry) ~= "table" or entry.allowed ~= true then
+        return false
+    end
+    if not is_tasktype_enabled(tasktype) then
+        return false
+    end
+    local community = entry.community
+    local section_name = entry.section
+    if smart_is_blacklisted_for_level(smart_level, smart_name, community, section_name) then
+        return false
+    end
+
+    local allowed_tokens = get_tasktype_allowed_tokens(tasktype)
+    if #allowed_tokens == 0 then
+        return false
+    end
+    local matched_allow = false
+    for i = 1, #allowed_tokens do
+        if entry_matches_token(entry, allowed_tokens[i]) then
+            matched_allow = true
+            break
+        end
+    end
+    if not matched_allow then
+        return false
+    end
+
+    local whitelist_tokens = get_tasktype_whitelist_tokens(tasktype, smart_name)
+    if #whitelist_tokens > 0 then
+        local matched_whitelist = false
+        for i = 1, #whitelist_tokens do
+            if entry_matches_token(entry, whitelist_tokens[i]) then
+                matched_whitelist = true
+                break
+            end
+        end
+        if not matched_whitelist then
+            return false
+        end
+    end
+
+    local blacklist_tokens = get_tasktype_blacklist_tokens(tasktype, smart_name)
+    for i = 1, #blacklist_tokens do
+        if entry_matches_token(entry, blacklist_tokens[i]) then
+            return false
+        end
+    end
+
+    return true
+end
+
+local function build_identity_from_entry(entry)
+    if type(entry) ~= "table" then
+        return nil
+    end
+    local community_key = normalize_community_key(entry.community)
+    local section_key = normalize_section_key(entry.section)
+    local npc_kind = entry_npc_kind(entry)
+
+    if npc_kind == "mutant" then
+        return {
+            key = "community:monster",
+            kind = "community",
+            community_key = "monster",
+            section_key = section_key,
+            npc_kind = npc_kind,
+        }
+    end
+
+    if community_key then
+        return {
+            key = "community:" .. community_key,
+            kind = "community",
+            community_key = community_key,
+            section_key = section_key,
+            npc_kind = npc_kind,
+        }
+    end
+    if section_key then
+        return {
+            key = "section:" .. section_key,
+            kind = "section",
+            community_key = nil,
+            section_key = section_key,
+            npc_kind = npc_kind,
+        }
+    end
+    return nil
+end
+
+local function build_identity_from_task(task)
+    local params = type(task) == "table" and type(task.params) == "table" and task.params or nil
+    if not params then
+        return nil
+    end
+    local key = trim(params.smart_task_identity_key)
+    local kind = trim(params.smart_task_identity_kind)
+    local community_key = normalize_community_key(params.smart_task_community)
+    local section_key = normalize_section_key(params.smart_task_section)
+    if key then
+        return {
+            key = key,
+            kind = kind or "unknown",
+            community_key = community_key,
+            section_key = section_key,
+            npc_kind = community_key == "monster" and "mutant" or nil,
+        }
+    end
+    if community_key then
+        return {
+            key = "community:" .. community_key,
+            kind = "community",
+            community_key = community_key,
+            section_key = section_key,
+            npc_kind = community_key == "monster" and "mutant" or nil,
+        }
+    end
+    if section_key then
+        return {
+            key = "section:" .. section_key,
+            kind = "section",
+            community_key = nil,
+            section_key = section_key,
+            npc_kind = nil,
+        }
+    end
+    return nil
+end
+
+local function is_enemy_identity(a, b)
+    if not (a and b and a.key and b.key) then
+        return false
+    end
+    if a.key == b.key then
+        return false
+    end
+    if a.community_key == "monster" or b.community_key == "monster" then
+        return true
+    end
+    if a.npc_kind == "mutant" or b.npc_kind == "mutant" then
+        return true
+    end
+    if game_relations and game_relations.is_factions_enemies and a.community_key and b.community_key then
+        local ok, enemies = pcall(function()
+            return game_relations.is_factions_enemies(a.community_key, b.community_key)
+        end)
+        if ok then
+            return enemies == true
+        end
+    end
+    return false
+end
+
+local function is_smart_task(task)
+    if type(task) ~= "table" then
+        return false
+    end
+    if task.type == TASK_GO_TO_CONTROL or task.type == TASK_CONTROL then
+        return true
+    end
+    local params = type(task.params) == "table" and task.params or nil
+    return params and params.smart_task == true or false
+end
+
+local function get_smart_task_meta(task)
+    if type(task) ~= "table" then
+        return nil
+    end
+    if not is_smart_task(task) then
+        return nil
+    end
+
+    local params = type(task.params) == "table" and task.params or {}
+    local tasktype = lower_trim(params.smart_task_type)
+    local smart_name = trim(params.smart_task_smart) or trim(task.target)
+    local phase = lower_trim(params.smart_task_phase)
+
+    if not tasktype then
+        if task.type == TASK_GO_TO_CONTROL or task.type == TASK_CONTROL then
+            tasktype = TASKTYPE_CONTROL
+        end
+    end
+    if not phase then
+        if task.type == TASK_CONTROL then
+            phase = "hold"
+        elseif task.type == TASK_GO_TO_CONTROL then
+            phase = "travel"
+        end
+    end
+
+    if not (tasktype and smart_name and phase) then
+        return nil
+    end
+
+    return {
+        task = task,
+        tasktype = tasktype,
+        smart_name = smart_name,
+        phase = phase,
+    }
+end
+
+local function mark_smart_dirty(smart_name)
+    smart_name = trim(smart_name)
+    if not smart_name then
+        return
+    end
+    RUNTIME.dirty_smarts[smart_name] = true
+end
+
+local function remove_runtime_claim(sid)
+    sid = tonumber(sid)
+    if not sid then
+        return
+    end
+    local claim = RUNTIME.claim_by_sid[sid]
+    if not claim then
+        return
+    end
+
+    local by_smart = RUNTIME.claims_by_smart[claim.smart_name]
+    if type(by_smart) == "table" then
+        by_smart[sid] = nil
+        if next(by_smart) == nil then
+            RUNTIME.claims_by_smart[claim.smart_name] = nil
+        end
+    end
+
+    local by_identity = RUNTIME.claims_by_smart_identity[claim.smart_name]
+    if type(by_identity) == "table" and type(claim.identity_key) == "string" then
+        local next_count = (tonumber(by_identity[claim.identity_key]) or 0) - 1
+        if next_count > 0 then
+            by_identity[claim.identity_key] = next_count
+        else
+            by_identity[claim.identity_key] = nil
+        end
+        if next(by_identity) == nil then
+            RUNTIME.claims_by_smart_identity[claim.smart_name] = nil
+        end
+    end
+
+    RUNTIME.claim_by_sid[sid] = nil
+end
+
+local function add_runtime_claim(sid, smart_name, tasktype, phase, identity)
+    sid = tonumber(sid)
+    smart_name = trim(smart_name)
+    if not (sid and smart_name) then
+        return
+    end
+    remove_runtime_claim(sid)
+
+    local record = {
+        sid = sid,
+        smart_name = smart_name,
+        tasktype = tasktype,
+        phase = phase,
+        identity_key = identity and identity.key or nil,
+        identity = identity,
+    }
+
+    local by_smart = RUNTIME.claims_by_smart[smart_name]
+    if type(by_smart) ~= "table" then
+        by_smart = {}
+        RUNTIME.claims_by_smart[smart_name] = by_smart
+    end
+    by_smart[sid] = record
+
+    if identity and identity.key then
+        local by_identity = RUNTIME.claims_by_smart_identity[smart_name]
+        if type(by_identity) ~= "table" then
+            by_identity = {}
+            RUNTIME.claims_by_smart_identity[smart_name] = by_identity
+        end
+        by_identity[identity.key] = (tonumber(by_identity[identity.key]) or 0) + 1
+    end
+
+    RUNTIME.claim_by_sid[sid] = record
+end
+
+local function current_identity_count(smart_name, identity_key)
+    local bucket = RUNTIME.claims_by_smart_identity[smart_name]
+    if type(bucket) ~= "table" or type(identity_key) ~= "string" then
+        return 0
+    end
+    return tonumber(bucket[identity_key]) or 0
+end
+
+local function control_relation_allows(smart_name, identity)
+    if not (type(smart_name) == "string" and identity and identity.key) then
+        return false
+    end
+
+    local bucket = RUNTIME.claims_by_smart[smart_name]
+    if type(bucket) ~= "table" or next(bucket) == nil then
+        return true
+    end
+
+    local same_count = current_identity_count(smart_name, identity.key)
+    if same_count > 0 then
+        return same_count < get_control_cap()
+    end
+
+    for _, claim in pairs(bucket) do
+        local other = claim and claim.identity or nil
+        if other and other.key and other.key ~= identity.key then
+            if not is_enemy_identity(other, identity) then
+                return false
+            end
+        end
+    end
+    return true
+end
+
+local function build_control_task(sid, smart_name, phase, identity)
+    local now = tg()
+    local task_type = phase == "hold" and TASK_CONTROL or TASK_GO_TO_CONTROL
+    local params = {
+        smart_task = true,
+        smart_task_type = TASKTYPE_CONTROL,
+        smart_task_phase = phase,
+        smart_task_smart = smart_name,
+        smart_task_identity_key = identity and identity.key or nil,
+        smart_task_identity_kind = identity and identity.kind or nil,
+        smart_task_community = identity and identity.community_key or nil,
+        smart_task_section = identity and identity.section_key or nil,
+        in_transit = phase ~= "hold",
+        created_by = "siski_smart_tasks",
+    }
+    if phase == "hold" then
+        params.arrived_at_tg = now
+        params.entered_target_smart = smart_name
+        params.in_transit = false
+    end
+    return {
+        id = "smart_task_control_" .. tostring(phase or "unknown") .. "_" .. tostring(sid or 0) .. "_" .. tostring(now),
+        type = task_type,
+        target = smart_name,
+        params = params,
+        created_at_tg = now,
+        priority = 1000,
+    }
+end
+
+local function get_entry_for_sid(sid)
+    if not (siski.memory and siski.memory.get_squad_entry) then
+        return nil
+    end
+    return siski.memory.get_squad_entry(sid)
+end
+
+local function entry_arrived_to_smart(entry, smart_name, smart_id)
+    if type(entry) ~= "table" then
+        return false
+    end
+    if smart_id and tonumber(entry.smart_id) == smart_id and tonumber(entry.current_action) == 1 then
+        return true
+    end
+    local current = entry.tasks and entry.tasks.current or nil
+    local params = type(current) == "table" and type(current.params) == "table" and current.params or nil
+    if params and params.entered_target_smart == smart_name then
+        return true
+    end
+    return false
+end
+
+local function is_claim_arrived(entry, se_squad, smart_name, smart_id)
+    if entry_arrived_to_smart(entry, smart_name, smart_id) then
+        return true
+    end
+    if se_squad and is_squad_arrived_to_smart_live(se_squad, smart_name) then
+        return true
+    end
+    return false
+end
+
+local function sync_live_control_state(se_squad, task)
+    local meta = get_smart_task_meta(task)
+    if not (se_squad and meta) then
+        return false
+    end
+
+    task.params = type(task.params) == "table" and task.params or {}
+    set_squad_always_arrived(se_squad, meta.phase == "hold")
+
+    local current_target = trim(se_squad.scripted_target)
+    local smart_id = resolve_target_smart_id(meta.smart_name)
+    local assigned_id = tonumber(se_squad.assigned_target_id) or nil
+    local force_sync = task.params._applied ~= true
+        or current_target ~= meta.smart_name
+        or (smart_id and assigned_id ~= smart_id)
+
+    if set_scripted_target(se_squad, meta.smart_name, task.params, {
+        force_sync = force_sync,
+        reason = meta.phase == "hold" and "smart_task_hold" or "smart_task_travel",
+    }) then
+        task.params._applied = true
+        return true
+    end
+    return false
+end
+
+local function clear_claim_task(sid, smart_name, se_squad, reason)
+    sid = tonumber(sid)
+    if not sid then
+        return false
+    end
+    if not (siski.memory and siski.memory.set_task_current) then
+        return false
+    end
+
+    clear_live_task_state(se_squad)
+    siski.memory.set_task_current(sid, nil)
+    if smart_name then
+        mark_smart_dirty(smart_name)
+    end
+    log_info("claim_cleared sid=%s smart=%s reason=%s", tostring(sid), tostring(smart_name or "-"), tostring(reason or "-"))
+    return true
+end
+
+local function assign_control_task(sid, smart_name, phase, identity, reason)
+    sid = tonumber(sid)
+    smart_name = trim(smart_name)
+    if not (sid and smart_name and siski.memory and siski.memory.set_task_current) then
+        return false
+    end
+
+    RUNTIME.reserved_squads[sid] = smart_name
+    local task = build_control_task(sid, smart_name, phase, identity)
+    siski.memory.set_task_current(sid, task)
+    RUNTIME.reserved_squads[sid] = nil
+
+    local entry = get_entry_for_sid(sid)
+    local current = entry and entry.tasks and entry.tasks.current or task
+    clear_task_apply_state(current)
+    local se_squad = resolve_squad_object(sid)
+    if se_squad then
+        sync_live_control_state(se_squad, current)
+    end
+    log_info("claim_assigned sid=%s smart=%s phase=%s reason=%s", tostring(sid), tostring(smart_name), tostring(phase or "-"), tostring(reason or "-"))
+    return true
+end
+
+local function candidate_distance(entry, se_squad, smart)
+    local sgvid = tonumber(entry and entry.m_game_vertex_id) or tonumber(se_squad and se_squad.m_game_vertex_id) or nil
+    local tgvid = tonumber(smart and smart.m_game_vertex_id) or nil
+    local distance = try_game_graph_distance(sgvid, tgvid)
+    if distance ~= nil then
+        return distance
+    end
+
+    local p1 = siski.safe and siski.safe.safe_position and siski.safe.safe_position(se_squad) or nil
+    local p2 = smart and smart.position or nil
+    if p1 and p2 and p1.distance_to then
+        local ok, fallback = pcall(function() return p1:distance_to(p2) end)
+        fallback = ok and tonumber(fallback) or nil
+        if fallback ~= nil then
+            return fallback
+        end
+    end
+
+    return DISTANCE_FALLBACK
+end
+
+local function candidate_position_distance(se_squad, smart)
+    local p1 = siski.safe and siski.safe.safe_position and siski.safe.safe_position(se_squad) or nil
+    local p2 = smart and smart.position or nil
+    if not (p1 and p2 and p1.distance_to) then
+        return nil
+    end
+    local ok, distance = pcall(function() return p1:distance_to(p2) end)
+    return ok and tonumber(distance) or nil
+end
+
+local function candidate_reject_reason(entry, sid, smart_name, tasktype, smart_level)
+    sid = tonumber(sid)
+    if not (sid and type(entry) == "table") then
+        return "invalid"
+    end
+    if entry.allowed ~= true then
+        return "not_allowed"
+    end
+    if RUNTIME.reserved_squads[sid] and RUNTIME.reserved_squads[sid] ~= smart_name then
+        return "reserved"
+    end
+
+    local existing_claim = RUNTIME.claim_by_sid[sid]
+    if existing_claim and existing_claim.smart_name ~= smart_name then
+        return "claimed_elsewhere"
+    end
+    if existing_claim and existing_claim.smart_name == smart_name then
+        return "already_claimed_here"
+    end
+
+    local current = entry.tasks and entry.tasks.current or nil
+    if siski.story_events then
+        if type(siski.story_events.is_story_task) == "function" and siski.story_events.is_story_task(current) == true then
+            return "story_task"
+        end
+        if type(siski.story_events.is_sid_locked) == "function" and siski.story_events.is_sid_locked(sid) == true then
+            return "story_locked"
+        end
+    end
+    local current_meta = get_smart_task_meta(current)
+    if current_meta and current_meta.smart_name ~= smart_name then
+        return "smart_task_elsewhere"
+    end
+
+    local se_squad = resolve_squad_object(sid)
+    if se_squad and siski.memory and siski.memory.is_protected_squad and siski.memory.is_protected_squad(se_squad) then
+        return "protected"
+    end
+
+    if not entry_allowed_for_smart_task(entry, smart_name, tasktype, smart_level) then
+        return "rule_reject"
+    end
+
+    local identity = build_identity_from_entry(entry)
+    if not identity then
+        return "identity_missing"
+    end
+    if not control_relation_allows(smart_name, identity) then
+        return "relation_reject"
+    end
+
+    return nil, identity
+end
+
+local function pick_control_candidate(smart_name, smart, smart_id, smart_level)
+    if not (siski.memory and siski.memory.get_managed_squads_by_level) then
+        return nil
+    end
+    local by_level = siski.memory.get_managed_squads_by_level()
+    local level_bucket = type(by_level) == "table" and by_level[smart_level] or nil
+    if type(level_bucket) ~= "table" then
+        return nil
+    end
+
+    local mode = get_tasktype_mode(TASKTYPE_CONTROL, smart_name)
+    local best = nil
+    for sid in pairs(level_bucket) do
+        local entry = get_entry_for_sid(sid)
+        local reject, identity = candidate_reject_reason(entry, sid, smart_name, TASKTYPE_CONTROL, smart_level)
+        if not reject then
+            local category = 3
+            if type(entry.scripted_target) == "string" and entry.scripted_target == smart_name then
+                category = 1
+            elseif smart_id and tonumber(entry.smart_id) == smart_id then
+                category = 2
+            end
+            local se_squad = resolve_squad_object(sid)
+            local local_distance = candidate_position_distance(se_squad, smart)
+            local passive_ok = true
+            if mode == CONTROL_MODE_PASSIVE and category ~= 2 then
+                passive_ok = local_distance ~= nil and local_distance <= PASSIVE_CONTROL_RADIUS_M
+            end
+            if passive_ok then
+                local distance = candidate_distance(entry, se_squad, smart)
+                if not best
+                    or category < best.category
+                    or (category == best.category and distance < best.distance)
+                    or (category == best.category and distance == best.distance and sid < best.sid)
+                then
+                    best = {
+                        sid = tonumber(sid) or 0,
+                        phase = (smart_id and tonumber(entry.smart_id) == smart_id) and "hold" or "travel",
+                        identity = identity,
+                        category = category,
+                        distance = distance,
+                    }
+                end
+            end
+        end
+    end
+
+    return best
+end
+
+local function validate_current_control_claim(sid, smart_name, smart, smart_id, smart_level)
+    local entry = get_entry_for_sid(sid)
+    local current = entry and entry.tasks and entry.tasks.current or nil
+    local meta = get_smart_task_meta(current)
+    if not (entry and current and meta and meta.smart_name == smart_name and meta.tasktype == TASKTYPE_CONTROL) then
+        remove_runtime_claim(sid)
+        return false
+    end
+
+    local se_squad = resolve_squad_object(sid)
+    if se_squad and siski.memory and siski.memory.is_protected_squad and siski.memory.is_protected_squad(se_squad) then
+        clear_claim_task(sid, smart_name, se_squad, "protected")
+        return false
+    end
+    if not entry_allowed_for_smart_task(entry, smart_name, TASKTYPE_CONTROL, smart_level) then
+        clear_claim_task(sid, smart_name, se_squad, "rule_reject")
+        return false
+    end
+
+    local identity = build_identity_from_entry(entry) or build_identity_from_task(current)
+    if meta.phase == "travel" and is_claim_arrived(entry, se_squad, smart_name, smart_id) then
+        assign_control_task(sid, smart_name, "hold", identity, "arrived")
+        return false
+    end
+    if meta.phase == "hold" and not is_claim_arrived(entry, se_squad, smart_name, smart_id) then
+        assign_control_task(sid, smart_name, "travel", identity, "left_target")
+        return false
+    end
+
+    local applied_task = entry.tasks and entry.tasks.current or current
+    if se_squad then
+        sync_live_control_state(se_squad, applied_task)
+    end
+
+    return true
+end
+
+local function sorted_numeric_keys(map)
+    local out = {}
+    if type(map) ~= "table" then
+        return out
+    end
+    for key in pairs(map) do
+        local id = tonumber(key)
+        if id then
+            out[#out + 1] = id
+        end
+    end
+    table_sort(out)
+    return out
+end
+
+local function build_control_claim_snapshot(sid, smart_name, smart, smart_id)
+    sid = tonumber(sid)
+    if not sid then
+        return nil
+    end
+
+    local entry = get_entry_for_sid(sid)
+    local current = entry and entry.tasks and entry.tasks.current or nil
+    local meta = get_smart_task_meta(current)
+    if not (entry and current and meta and meta.smart_name == smart_name and meta.tasktype == TASKTYPE_CONTROL) then
+        return nil
+    end
+
+    local se_squad = resolve_squad_object(sid)
+    local identity = build_identity_from_entry(entry) or build_identity_from_task(current)
+    local category = 3
+    if is_claim_arrived(entry, se_squad, smart_name, smart_id) then
+        category = 1
+    elseif type(entry.scripted_target) == "string" and entry.scripted_target == smart_name then
+        category = 2
+    end
+
+    return {
+        sid = sid,
+        entry = entry,
+        current = current,
+        meta = meta,
+        se_squad = se_squad,
+        identity = identity,
+        category = category,
+        distance = candidate_distance(entry, se_squad, smart),
+    }
+end
+
+local function sort_control_claim_snapshots(list)
+    table_sort(list, function(a, b)
+        if a.category ~= b.category then
+            return a.category < b.category
+        end
+
+        local a_hold = a.meta and a.meta.phase == "hold"
+        local b_hold = b.meta and b.meta.phase == "hold"
+        if a_hold ~= b_hold then
+            return a_hold == true
+        end
+
+        if a.distance ~= b.distance then
+            return a.distance < b.distance
+        end
+
+        return (tonumber(a.sid) or 0) < (tonumber(b.sid) or 0)
+    end)
+end
+
+local function resolve_control_conflicts(smart_name, smart, smart_id)
+    local claims = RUNTIME.claims_by_smart[smart_name]
+    local ids = sorted_numeric_keys(claims)
+    if #ids <= 1 then
+        return false
+    end
+
+    local snapshots = {}
+    for i = 1, #ids do
+        local snapshot = build_control_claim_snapshot(ids[i], smart_name, smart, smart_id)
+        if snapshot then
+            snapshots[#snapshots + 1] = snapshot
+        end
+    end
+    if #snapshots <= 1 then
+        return false
+    end
+
+    sort_control_claim_snapshots(snapshots)
+
+    local kept_identities = {}
+    local kept_counts = {}
+    local cap = get_control_cap()
+    local changed = false
+
+    for i = 1, #snapshots do
+        local snapshot = snapshots[i]
+        local identity = snapshot.identity
+        local reject_reason = nil
+
+        if not (identity and identity.key) then
+            reject_reason = "conflict_identity"
+        else
+            local same_count = tonumber(kept_counts[identity.key]) or 0
+            if same_count > 0 then
+                if same_count >= cap then
+                    reject_reason = "conflict_cap"
+                end
+            else
+                for other_key, other_identity in pairs(kept_identities) do
+                    if other_key ~= identity.key and not is_enemy_identity(other_identity, identity) then
+                        reject_reason = "conflict_relation"
+                        break
+                    end
+                end
+            end
+        end
+
+        if reject_reason then
+            clear_claim_task(snapshot.sid, smart_name, snapshot.se_squad, reject_reason)
+            changed = true
+        else
+            kept_identities[identity.key] = identity
+            kept_counts[identity.key] = (tonumber(kept_counts[identity.key]) or 0) + 1
+        end
+    end
+
+    return changed
+end
+
+local function reconcile_control_smart(smart_name)
+    local tasktype = get_tasktype_for_smart(smart_name)
+    local smart_id, smart = resolve_smart_id(smart_name)
+    local smart_level = resolve_smart_level_name(smart_name, nil)
+
+    if not smart_tasks_enabled_now() or tasktype ~= TASKTYPE_CONTROL or not is_tasktype_enabled(tasktype) then
+        local claims = RUNTIME.claims_by_smart[smart_name]
+        local ids = sorted_numeric_keys(claims)
+        for i = 1, #ids do
+            local sid = ids[i]
+            clear_claim_task(sid, smart_name, resolve_squad_object(sid), "disabled_or_removed")
+        end
+        return
+    end
+
+    if not smart_level then
+        local claims = RUNTIME.claims_by_smart[smart_name]
+        local ids = sorted_numeric_keys(claims)
+        for i = 1, #ids do
+            local sid = ids[i]
+            clear_claim_task(sid, smart_name, resolve_squad_object(sid), "smart_missing")
+        end
+        return
+    end
+
+    if is_surge_active() then
+        mark_smart_dirty(smart_name)
+        return
+    end
+
+    local claims = RUNTIME.claims_by_smart[smart_name]
+    local ids = sorted_numeric_keys(claims)
+    for i = 1, #ids do
+        validate_current_control_claim(ids[i], smart_name, smart, smart_id, smart_level)
+    end
+
+    resolve_control_conflicts(smart_name, smart, smart_id)
+
+    local by_level = siski.memory and siski.memory.get_managed_squads_by_level and siski.memory.get_managed_squads_by_level() or nil
+    local level_bucket = type(by_level) == "table" and by_level[smart_level] or nil
+    local candidate_guard = 0
+    if type(level_bucket) == "table" then
+        for _ in pairs(level_bucket) do
+            candidate_guard = candidate_guard + 1
+        end
+    end
+    if candidate_guard <= 0 then
+        return
+    end
+
+    for _ = 1, candidate_guard do
+        local candidate = pick_control_candidate(smart_name, smart, smart_id, smart_level)
+        if not candidate then
+            break
+        end
+        if not assign_control_task(candidate.sid, smart_name, candidate.phase, candidate.identity, "reconcile") then
+            break
+        end
+    end
+end
+
+local function reconcile_smart(smart_name)
+    smart_name = trim(smart_name)
+    if not smart_name then
+        return
+    end
+    local tasktype = get_tasktype_for_smart(smart_name)
+    if tasktype == TASKTYPE_CONTROL or RUNTIME.claims_by_smart[smart_name] ~= nil then
+        reconcile_control_smart(smart_name)
+    end
+end
+
+local function try_fill_control_smart_jobs_once(smart_name, smart)
+    smart_name = trim(smart_name)
+    if not (smart_name and smart and smart_supports_stalker_jobs(smart)) then
+        return false
+    end
+
+    local claims = RUNTIME.claims_by_smart[smart_name]
+    if type(claims) ~= "table" then
+        return false
+    end
+
+    local smart_id = tonumber(smart.id) or nil
+    local board = get_board()
+    local filled = false
+    local ids = sorted_numeric_keys(claims)
+    for i = 1, #ids do
+        local sid = ids[i]
+        local entry = get_entry_for_sid(sid)
+        local current = entry and entry.tasks and entry.tasks.current or nil
+        local meta = get_smart_task_meta(current)
+        if meta and meta.tasktype == TASKTYPE_CONTROL and meta.smart_name == smart_name and meta.phase == "hold" then
+            local se_squad = resolve_squad_object(sid)
+            if se_squad and is_online_squad(se_squad) and is_claim_arrived(entry, se_squad, smart_name, smart_id) then
+                try_soft_register_squad_to_smart(se_squad, smart, board)
+                if try_soft_assign_free_stalker_jobs_once(se_squad, smart, entry) then
+                    filled = true
+                end
+            end
+        end
+    end
+
+    return filled
+end
+
+local function dirty_smart_names()
+    local out = {}
+    for smart_name in pairs(RUNTIME.dirty_smarts) do
+        out[#out + 1] = smart_name
+    end
+    table_sort(out)
+    return out
+end
+
+local function process_dirty_smarts(limit, preferred_smarts)
+    if RUNTIME.processing_dirty == true then
+        return
+    end
+    RUNTIME.processing_dirty = true
+
+    local processed = 0
+    local visited = {}
+
+    local function run_one(smart_name)
+        smart_name = trim(smart_name)
+        if not smart_name or visited[smart_name] == true or RUNTIME.dirty_smarts[smart_name] ~= true then
+            return
+        end
+        visited[smart_name] = true
+        RUNTIME.dirty_smarts[smart_name] = nil
+        reconcile_smart(smart_name)
+        processed = processed + 1
+    end
+
+    if type(preferred_smarts) == "table" then
+        for i = 1, #preferred_smarts do
+            if limit ~= nil and processed >= limit then
+                break
+            end
+            run_one(preferred_smarts[i])
+        end
+    end
+
+    if limit == nil or processed < limit then
+        local names = dirty_smart_names()
+        for i = 1, #names do
+            if limit ~= nil and processed >= limit then
+                break
+            end
+            run_one(names[i])
+        end
+    end
+
+    RUNTIME.processing_dirty = false
+end
+
+local function rebuild_runtime_claims_from_memory()
+    RUNTIME.claims_by_smart = {}
+    RUNTIME.claims_by_smart_identity = {}
+    RUNTIME.claim_by_sid = {}
+    RUNTIME.reserved_squads = {}
+
+    if not (siski.memory and siski.memory.get_state) then
+        return
+    end
+    local state = siski.memory.get_state()
+    local squads = state and state.squads or nil
+    if type(squads) ~= "table" then
+        return
+    end
+
+    for sid, entry in pairs(squads) do
+        if type(entry) == "table" then
+            local current = entry.tasks and entry.tasks.current or nil
+            local meta = get_smart_task_meta(current)
+            if meta then
+                local identity = build_identity_from_entry(entry) or build_identity_from_task(current)
+                add_runtime_claim(sid, meta.smart_name, meta.tasktype, meta.phase, identity)
+            end
+        end
+    end
+end
+
+local function mark_all_known_smarts_dirty()
+    if siski.config and siski.config.get_smart_task_map then
+        local task_map = siski.config.get_smart_task_map()
+        for smart_name in pairs(task_map or {}) do
+            mark_smart_dirty(smart_name)
+        end
+    end
+    for smart_name in pairs(RUNTIME.claims_by_smart) do
+        mark_smart_dirty(smart_name)
+    end
+end
+
+local function reactivate_runtime(reason)
+    rebuild_runtime_claims_from_memory()
+    mark_all_known_smarts_dirty()
+    RUNTIME.bootstrapped = true
+    process_dirty_smarts(nil)
+    log_info("runtime_reactivated reason=%s dirty=%s", tostring(reason or "-"), tostring(next(RUNTIME.dirty_smarts) ~= nil))
+end
+
+local function on_memory_task_changed(payload)
+    local sid = tonumber(type(payload) == "table" and payload.squad_id or nil)
+    if not sid then
+        return
+    end
+
+    local prev = type(payload) == "table" and payload.prev_task or nil
+    local current = type(payload) == "table" and payload.current_task or nil
+    local prev_meta = get_smart_task_meta(prev)
+    local current_meta = get_smart_task_meta(current)
+
+    if prev_meta then
+        remove_runtime_claim(sid)
+        mark_smart_dirty(prev_meta.smart_name)
+    else
+        remove_runtime_claim(sid)
+    end
+
+    if current_meta then
+        local entry = get_entry_for_sid(sid)
+        local identity = build_identity_from_entry(entry) or build_identity_from_task(current)
+        add_runtime_claim(sid, current_meta.smart_name, current_meta.tasktype, current_meta.phase, identity)
+        mark_smart_dirty(current_meta.smart_name)
+    end
+end
+
+local function on_server_entity_unregister(se_obj, type_name)
+    local sid = tonumber(se_obj and se_obj.id) or nil
+    if sid then
+        local claim = RUNTIME.claim_by_sid[sid]
+        if claim then
+            local smart_name = claim.smart_name
+            remove_runtime_claim(sid)
+            mark_smart_dirty(smart_name)
+        end
+    end
+
+    local smart_name = safe_object_name(se_obj)
+    if type_name == "smart_terrain" or type_name == "smart_terrain_script" or type_name == "stalker_smart_terrain" then
+        mark_smart_dirty(smart_name)
+    elseif smart_name and (get_tasktype_for_smart(smart_name) or RUNTIME.claims_by_smart[smart_name]) then
+        mark_smart_dirty(smart_name)
+    end
+end
+
+local function build_preferred_dirty_list(entry, current)
+    local out = {}
+    local seen = {}
+
+    local function add(smart_name)
+        smart_name = trim(smart_name)
+        if not smart_name or seen[smart_name] == true then
+            return
+        end
+        seen[smart_name] = true
+        out[#out + 1] = smart_name
+    end
+
+    local meta = get_smart_task_meta(current)
+    if meta then
+        add(meta.smart_name)
+    end
+
+    if type(entry) == "table" then
+        add(entry.scripted_target)
+        local smart_id = tonumber(entry.smart_id) or nil
+        if smart_id and siski.board_index and siski.board_index.get_smart_name_by_id then
+            add(siski.board_index.get_smart_name_by_id(smart_id))
+        end
+    end
+
+    return out
+end
+
+local function validate_current_smart_task(se_squad, entry, meta)
+    if not (entry and meta and meta.smart_name and meta.tasktype) then
+        return false, "missing_meta"
+    end
+    if not smart_tasks_enabled_now() then
+        return false, "disabled"
+    end
+    local configured = get_tasktype_for_smart(meta.smart_name)
+    if configured ~= meta.tasktype then
+        return false, "tasktype_changed"
+    end
+    local smart_level = resolve_smart_level_name(meta.smart_name, nil)
+    if not smart_level then
+        return false, "smart_missing"
+    end
+    if se_squad and siski.memory and siski.memory.is_protected_squad and siski.memory.is_protected_squad(se_squad) then
+        return false, "protected"
+    end
+    if not entry_allowed_for_smart_task(entry, meta.smart_name, meta.tasktype, smart_level) then
+        return false, "rule_reject"
+    end
+    return true, nil
+end
+
+local function handle_current_control_task(se_squad, entry, meta)
+    local valid, reason = validate_current_smart_task(se_squad, entry, meta)
+    if valid ~= true then
+        clear_claim_task(entry.squad_id, meta.smart_name, se_squad, reason)
+        process_dirty_smarts(1, { meta.smart_name })
+        return false
+    end
+
+    if is_surge_active() then
+        clear_claim_task(entry.squad_id, meta.smart_name, se_squad, "surge")
+        return false
+    end
+
+    local smart_id = resolve_smart_id(meta.smart_name)
+    local identity = build_identity_from_entry(entry) or build_identity_from_task(meta.task)
+
+    if meta.phase == "travel" and is_claim_arrived(entry, se_squad, meta.smart_name, smart_id) then
+        assign_control_task(entry.squad_id, meta.smart_name, "hold", identity, "arrived")
+        entry = get_entry_for_sid(entry.squad_id) or entry
+        meta = get_smart_task_meta(entry.tasks and entry.tasks.current or nil) or meta
+    elseif meta.phase == "hold" and not is_claim_arrived(entry, se_squad, meta.smart_name, smart_id) then
+        assign_control_task(entry.squad_id, meta.smart_name, "travel", identity, "repath")
+        entry = get_entry_for_sid(entry.squad_id) or entry
+        meta = get_smart_task_meta(entry.tasks and entry.tasks.current or nil) or meta
+    end
+
+    local current = entry.tasks and entry.tasks.current or nil
+    if current then
+        if meta.phase == "travel" and current.type == TASK_GO_TO_CONTROL and should_enforce_online_intent(current, tg(), entry) then
+            local ok_enf, err_enf = pcall(enforce_online_task_intent, se_squad, entry, current)
+            if not ok_enf then
+                log_warn("intent_enforce_failed sid=%s smart=%s err=%s",
+                    tostring(entry and entry.squad_id or "-"),
+                    tostring(meta and meta.smart_name or "-"),
+                    tostring(err_enf or "-")
+                )
+            end
+        end
+        sync_live_control_state(se_squad, current)
+    end
+    return true
+end
+
+local function update_squad_tasks_impl(se_squad, ctx)
+    if not (siski.memory and (siski.memory.touch_squad_validated or siski.memory.get_squad_entry)) then
+        return false
+    end
+
+    local entry = nil
+    if ctx and ctx.prevalidated == true and se_squad and se_squad.id and siski.memory.get_squad_entry then
+        entry = siski.memory.get_squad_entry(se_squad.id)
+    elseif siski.memory.touch_squad_validated then
+        entry = siski.memory.touch_squad_validated(se_squad, false, "smart_tasks")
+    end
+    if not entry then
+        return false
+    end
+
+    local current = entry.tasks and entry.tasks.current or nil
+    local preferred = build_preferred_dirty_list(entry, current)
+    if next(RUNTIME.dirty_smarts) ~= nil then
+        process_dirty_smarts(DIRTY_BATCH_PER_UPDATE, preferred)
+        entry = get_entry_for_sid(entry.squad_id) or entry
+        current = entry.tasks and entry.tasks.current or nil
+    end
+
+    local meta = get_smart_task_meta(current)
+    if not meta then
+        return false
+    end
+
+    if meta.tasktype == TASKTYPE_CONTROL then
+        return handle_current_control_task(se_squad, entry, meta)
+    end
+
+    clear_claim_task(entry.squad_id, meta.smart_name, se_squad, "unsupported")
+    return false
+end
+
+local function bus_args(payload)
+    if type(payload) ~= "table" then
+        return {}
+    end
+    return type(payload.args) == "table" and payload.args or {}
+end
+
+local function ensure_bus_subscriptions()
+    local bus = siski and siski.bus or nil
+    if not (type(bus) == "table" and type(bus.subscribe) == "function") then
+        return false
+    end
+
+    local function ensure(event_name, fn)
+        if type(bus.has) == "function" then
+            local ok_has, has = pcall(bus.has, event_name, "siski_smart_tasks")
+            if ok_has and has == true then
+                return true
+            end
+        end
+        local ok_sub, res = pcall(bus.subscribe, event_name, "siski_smart_tasks", fn)
+        return ok_sub and res ~= false
+    end
+
+    ensure("actor_on_first_update", function()
+        reactivate_runtime("actor_on_first_update")
+    end)
+
+    ensure("load_state", function()
+        reactivate_runtime("load_state")
+    end)
+
+    ensure("on_option_change", function()
+        reactivate_runtime("option_change")
+    end)
+
+    ensure("memory_task_changed", function(payload)
+        on_memory_task_changed(payload)
+    end)
+
+    ensure("smart_terrain_on_update", function(payload)
+        local args = bus_args(payload)
+        local smart = args[1]
+        local smart_name = safe_object_name(smart)
+        if smart_name and (get_tasktype_for_smart(smart_name) or RUNTIME.claims_by_smart[smart_name]) then
+            mark_smart_dirty(smart_name)
+            process_dirty_smarts(1, { smart_name })
+            try_fill_control_smart_jobs_once(smart_name, smart)
+        end
+    end)
+
+    ensure("squad_on_enter_smart", function(payload)
+        local args = bus_args(payload)
+        local smart_name = safe_object_name(args[2])
+        if smart_name then
+            mark_smart_dirty(smart_name)
+        end
+    end)
+
+    ensure("squad_on_leave_smart", function(payload)
+        local args = bus_args(payload)
+        local smart_name = safe_object_name(args[2])
+        if smart_name then
+            mark_smart_dirty(smart_name)
+        end
+    end)
+
+    ensure("server_entity_on_unregister", function(payload)
+        local args = bus_args(payload)
+        on_server_entity_unregister(args[1], args[2])
+    end)
+
+    return true
+end
+
+ensure_bus_subscriptions()
+
+smart_tasks.on_game_start = ensure_bus_subscriptions
+smart_tasks.reactivate_runtime = reactivate_runtime
+smart_tasks.update_squad_tasks = update_squad_tasks_impl

@@ -1,0 +1,90 @@
+
+-- note that Monolith, greh (Sin), and Renegade, relations are set not to change (by default, in dynamic_faction_relations.ltx)
+-- to use lines that are commented out, remove the "--" before the faction name
+
+local positive_limits={}
+positive_limits={
+--------------stalker---bandit---csky---dolg---ecolog---freedom---greh---killer---monolith---army---renegade-----isg
+   stalker= {     nil,     900,   900,   900,     900,      900,   900,    900,        nil,   900,     -1100,    900},
+   bandit=  {     nil,     nil,   500,     0,     400,      nil,  -800,    nil,        nil,     0,       nil,    400},
+   csky=    {     nil,     nil,   nil,   nil,     nil,      nil,   300,    nil,        nil,   nil,     -1100,    nil},
+   dolg=    {     nil,     nil,   nil,   nil,     nil,     -900, -1500,    nil,        nil,   nil,     -1100,    400},
+   ecolog=  {     nil,     nil,   nil,   nil,     nil,      nil,   nil,    nil,        nil,   nil,     -1100,    nil},
+   freedom= {     nil,     nil,   nil,   nil,     nil,      nil,  -700,    nil,        nil,   700,     -1100,    400},
+-- greh=    {     nil,     nil,   nil,   nil,     nil,      nil,   nil,    nil,        nil,   nil,     -1100,    200},
+   killer=  {     nil,     nil,   nil,   nil,     nil,      nil,   nil,    nil,        nil,   nil,     -1100,    nil},
+-- monolith={     nil,     nil,   nil,   nil,     nil,      nil,   nil,    nil,        nil,   nil,       nil,    nil},
+   army=    {     nil,     nil,   nil,   nil,     nil,      nil,   nil,    nil,        nil,   nil,     -1100,    nil},
+   renegade={     nil,     nil,   nil,   nil,     nil,      nil,   nil,    nil,        nil,   nil,       nil,  -1100},
+   isg=     {     nil,     nil,   nil,   nil,     nil,      nil,   nil,    nil,        nil,   nil,       nil,    nil},
+}
+
+local negative_limits={}
+negative_limits={
+--------------stalker---bandit---csky---dolg---ecolog---freedom---greh---killer---monolith---army---renegade-----isg
+   stalker= {     nil,     nil,  -800,  -800,    -800,     -800,   nil,    nil,        nil,   nil,       nil,    nil},
+-- bandit=  {     nil,     nil,   nil,   nil,     nil,      nil,   nil,    nil,        nil,   nil,       nil,    nil},
+-- csky=    {     nil,     nil,   nil,   nil,     nil,      nil,   nil,    nil,        nil,   nil,       nil,    nil},
+-- dolg=    {     nil,     nil,   nil,   nil,     nil,      nil,   nil,    nil,        nil,   nil,       nil,    nil},
+   ecolog=  {     nil,     nil,   nil,   nil,     nil,      nil,   nil,    nil,        nil,  -100,       nil,    nil},
+-- freedom= {     nil,     nil,   nil,   nil,     nil,      nil,   nil,    nil,        nil,   nil,       nil,    nil},
+-- greh=    {     nil,     nil,   nil,   nil,     nil,      nil,   nil,    nil,        nil,   nil,       nil,    nil},
+-- killer=  {     nil,     nil,   nil,   nil,     nil,      nil,   nil,    nil,        nil,   nil,       nil,    nil},
+-- monolith={     nil,     nil,   nil,   nil,     nil,      nil,   nil,    nil,        nil,   nil,       nil,    nil},
+-- army=    {     nil,     nil,   nil,   nil,     nil,      nil,   nil,    nil,        nil,   nil,       nil,    nil},
+-- renegade={     nil,     nil,   nil,   nil,     nil,      nil,   nil,    nil,        nil,   nil,       nil,    nil},
+-- isg=     {     nil,     nil,   nil,   nil,     nil,      nil,   nil,    nil,        nil,   nil,       nil,    nil},
+}
+
+
+local all_factions={
+[1]="stalker",
+[2]="bandit",
+[3]="csky",
+[4]="dolg",
+[5]="ecolog",
+[6]="freedom",
+[7]="greh",
+[8]="killer",
+[9]="monolith",
+[10]="army",
+[11]="renegade",
+[12]="isg",
+}
+local lasttime=0
+
+
+function actor_on_update()
+	if time_global()-lasttime>5000 then
+		lasttime=time_global()
+		for fac1_index,faction1 in pairs(all_factions) do
+			if negative_limits[faction1] then
+				for fac2_index,faction2 in pairs(all_factions) do
+					local rel=game_relations.get_factions_community(faction1, faction2)
+					local limit=negative_limits[faction1][fac2_index]
+					if rel and limit and rel<limit then
+						-- lower than lower limit so set back to lowest possible
+						game_relations.save_relation(faction1,faction2,limit)
+						game_relations.save_relation("actor_"..faction1,faction2,limit)
+						game_relations.save_relation(faction1,"actor_"..faction2,limit)
+					end
+				end
+			end
+			if positive_limits[faction1] then
+				for fac2_index,faction2 in pairs(all_factions) do
+					local rel=game_relations.get_factions_community(faction1, faction2)
+					local limit=positive_limits[faction1][fac2_index]
+					if rel and limit and rel>limit then
+						game_relations.save_relation(faction1,faction2,limit)
+						game_relations.save_relation("actor_"..faction1,faction2,limit)
+						game_relations.save_relation(faction1,"actor_"..faction2,limit)
+					end
+				end
+			end
+		end
+	end
+end
+
+function on_game_start() 
+	RegisterScriptCallback("actor_on_update", actor_on_update)
+end

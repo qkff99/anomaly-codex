@@ -1,0 +1,41 @@
+--[[
+	=====================================================================
+	Addon        : Activated Charcoal
+	Link:        : https://www.moddb.com/mods/stalker-anomaly/addons/dltx-activated-charcoal/
+	Author       : Tosox
+	Credits      : Igigog, Arti, Demonized
+	Last Edit    : 07.06.2024
+	=====================================================================
+--]]
+
+defaults = {
+	["loot_coefficient"] = 1.0,
+	["trader_restock_amount"] = 3.0
+}
+
+function get_config(key)
+	if ui_mcm then return ui_mcm.get("drug_charcoal/" .. key) else return defaults[key] end
+end
+
+function on_mcm_load()
+	return {
+		id = "drug_charcoal", sh = true, gr = {
+			{ id = "title", type = "slide", link = "ui_options_slider_mask", text = "ui_mcm_drug_charcoal_title", size = { 512, 50 }, spacing = 20 },
+			{ id = "loot_coefficient", type = "track", val = 2, min = 0.0, max = 3.0, step = 0.1, def = defaults["loot_coefficient"] },
+			{ id = "trader_restock_amount", type = "track", val = 2, min = 0.0, max = 6.0, step = 1.0, def = defaults["trader_restock_amount"] }
+		}
+	}
+end
+
+--=========================================================================--
+
+-- Inject item into new game loadout
+local item_cost = 30
+if efp_utils_mcm then
+	-- If playing EFP
+	item_cost = 1
+end
+new_game_loadout_injector_mcm.add_item({
+	section = "drug_charcoal",
+	points = item_cost
+})

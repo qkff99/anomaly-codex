@@ -1,0 +1,99 @@
+
+[duty_outpost_physic_object]
+GroupControlSection = spawn_group
+$spawn				= "physics\destroyable_object"
+class				= O_DSTR_S
+remove_time			= 60
+script_binding		= bind_physic_object.init
+
+
+[duty_outpost_box_1a]:duty_outpost_physic_object
+visual				= dynamics\box\box_1a.ogf
+fixed_bones			= link
+
+[duty_outpost_box_1b]:duty_outpost_physic_object
+visual				= dynamics\box\box_1b.ogf
+fixed_bones			= link
+
+[duty_outpost_box_1c]:duty_outpost_physic_object
+visual				= dynamics\box\box_1c.ogf
+fixed_bones			= link
+
+[duty_outpost_child_bench]:duty_outpost_physic_object
+visual				= dynamics\stul\child_bench.ogf
+fixed_bones			= link
+
+[duty_outpost_taburet_wood_01]:duty_outpost_physic_object
+visual				= dynamics\stul\taburet_wood_01.ogf
+fixed_bones			= link
+
+[duty_outpost_konteyner_03b]:duty_outpost_physic_object
+visual				= dynamics\box\konteyner_03b.ogf
+fixed_bones			= link
+
+[duty_outpost_sleepbag]:duty_outpost_physic_object
+visual				= dynamics\equipments\mattress02.ogf
+fixed_bones			= bone02_(1)
+
+[duty_outpost_transiver]:duty_outpost_physic_object
+visual				= dynamics\el_tehnika\transiver.ogf
+fixed_bones			= link
+
+[duty_outpost_rupor]:duty_outpost_physic_object
+visual				= dynamics\el_tehnika\rupor.ogf
+fixed_bones			= link
+custom_data			= scripts\red_forest\red_bridge_outpost_rupor.ltx
+
+[duty_outpost_priemnik_gorizont]:duty_outpost_physic_object
+visual				= dynamics\el_tehnika\priemnik_gorizont.ogf
+fixed_bones			= link
+custom_data			= scripts\red_forest\red_bridge_outpost_radio.ltx
+
+
+[duty_outpost_light_sharnir]:duty_outpost_physic_object
+visual				= dynamics\light\light_sharnir_1.ogf
+fixed_bones			= link,sharnir,provod
+custom_data			= scripts\red_forest\light_white_12m_glass.ltx
+
+
+
+
+[duty_outpost_med_stolik_01]:duty_outpost_physic_object
+visual				= dynamics\medical_object\med_stolik_01.ogf
+fixed_bones			= link,wheel_left_1,wheel_left_2,wheel_right_1,wheel_right_2
+
+[duty_outpost_item_aptechka]:duty_outpost_physic_object
+visual				= dynamics\equipments\medical\item_aptechka.ogf
+fixed_bones			= link
+
+[duty_outpost_drug_psyhodelin]:duty_outpost_physic_object
+visual				= dynamics\equipments\medical\drug_psyhodelin.ogf
+fixed_bones			= bone01
+
+[duty_outpost_drug_stim1]:duty_outpost_physic_object
+visual				= dynamics\equipments\medical\stim1.ogf
+fixed_bones			= bone01
+
+[duty_outpost_drug_stim2]:duty_outpost_physic_object
+visual				= dynamics\equipments\medical\stim2.ogf
+fixed_bones			= bone01
+
+
+
+
+[duty_outpost_toolkit_nato]:duty_outpost_physic_object
+visual				= dynamics\repair\toolkit_nato.ogf
+fixed_bones			= bone01
+
+[duty_outpost_toolkit_p]:duty_outpost_physic_object
+visual				= dynamics\repair\toolkit_p.ogf
+fixed_bones			= bone01
+
+[duty_outpost_toolkit_s]:duty_outpost_physic_object
+visual				= dynamics\repair\toolkit_s.ogf
+fixed_bones			= bone01
+
+[duty_outpost_toolkit_wp]:duty_outpost_physic_object
+visual				= dynamics\repair\toolkit_wp.ogf
+fixed_bones			= bone01
+

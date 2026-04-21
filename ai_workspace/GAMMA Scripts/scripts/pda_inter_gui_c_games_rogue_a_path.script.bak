@@ -1,0 +1,171 @@
+--[[
+    Lua star example - Run with love (https://love2d.org/)
+    Copyright 2018 Wesley Werner <wesley.werner@gmail.com>
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+    References:
+    https://en.wikipedia.org/wiki/A*_search_algorithm
+    https://www.redblobgames.com/pathfinding/a-star/introduction.html
+    https://www.raywenderlich.com/4946/introduction-to-a-pathfinding
+]]--
+
+--- Provides easy A* path finding.
+
+-- (Internal) Return the distance between two points.
+-- This method doesn't bother getting the square root of s, it is faster
+-- and it still works for our use.
+local function distance(x1, y1, x2, y2)
+	local dx = x1 - x2
+	local dy = y1 - y2
+	local s = dx * dx + dy * dy
+	return s
+end
+
+-- (Internal) Return the score of a node.
+-- G is the cost from START to this node.
+-- H is a heuristic cost, in this case the distance from this node to the goal.
+-- Returns F, the sum of G and H.
+local function calculateScore(previous, node, goal)
+    local G = previous.score + 1
+    local H = distance(node.x, node.y, goal.x, goal.y)
+    return G + H, G, H
+end
+
+-- (Internal) Returns true if the given list contains the specified item.
+local function listContains(list, item)
+    for _, test in ipairs(list) do
+        if test.x == item.x and test.y == item.y then
+            return true
+        end
+    end
+    return false
+end
+
+-- (Internal) Returns the item in the given list.
+local function listItem(list, item)
+    for _, test in ipairs(list) do
+        if test.x == item.x and test.y == item.y then
+            return test
+        end
+    end
+end
+
+-- (Internal) Requests adjacent map values around the given node.
+local function getAdjacent(width, height, node, positionIsOpenFunc, self, start, goal, idx, victim_idx)
+
+    local result = { }
+
+    local positions = {
+        { x = 0, y = -1 },  -- top
+        { x = -1, y = 0 },  -- left
+        { x = 0, y = 1 },   -- bottom
+        { x = 1, y = 0 },   -- right
+    }
+
+    for _, point in ipairs(positions) do
+        local px = clamp(node.x + point.x, 1, width)
+        local py = clamp(node.y + point.y, 1, height)
+        local value = positionIsOpenFunc( self, px, py, start, goal, idx, victim_idx )
+        if value then
+            table.insert( result, { x = px, y = py  } )
+        end
+    end
+
+    return result
+end
+
+-- Returns the path from start to goal, or false if no path exists.
+function astar_find(width, height, start, goal, positionIsOpenFunc, self, idx, victim_idx)
+
+    local success = false
+    local open = { }
+    local closed = { }
+
+    start.score = 0
+    start.G = 0
+    start.H = distance(start.x, start.y, goal.x, goal.y)
+    start.parent = { x = 0, y = 0 }
+    table.insert(open, start)
+
+    while not success and #open > 0 do
+
+        -- sort by score: high to low
+        table.sort(open, function(a, b) return a.score > b.score end)
+
+        local current = table.remove(open)
+
+        table.insert(closed, current)
+
+        success = listContains(closed, goal)
+
+        if not success then
+
+            local adjacentList = getAdjacent(width, height, current, positionIsOpenFunc, self, start, goal, idx, victim_idx)
+
+            for _, adjacent in ipairs(adjacentList) do
+
+                if not listContains(closed, adjacent) then
+
+                    if not listContains(open, adjacent) then
+
+                        adjacent.score = calculateScore(current, adjacent, goal)
+                        adjacent.parent = current
+                        table.insert(open, adjacent)
+
+                    end
+
+                end
+
+            end
+
+        end
+
+    end
+
+    if not success then
+        return false
+    end
+
+    -- traverse the parents from the last point to get the path
+    local node = listItem(closed, closed[#closed])
+    local path = { }
+
+    while node do
+        table.insert(path, 1, { x = node.x, y = node.y } )
+        node = listItem(closed, node.parent)
+    end
+
+    -- reverse the closed list to get the solution
+    return path
+end
+
+function AStarCanMove(self, row, col, start, goal, idx, victim_idx)
+	-- terrain check
+	local terrain = self.rogue_grid[row] and self.rogue_grid[row][col] and self.rogue_grid[row][col].terrain == 0
+	if not terrain then
+		return
+	end
+
+	-- disallow storing cell if theres another alive object and its not victim
+	for i, t in pairs(self.rogue_objects) do
+		local alive_not_victim = i ~= victim_idx and t.status == "alive"
+		local same_pos = row == t.row and col == t.col
+		if alive_not_victim and same_pos then
+			return
+		end
+	end
+
+	return true
+end
+
+function AStarCanMoveToExit(self, row, col, start, goal)
+	-- terrain check only
+	if self.rogue_grid[row] and self.rogue_grid[row][col] and self.rogue_grid[row][col].terrain == 0 then
+		return true
+	end
+end

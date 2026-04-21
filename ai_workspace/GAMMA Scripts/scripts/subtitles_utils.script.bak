@@ -1,0 +1,192 @@
+-- Imports
+contains = ag_tables.contains
+split = ag_strings.split
+
+-- Constants
+DBG_LVL = "player"
+as_version = "v0.12.2"
+as_authors = "Antglobes, Vodoxleb, Lin, Tehanow"
+as_last_update = "23-07-25"
+
+-- Variables
+setup_init = false
+
+function get_end_digits(str)
+    local digits = {}
+
+    local start, fin = str:find("%d+$")
+    if not (start or fin) then return digits end
+    local digit_str = str:sub(start, fin)
+
+    for i=1, digit_str:len() do
+       digits[#digits + 1] =  digit_str:sub(i, i)
+    end
+    return digits
+end
+
+function in_snd_dir(filename)
+    if not filename then return end
+    if not filename:find(".ogg$") then filename = filename .. ".ogg" end
+    return getFS():exist("$game_sounds$", filename)
+end
+
+function path_to_xml(path)
+    local string_id = strformat("as_sub_%s", path:gsub("\\", "_"))
+    return string_id
+end
+
+function get_npc_name(npc)
+	return IsStalker(npc) and npc:character_name() or ini_sys:r_string_ex(npc:section(), "species")
+end
+
+function cache_sound_files()
+    local files = getFS():file_list_open_ex("$game_sounds$",bit_or(FS.FS_ListFiles,FS.FS_RootOnly),"*.ogg")
+    local size = files:Size()
+    for i=0, size-1 do
+        printf("Filename: %s", files:GetAt(i):NameFull())
+    end
+end
+
+function get_bone_pos(obj, bname)
+    local bid = obj:get_bone_id(bname)
+    return bid ~= 65535 and obj:bone_position(bname) or obj:position()
+end
+
+function str2ARGB(colour, as_table)
+    local argb = str_explode(colour, ",") or {}
+    if as_table then 
+        for idx, val in pairs(argb) do
+            argb[idx] = tonumber(val)
+        end
+        return argb
+    end
+    return GetARGB(unpack(argb))
+end
+
+special_character_faction = {
+    -- Cordon
+    ["Loris"] = "stalker",
+    ["Sidorovich"] = "stalker",
+    -- Garbage
+    ["Butcher"] = "stalker",
+    -- Rostok
+    ["Barkeep"] = "stalker",
+    ["Snitch"] = "stalker",
+    ["Arnie"] = "stalker",
+    -- Red Forest
+    ["Forester"] = "stalker",
+    -- Jupiter
+    ["Hawaiian"] = "stalker",
+    ["Ashot"] = "freedom",
+    -- Zaton
+    ["Nimble"] = "stalker",
+    ["Beard"] = "stalker",
+    ["Owl"] = "stalker",
+    -- Great Swamps
+    ["Professor Kalancha"] = "csky",
+    -- Misc
+    ['Senior Sergeant Grebenko'] = "dolg",
+    ["Xenotech"] = "stalker",
+}
+
+communities = {
+    "stalker",
+    "csky",
+    "bandit",
+    "army", 
+    "killer",
+    "monolith",
+    "ecolog",
+    "dolg", 
+    "freedom",
+    "greh",
+    "renegade",
+    "isg",
+    "monster",
+    "sin",
+}
+
+exclude_factions = {
+    "zombied",
+    "trader",
+    "nil"
+}
+
+function get_npc_faction(npc)
+    if IsMonster(npc) then
+        return "monster"
+    end
+
+    local name = get_npc_name(npc)
+    if contains(special_character_faction, name, true) then
+        return special_character_faction[name]
+    end
+
+    local faction = npc:character_community()
+    if faction == "zombied" then
+        local visual = npc:get_visual_name()
+        local path_tkns = split(visual, "\\")
+        local faction_found = false
+        for i=1, #path_tkns do
+            local file_tkns = split(path_tkns[#path_tkns + 1 - i], "_")
+            for i=1, #file_tkns do
+                for _, community in pairs(communities) do
+                    local file_tkn = file_tkns[#file_tkns + 1 - i]
+                    print(file_tkn, community)
+                    if not faction_found and file_tkn:find(community) then
+                        faction_found = true
+                        faction = community     
+                    end
+                end
+            end
+        end
+    end
+
+    return not contains(exclude_factions, faction) and faction or "stalker"
+end
+
+-- MCM
+function set_debug_level(new_dbg_level)
+	DBG_LVL = new_dbg_level
+end
+
+function mcm_debug_level()
+	return DBG_LVL or "player"
+end
+
+function filter_debug_msg(debug_level)
+	local mcm_dbg_lvl = mcm_debug_level()
+	local accepted_debug_msgs = {
+		["player"] = {"player"},
+		["dev"]    = {"player", "dev"},
+		["all"]    = {"player", "dev", "all"}
+	}
+	return contains(accepted_debug_msgs[mcm_dbg_lvl], debug_level)
+end
+
+function dbg_pr(header, str, ...)
+    if not filter_debug_msg(DBG_LVL) then return end
+    ag_logging.dbg_pr(header, str, ...)
+end
+
+function on_option_change(options)
+    DBG_LVL = options["debug_level"]
+end
+
+function addon_info()
+	printf("--------Anomaly Subtitles--------")
+	printf("Version: %s", as_version)
+	printf("Author(s): %s", as_authors)
+	printf("Last Updated: %s", as_last_update)
+	printf("---------------------------------")
+end
+
+function setup()
+    if setup_init then return end
+    addon_info()
+    setup_init = true
+end
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_first_update", setup)
+end

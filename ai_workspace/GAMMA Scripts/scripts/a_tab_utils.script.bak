@@ -1,0 +1,51 @@
+function filter(tab, callback)
+    local result = {}
+
+    for _, v in ipairs(tab) do
+		if callback(v) then
+			table.insert(result, v)
+		end
+	end
+
+    return result
+end
+
+function find_index(tab, val)
+    for index, value in ipairs(tab) do
+        if value == val then
+            return index
+        end
+    end
+    return -1
+end
+
+function has_value(tab, val)
+    for index, value in ipairs(tab) do
+        if value == val then
+            return true
+        end
+    end
+
+    return false
+end
+
+function shallow_copy(t)
+	local res = {}
+	for k,v in pairs(t) do
+		res[k] = v
+	end
+	return res
+end
+
+-- No invalid range check - expect to receive the right input
+function rand_with_exclusion(min, max, exclude)
+    local t = {}
+    for i = min, max do
+        if i ~= exclude then
+            table.insert(t, i)
+        end
+    end
+
+    local rand_i = math.random(#t)
+    return t[rand_i]
+end

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="windows-1251" ?>
+<game_dialogs>
+#include "gameplay\dialogs_duty_girl.xml"
+#include "gameplay\dialogs_duty_outpost.xml"
+	
+	<dialog id="my_dialog">
+		<phrase_list>
+		<phrase id="0">  <!-- NPC -->
+			<text>npc_phrase</text>
+			<next>1</next>
+		</phrase>
+		<phrase id="1">  <!-- Actor -->
+			<text>actor_phrase</text>
+			<action>dialogs.break_dialog</action>
+		</phrase>
+        </phrase_list>
+    </dialog>
+	
+<!-- (Bandit Mechanic) -->
+	<dialog id="trucks_cemetery_bandit_mechanic_start">
+		<phrase_list>
+			<phrase id="0">
+				<text>trucks_cemetery_bandit_mechanic_start_0</text>
+			</phrase>
+		</phrase_list>
+	</dialog>
+	
+
+</game_dialogs>

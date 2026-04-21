@@ -1,0 +1,192 @@
+function get_colour(name)
+    return utils_xml.get_color(name)
+end
+
+--- Returns XML valid colour string 
+---@param any
+function get_colour_string(name)
+    return strformat("%c[%s]", name)
+end
+
+--- Get colour based on medpack's condition
+---@param condition number
+function get_condition_colour(condition)
+    condition = round(condition * 100)
+    if condition > 75 then
+        return get_colour_string("d_green")
+    elseif condition <= 75 and condition >= 50  then
+        return get_colour_string("pda_yellow")
+    elseif condition < 50 and condition > 25 then
+        return get_colour_string("d_orange")
+    else
+        return get_colour_string("d_red")
+    end
+end
+
+-- Converting default_rgb to colorblind safe default_rgb
+-- Sourced from https://create.roblox.com/store/asset/6219049766/rgbToColorblindRgb?assetType=Model&externalSource=www
+
+local colourblind_transform_matrices = {
+	normal = {
+		R = {100, 0, 0},
+		G = {0, 100, 0},
+		B = {0, 0, 100}
+	},
+	achromatopsia = {
+		R = {29.9, 58.7, 11.4},
+		G = {29.9, 58.7, 11.4},
+		B = {29.9, 58.7, 11.4}
+	},
+	achromatomaly = {
+		R = {61.8, 32, 6.2},
+		G = {16.3, 77.5, 6.2},
+		B = {16.3, 32.0, 51.6}
+	},
+	deuteranopia =  {
+		R = {62.5, 37.5, 0},
+		G = {70, 30, 0},
+		B = {0, 30, 70}},
+	deuteranomaly = {
+		R = {80, 20, 0},
+		G = {25.833, 74.167, 0},
+		B = {0, 14.167, 85.833}
+	},
+	protanopia = {
+		R = {56.667, 43.333, 0},
+		G = {55.833, 44.167, 0},
+		B =  {0, 24.167, 75.833}},
+	protanomaly = {
+		R = {81.667, 18.333, 0},
+		G = {33.333, 66.667, 0},
+		B = {0, 12.5, 87.5}
+	},
+	tritanopia = {
+		R = {95, 5, 0},
+		G = {0, 43.333, 56.667},
+		B = {0, 47.5, 52.5}
+	},
+	tritanomaly = {
+		R = {96.667, 3.333, 0},
+		G = {0, 73.333, 26.667},
+		B = {0, 18.333, 81.667}
+	},
+}
+
+function get_colourblind_transform_matrix(matrix_name)
+    return colourblind_transform_matrices[matrix_name]
+end
+
+function get_colourblind_rgb(matrix_name, r, g, b)
+    local g_type = type
+    local g_unpack = unpack
+    local default_rgb = {0, 0, 0}
+    if r == nil or g == nil or b == nil then
+		return g_unpack(default_rgb)
+	end
+		
+	if g_type(r) ~= 'number' or g_type(g) ~= 'number' or g_type(b) ~= 'number' then
+		return g_unpack(default_rgb)
+	end
+
+    local matrix_entry = get_colourblind_transform_matrix(matrix_name)
+
+    local converted_rgb_channel_vals = {
+        (r * matrix_entry.R[1] / 100.0) + (g * matrix_entry.R[2] / 100.0) + (b * matrix_entry.R[3] / 100.0),
+        (r * matrix_entry.G[1] / 100.0) + (g * matrix_entry.G[2] / 100.0) + (b * matrix_entry.G[3] / 100.0),
+        (r * matrix_entry.B[1] / 100.0) + (g * matrix_entry.B[2] / 100.0) + (b * matrix_entry.B[3] / 100.0)
+    }
+
+    for idx = 1, 3 do
+		converted_rgb_channel_vals[idx] = math.min(converted_rgb_channel_vals[idx], 255) -- to prevent invalid ranges
+	end
+
+    return g_unpack(converted_rgb_channel_vals)
+end
+
+clr_table = {
+    -- Additional Colours
+    ["black"]       = {0, 0, 0},
+    ["blue"]        = {34, 106, 226},
+    ["magenta"]     = {209, 74, 169},
+
+    -- Base Game Colours
+	["white"]       = {255,255,255},
+	["green"]       = {0,255,0},
+	["yellow"]      = {255,255,0},
+	["red"]         = {255,0,0},
+	["orange"]      = {250,150,0},
+	["d_orange"]    = {238,153,26},
+	["d_red"]       = {204,0,51},
+	["d_cyan"]      = {153,255,255},
+	["d_purple"]    = {93,0,116},
+	["d_green"]     = {51,255,102},
+	["d_blue"]      = {100,100,255},	
+	["ui_gray_1"]   = {170,170,170},
+	["ui_gray_2"]   = {140,140,140},
+	["pda_green"]   = {56,209,115},
+	["pda_blue"]    = {56,166,209},
+	["pda_yellow"]  = {209,209,56},
+	["pda_white"]   = {250,250,250},
+}
+
+clr_table_opacity = {
+    -- Additional Colours
+    ["black"]       = function(opacity) return GetARGB(opacity, 0, 0, 0) end,
+    ["blue"]        = function(opacity) return GetARGB(opacity, 34, 106, 226) end,
+    ["magenta"]     = function(opacity) return GetARGB(opacity, 209, 74, 169) end,
+
+    -- Base Game Colours
+	["white"]       = function(opacity) return GetARGB(opacity,255,255,255) end,
+	["green"]       = function(opacity) return GetARGB(opacity,0,255,0) end,
+	["yellow"]      = function(opacity) return GetARGB(opacity,255,255,0) end,
+	["red"]         = function(opacity) return GetARGB(opacity,255,0,0) end,
+	["orange"]      = function(opacity) return GetARGB(opacity,250,150,0) end,
+	["d_orange"]    = function(opacity) return GetARGB(opacity,238,153,26) end,
+	["d_red"]       = function(opacity) return GetARGB(opacity,204,0,51) end,
+	["d_cyan"]      = function(opacity) return GetARGB(opacity,153,255,255) end,
+	["d_purple"]    = function(opacity) return GetARGB(opacity,93,0,116) end,
+	["d_green"]     = function(opacity) return GetARGB(opacity,51,255,102) end,
+	["d_blue"]      = function(opacity) return GetARGB(opacity,100,100,255) end,	
+	["ui_gray_1"]   = function(opacity) return GetARGB(opacity,170,170,170) end,
+	["ui_gray_2"]   = function(opacity) return GetARGB(opacity,140,140,140) end,
+	["pda_green"]   = function(opacity) return GetARGB(opacity,56,209,115) end,
+	["pda_blue"]    = function(opacity) return GetARGB(opacity,56,166,209) end,
+	["pda_yellow"]  = function(opacity) return GetARGB(opacity,209,209,56) end,
+	["pda_white"]   = function(opacity) return GetARGB(opacity,250,250,250) end,
+}
+
+faction_to_colour_opacity = {
+    ["stalker"]     = function(opacity) return GetARGB(opacity, 241, 196, 15) end,
+    ["csky"]        = function(opacity) return GetARGB(opacity, 0, 191, 255) end,
+    ["bandit"]      = function(opacity) return GetARGB(opacity, 194, 125, 14) end,
+    ["army"]        = function(opacity) return GetARGB(opacity, 118, 139, 5) end,
+    ["killer"]      = function(opacity) return GetARGB(opacity, 61, 104, 145) end,
+    ["monolith"]    = function(opacity) return GetARGB(opacity, 33, 148, 150) end,
+    ["ecolog"]      = function(opacity) return GetARGB(opacity, 122, 199, 184)end,
+    ["dolg"]        = function(opacity) return GetARGB(opacity, 178, 34, 34) end,
+    ["freedom"]     = function(opacity) return GetARGB(opacity, 34, 139, 34) end,
+    ["greh"]        = function(opacity) return GetARGB(opacity, 14, 1, 1) end,
+    ["renegade"]    = function(opacity) return GetARGB(opacity, 168, 67, 0) end,
+    ["isg"]         = function(opacity) return GetARGB(opacity, 184, 102, 135) end,
+    ["monster"]     = function(opacity) return GetARGB(opacity, 74, 46, 16) end,
+    ["default"]     = function(opacity) return GetARGB(opacity, 250, 250, 250) end,
+    ["trader"]      = function(opacity) return GetARGB(opacity, 0, 0, 0) end,
+}
+
+faction_to_colour = {
+    ["stalker"]     = {241, 196, 15},
+    ["csky"]        = {0, 191, 255},
+    ["bandit"]      = {194, 125, 14},
+    ["army"]        = {118, 139, 5},
+    ["killer"]      = {61, 104, 145},
+    ["monolith"]    = {33, 148, 150},
+    ["ecolog"]      = {122, 199, 184},
+    ["dolg"]        = {178, 34, 34},
+    ["freedom"]     = {34, 139, 34},
+    ["greh"]        = {14, 1, 1},
+    ["renegade"]    = {168, 67, 0},
+    ["isg"]         = {184, 102, 135},
+    ["monster"]     = {74, 46, 16},
+    ["default"]     = {250, 250, 250},
+    ["trader"]      = {0, 0, 0},
+}

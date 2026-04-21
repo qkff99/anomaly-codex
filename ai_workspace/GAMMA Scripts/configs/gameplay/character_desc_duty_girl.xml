@@ -1,0 +1,97 @@
+
+<specific_character id="stalker_duty_girl" team_default="1">
+	<class>stalker_duty_girl</class>
+	<name>stalker_duty_girl_name</name>
+	<icon>ui_npc_duty_girl</icon>
+	<community>dolg</community>
+	<snd_config>characters_voice\human\woman\</snd_config>
+	<visual>actors\mnp_npc_remeik\duty_girl</visual>
+	
+	<supplies>
+	[spawn] \n
+	wpn_groza \n
+	</supplies>
+	
+	<map_icon x="1" y="0"> </map_icon>
+	<bio></bio>
+	<supplies></supplies>
+	<rank>10000</rank>
+	<reputation>1000</reputation>
+	<money min="1000000" max="1000000" infinitive="1"/>
+		<start_dialog>hello_dialog</start_dialog>
+		<actor_dialog>duty_girl_first_meet</actor_dialog>
+		
+		<actor_dialog>duty_girl_hunting_chimera_init</actor_dialog>
+		<actor_dialog>duty_girl_hunting_chimera_move</actor_dialog>
+		<actor_dialog>duty_girl_hunting_chimera_done</actor_dialog>
+		
+		<actor_dialog>duty_girl_monolith_elite_init</actor_dialog>
+		<actor_dialog>duty_girl_monolith_elite_join</actor_dialog>
+		<actor_dialog>duty_girl_monolith_elite_done</actor_dialog>
+		
+		<actor_dialog>duty_girl_loot_stash_init</actor_dialog>
+		
+		<actor_dialog>duty_girl_capture_the_brirge_init</actor_dialog>
+		<actor_dialog>duty_girl_capture_the_brirge_join</actor_dialog>
+		<actor_dialog>duty_girl_capture_the_brirge_done</actor_dialog>
+		
+		<actor_dialog>dm_is_actor_companion_dialog</actor_dialog>
+		<actor_dialog>dm_companion_patrol</actor_dialog>
+		
+		<actor_dialog>duty_girl_companion_join_dialog</actor_dialog>
+		<actor_dialog>duty_girl_companion_leave_dialog</actor_dialog>
+		<actor_dialog>duty_girl_chat</actor_dialog>
+		
+		<actor_dialog>actor_break_dialog</actor_dialog>
+</specific_character>
+
+<specific_character id="red_duty_outpost_trader" team_default = "1">
+#include "gameplay\profiles\character_desc_dolg_special.xml"
+    <name>GENERATE_NAME_senior_sergeant</name>
+    <icon>ui_inGame2_dutygas_2</icon>
+    <class>red_duty_outpost_trader</class>
+    <snd_config>characters_voice\human\dolg_1\</snd_config>
+    <visual>actors\stalker_dolg\stalker_dolggas2a</visual>
+	
+		<start_dialog>hello_dialog</start_dialog>
+		
+		<actor_dialog>dm_init_trader</actor_dialog>
+		<actor_dialog>dm_broker_dialog</actor_dialog>
+		<actor_dialog>dm_ordered_task_dialog</actor_dialog>
+		<actor_dialog>dm_ordered_task_completed_dialog</actor_dialog>
+		<actor_dialog>dm_important_documents</actor_dialog>
+		<actor_dialog>buy_route</actor_dialog>
+		
+		<actor_dialog>red_duty_outpost_trader_concern_hostile</actor_dialog>
+		
+		<actor_dialog>actor_break_dialog</actor_dialog>
+</specific_character>
+
+<specific_character id="red_duty_outpost_medic" team_default = "1">
+#include "gameplay\profiles\character_desc_dolg_special.xml"
+    <name>GENERATE_NAME_senior_sergeant</name>
+    <icon>ui_npc_small_dolg_2_face_2</icon>
+    <class>red_duty_outpost_medic</class>
+    <snd_config>characters_voice\human\dolg_1\</snd_config>
+    <visual>actors\stalker_dolg\stalker_dolg_2_face_2</visual>
+	
+		<start_dialog>hello_dialog</start_dialog>
+		
+		<actor_dialog>dm_init_medic</actor_dialog>
+		<actor_dialog>dm_medic_general</actor_dialog>
+		<actor_dialog>dm_ordered_task_dialog</actor_dialog>
+		<actor_dialog>dm_ordered_task_completed_dialog</actor_dialog>
+		<actor_dialog>actor_break_dialog</actor_dialog>
+</specific_character>
+
+<specific_character id="red_duty_outpost_guide" team_default = "1">
+#include "gameplay\profiles\character_desc_dolg_special.xml"
+    <name>GENERATE_NAME_senior_sergeant</name>
+    <icon>ui_inGame2_neutral_2_gp5</icon>
+    <class>red_duty_outpost_guide</class>
+    <snd_config>characters_voice\human\dolg_1\</snd_config>
+    <visual>actors\stalker_dolg\stalker_dolg_2a_gp5</visual>
+	
+		<start_dialog>hello_dialog</start_dialog>
+		<actor_dialog>actor_break_dialog</actor_dialog>
+</specific_character>

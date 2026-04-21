@@ -1,0 +1,409 @@
+--[[
+=======================================================================================
+    DevTools UI - Logs Tab Module
+    
+    Handles logs tab rendering: log controls, category browser, log list.
+    
+    Depends on:
+    - devtools_ui_common (colors)
+=======================================================================================
+--]]
+
+-- ============================================================================
+-- LOGGING TAB STATE
+-- ============================================================================
+
+local selected_severity_index = 1 -- 1=All
+local current_page = 1
+local ENTRIES_PER_PAGE = 50
+local cached_log_entries = {}
+local last_log_cache_update = 0
+local LOG_CACHE_INTERVAL = 250
+local log_search_text = "" -- Search filter for log entries
+local category_search_text = "" -- Search filter for categories
+
+-- ============================================================================
+-- LOGGING TAB RENDERING
+-- ============================================================================
+
+function render_logging_tab()
+	if not devtools_logging then
+		ImGui.TextColored(fcolor():set(1, 0.5, 0.5, 1), "devtools_logging.script not loaded")
+		return
+	end
+
+	-- Update cache
+	local tg = time_global()
+	if tg - last_log_cache_update > LOG_CACHE_INTERVAL then
+		update_log_cache()
+		last_log_cache_update = tg
+	end
+
+	render_log_controls()
+	ImGui.Separator()
+	render_log_categories()
+	ImGui.Separator()
+	render_log_list()
+end
+
+function update_log_cache()
+	local all_entries = devtools_logging.get_entries()
+	cached_log_entries = {}
+
+	local severity_threshold = 1
+	if selected_severity_index > 1 then
+		local map = { [2] = 1, [3] = 2, [4] = 3, [5] = 4 }
+		severity_threshold = map[selected_severity_index] or 1
+	end
+
+	local search_lower = string.lower(log_search_text)
+
+	for _, entry in ipairs(all_entries) do
+		local include = true
+		if entry.severity < severity_threshold then
+			include = false
+		end
+		if include and not devtools_logging.is_category_enabled(entry.category) then
+			include = false
+		end
+		-- Search filter
+		if include and log_search_text ~= "" then
+			local msg_lower = string.lower(entry.message or "")
+			local cat_lower = string.lower(entry.category or "")
+			if
+				not string.find(msg_lower, search_lower, 1, true)
+				and not string.find(cat_lower, search_lower, 1, true)
+			then
+				include = false
+			end
+		end
+		if include then
+			table.insert(cached_log_entries, entry)
+		end
+	end
+end
+
+function render_log_controls()
+	local stats = devtools_logging.get_stats()
+	local paused = devtools_logging.is_paused()
+	local enabled = devtools_logging.is_enabled()
+
+	-- Enable/Pause/Clear
+	local _, new_enabled = ImGui.Checkbox("Enabled", enabled)
+	if new_enabled ~= enabled then
+		devtools_logging.set_enabled(new_enabled)
+	end
+
+	ImGui.SameLine()
+
+	local pause_label = paused and "Resume" or "Pause"
+	if ImGui.Button(pause_label, vector2(60, 0)) then
+		devtools_logging.set_paused(not paused)
+	end
+
+	ImGui.SameLine()
+
+	if ImGui.Button("Clear", vector2(50, 0)) then
+		devtools_logging.clear()
+		cached_log_entries = {}
+	end
+
+	ImGui.SameLine()
+
+	local status_color = paused and fcolor():set(1, 1, 0, 1) or fcolor():set(0.5, 1, 0.5, 1)
+	ImGui.PushStyleColor(ImGuiCol.Text, status_color)
+	ImGui.Text(string.format("  %d/%d entries (total: %d)", #cached_log_entries, stats.count, stats.total_logged))
+	ImGui.PopStyleColor(1)
+
+	-- Search filter
+	ImGui.Text("Search:")
+	ImGui.SameLine()
+	local new_search, changed = ImGui.InputText("##log_search", log_search_text, 100)
+	if changed then
+		log_search_text = new_search
+		last_log_cache_update = 0 -- Force cache refresh
+		current_page = 1
+	end
+	ImGui.SameLine()
+	if ImGui.Button("X##clear_log_search", vector2(20, 0)) then
+		log_search_text = ""
+		last_log_cache_update = 0
+		current_page = 1
+	end
+	if log_search_text ~= "" then
+		ImGui.SameLine()
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.5, 0.5, 0.5, 1))
+		ImGui.Text(string.format("(filtering by '%s')", log_search_text))
+		ImGui.PopStyleColor(1)
+	end
+
+	-- Severity filter
+	ImGui.Text("Severity:")
+	ImGui.SameLine()
+	local severity_options = { "All", "DEBUG", "INFO", "WARN", "ERROR" }
+	for i, sev_name in ipairs(severity_options) do
+		local is_selected = (selected_severity_index == i)
+		if is_selected then
+			ImGui.PushStyleColor(ImGuiCol.Button, fcolor():set(0.3, 0.5, 0.8, 1))
+		end
+		if ImGui.Button(sev_name .. "##sev", vector2(0, 0)) then
+			selected_severity_index = i
+			last_log_cache_update = 0
+			current_page = 1
+		end
+		if is_selected then
+			ImGui.PopStyleColor(1)
+		end
+		if i < #severity_options then
+			ImGui.SameLine()
+		end
+	end
+
+	-- Output options
+	local echo = devtools_logging.is_echo_to_console()
+	local _, new_echo = ImGui.Checkbox("Echo to console", echo)
+	if new_echo ~= echo then
+		devtools_logging.set_echo_to_console(new_echo)
+	end
+
+	ImGui.SameLine()
+
+	local file = devtools_logging.is_write_to_file()
+	local _, new_file = ImGui.Checkbox("Write to file", file)
+	if new_file ~= file then
+		devtools_logging.set_write_to_file(new_file)
+	end
+
+	if file then
+		ImGui.SameLine()
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.5, 0.5, 0.5, 1))
+		ImGui.Text("(" .. devtools_logging.get_file_path() .. ")")
+		ImGui.PopStyleColor(1)
+	end
+end
+
+function render_log_categories()
+	-- Collapsible category browser
+	if ImGui.CollapsingHeader("Category Browser - Filter log categories", 0) then
+		local categories = devtools_logging.get_categories()
+
+		-- Search input
+		ImGui.Text("Search:")
+		ImGui.SameLine()
+		local new_cat_search, cat_changed = ImGui.InputText("##cat_search", category_search_text, 50)
+		if cat_changed then
+			category_search_text = new_cat_search
+		end
+		ImGui.SameLine()
+		if ImGui.Button("X##clear_cat_search", vector2(20, 0)) then
+			category_search_text = ""
+		end
+
+		-- Filter categories by search
+		local filtered_categories = {}
+		local search_lower = string.lower(category_search_text)
+		for _, cat in ipairs(categories) do
+			if category_search_text == "" or string.find(string.lower(cat), search_lower, 1, true) then
+				table.insert(filtered_categories, cat)
+			end
+		end
+
+		ImGui.SameLine(0, 20)
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.5, 0.5, 0.5, 1))
+		if category_search_text ~= "" then
+			ImGui.Text(string.format("Showing %d/%d categories", #filtered_categories, #categories))
+		else
+			ImGui.Text(string.format("%d categories", #categories))
+		end
+		ImGui.PopStyleColor(1)
+
+		ImGui.Spacing()
+
+		-- Quick actions
+		if ImGui.Button("All On", vector2(60, 0)) then
+			devtools_logging.set_all_categories_enabled(true)
+			last_log_cache_update = 0
+			current_page = 1
+		end
+		ImGui.SameLine()
+		if ImGui.Button("All Off", vector2(60, 0)) then
+			devtools_logging.set_all_categories_enabled(false)
+			last_log_cache_update = 0
+			current_page = 1
+		end
+		ImGui.SameLine()
+		if ImGui.Button("Enable Filtered", vector2(100, 0)) then
+			for _, cat in ipairs(filtered_categories) do
+				devtools_logging.set_category_enabled(cat, true)
+			end
+			last_log_cache_update = 0
+			current_page = 1
+		end
+		ImGui.SameLine()
+		if ImGui.Button("Disable Filtered", vector2(100, 0)) then
+			for _, cat in ipairs(filtered_categories) do
+				devtools_logging.set_category_enabled(cat, false)
+			end
+			last_log_cache_update = 0
+			current_page = 1
+		end
+
+		ImGui.Spacing()
+
+		-- Category checkboxes in columns
+		local col = 0
+		local max_cols = 5
+
+		for _, cat in ipairs(filtered_categories) do
+			local cat_enabled = devtools_logging.is_category_enabled(cat)
+			local color = devtools_logging.get_category_color(cat)
+
+			-- Color based on category color and enabled state
+			if color then
+				if cat_enabled then
+					ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(color[1] / 255, color[2] / 255, color[3] / 255, 1))
+				else
+					-- Dimmed color when disabled
+					ImGui.PushStyleColor(
+						ImGuiCol.Text,
+						fcolor():set(color[1] / 255 * 0.5, color[2] / 255 * 0.5, color[3] / 255 * 0.5, 1)
+					)
+				end
+			end
+
+			local _, new_enabled = ImGui.Checkbox(cat .. "##cat", cat_enabled)
+			if new_enabled ~= cat_enabled then
+				devtools_logging.set_category_enabled(cat, new_enabled)
+				last_log_cache_update = 0
+				current_page = 1
+			end
+
+			if color then
+				ImGui.PopStyleColor(1)
+			end
+
+			col = col + 1
+			if col < max_cols then
+				ImGui.SameLine(0, 15)
+			else
+				col = 0
+			end
+		end
+
+		if col ~= 0 then
+			ImGui.Text("") -- End SameLine chain
+		end
+
+		-- Legend
+		ImGui.Spacing()
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.5, 0.5, 0.5, 1))
+		ImGui.Text("Legend:")
+		ImGui.PopStyleColor(1)
+		ImGui.SameLine()
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.4, 1, 0.4, 1))
+		ImGui.Text("Enabled")
+		ImGui.PopStyleColor(1)
+		ImGui.SameLine()
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.3, 0.3, 0.3, 1))
+		ImGui.Text("Disabled")
+		ImGui.PopStyleColor(1)
+	end
+end
+
+function render_log_list()
+	local total = #cached_log_entries
+	local total_pages = math.max(1, math.ceil(total / ENTRIES_PER_PAGE))
+
+	if current_page > total_pages then
+		current_page = total_pages
+	end
+	if current_page < 1 then
+		current_page = 1
+	end
+
+	local page_start = total - ((current_page - 1) * ENTRIES_PER_PAGE)
+	local page_end = math.max(1, page_start - ENTRIES_PER_PAGE + 1)
+
+	-- Pagination
+	if ImGui.Button("|<", vector2(25, 0)) then
+		current_page = 1
+	end
+	ImGui.SameLine()
+	if ImGui.Button("<", vector2(25, 0)) then
+		current_page = math.max(1, current_page - 1)
+	end
+	ImGui.SameLine()
+	ImGui.Text(string.format("Page %d/%d", current_page, total_pages))
+	ImGui.SameLine()
+	if ImGui.Button(">", vector2(25, 0)) then
+		current_page = math.min(total_pages, current_page + 1)
+	end
+	ImGui.SameLine()
+	if ImGui.Button(">|", vector2(25, 0)) then
+		current_page = total_pages
+	end
+
+	if total == 0 then
+		ImGui.TextColored(fcolor():set(0.5, 0.5, 0.5, 1), "No log entries")
+		return
+	end
+
+	ImGui.Text(string.format("Showing %d-%d of %d", page_end, page_start, total))
+	ImGui.Separator()
+
+	-- Entries
+	for i = page_start, page_end, -1 do
+		local entry = cached_log_entries[i]
+		if entry then
+			render_log_entry(entry)
+		end
+	end
+end
+
+function render_log_entry(entry)
+	local sev_names = devtools_logging.SEVERITY_NAMES
+	local sev_colors = devtools_logging.SEVERITY_COLORS
+
+	-- Time
+	ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.5, 0.5, 0.5, 1))
+	ImGui.Text(entry.real_time or "??:??:??")
+	ImGui.PopStyleColor(1)
+	ImGui.SameLine()
+
+	-- Severity
+	local sev_color = sev_colors[entry.severity]
+	if sev_color then
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(sev_color[1] / 255, sev_color[2] / 255, sev_color[3] / 255, 1))
+	end
+	ImGui.Text("[" .. (sev_names[entry.severity] or "?") .. "]")
+	if sev_color then
+		ImGui.PopStyleColor(1)
+	end
+	ImGui.SameLine()
+
+	-- Category
+	local cat_color = devtools_logging.get_category_color(entry.category)
+	if cat_color then
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(cat_color[1] / 255, cat_color[2] / 255, cat_color[3] / 255, 1))
+	end
+	ImGui.Text("[" .. (entry.category or "?") .. "]")
+	if cat_color then
+		ImGui.PopStyleColor(1)
+	end
+	ImGui.SameLine()
+
+	-- Message
+	ImGui.Text(entry.message or "")
+end
+
+-- ============================================================================
+-- MODULE EXPORTS
+-- ============================================================================
+
+devtools_ui_logs = devtools_ui_logs or {}
+devtools_ui_logs.render_logging_tab = render_logging_tab
+devtools_ui_logs.render_log_controls = render_log_controls
+devtools_ui_logs.render_log_categories = render_log_categories
+devtools_ui_logs.render_log_list = render_log_list
+devtools_ui_logs.render_log_entry = render_log_entry
+devtools_ui_logs.update_log_cache = update_log_cache

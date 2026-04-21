@@ -1,0 +1,1860 @@
+siski = siski or {}
+
+local type = _G.type
+local pcall = _G.pcall
+local require = _G.require
+local setmetatable = _G.setmetatable
+local tonumber = _G.tonumber
+local tostring = _G.tostring
+local time_global = _G.time_global
+local alife = _G.alife
+local game_graph = _G.game_graph
+local game = _G.game
+local get_object_story_id = _G.get_object_story_id
+local IsMonster = _G.IsMonster
+local math = _G.math
+local next = _G.next
+local pairs = _G.pairs
+local rawget = _G.rawget
+
+local math_max = math.max
+
+local IDENTITY_FALLBACK_TTL_MS = 60000
+local SNAPSHOT_IDENTITY_REFRESH_MS = 1000
+local SNAPSHOT_IDENTITY_DIRTY_REFRESH_MS = 0
+local INTEGRITY_SOFT_FAIL_THRESHOLD = 3
+local INTEGRITY_SOFT_FAIL_WINDOW_MS = 30000
+
+local STATE_VERSION = "1.0.1"
+
+local function ensure_class()
+    local type = type
+    if type(siski.class) == "function" then
+        local ok, probe = pcall(siski.class, "_probe")
+        if ok and type(probe) == "table" then
+            return
+        end
+    end
+
+    if require then
+        pcall(require, "siski_oop")
+    end
+
+    local function define()
+        function siski.class(name)
+            local cls = {}
+            cls.__index = cls
+            cls.__name = name or "class"
+            function cls.new(...)
+                local self = setmetatable({}, cls)
+                if self.__init then
+                    self:__init(...)
+                end
+                return self
+            end
+            return cls
+        end
+    end
+
+    if type(siski.class) ~= "function" then
+        define()
+        return
+    end
+
+    local ok2, probe2 = pcall(siski.class, "_probe")
+    if not (ok2 and type(probe2) == "table") then
+        define()
+    end
+end
+
+ensure_class()
+
+local Memory = siski.class("Memory")
+Memory.__index = Memory
+
+local function tg()
+    return (time_global and time_global()) or 0
+end
+
+local function publish_memory_event(name, payload)
+    if not (siski.bus and siski.bus.publish and type(name) == "string" and name ~= "") then
+        return
+    end
+    siski.bus.publish(name, payload or { event = name })
+end
+
+local function now_level_name_by_gvid(gvid)
+    if not (gvid and alife and game_graph) then return nil end
+    local ok, res = pcall(function()
+        local gv = game_graph():vertex(gvid)
+        if not gv then return nil end
+        return alife():level_name(gv:level_id())
+    end)
+    return ok and res or nil
+end
+
+local function get_board()
+    return rawget(_G, "SIMBOARD")
+end
+
+local function resolve_smart_level_name(smart_name, fallback_level)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return fallback_level
+    end
+    if siski.board_index and siski.board_index.get_smart_level then
+        local level_name = siski.board_index.get_smart_level(smart_name)
+        if type(level_name) == "string" and level_name ~= "" then
+            return level_name
+        end
+    end
+    local board = get_board()
+    local sm = board and board.smarts_by_names and board.smarts_by_names[smart_name] or nil
+    if sm and sm.m_game_vertex_id then
+        return now_level_name_by_gvid(tonumber(sm.m_game_vertex_id) or 0) or fallback_level
+    end
+    return fallback_level
+end
+
+local function normalize_community(community)
+    if not community then return nil end
+    if type(community) ~= "string" then
+        community = tostring(community)
+    end
+    if siski.config and siski.config.get_faction_alias then
+        local alias = siski.config.get_faction_alias(community)
+        if alias then
+            return alias
+        end
+    end
+    return community
+end
+
+local function is_zombied_community_name(community)
+    return normalize_community(community) == "zombied"
+end
+
+local function is_zombied_section_name(section)
+    if type(section) ~= "string" or section == "" then
+        return false
+    end
+    if not (siski.config and siski.config.get_section_set) then
+        return false
+    end
+    local set = siski.config.get_section_set("spawner_allowed_sections_zombied")
+    return set and set[section] == true or false
+end
+
+local function get_mutant_allowed_section_set(section, community)
+    if not (siski.config and siski.config.get_section_set) then
+        return nil
+    end
+    if is_zombied_community_name(community) or is_zombied_section_name(section) then
+        return siski.config.get_section_set("spawner_allowed_sections_zombied")
+    end
+    return siski.config.get_section_set("spawner_allowed_sections_mutants")
+end
+
+local function read_live_squad_section(se_squad)
+    if siski.safe and siski.safe.safe_section then
+        return siski.safe.safe_section(se_squad)
+    end
+    return nil
+end
+
+local function read_live_squad_community(se_squad)
+    if siski.safe and siski.safe.safe_squad_community then
+        return normalize_community(siski.safe.safe_squad_community(se_squad))
+    end
+    return nil
+end
+
+local function is_level_globally_blacklisted(level_name)
+    if type(level_name) ~= "string" or level_name == "" then
+        return false
+    end
+    local cfg = siski.config
+    if cfg and cfg.is_level_globally_blacklisted then
+        return cfg.is_level_globally_blacklisted(level_name) == true
+    end
+    return false
+end
+
+local safe_alife_object
+
+local function resolve_live_squad_level_name(se_squad, entry)
+    if not se_squad then
+        return entry and entry.level or nil
+    end
+
+    local level_name = now_level_name_by_gvid(tonumber(se_squad.m_game_vertex_id) or 0)
+    if type(level_name) == "string" and level_name ~= "" then
+        return level_name
+    end
+
+    local smart_name = nil
+    local ok_target, scripted_target = pcall(function() return se_squad.scripted_target end)
+    if ok_target and type(scripted_target) == "string" and scripted_target ~= "" then
+        smart_name = scripted_target
+    end
+    if not smart_name then
+        local ok_smart, smart_id = pcall(function() return se_squad.smart_id end)
+        smart_id = ok_smart and tonumber(smart_id) or nil
+        if smart_id and smart_id > 0 then
+            local ok_obj, smart = safe_alife_object(smart_id)
+            smart_name = ok_obj and smart and smart.name or nil
+        end
+    end
+
+    level_name = resolve_smart_level_name(smart_name, entry and entry.level or nil)
+    if type(level_name) == "string" and level_name ~= "" then
+        return level_name
+    end
+
+    return entry and entry.level or nil
+end
+
+local function normalize_alife_id(value)
+    local id = tonumber(value)
+    if type(id) ~= "number" then
+        return nil
+    end
+    if id <= 0 or id == 65535 then
+        return nil
+    end
+    return id
+end
+
+safe_alife_object = function(id)
+    local valid_id = normalize_alife_id(id)
+    if not valid_id or not alife then
+        return false, nil
+    end
+    local sim = alife()
+    if not sim then
+        return false, nil
+    end
+    local ok, obj = pcall(function() return sim:object(valid_id) end)
+    if not ok then
+        return false, nil
+    end
+    return true, obj
+end
+
+local function read_commander_id(se_squad)
+    if not se_squad then return nil end
+    local ok, cid = pcall(function() return se_squad:commander_id() end)
+    if not ok or cid == nil then
+        ok, cid = pcall(function() return se_squad.commander_id end)
+    end
+    return ok and normalize_alife_id(cid) or nil
+end
+
+local function is_monster_squad_by_player_id(se_squad)
+    if not se_squad then return false end
+    local pid = se_squad.player_id
+    if pid == nil then return false end
+    local normalized = normalize_community(pid)
+    if normalized == "zombied" then
+        return true
+    end
+    if not is_squad_monster then return false end
+    return is_squad_monster[pid] == true or (normalized and is_squad_monster[normalized] == true) or false
+end
+
+local function is_monster_squad_live(se_squad)
+    if not se_squad then return false end
+    if is_monster_squad_by_player_id(se_squad) then
+        return true
+    end
+
+    local section = read_live_squad_section(se_squad)
+    local community = read_live_squad_community(se_squad)
+    if is_zombied_community_name(community) or is_zombied_section_name(section) then
+        return true
+    end
+
+    if not (alife and IsMonster) then
+        return false
+    end
+
+    local commander_id = read_commander_id(se_squad)
+    if not commander_id then
+        return false
+    end
+
+    local ok_obj, commander = safe_alife_object(commander_id)
+    if not (ok_obj and commander) then
+        return false
+    end
+
+    local ok_monster, is_monster = pcall(function() return IsMonster(commander) end)
+    return ok_monster and is_monster == true
+end
+
+local function is_companion_squad_id(sid)
+    if not sid then return false end
+    local squads = axr_companions and axr_companions.companion_squads or nil
+    if type(squads) ~= "table" then return false end
+    return squads[sid] ~= nil or squads[tostring(sid)] ~= nil
+end
+
+local function has_story_binding(object_id)
+    if not (get_object_story_id and object_id) then return false end
+    local ok, story = pcall(function() return get_object_story_id(object_id) end)
+    return ok and story ~= nil and story ~= false
+end
+
+local function payload_args(payload)
+    if type(payload) ~= "table" then
+        return {}
+    end
+    return type(payload.args) == "table" and payload.args or {}
+end
+
+local function extract_smart_name(smart_ref)
+    if type(smart_ref) == "string" and smart_ref ~= "" then
+        return smart_ref
+    end
+    if type(smart_ref) ~= "table" then
+        return nil
+    end
+    local name = smart_ref.name
+    if type(name) == "string" and name ~= "" then
+        return name
+    end
+    local ok_name, resolved = pcall(function() return smart_ref:name() end)
+    if ok_name and type(resolved) == "string" and resolved ~= "" then
+        return resolved
+    end
+    return nil
+end
+
+local function reset_task_scheduler_fields(task)
+    if type(task) ~= "table" then return end
+    local params = type(task.params) == "table" and task.params or nil
+    if not params then
+        task.params = nil
+        return
+    end
+    params._applied = nil
+    if next(params) == nil then
+        task.params = nil
+    else
+        task.params = params
+    end
+end
+
+local function ensure_dirty_shape(e)
+    if type(e) ~= "table" then return end
+    local d = type(e.dirty) == "table" and e.dirty or {}
+    e.dirty = {
+        level = d.level == true,
+        community = d.community == true,
+        smart = d.smart == true,
+        task = d.task == true,
+        identity = d.identity == true,
+    }
+end
+
+local function ctime_from_table(t)
+    if not (game and game.get_game_time and game.CTime and type(t) == "table") then
+        return nil
+    end
+    local ok_new, ct = pcall(function() return game.CTime() end)
+    if not (ok_new and ct and ct.set) then
+        return nil
+    end
+    local ok_set = pcall(function()
+        ct:set(t.Y, t.M, t.D, t.h, t.m, t.s, t.ms)
+    end)
+    if not ok_set then
+        return nil
+    end
+    return ct
+end
+
+local function game_time_diff_sec(start_ct)
+    if not (game and game.get_game_time and start_ct and start_ct.diffSec) then
+        return nil
+    end
+    local ok_now, now_ct = pcall(function() return game.get_game_time() end)
+    if not (ok_now and now_ct and now_ct.diffSec) then
+        return nil
+    end
+    local ok_diff, sec = pcall(function() return now_ct:diffSec(start_ct) end)
+    return ok_diff and tonumber(sec) or nil
+end
+
+local function clone_serializable(value, depth, seen)
+    local t = type(value)
+    if t == "nil" or t == "boolean" or t == "number" or t == "string" then
+        return value
+    end
+    if t ~= "table" then
+        return nil
+    end
+
+    depth = tonumber(depth) or 0
+    if depth > 12 then
+        return nil
+    end
+
+    seen = seen or {}
+    if seen[value] then
+        return nil
+    end
+    seen[value] = true
+
+    local out = {}
+    for k, v in pairs(value) do
+        local kt = type(k)
+        if kt == "string" or kt == "number" then
+            local sv = clone_serializable(v, depth + 1, seen)
+            if sv ~= nil then
+                out[k] = sv
+            end
+        end
+    end
+
+    seen[value] = nil
+    return out
+end
+
+local function compact_task(task)
+    if type(task) ~= "table" then return nil end
+    local out = clone_serializable(task, 0, {})
+    if type(out) ~= "table" then return nil end
+    if type(out.params) == "table" then
+        out.params._applied = nil
+        if next(out.params) == nil then
+            out.params = nil
+        end
+    end
+    return out
+end
+
+local function compact_entry(entry)
+    if type(entry) ~= "table" then return nil end
+    if entry.allowed ~= true then
+        return nil
+    end
+    local out = {}
+
+    local function set_if(k, v, default)
+        if v == nil then return end
+        if default ~= nil and v == default then return end
+        out[k] = v
+    end
+
+    set_if("squad_id", tonumber(entry.squad_id), nil)
+    set_if("level", entry.level, nil)
+    set_if("level_gvid", tonumber(entry.level_gvid), nil)
+    set_if("community", entry.community, nil)
+    set_if("section", entry.section, nil)
+    set_if("npc_kind", entry.npc_kind, nil)
+    set_if("identity_source", entry.identity_source, nil)
+    set_if("allowed", entry.allowed, nil)
+    set_if("smart_id", entry.smart_id, nil)
+    set_if("scripted_target", entry.scripted_target, nil)
+    set_if("current_action", entry.current_action, nil)
+    set_if("assigned_target_id", entry.assigned_target_id, nil)
+    set_if("commander_id", tonumber(entry.commander_id), nil)
+    set_if("m_game_vertex_id", tonumber(entry.m_game_vertex_id), nil)
+    set_if("home_level", entry.home_level, nil)
+    set_if("surge_lock", entry.surge_lock == true and true or nil, nil)
+    set_if("last_seen_tg", tonumber(entry.last_seen_tg), 0)
+    set_if("updated_at_tg", tonumber(entry.updated_at_tg), 0)
+    set_if("last_seen_source", entry.last_seen_source, nil)
+    set_if("community_verified_tg", tonumber(entry.community_verified_tg), 0)
+    set_if("level_verified_tg", tonumber(entry.level_verified_tg), 0)
+    set_if("section_verified_tg", tonumber(entry.section_verified_tg), 0)
+    set_if("identity_refresh_next_tg", tonumber(entry.identity_refresh_next_tg), 0)
+
+    if type(entry.tasks) == "table" then
+        local tp = compact_task(entry.tasks.prev)
+        local tc = compact_task(entry.tasks.current)
+        if tp or tc then
+            out.tasks = { prev = tp, current = tc }
+        end
+    end
+
+    if type(entry.dirty) == "table" then
+        local d = {}
+        if entry.dirty.level == true then d.level = true end
+        if entry.dirty.community == true then d.community = true end
+        if entry.dirty.smart == true then d.smart = true end
+        if entry.dirty.task == true then d.task = true end
+        if entry.dirty.identity == true then d.identity = true end
+        if next(d) ~= nil then
+            out.dirty = d
+        end
+    end
+
+    return out
+end
+
+function Memory:__init()
+    self.STATE = { version = STATE_VERSION, squads = {}, patrol = {} }
+    self.RUNTIME = {}
+    self:_reset_runtime_tables()
+end
+
+function Memory:_get_state()
+    return self.STATE
+end
+
+function Memory:_get_runtime()
+    return self.RUNTIME
+end
+
+function Memory:_get_squad_entry(squad_id)
+    if not squad_id then return nil end
+    return self.STATE.squads[tonumber(squad_id)]
+end
+
+function Memory:_reset_runtime_tables()
+    self.RUNTIME.log_next_tg = {}
+    self.RUNTIME.integrity_reject_count = 0
+    self.RUNTIME.integrity_purge_count = 0
+    self.RUNTIME.integrity_soft_fail_count = 0
+    self.RUNTIME.touch_create_blocked_count = 0
+    self.RUNTIME.managed_squads_by_level = {}
+    self.RUNTIME.anchors_by_community_level = {}
+    self.RUNTIME.communities_by_smart_level = {}
+    self.RUNTIME.trade_target_occupancy = {}
+end
+
+function Memory:_clear_runtime_indexes()
+    self.RUNTIME.managed_squads_by_level = {}
+    self.RUNTIME.anchors_by_community_level = {}
+    self.RUNTIME.communities_by_smart_level = {}
+    self.RUNTIME.trade_target_occupancy = {}
+end
+
+function Memory:_resolve_entry_trade_target(e)
+    if type(e) ~= "table" then
+        return nil, nil
+    end
+    local current = e.tasks and e.tasks.current or nil
+    local target = current and current.type == "TRADE" and current.target or nil
+    if type(target) ~= "string" or target == "" then
+        return nil, nil
+    end
+    return target, resolve_smart_level_name(target, e.level)
+end
+
+function Memory:_resolve_entry_anchor_smart(e)
+    if type(e) ~= "table" then
+        return nil, nil
+    end
+
+    local target = e.scripted_target
+    if type(target) == "string" and target ~= "" then
+        return target, resolve_smart_level_name(target, e.level)
+    end
+
+    local smart_id = tonumber(e.smart_id) or nil
+    if smart_id then
+        if siski.board_index and siski.board_index.get_smart_name_by_id then
+            local smart_name = siski.board_index.get_smart_name_by_id(smart_id)
+            if type(smart_name) == "string" and smart_name ~= "" then
+                return smart_name, resolve_smart_level_name(smart_name, e.level)
+            end
+        end
+        local board = get_board()
+        local by_name = board and board.smarts_by_names or nil
+        if by_name then
+            for smart_name, sm in pairs(by_name) do
+                if sm and tonumber(sm.id) == smart_id then
+                    return smart_name, resolve_smart_level_name(smart_name, e.level)
+                end
+            end
+        end
+    end
+
+    local current = e.tasks and e.tasks.current or nil
+    target = current and current.target or nil
+    if type(target) == "string" and target ~= "" then
+        return target, resolve_smart_level_name(target, e.level)
+    end
+
+    return nil, nil
+end
+
+function Memory:_unindex_entry(e)
+    if type(e) ~= "table" then
+        return
+    end
+
+    local sid = tonumber(e.squad_id) or nil
+    local managed_level = type(e.index_managed_level) == "string" and e.index_managed_level or nil
+    if sid and managed_level then
+        local by_level = self.RUNTIME.managed_squads_by_level[managed_level]
+        if type(by_level) == "table" then
+            by_level[sid] = nil
+            if next(by_level) == nil then
+                self.RUNTIME.managed_squads_by_level[managed_level] = nil
+            end
+        end
+    end
+    e.index_managed_level = nil
+
+    local anchor_comm = type(e.index_anchor_community) == "string" and e.index_anchor_community or nil
+    local anchor_level = type(e.index_anchor_level) == "string" and e.index_anchor_level or nil
+    local anchor_smart = type(e.index_anchor_smart) == "string" and e.index_anchor_smart or nil
+    if anchor_comm and anchor_level and anchor_smart then
+        local by_comm = self.RUNTIME.anchors_by_community_level[anchor_comm]
+        local by_level = by_comm and by_comm[anchor_level] or nil
+        if type(by_level) == "table" then
+            by_level[anchor_smart] = nil
+            if next(by_level) == nil then
+                by_comm[anchor_level] = nil
+            end
+            if next(by_comm) == nil then
+                self.RUNTIME.anchors_by_community_level[anchor_comm] = nil
+            end
+        end
+
+        local by_smart = self.RUNTIME.communities_by_smart_level[anchor_smart]
+        local by_smart_level = by_smart and by_smart[anchor_level] or nil
+        if type(by_smart_level) == "table" then
+            by_smart_level[anchor_comm] = nil
+            if next(by_smart_level) == nil then
+                by_smart[anchor_level] = nil
+            end
+            if next(by_smart) == nil then
+                self.RUNTIME.communities_by_smart_level[anchor_smart] = nil
+            end
+        end
+    end
+    e.index_anchor_community = nil
+    e.index_anchor_level = nil
+    e.index_anchor_smart = nil
+
+    local trade_level = type(e.index_trade_target_level) == "string" and e.index_trade_target_level or nil
+    local trade_smart = type(e.index_trade_target_smart) == "string" and e.index_trade_target_smart or nil
+    if trade_level and trade_smart then
+        local by_level = self.RUNTIME.trade_target_occupancy[trade_level]
+        if type(by_level) == "table" then
+            local next_count = (tonumber(by_level[trade_smart]) or 0) - 1
+            if next_count > 0 then
+                by_level[trade_smart] = next_count
+            else
+                by_level[trade_smart] = nil
+            end
+            if next(by_level) == nil then
+                self.RUNTIME.trade_target_occupancy[trade_level] = nil
+            end
+        end
+    end
+    e.index_trade_target_level = nil
+    e.index_trade_target_smart = nil
+end
+
+function Memory:_index_entry(e)
+    if type(e) ~= "table" or e.allowed ~= true then
+        return
+    end
+
+    local sid = tonumber(e.squad_id) or nil
+    local level_name = type(e.level) == "string" and e.level or nil
+    if sid and level_name then
+        local by_level = self.RUNTIME.managed_squads_by_level[level_name]
+        if type(by_level) ~= "table" then
+            by_level = {}
+            self.RUNTIME.managed_squads_by_level[level_name] = by_level
+        end
+        by_level[sid] = true
+        e.index_managed_level = level_name
+    end
+
+    local community = type(e.community) == "string" and e.community or nil
+    local anchor_smart, anchor_level = self:_resolve_entry_anchor_smart(e)
+    if community and anchor_level and anchor_smart then
+        local by_comm = self.RUNTIME.anchors_by_community_level[community]
+        if type(by_comm) ~= "table" then
+            by_comm = {}
+            self.RUNTIME.anchors_by_community_level[community] = by_comm
+        end
+        local by_level = by_comm[anchor_level]
+        if type(by_level) ~= "table" then
+            by_level = {}
+            by_comm[anchor_level] = by_level
+        end
+        by_level[anchor_smart] = true
+
+        local by_smart = self.RUNTIME.communities_by_smart_level[anchor_smart]
+        if type(by_smart) ~= "table" then
+            by_smart = {}
+            self.RUNTIME.communities_by_smart_level[anchor_smart] = by_smart
+        end
+        local by_smart_level = by_smart[anchor_level]
+        if type(by_smart_level) ~= "table" then
+            by_smart_level = {}
+            by_smart[anchor_level] = by_smart_level
+        end
+        by_smart_level[community] = true
+
+        e.index_anchor_community = community
+        e.index_anchor_level = anchor_level
+        e.index_anchor_smart = anchor_smart
+    end
+
+    local trade_target, trade_level = self:_resolve_entry_trade_target(e)
+    if trade_target and trade_level then
+        local by_level = self.RUNTIME.trade_target_occupancy[trade_level]
+        if type(by_level) ~= "table" then
+            by_level = {}
+            self.RUNTIME.trade_target_occupancy[trade_level] = by_level
+        end
+        by_level[trade_target] = (tonumber(by_level[trade_target]) or 0) + 1
+        e.index_trade_target_level = trade_level
+        e.index_trade_target_smart = trade_target
+    end
+end
+
+function Memory:_reindex_entry(e)
+    if type(e) ~= "table" then
+        return
+    end
+    self:_unindex_entry(e)
+    self:_index_entry(e)
+end
+
+function Memory:_rebuild_runtime_indexes()
+    self:_clear_runtime_indexes()
+    for sid, e in pairs(self.STATE and self.STATE.squads or {}) do
+        if type(e) == "table" then
+            self:_ensure_entry_defaults(e, sid)
+            self:_index_entry(e)
+        end
+    end
+end
+
+function Memory:_entry_last_seen_tg(e)
+    if type(e) ~= "table" then return 0 end
+    return tonumber(e.last_seen_tg) or tonumber(e.updated_at_tg) or 0
+end
+
+function Memory:_entry_age_ms(e, now)
+    now = tonumber(now) or tg()
+    return now - self:_entry_last_seen_tg(e)
+end
+
+function Memory:_log_throttled(key, interval_ms, level, fmt, ...)
+    local log = siski.log
+    if not log then return end
+
+    local now = tg()
+    self.RUNTIME.log_next_tg = self.RUNTIME.log_next_tg or {}
+    local next_tg = tonumber(self.RUNTIME.log_next_tg[key]) or 0
+    if now < next_tg then return end
+    self.RUNTIME.log_next_tg[key] = now + (tonumber(interval_ms) or 5000)
+
+    if level == "warn" and log.warn then
+        log.warn("MEMORY", fmt, ...)
+        return
+    end
+    if level == "trace" and log.trace then
+        log.trace("MEMORY", fmt, ...)
+        return
+    end
+    if level == "debug" and log.debug then
+        log.debug("MEMORY", fmt, ...)
+        return
+    end
+    if log.info then
+        log.info("MEMORY", fmt, ...)
+    end
+end
+
+local function count_squad_members(members)
+    if members == nil then
+        return nil, false
+    end
+    if type(members) == "table" then
+        local n = 0
+        for _ in pairs(members) do
+            n = n + 1
+            if n > 0 then break end
+        end
+        return n, true
+    end
+
+    local ok_size, sz = pcall(function()
+        if members.size then
+            return members:size()
+        end
+        return nil
+    end)
+    if ok_size and tonumber(sz) then
+        return tonumber(sz), true
+    end
+
+    return nil, false
+end
+
+local function extract_member_candidate_id(k, v)
+    if type(v) == "table" then
+        local idv = tonumber(v.id) or tonumber(v.object_id) or tonumber(v.squad_id)
+        if idv and idv > 0 then
+            return idv
+        end
+    end
+    local id = tonumber(v)
+    if id and id > 0 then
+        return id
+    end
+    id = tonumber(k)
+    if id and id > 0 then
+        return id
+    end
+    return nil
+end
+
+function Memory:_integrity_reject(sid, source, reason, severity)
+    self.RUNTIME.integrity_reject_count = (tonumber(self.RUNTIME.integrity_reject_count) or 0) + 1
+    severity = severity == "hard" and "hard" or "soft"
+    if severity == "soft" then
+        self.RUNTIME.integrity_soft_fail_count = (tonumber(self.RUNTIME.integrity_soft_fail_count) or 0) + 1
+    end
+
+    self:_log_throttled(
+        "integrity_reject:" .. tostring(sid or 0) .. ":" .. tostring(reason or "-"),
+        3000,
+        "warn",
+        "MEMORY_INTEGRITY_REJECT sid=%s source=%s reason=%s severity=%s",
+        tostring(sid or "-"),
+        tostring(source or "-"),
+        tostring(reason or "-"),
+        tostring(severity)
+    )
+    return false, sid, reason, severity
+end
+
+function Memory:_purge_squad_entry(sid, reason, source)
+    local id = tonumber(sid)
+    if not id then return false end
+    local e = self.STATE.squads[id]
+    if type(e) ~= "table" then return false end
+
+    self:_unindex_entry(e)
+    self.STATE.squads[id] = nil
+    self.RUNTIME.integrity_purge_count = (tonumber(self.RUNTIME.integrity_purge_count) or 0) + 1
+    self:_log_throttled(
+        "purged_ghost:" .. tostring(id),
+        2000,
+        "warn",
+        "MEMORY_PURGED_GHOST sid=%s source=%s reason=%s",
+        tostring(id),
+        tostring(source or "-"),
+        tostring(reason or "-")
+    )
+    return true
+end
+
+function Memory:_note_integrity_soft_fail(sid, source, reason)
+    local id = tonumber(sid)
+    if not id then return false end
+    local e = self:_get_squad_entry(id)
+    if type(e) ~= "table" then return false end
+
+    local now = tg()
+    self:_ensure_entry_defaults(e, id)
+
+    local window_tg = tonumber(e.integrity_soft_fail_window_tg) or 0
+    local count = tonumber(e.integrity_soft_fail_count) or 0
+    if window_tg <= 0 or now > (window_tg + INTEGRITY_SOFT_FAIL_WINDOW_MS) then
+        window_tg = now
+        count = 0
+    end
+
+    count = count + 1
+    e.integrity_soft_fail_window_tg = window_tg
+    e.integrity_soft_fail_count = count
+    e.last_seen_source = tostring(source or "integrity") .. ":" .. tostring(reason or "soft_fail")
+
+    if count >= INTEGRITY_SOFT_FAIL_THRESHOLD then
+        return self:_purge_squad_entry(id, "soft_fail_threshold:" .. tostring(reason or "-"), source or "integrity")
+    end
+    return false
+end
+
+function Memory:_validate_live_squad(se_squad, source)
+    local sid = tonumber(se_squad and se_squad.id)
+    if not sid or sid <= 0 then
+        return self:_integrity_reject(sid, source, "sid_invalid", "hard")
+    end
+
+    local sim = alife and alife() or nil
+    if not sim then
+        return self:_integrity_reject(sid, source, "alife_nil", "soft")
+    end
+
+    local ok_obj, live = safe_alife_object(sid)
+    if not ok_obj then
+        return self:_integrity_reject(sid, source, "object_read_fail", "soft")
+    end
+    if not live then
+        return self:_integrity_reject(sid, source, "object_nil", "hard")
+    end
+
+    local commander_id = read_commander_id(se_squad)
+    if commander_id then
+        local ok_commander, commander = safe_alife_object(commander_id)
+        if not ok_commander then
+            return self:_integrity_reject(sid, source, "commander_read_fail", "soft")
+        end
+        if not commander then
+            return self:_integrity_reject(sid, source, "commander_nil", "hard")
+        end
+    end
+
+    local ok_has_npc_count, npc_count_member = pcall(function() return se_squad and se_squad.npc_count end)
+    if ok_has_npc_count and npc_count_member then
+        local ok_count, npc_count = pcall(function() return se_squad:npc_count() end)
+        if not ok_count then
+            return self:_integrity_reject(sid, source, "npc_count_read_fail", "soft")
+        end
+        npc_count = tonumber(npc_count)
+        if npc_count and npc_count <= 0 then
+            return self:_integrity_reject(sid, source, "npc_count_zero", "hard")
+        end
+    end
+
+    local ok_has_members, members_member = pcall(function() return se_squad and se_squad.squad_members end)
+    if ok_has_members and members_member then
+        local ok_members, members = pcall(function() return se_squad:squad_members() end)
+        if not ok_members then
+            return self:_integrity_reject(sid, source, "members_read_fail", "soft")
+        end
+        local members_count, known = count_squad_members(members)
+        if known and tonumber(members_count) and tonumber(members_count) <= 0 then
+            return self:_integrity_reject(sid, source, "members_empty", "hard")
+        end
+
+        if type(members) == "table" then
+            local has_any_candidate = false
+            local has_live_member = false
+            for k, v in pairs(members) do
+                local mid = extract_member_candidate_id(k, v)
+                mid = normalize_alife_id(mid)
+                if mid then
+                    has_any_candidate = true
+                    local ok_member, member_obj = safe_alife_object(mid)
+                    if not ok_member then
+                        return self:_integrity_reject(sid, source, "member_read_fail", "soft")
+                    end
+                    if member_obj then
+                        has_live_member = true
+                        break
+                    end
+                end
+            end
+
+            if has_any_candidate and not has_live_member then
+                return self:_integrity_reject(sid, source, "members_all_nil", "hard")
+            end
+        end
+    end
+
+    return true, sid, nil, nil
+end
+
+function Memory:_ensure_tasks_shape(e)
+    if type(e) ~= "table" then return end
+    local t = type(e.tasks) == "table" and e.tasks or {}
+    e.tasks = {
+        prev = t.prev,
+        current = t.current,
+    }
+end
+
+function Memory:_ensure_entry_defaults(e, id)
+    if type(e) ~= "table" then return end
+    e.squad_id = tonumber(e.squad_id) or tonumber(id) or e.squad_id
+    self:_ensure_tasks_shape(e)
+    if e.surge_lock ~= true then
+        e.surge_lock = false
+    end
+
+    e.last_seen_tg = tonumber(e.last_seen_tg) or tonumber(e.updated_at_tg) or 0
+    e.updated_at_tg = tonumber(e.updated_at_tg) or e.last_seen_tg
+    e.last_seen_source = e.last_seen_source or "unknown"
+    e.community_verified_tg = tonumber(e.community_verified_tg) or 0
+    e.level_verified_tg = tonumber(e.level_verified_tg) or 0
+    e.section_verified_tg = tonumber(e.section_verified_tg) or 0
+    e.identity_refresh_next_tg = tonumber(e.identity_refresh_next_tg) or 0
+    e.home_level = type(e.home_level) == "string" and e.home_level or nil
+    e.npc_kind = (e.npc_kind == "mutant" or e.npc_kind == "stalker") and e.npc_kind or nil
+    e.identity_source = type(e.identity_source) == "string" and e.identity_source or nil
+    e.integrity_soft_fail_count = tonumber(e.integrity_soft_fail_count) or 0
+    e.integrity_soft_fail_window_tg = tonumber(e.integrity_soft_fail_window_tg) or 0
+    ensure_dirty_shape(e)
+end
+
+function Memory:_mark_entry_seen(e, now, source)
+    if type(e) ~= "table" then return end
+    now = tonumber(now) or tg()
+    e.updated_at_tg = now
+    e.last_seen_tg = now
+    e.last_seen_source = source or "snapshot"
+    e.integrity_soft_fail_count = 0
+    e.integrity_soft_fail_window_tg = 0
+end
+
+function Memory:_touch_squad(squad_id, mark_seen, source)
+    local id = tonumber(squad_id)
+    if not id then return nil end
+    local e = self.STATE.squads[id]
+    if not e then
+        e = { squad_id = id, tasks = { prev = nil, current = nil }, surge_lock = false }
+        self.STATE.squads[id] = e
+    end
+
+    self:_ensure_entry_defaults(e, id)
+    if mark_seen == true then
+        self:_mark_entry_seen(e, tg(), source or "touch")
+    end
+
+    return e
+end
+
+function Memory:_touch_squad_validated(se_squad, mark_seen, source)
+    local src = tostring(source or "touch_validated")
+    local ok, sid, reason, severity = self:_validate_live_squad(se_squad, src)
+    if not ok then
+        self.RUNTIME.touch_create_blocked_count = (tonumber(self.RUNTIME.touch_create_blocked_count) or 0) + 1
+        if severity == "hard" then
+            self:_purge_squad_entry(sid, reason, src)
+        else
+            self:_note_integrity_soft_fail(sid, src, reason)
+        end
+        self:_log_throttled(
+            "touch_blocked:" .. tostring(sid or 0) .. ":" .. tostring(src),
+            3000,
+            "warn",
+            "MEMORY_TOUCH_BLOCKED sid=%s source=%s reason=%s severity=%s",
+            tostring(sid or "-"),
+            tostring(src),
+            tostring(reason or "-"),
+            tostring(severity or "-")
+        )
+        return nil, reason
+    end
+
+    if self:_should_manage_squad(se_squad) ~= true then
+        self:_purge_squad_entry(sid, "not_managed", src)
+        return nil, "not_managed"
+    end
+
+    local e = self:_touch_squad(sid, mark_seen == true, src)
+    if type(e) == "table" then
+        e.integrity_soft_fail_count = 0
+        e.integrity_soft_fail_window_tg = 0
+    end
+    return e, nil
+end
+
+function Memory:_get_entry_for_mutation(squad_id, source)
+    local id = tonumber(squad_id)
+    if not id then
+        return nil
+    end
+    local e = self:_get_squad_entry(id)
+    if type(e) ~= "table" then
+        self.RUNTIME.touch_create_blocked_count = (tonumber(self.RUNTIME.touch_create_blocked_count) or 0) + 1
+        self:_log_throttled(
+            "touch_blocked:missing:" .. tostring(id) .. ":" .. tostring(source or "-"),
+            3000,
+            "warn",
+            "MEMORY_TOUCH_BLOCKED sid=%s source=%s reason=missing_entry severity=hard",
+            tostring(id),
+            tostring(source or "-")
+        )
+        return nil
+    end
+    self:_ensure_entry_defaults(e, id)
+    return e
+end
+
+function Memory:_apply_squad_snapshot(squad, id, source)
+    if not squad then return end
+    id = tonumber(id) or tonumber(squad.id)
+    if not id then return end
+
+    local now = tg()
+    local e = self:_touch_squad(id, true, source or "snapshot")
+    if not e then return end
+    e.integrity_soft_fail_count = 0
+    e.integrity_soft_fail_window_tg = 0
+
+    local prev_level = e.level
+    local prev_level_gvid = tonumber(e.level_gvid) or nil
+    local prev_comm = e.community
+    local prev_smart = tonumber(e.smart_id) or nil
+    local prev_section = e.section
+    local prev_allowed = e.allowed
+    local prev_kind = e.npc_kind
+    local prev_gvid = tonumber(e.m_game_vertex_id) or nil
+
+    e.smart_id = squad.smart_id
+    e.scripted_target = squad.scripted_target
+    e.current_action = squad.current_action
+    e.assigned_target_id = squad.assigned_target_id
+    if tonumber(e.smart_id) ~= prev_smart then
+        e.dirty.smart = true
+        e.dirty.task = true
+    end
+    local gvid = tonumber(squad.m_game_vertex_id) or nil
+    e.m_game_vertex_id = gvid or squad.m_game_vertex_id
+
+    local gvid_changed = gvid ~= prev_gvid
+    if gvid_changed then
+        e.dirty.level = true
+        e.dirty.identity = true
+        e.dirty.task = true
+    end
+
+    local dirty_identity_refresh = e.dirty.identity == true
+    local need_identity_refresh = false
+    if dirty_identity_refresh then
+        need_identity_refresh = true
+    elseif e.level == nil or e.community == nil or e.section == nil or e.allowed == nil or e.npc_kind == nil then
+        need_identity_refresh = true
+    elseif now >= (tonumber(e.identity_refresh_next_tg) or 0) then
+        need_identity_refresh = true
+    elseif tonumber(e.smart_id) ~= prev_smart or gvid_changed then
+        need_identity_refresh = true
+    end
+
+    if not need_identity_refresh then
+        return
+    end
+
+    local commander_id = read_commander_id(squad)
+    if commander_id then
+        e.commander_id = commander_id
+    end
+
+    local is_mutant = is_monster_squad_live(squad)
+    e.npc_kind = is_mutant and "mutant" or "stalker"
+    e.identity_source = is_mutant and "live_mutant" or "live_human"
+
+    if gvid then
+        local level_name = now_level_name_by_gvid(gvid)
+        if level_name then
+            e.level = level_name
+            e.level_gvid = gvid
+            e.level_verified_tg = now
+            if e.home_level == nil and siski.config and siski.config.get and siski.config.get("home_region_attachment_enabled", true) ~= false then
+                e.home_level = level_name
+            end
+        else
+            e.dirty.level = true
+        end
+    end
+    if e.level ~= prev_level or ((tonumber(e.level_gvid) or nil) ~= prev_level_gvid) then
+        e.dirty.level = true
+        e.dirty.task = true
+    end
+
+    local live_section = read_live_squad_section(squad)
+    if live_section then
+        e.section = live_section
+        e.section_verified_tg = now
+    end
+
+    local live_community = read_live_squad_community(squad)
+    if not live_community and is_zombied_section_name(e.section) then
+        live_community = "zombied"
+    end
+    if live_community then
+        e.community = live_community
+        e.community_verified_tg = now
+    end
+    if e.community ~= prev_comm then
+        e.dirty.community = true
+        e.dirty.task = true
+    end
+
+    if siski.config and siski.config.get_section_set and e.section then
+        if is_mutant then
+            local set = get_mutant_allowed_section_set(e.section, e.community)
+            if set then
+                e.allowed = set[e.section] == true
+            end
+        elseif e.community then
+            local set = siski.config.get_section_set("spawner_allowed_sections_" .. tostring(e.community))
+            e.allowed = set and set[e.section] == true or false
+        end
+    end
+    if e.npc_kind ~= prev_kind then
+        e.dirty.task = true
+    end
+    if e.section ~= prev_section then
+        e.dirty.task = true
+    end
+    if e.allowed ~= prev_allowed then
+        e.dirty.task = true
+    end
+
+    e.dirty.identity = false
+    e.identity_refresh_next_tg = now + (dirty_identity_refresh and SNAPSHOT_IDENTITY_DIRTY_REFRESH_MS or SNAPSHOT_IDENTITY_REFRESH_MS)
+    if e.level == prev_level
+        and (e.community ~= prev_comm
+            or tonumber(e.smart_id) ~= prev_smart
+            or e.section ~= prev_section
+            or e.allowed ~= prev_allowed
+            or e.npc_kind ~= prev_kind
+            or gvid_changed)
+    then
+        e.dirty.task = true
+    end
+    self:_reindex_entry(e)
+end
+
+function Memory:_update_squad_snapshot(squad)
+    if not squad then return end
+    local ok_live, id, reason, severity = self:_validate_live_squad(squad, "snapshot")
+    if not ok_live then
+        if severity == "hard" then
+            self:_purge_squad_entry(id, reason, "snapshot")
+        else
+            self:_note_integrity_soft_fail(id, "snapshot", reason)
+        end
+        return
+    end
+
+    if self:_should_manage_squad(squad) ~= true then
+        self:_purge_squad_entry(id, "not_managed", "snapshot")
+        return
+    end
+
+    self:_apply_squad_snapshot(squad, id, "snapshot")
+end
+
+function Memory:_update_squad_snapshot_verified(squad, squad_id)
+    if not squad then return end
+    local sid = tonumber(squad_id) or tonumber(squad.id)
+    if not sid then return end
+    if self:_should_manage_squad(squad) ~= true then
+        self:_purge_squad_entry(sid, "not_managed", "snapshot_verified")
+        return
+    end
+    self:_apply_squad_snapshot(squad, sid, "snapshot")
+end
+
+function Memory:_upsert_snapshot(squad, source)
+    if not squad then return nil end
+    local src = tostring(source or "upsert_snapshot")
+    local ok_live, sid, reason, severity = self:_validate_live_squad(squad, src)
+    if not ok_live then
+        if severity == "hard" then
+            self:_purge_squad_entry(sid, reason, src)
+        else
+            self:_note_integrity_soft_fail(sid, src, reason)
+        end
+        return nil
+    end
+    if self:_should_manage_squad(squad) ~= true then
+        self:_purge_squad_entry(sid, "not_managed", src)
+        return nil
+    end
+    self:_apply_squad_snapshot(squad, sid, src)
+    return self:_get_squad_entry(sid)
+end
+
+function Memory:_set_task_current(squad_id, task)
+    local e = self:_get_entry_for_mutation(squad_id, "set_task_current")
+    if not e then return end
+    local prev_task = e.tasks and e.tasks.current or nil
+    self:_ensure_tasks_shape(e)
+    e.tasks.prev = prev_task
+    e.tasks.current = task
+    ensure_dirty_shape(e)
+    e.dirty.task = true
+    self:_reindex_entry(e)
+    publish_memory_event("memory_task_changed", {
+        event = "memory_task_changed",
+        squad_id = tonumber(e.squad_id) or tonumber(squad_id) or nil,
+        prev_task = prev_task,
+        current_task = e.tasks and e.tasks.current or nil,
+    })
+end
+
+function Memory:_clear_tasks(squad_id)
+    local e = self:_get_entry_for_mutation(squad_id, "clear_tasks")
+    if not e then return end
+    local prev_task = e.tasks and e.tasks.current or nil
+    e.tasks = { prev = nil, current = nil }
+    ensure_dirty_shape(e)
+    e.dirty.task = true
+    self:_reindex_entry(e)
+    publish_memory_event("memory_task_changed", {
+        event = "memory_task_changed",
+        squad_id = tonumber(e.squad_id) or tonumber(squad_id) or nil,
+        prev_task = prev_task,
+        current_task = e.tasks and e.tasks.current or nil,
+    })
+end
+
+function Memory:_is_entry_recent(entry, now, max_age_ms)
+    if type(entry) ~= "table" or entry.allowed ~= true then
+        return false
+    end
+    now = tonumber(now) or tg()
+    local max_age = tonumber(max_age_ms) or IDENTITY_FALLBACK_TTL_MS
+    if max_age < 1 then
+        max_age = IDENTITY_FALLBACK_TTL_MS
+    end
+    return self:_entry_age_ms(entry, now) <= max_age
+end
+
+function Memory:_get_managed_squads_by_level()
+    return self.RUNTIME.managed_squads_by_level or {}
+end
+
+function Memory:_get_anchor_index()
+    return self.RUNTIME.anchors_by_community_level or {}
+end
+
+function Memory:_get_communities_by_smart_level()
+    return self.RUNTIME.communities_by_smart_level or {}
+end
+
+function Memory:_get_trade_target_occupancy()
+    return self.RUNTIME.trade_target_occupancy or {}
+end
+
+function Memory:_mark_dirty(squad_id, key)
+    local e = self:_get_entry_for_mutation(squad_id, "mark_dirty")
+    if not e then return false end
+    ensure_dirty_shape(e)
+    if type(key) == "string" and e.dirty[key] ~= nil then
+        e.dirty[key] = true
+        return true
+    end
+    e.dirty.task = true
+    return true
+end
+
+function Memory:_mark_arrived_to_target(squad_id, smart_ref, source)
+    local e = self:_get_entry_for_mutation(squad_id, "mark_arrived_to_target")
+    if not e then return false end
+    local current = e.tasks and e.tasks.current or nil
+    if type(current) ~= "table" then
+        return false
+    end
+    current.params = type(current.params) == "table" and current.params or {}
+    local smart_name = extract_smart_name(smart_ref)
+    current.params.entered_target_smart = smart_name
+    current.params.arrived_at_tg = tg()
+    current.params.in_transit = false
+    current.params.last_semantic_source = tostring(source or "enter_smart")
+    if current.type == "TRADE" and smart_name and current.target == smart_name then
+        current.params.trade_arrived_at_tg = tonumber(current.params.trade_arrived_at_tg) or tg()
+        current.params.arrived_phase = true
+    end
+    ensure_dirty_shape(e)
+    e.dirty.task = true
+    return true
+end
+
+function Memory:_mark_left_target(squad_id, smart_ref, source)
+    local e = self:_get_entry_for_mutation(squad_id, "mark_left_target")
+    if not e then return false end
+    local current = e.tasks and e.tasks.current or nil
+    if type(current) ~= "table" then
+        return false
+    end
+    current.params = type(current.params) == "table" and current.params or {}
+    current.params.left_target_smart = extract_smart_name(smart_ref)
+    current.params.left_target_tg = tg()
+    current.params.in_transit = true
+    current.params.last_semantic_source = tostring(source or "leave_smart")
+    if current.type == "TRADE" then
+        current.params.arrived_phase = false
+    end
+    ensure_dirty_shape(e)
+    e.dirty.task = true
+    return true
+end
+
+function Memory:_mark_level_changed(squad_id, old_level, new_level, source)
+    local e = self:_get_entry_for_mutation(squad_id, "mark_level_changed")
+    if not e then return false end
+    local old_name = type(old_level) == "string" and old_level or nil
+    local new_name = type(new_level) == "string" and new_level or nil
+    if new_name and new_name ~= "" then
+        e.level = new_name
+    end
+    local current = e.tasks and e.tasks.current or nil
+    if type(current) == "table" then
+        current.params = type(current.params) == "table" and current.params or {}
+        current.params.level_changed_from = old_name
+        current.params.level_changed_to = new_name
+        current.params.level_changed_tg = tg()
+        current.params.last_semantic_source = tostring(source or "after_level_change")
+    end
+    ensure_dirty_shape(e)
+    e.dirty.level = true
+    e.dirty.task = true
+    self:_reindex_entry(e)
+    return true
+end
+
+function Memory:_prune_missing_squads_once(source)
+    local sim = alife and alife() or nil
+    if not sim then
+        return 0
+    end
+
+    local removed = 0
+    for sid, entry in pairs(self.STATE and self.STATE.squads or {}) do
+        local id = tonumber(sid) or tonumber(type(entry) == "table" and entry.squad_id or nil)
+        if id then
+            local ok_obj, live = safe_alife_object(id)
+            if ok_obj and not live then
+                if self:_purge_squad_entry(id, "missing_on_prune", source or "prune_missing_squads_once") then
+                    removed = removed + 1
+                end
+            end
+        end
+    end
+    return removed
+end
+
+function Memory:_consume_dirty(entry, key)
+    if type(entry) ~= "table" then return false end
+    ensure_dirty_shape(entry)
+    if type(key) ~= "string" or entry.dirty[key] == nil then
+        return false
+    end
+    local v = entry.dirty[key] == true
+    entry.dirty[key] = false
+    return v
+end
+
+function Memory:_get_memory_stats()
+    local out = {
+        total = 0,
+        managed_levels = 0,
+        anchor_communities = 0,
+        trade_target_levels = 0,
+        integrity_reject_count = tonumber(self.RUNTIME.integrity_reject_count) or 0,
+        integrity_purge_count = tonumber(self.RUNTIME.integrity_purge_count) or 0,
+        integrity_soft_fail_count = tonumber(self.RUNTIME.integrity_soft_fail_count) or 0,
+        touch_create_blocked_count = tonumber(self.RUNTIME.touch_create_blocked_count) or 0,
+    }
+    for _, e in pairs(self.STATE.squads or {}) do
+        if type(e) == "table" then
+            out.total = out.total + 1
+        end
+    end
+    for _ in pairs(self.RUNTIME.managed_squads_by_level or {}) do
+        out.managed_levels = out.managed_levels + 1
+    end
+    for _ in pairs(self.RUNTIME.anchors_by_community_level or {}) do
+        out.anchor_communities = out.anchor_communities + 1
+    end
+    for _ in pairs(self.RUNTIME.trade_target_occupancy or {}) do
+        out.trade_target_levels = out.trade_target_levels + 1
+    end
+    return out
+end
+
+function Memory:_normalize_loaded_task(task)
+    if type(task) ~= "table" then return task end
+    reset_task_scheduler_fields(task)
+    if task.type == "FACTION_TASK" then
+        return nil
+    end
+    return task
+end
+
+function Memory:_normalize_loaded_entry(id, src, now)
+    local e = type(src) == "table" and src or {}
+    e.squad_id = tonumber(id) or tonumber(e.squad_id)
+    self:_ensure_entry_defaults(e, e.squad_id)
+
+    e.tasks.prev = self:_normalize_loaded_task(e.tasks.prev)
+    e.tasks.current = self:_normalize_loaded_task(e.tasks.current)
+
+    e.last_seen_source = "load_state"
+    e.integrity_soft_fail_count = 0
+    e.integrity_soft_fail_window_tg = 0
+
+    e.community_verified_tg = tonumber(e.community_verified_tg) or 0
+    e.level_verified_tg = tonumber(e.level_verified_tg) or 0
+    e.section_verified_tg = tonumber(e.section_verified_tg) or 0
+    e.identity_refresh_next_tg = 0
+    e.updated_at_tg = tonumber(e.updated_at_tg) or now
+    e.last_seen_tg = tonumber(e.last_seen_tg) or e.updated_at_tg
+    e.commander_id = tonumber(e.commander_id) or nil
+    e.npc_kind = (e.npc_kind == "mutant" or e.npc_kind == "stalker") and e.npc_kind or nil
+    e.identity_source = type(e.identity_source) == "string" and e.identity_source or nil
+
+    if e.npc_kind == "mutant" then
+        -- Mutant task/target state is cheap to rebuild and can preserve stuck paths across saves.
+        e.tasks.prev = nil
+        e.tasks.current = nil
+        e.scripted_target = nil
+        e.current_action = nil
+        e.assigned_target_id = nil
+        e.smart_id = nil
+    end
+
+    ensure_dirty_shape(e)
+    e.dirty.level = true
+    e.dirty.community = true
+    e.dirty.smart = true
+    e.dirty.task = true
+    e.dirty.identity = true
+
+    return e
+end
+
+function Memory:_is_protected_squad(se_squad)
+    if not se_squad then return false end
+    local sid = tonumber(se_squad.id)
+    if not sid then return false end
+
+    if is_companion_squad_id(sid) then
+        return true
+    end
+
+    local commander_id = read_commander_id(se_squad)
+    if commander_id and has_story_binding(commander_id) then
+        return true
+    end
+    return false
+end
+
+function Memory:_should_manage_squad(se_squad)
+    if not se_squad then return false end
+
+    local sid = tonumber(se_squad.id)
+    if not sid then return false end
+    if self:_is_protected_squad(se_squad) then
+        self:_log_throttled("protected_skip:" .. tostring(sid), 8000, "info", "MEMORY_PROTECTED_SKIP sid=%s", tostring(sid))
+        return false
+    end
+
+    local now = tg()
+    local entry = self:_get_squad_entry(sid)
+    local level_name = resolve_live_squad_level_name(se_squad, entry)
+    if is_level_globally_blacklisted(level_name) then
+        if entry then
+            self:_ensure_entry_defaults(entry, sid)
+            entry.level = level_name or entry.level
+            entry.allowed = false
+            self:_reindex_entry(entry)
+        end
+        self:_log_throttled("global_level_blacklist_skip:" .. tostring(sid), 8000, "info",
+            "MEMORY_GLOBAL_LEVEL_BLACKLIST_SKIP sid=%s level=%s", tostring(sid), tostring(level_name or "-"))
+        return false
+    end
+    local commander_id = read_commander_id(se_squad)
+    if entry then
+        self:_ensure_entry_defaults(entry, sid)
+        if commander_id and entry.commander_id and commander_id ~= entry.commander_id then
+            entry.allowed = false
+            self:_reindex_entry(entry)
+            return false
+        end
+    end
+
+    local is_mutant = is_monster_squad_live(se_squad)
+    local mutant_sim_enabled = true
+    if siski.config and siski.config.get then
+        mutant_sim_enabled = siski.config.get("mutant_sim_enabled", true) ~= false
+    end
+    local section = nil
+    section = read_live_squad_section(se_squad)
+
+    local community = read_live_squad_community(se_squad)
+    if not community and is_zombied_section_name(section) then
+        community = "zombied"
+    end
+
+    if is_mutant then
+        if mutant_sim_enabled == false then
+            if entry then
+                entry.npc_kind = "mutant"
+                entry.identity_source = "mutant_disabled"
+                if commander_id then
+                    entry.commander_id = commander_id
+                end
+            end
+            return false
+        end
+
+        local allowed_live = nil
+        if section and siski.config and siski.config.get_section_set then
+            local set = get_mutant_allowed_section_set(section, community)
+            if set then
+                allowed_live = set[section] == true
+            end
+        end
+
+        if entry then
+            entry.npc_kind = "mutant"
+            entry.identity_source = "live_mutant"
+            entry.section = section or entry.section
+            if community then
+                entry.community = community
+                entry.community_verified_tg = now
+            end
+            if allowed_live ~= nil then
+                entry.allowed = allowed_live
+            end
+            if commander_id then
+                entry.commander_id = commander_id
+            end
+        end
+
+        if allowed_live ~= nil then
+            return allowed_live == true
+        end
+
+        if not entry then return false end
+        if not self:_is_entry_recent(entry, now, IDENTITY_FALLBACK_TTL_MS) then
+            return false
+        end
+        if entry.npc_kind ~= "mutant" then
+            return false
+        end
+        if entry.allowed ~= true then
+            return false
+        end
+        if section and entry.section and section ~= entry.section then
+            return false
+        end
+        return entry.section ~= nil
+    end
+
+    local has_live_identity = community ~= nil and section ~= nil
+    local allowed_live = nil
+    if has_live_identity and siski.config and siski.config.get_section_set then
+        local set = siski.config.get_section_set("spawner_allowed_sections_" .. tostring(community))
+        allowed_live = set and set[section] == true or false
+
+        if entry then
+            entry.npc_kind = "stalker"
+            entry.identity_source = "live_human"
+            entry.community = community
+            entry.section = section
+            entry.allowed = allowed_live
+            entry.community_verified_tg = now
+            if commander_id then
+                entry.commander_id = commander_id
+            end
+        end
+
+        if allowed_live == true then
+            return true
+        end
+        return false
+    end
+
+    if not entry then return false end
+
+    if not self:_is_entry_recent(entry, now, IDENTITY_FALLBACK_TTL_MS) then
+        return false
+    end
+    if entry.allowed ~= true then
+        return false
+    end
+    if entry.npc_kind and entry.npc_kind ~= "stalker" then
+        return false
+    end
+    if section and entry.section and section ~= entry.section then
+        return false
+    end
+    if community and entry.community and community ~= entry.community then
+        return false
+    end
+
+    return entry.community ~= nil and entry.section ~= nil
+end
+
+function Memory:_on_squad_npc_death(squad_or_id, npc, killer_npc, killer_squad)
+    local sid = nil
+    local dead_npc_id = nil
+    if type(squad_or_id) == "number" then
+        sid = tonumber(squad_or_id)
+    elseif type(squad_or_id) == "table" then
+        sid = tonumber(squad_or_id.id) or tonumber(squad_or_id.squad_id)
+    end
+    if type(npc) == "table" then
+        dead_npc_id = tonumber(npc.id) or tonumber(type(npc.id) == "function" and npc:id() or nil)
+    elseif type(npc) == "number" then
+        dead_npc_id = tonumber(npc)
+    end
+    if not sid then return end
+
+    local e = self:_get_squad_entry(sid)
+    if not e then return end
+
+    self:_ensure_entry_defaults(e, sid)
+    ensure_dirty_shape(e)
+    e.dirty.identity = true
+    e.dirty.task = true
+    e.identity_refresh_next_tg = 0
+
+    if dead_npc_id and tonumber(e.commander_id) == dead_npc_id then
+        e.commander_id = nil
+        e.community_verified_tg = 0
+        e.level_verified_tg = 0
+        e.section_verified_tg = 0
+        e.dirty.smart = true
+    end
+end
+
+function Memory:_reset_runtime(reason)
+    self:_reset_runtime_tables()
+    self:_rebuild_runtime_indexes()
+    if siski.log and siski.log.warn then
+        siski.log.warn("MEMORY", "reset_runtime reason=%s", tostring(reason or "-"))
+    end
+end
+
+function Memory:_save_state(m_data)
+    if not m_data then return end
+    self.STATE.version = STATE_VERSION
+
+    local out = {
+        version = STATE_VERSION,
+        squads = {},
+        patrol = clone_serializable(self.STATE.patrol, 0, {}) or {},
+    }
+    for sid, e in pairs(self.STATE.squads or {}) do
+        local key = tonumber(sid) or tonumber(type(e) == "table" and e.squad_id or nil)
+        if key and type(e) == "table" and e.allowed == true then
+            local compact = compact_entry(e)
+            if compact then
+                out.squads[key] = compact
+            end
+        end
+    end
+    m_data.siski_state = out
+end
+
+function Memory:_load_state(m_data)
+    local loaded = m_data and m_data.siski_state or nil
+    if loaded and type(loaded) == "table" then
+        local now = tg()
+        local out = {
+            version = STATE_VERSION,
+            squads = {},
+            patrol = type(loaded.patrol) == "table" and loaded.patrol or {},
+        }
+        local loaded_ver = tostring(loaded.version or "0.0")
+
+        local src_squads = type(loaded.squads) == "table" and loaded.squads or {}
+        for key, e in pairs(src_squads) do
+            local sid = tonumber(key) or tonumber(type(e) == "table" and e.squad_id or nil)
+            if sid then
+                local normalized = self:_normalize_loaded_entry(sid, e, now)
+                if type(normalized) == "table" and normalized.allowed == true then
+                    out.squads[sid] = normalized
+                end
+            end
+        end
+
+        self.STATE = out
+        self:_reset_runtime_tables()
+        self:_rebuild_runtime_indexes()
+
+        if siski.log and siski.log.info then
+            siski.log.info(
+                "MEMORY",
+                "Loaded SISKI state v=%s -> %s. Squads: %d",
+                tostring(loaded_ver),
+                tostring(STATE_VERSION),
+                (table.size and table.size(self.STATE.squads)) or 0
+            )
+        end
+    else
+        self.STATE = { version = STATE_VERSION, squads = {}, patrol = {} }
+        self:_reset_runtime_tables()
+        self:_rebuild_runtime_indexes()
+        if siski.log and siski.log.info then
+            siski.log.info("MEMORY", "No save state found. Starting fresh.")
+        end
+    end
+end
+
+local inst = Memory.new and Memory.new() or setmetatable({}, Memory)
+if not inst.STATE then
+    Memory.__init(inst)
+end
+
+inst.get_state = function() return inst:_get_state() end
+inst.get_runtime = function() return inst:_get_runtime() end
+inst.get_squad_entry = function(squad_id) return inst:_get_squad_entry(squad_id) end
+inst.validate_live_squad = function(se_squad, source) return inst:_validate_live_squad(se_squad, source) end
+inst.touch_squad_validated = function(se_squad, mark_seen, source) return inst:_touch_squad_validated(se_squad, mark_seen, source) end
+inst.purge_squad_entry = function(squad_id, reason, source) return inst:_purge_squad_entry(squad_id, reason, source) end
+inst.touch_squad = function(squad_id, mark_seen, source) return inst:_touch_squad(squad_id, mark_seen, source) end
+inst.update_squad_snapshot = function(squad) return inst:_update_squad_snapshot(squad) end
+inst.update_squad_snapshot_verified = function(squad, squad_id) return inst:_update_squad_snapshot_verified(squad, squad_id) end
+inst.upsert_snapshot = function(squad, source) return inst:_upsert_snapshot(squad, source) end
+inst.set_task_current = function(squad_id, task) return inst:_set_task_current(squad_id, task) end
+inst.clear_tasks = function(squad_id) return inst:_clear_tasks(squad_id) end
+inst.get_managed_squads_by_level = function() return inst:_get_managed_squads_by_level() end
+inst.get_anchor_index = function() return inst:_get_anchor_index() end
+inst.get_communities_by_smart_level = function() return inst:_get_communities_by_smart_level() end
+inst.get_trade_target_occupancy = function() return inst:_get_trade_target_occupancy() end
+inst.mark_dirty = function(squad_id, key) return inst:_mark_dirty(squad_id, key) end
+inst.mark_arrived_to_target = function(squad_id, smart_ref, source) return inst:_mark_arrived_to_target(squad_id, smart_ref, source) end
+inst.mark_left_target = function(squad_id, smart_ref, source) return inst:_mark_left_target(squad_id, smart_ref, source) end
+inst.mark_level_changed = function(squad_id, old_level, new_level, source) return inst:_mark_level_changed(squad_id, old_level, new_level, source) end
+inst.prune_missing_squads_once = function(source) return inst:_prune_missing_squads_once(source) end
+inst.consume_dirty = function(entry, key) return inst:_consume_dirty(entry, key) end
+inst.get_memory_stats = function() return inst:_get_memory_stats() end
+inst.is_protected_squad = function(se_squad) return inst:_is_protected_squad(se_squad) end
+inst.should_manage_squad = function(se_squad) return inst:_should_manage_squad(se_squad) end
+inst.on_squad_npc_death = function(squad_or_id, npc, killer_npc, killer_squad) return inst:_on_squad_npc_death(squad_or_id, npc, killer_npc, killer_squad) end
+inst.reset_runtime = function(reason) return inst:_reset_runtime(reason) end
+inst.save_state = function(m_data) return inst:_save_state(m_data) end
+inst.load_state = function(m_data) return inst:_load_state(m_data) end
+
+if siski and siski.bus and siski.bus.subscribe then
+    siski.bus.subscribe("actor_on_first_update", "siski_memory", function()
+        inst:_rebuild_runtime_indexes()
+        inst:_prune_missing_squads_once("actor_on_first_update")
+    end)
+    siski.bus.subscribe("server_entity_on_unregister", "siski_memory", function(payload)
+        local args = type(payload) == "table" and type(payload.args) == "table" and payload.args or {}
+        local se_obj = args[1]
+        local type_name = args[2]
+        if type(type_name) == "string" and type_name == "sim_squad_scripted" then
+            inst:_purge_squad_entry(se_obj and se_obj.id or nil, "server_unregister", "server_entity_on_unregister")
+        end
+    end)
+    siski.bus.subscribe("squad_on_npc_death", "siski_memory", function(payload)
+        local args = type(payload) == "table" and type(payload.args) == "table" and payload.args or {}
+        inst:_on_squad_npc_death(args[1], args[2], args[3], args[4])
+    end)
+end
+
+function Memory:_set_surge_lock(squad_id, locked)
+    local e = self:_get_entry_for_mutation(squad_id, "set_surge_lock")
+    if not e then return end
+    e.surge_lock = locked == true
+    ensure_dirty_shape(e)
+    e.dirty.task = true
+end
+
+function Memory:_get_surge_lock(squad_id)
+    local e = self:_get_squad_entry(squad_id)
+    if not e then return false end
+    return e.surge_lock == true
+end
+
+inst.set_surge_lock = function(squad_id, locked) return inst:_set_surge_lock(squad_id, locked) end
+inst.get_surge_lock = function(squad_id) return inst:_get_surge_lock(squad_id) end
+
+siski.memory = inst

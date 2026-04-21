@@ -1,0 +1,317 @@
+-- chance of phantom appearing depends on psi health, the lower psi health is = the more chance to spawn phantom
+local spawned_phantoms = {}
+local phantom_frequency = 10			-- how fast each phantom can appear (irl seconds)
+local phantoms_appear_at = 75		-- psi health % at which phantoms may have chance to appear
+local enable_psi_hit = true
+local psi_hit_power = 3					-- psi hit from phantoms in % ... 1%-4%
+local rnd = math.random
+local sfind = string.find
+local debugx = false
+local superdebugx = false
+
+local phantoms_to_spawn = { "boar_phantom_x", "cat_phantom_x", "chimera_phantom_x", "dog_phantom_x", "fracture_phantom_x", "lurker_phantom_x", "pseudodog_phantom_x", "snork_phantom_x", "zombie_phantom_x" }
+
+-- for some mutants that use different anim name
+local mutant_anim = {
+	["boar"] = true,
+	["cat"] = true,
+	["chimera"] = true,
+	["lurker"] = true,
+}
+
+function pr(...)
+	if not debugx then return end
+	printf(...)
+end
+
+function save_state(m_data)
+	m_data.spawned_phantoms = spawned_phantoms
+end
+
+function load_state(m_data)
+	spawned_phantoms = m_data.spawned_phantoms or {}
+end
+
+function actor_on_first_update()
+	if is_empty(spawned_phantoms) then return end
+
+	for sq_id, _ in pairs(spawned_phantoms) do
+		if alife_object(sq_id) then
+			alife_release_id(sq_id)
+		end
+		spawned_phantoms[sq_id] = nil
+	end
+
+end
+
+-- spawn
+function spawn_xphantoms()
+	-- get position
+	local fov = 100		-- outside of this fov
+	local radius = rnd(30, 60)
+	local dir = vector_rotate_y(db.actor:direction(), rnd(fov, 360 - fov))
+	local gvid = db.actor:game_vertex_id()
+	local pos = db.actor:position():add(dir:mul(radius))
+	local lvid = level.vertex_id(pos)
+
+	if lvid >= 4294967295 then
+		pr("! invalid lvid")
+		return
+	end
+
+	-- spawn and fill in phantom squad
+	local rnd_npc_sec = phantoms_to_spawn[rnd(#phantoms_to_spawn)]
+	local phantom_sq = alife_create(rnd_npc_sec, pos, lvid, gvid)
+	if not phantom_sq then return end
+
+	pr("# adding npc to squad_id: [ %s ], at pos: [ %s ] || lvid: [ %s ] || gvid: [ %s ]", phantom_sq.id, pos, lvid, gvid)
+	phantom_sq:create_npc(nil, pos, lvid, gvid)
+
+	if phantom_sq.squad_members then
+		for k in phantom_sq:squad_members() do
+			local npc = k.object or k.id and alife_object(k.id)
+			if npc then
+				SIMBOARD:setup_squad_and_group(npc)
+			end
+		end
+	end
+
+	spawned_phantoms[phantom_sq.id] = true
+
+	pr("phantom_sq: [ %s ]", phantom_sq.id)
+	if debugx then
+		news_manager.send_tip(db.actor, string.format("Phantom sq sec [ %s ]", rnd_npc_sec), 0, nil, 1500)
+	end
+
+	-- target actor
+	phantom_sq.scripted_target = "actor"
+	phantom_sq.rush_to_target = true
+
+	-- force running state (anim)
+	local function postpone_anim(se_obj_id)
+		local obj = level.object_by_id(se_obj_id)
+		local anm_prfx = ""
+		if obj and obj:section() then
+			for str, anm in pairs(mutant_anim) do
+				if sfind(obj:section(), str) then
+					anm_prfx = "fwd_"
+					break
+				end
+			end
+			obj:set_override_animation("stand_run_" .. anm_prfx .. "0")
+		end
+		return true
+	end
+
+	for sq_id, _ in pairs(spawned_phantoms) do
+		local sq = alife_object(sq_id)
+		if sq and sq.squad_members then
+			for member in sq:squad_members() do
+				CreateTimeEvent("mutant_anim_ev", "mutant_anim_ac_" .. member.id, 0.5, postpone_anim, member.id)
+			end
+		end
+	end
+
+end
+
+-- release
+function release_phantoms(obj, monster_upd, monster_hit, actor_hit)
+	local var = ""
+	for sq_id, _ in pairs(spawned_phantoms) do
+		local sq = alife_object(sq_id)
+		if sq and sq.squad_members then
+			for se_member in sq:squad_members() do
+				local member = level.object_by_id(se_member.id)
+				if member and obj:id() == member:id() then
+					local ac_pos = db.actor:position()
+					local obj_pos = obj:position()
+					local dist = obj_pos:distance_to(ac_pos) < 1.6
+
+					if monster_upd and dist then
+						pr("~ monster upd")
+						psi_health_hit(enable_psi_hit)
+					elseif monster_hit or actor_hit then
+						pr("~ monster/actor_hit")
+						var = "actor_hit"
+					else
+						break
+					end
+
+					pr("# release squad_id: [ %s ]", sq_id)
+					local death_particle = particles_object("monsters\\phantom_death")
+					death_particle:play_at_pos(vector():set(obj_pos.x, obj_pos.y + 0.5, obj_pos.z))
+					alife_release_id(sq_id)
+					spawned_phantoms[sq_id] = nil
+				end
+			end
+		end
+	end
+
+	return var
+end
+
+-- on collision with actor
+function monster_on_update(npc)
+	local monster_squad = npc:alive() and get_object_squad(npc)
+	if monster_squad and not spawned_phantoms[monster_squad.id] then
+	--	pr("monster_squad.id: [ %s ] isn't in phantom table", monster_squad.id)
+		return
+	end
+
+	release_phantoms(npc, true)
+
+end
+
+-- on any hit
+function monster_on_before_hit(npc, s_hit)
+	local monster_squad = npc:alive() and get_object_squad(npc)
+	if monster_squad and not spawned_phantoms[monster_squad.id] then return end
+
+--	if s_hit.draftsman:id() ~= db.actor:id() then return end
+-- on_death doesnt work for some reason, just release on any hit
+
+	release_phantoms(npc, nil, true)
+end
+
+-- try to negate damage in case some hit actually go through despite of enemy_eval
+function actor_on_before_hit(s_hit)
+	local rp = release_phantoms(s_hit.draftsman, nil, nil, true)
+	if rp == "actor_hit" then
+		s_hit.type = hit.telepatic
+		s_hit.power = s_hit.power * 0
+	end
+
+end
+
+-- make phantom friend to everyone and everyone friend to phantom
+function on_enemy_eval(obj, enemy, flags)
+	for sq_id, _ in pairs(spawned_phantoms) do
+		local sq = alife_object(sq_id)
+		if sq and sq.squad_members then
+			for se_member in sq:squad_members() do
+				local member = level.object_by_id(se_member.id)
+				if member and ( (obj:id() == member:id()) or (enemy:id() == member:id()) ) then
+					local is_enemy = false
+					local enemy_obj = enemy:relation(obj) >= game_object.enemy
+					local obj_enemy = obj:relation(enemy) >= game_object.enemy
+					is_enemy = enemy_obj or obj_enemy
+					if is_enemy then
+						flags.override = true
+						flags.result = false
+					end
+				end
+			end
+		end
+	end
+
+end
+
+-- psi hit
+function psi_health_hit(enable)
+	if not enable then return end
+	local h = hit()
+	local psi_hit = rnd(psi_hit_power * 10 - 20, psi_hit_power * 10 + 10) / 1000
+	h.power = psi_hit
+	h.bone = "bip01_spine"
+	h.impulse = 0
+	h.direction = vector()
+	h.draftsman = db.actor
+	h.type = hit.telepatic
+	db.actor:hit(h)
+--	news_manager.send_tip(db.actor, string.format("Psi hit for [ %s ]", psi_hit), 0, nil, 1500)
+	pr("Psi hit for [ %s ]", psi_hit)
+end
+
+local tmr
+function actor_on_update()
+	local tg = time_global()
+	if (tmr and tg < tmr) then return end
+	tmr = tg + phantom_frequency * 1000
+
+	-- chance to spawn phantoms
+	local psi_health = (1 - arszi_psy.get_ppe_intensity() * 2) * 100
+	if rnd(0, phantoms_appear_at) > psi_health  then
+		spawn_xphantoms()
+	end
+
+	-- release offline squads
+	local function delay_offline_release()
+		for sq_id, _ in pairs(spawned_phantoms) do
+			local sq = alife_object(sq_id)
+			if sq and not (sq.online) then
+				pr("! squad_id: [ %s ] is offline, release", sq_id)
+				alife_release_id(sq_id)
+				spawned_phantoms[sq_id] = nil
+			end
+		end
+		return true
+	end
+	-- give it some time to appear if spawning xd
+	CreateTimeEvent("phantom_offline_release_ev", "phantom_offline_release_ac", 1, delay_offline_release)
+
+end
+
+function on_key_press(key)
+	if not superdebugx then return end
+
+	if key == DIK_keys.DIK_F then
+		spawn_xphantoms()
+	elseif key == DIK_keys.DIK_U then
+		local h = hit()
+		h.power = 0.1
+		h.bone = "bip01_spine"
+		h.impulse = 0
+		h.direction = vector()
+		h.draftsman = db.actor
+		h.type = hit.telepatic
+		db.actor:hit(h)
+		news_manager.send_tip(db.actor, string.format("Psi hp reduced"), 0, nil, 1500)
+	elseif key == DIK_keys.DIK_M then
+		for squad_id, _ in pairs(spawned_phantoms) do
+			local squad = alife_object(squad_id)
+			if squad and squad.squad_members then
+				for se_member in squad:squad_members() do
+					local member = level.object_by_id(se_member.id)
+					local member_sec = (member and member:section()) or (se_member and se_member.section_name and se_member:section_name())
+		--			local level_name = alife():level_name(game_graph():vertex(se_member.m_game_vertex_id):level_id())
+					printf("squad_id: [ %s ] sec: [ %s ] || member_id: [ %s ] sec: [ %s ]", squad_id, squad:section_name(), se_member.id, member_sec or "nil")
+				end
+			end
+			printf("~ test, squad_id: [ %s ]", squad_id)
+		end
+	end
+
+end
+
+----- superduperdebugx -----------
+-- xcv_phantoms.teleport_actor_to(id, false)
+--[[
+function teleport_actor_to(id, tp)
+	local obj = level.object_by_id(id)
+	local se_obj = alife_object(id)
+	local pos = (obj and obj:position()) or (se_obj and se_obj.position)
+	local lvid = (obj and obj:level_vertex_id()) or (se_obj and se_obj.m_level_vertex_id)
+	local gvid = (obj and obj:game_vertex_id() ) or (se_obj and se_obj.m_game_vertex_id)
+
+	printf("teleporting actor to id: [ %s ] || pos: [ %s ] || lvid: [ %s ] || gvid: [ %s ]", id, pos, lvid, gvid)
+	if tp then
+		TeleportObject(0, pos, lvid, gvid)
+	else
+		db.actor:set_actor_position(pos, lvid, gvid)
+	end
+
+end
+--]]
+---------------------
+
+function on_game_start()
+	RegisterScriptCallback("save_state", save_state)
+	RegisterScriptCallback("load_state", load_state)
+	RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+	RegisterScriptCallback("actor_on_before_hit", actor_on_before_hit)
+	RegisterScriptCallback("monster_on_update", monster_on_update)
+	RegisterScriptCallback("monster_on_before_hit", monster_on_before_hit)
+	RegisterScriptCallback("on_enemy_eval", on_enemy_eval)
+	RegisterScriptCallback("actor_on_update", actor_on_update)
+	RegisterScriptCallback("on_key_press", on_key_press)
+end

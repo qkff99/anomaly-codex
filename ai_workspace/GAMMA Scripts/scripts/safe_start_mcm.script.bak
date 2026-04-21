@@ -1,0 +1,111 @@
+local running = false
+local dmg_mult = 1
+local start_time = 0
+
+---------- MCM ------------
+local mcm_settings = {
+	enable = { true, "check",nil,nil,nil,order = 1},
+	god_length = {5, "track",2,10,0.5,order = 10},
+	dmg_reduction_length = {5, "track",0,15,0.5,order = 11},
+	dbug = {false, "check",nil,nil,nil,order = 99},
+}
+
+function get_mcm_val(i)
+	if i == "check" then
+		return 1
+	end
+	if i == "track" then
+		return 2
+	end
+	return
+end
+
+function on_mcm_load()
+	local sorted_order = {}
+	for i,v in pairs(mcm_settings) do
+		table.insert(sorted_order,v.order)
+	end
+	table.sort(sorted_order)
+	local set = {{id = "title", type = "slide", text = "ui_mcm_menu_safer_start", size = {512, 50}, spacing = 20},}
+	for i,v in pairs(mcm_settings) do
+		local option = {id = i,type = v[2], val = get_mcm_val(v[2]), min = v[3], max = v[4], step = v[5], def = v[1], text = "ui_mcm_safer_start_"..i, clr = {200, 200, 255, 255}}
+		set[table_find(sorted_order,v.order)+1] = option
+	end
+	return {id = "safer_start", sh=true, gr= set}
+end
+
+function on_option_change(mcm)
+	if not mcm then return end
+	for i,v in pairs(mcm_settings) do
+		mcm_settings[i][1] = ui_mcm.get("safer_start/"..i)
+	end
+end
+
+-------------- MISC ------------
+function print(a,...)
+	if mcm_settings.dbug[1] then
+		if type(a)=="table" then
+			printf("ze table\n%s", utils_data.print_table(a, false, true))
+		else
+			printf(tostring(a))
+		end
+	end
+end
+
+local sys_param_types = {
+    string = 0,
+    boolean = 1,
+    number = 2
+}
+
+function table_find(t,f)
+	for i,v in pairs(t) do
+		if v == f then
+			return i
+		end
+	end
+end
+
+----------------------------
+function actor_on_update()
+	if time_global()-start_time>mcm_settings.god_length[1]*1000 then
+		local protection_timer = time_global()-start_time-mcm_settings.god_length[1]*1000
+		dmg_mult = 1-((mcm_settings.dmg_reduction_length[1]*1000-protection_timer)/(mcm_settings.dmg_reduction_length[1]*1000))
+		if dmg_mult>=1 then
+			dmg_mult = 1
+			UnregisterScriptCallback("actor_on_update",actor_on_update)
+			UnregisterScriptCallback("actor_on_before_hit",actor_on_before_hit)
+		end
+	end
+end
+
+function actor_on_first_update()
+	-- if mcm_settings.dbug[1] then
+	-- 	exec_console_cmd("g_god " .. 0)
+	-- end
+	running = true
+	dmg_mult = 0
+	start_time = time_global()+2000
+	RegisterScriptCallback("actor_on_update",actor_on_update)
+	RegisterScriptCallback("actor_on_before_hit",actor_on_before_hit)
+end
+
+function actor_on_net_destroy()
+	if running then
+		dmg_mult = 1
+		UnregisterScriptCallback("actor_on_update",actor_on_update)
+		UnregisterScriptCallback("actor_on_before_hit",actor_on_before_hit)
+	end
+end
+
+function actor_on_before_hit(s_hit, bone_id, flags)
+	if s_hit.power<=0 then return end
+	s_hit.power = s_hit.power*dmg_mult
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_option_change",on_option_change)
+	RegisterScriptCallback("actor_on_first_update",actor_on_first_update)
+	RegisterScriptCallback("actor_on_net_destroy",actor_on_net_destroy)
+	on_option_change(true)
+end

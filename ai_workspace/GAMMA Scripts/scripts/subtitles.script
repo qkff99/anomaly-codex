@@ -1,0 +1,395 @@
+-- Imports
+split = ag_strings.split
+table_slice = ag_tables.table_slice
+table_extend = ag_tables.table_extend
+contains = ag_tables.contains
+get_unknown_object = ag_game_objects.get_unknown_object
+dist_to_pos = ag_game_objects.dist_to_pos
+gts = ag_strings.get_translation
+print_table = ag_tables.print_table
+
+-- Utilities
+get_end_digits = subtitles_utils.get_end_digits
+in_snd_dir = subtitles_utils.in_snd_dir
+path_to_xml = subtitles_utils.path_to_xml
+get_npc_name = subtitles_utils.get_npc_name
+set_debug_level =  subtitles_utils.set_debug_level
+filter_debug_msg = subtitles_utils.filter_debug_msg
+
+-- Tables
+log_file_cache = {
+    normal = 0,
+    cache = 0,
+    split = 0,
+    norm_walkback = 0,
+    fight = 0,
+    fight_walkback = 0,
+    invalid = 0,
+}
+priority_tbl = {
+    [1] = { -- Indicates npc is on high alert, fighting, hurt or in distress
+        "battle", "attack", "fight", "enemy", "captured", "defence", 
+        "backup", "cover_fire", "death",  "fire", "hit_fired", 
+        "grenade",  "lost",  "threat", "wounded",  "kill", "thanx", 
+        "breath",  "meet", "hit"
+    },
+    [2] = { -- Indicates npc is on low alert, worried, or esclating
+        "spotted", "wait", "check", "help", "detour", "friendly_fire",
+        "ready", "relax", "search", "tolls", "medkit", "panic", "dropweapon",
+        "back_off", "hide_weapon", "stop"
+    },
+    [3] = { -- Indicates npc is moving
+        "run", "walk", "sneak"
+    },
+    [4] = { -- Indicates npc is in regular dialog
+        "reply", "reaction", "joke", "music", "laughter", "guitar",
+        "harmonica", "idle", "hello", "buy", "sell", "story"
+    },
+    [5] = { -- Misc lines
+        "rising", "intro", "abuse", "no", "sleep", "use_no"
+    }
+}
+exclude_subs = {
+    "",
+    "nil",
+    "Silent_Subtitle",
+    "Missing_Subtitle",
+    "No translation",
+    "No",
+    "translation"
+}
+
+-- Constants
+WORDS_PER_SECOND = 3 -- avg words per mintue in russian = 184. 184/60 = 3.067. so ~3 words a mintue
+
+-- MCM
+MIN_CAPTION_OPACITY = 0
+MAX_CAPTION_OPACITY = 255
+FADE_TIME = 2
+MAX_HEAR_DIST = 35
+ENABLE_SUBS = true
+ENABLE_FIGHT_SUBS = true
+
+-- Variables
+file_cache = {}
+clr_cache = {}
+recent_npc_deaths = {}
+HUD = nil
+QUEUED_SUBTITLES = {}
+local dbg_lvl = "player"
+ini_script_sound = ini_file_ex("misc\\sound\\script_sound.ltx")
+
+-- Debugging
+function pr(str, ...)
+    if not filter_debug_msg(dbg_lvl) then return end
+    subtitles_utils.dbg_pr("[AS|Main]: %s", str, ...)
+end
+
+-- Main Funcs
+function on_phrase_callback(sound_name, npc)
+    if not ENABLE_SUBS then return end
+    --local name = get_npc_name(npc)
+    --pr("%s is playing: %s", name, sound_name)
+    local parsed_file = parse_sound_file(sound_name)
+    subtitle_them(parsed_file, npc)
+end
+
+function parse_sound_file(file)
+    if is_not_empty(file_cache) and contains(file_cache, file, true) and in_snd_dir(file_cache[file]) then
+        local cached_filename = file_cache[file]
+        -- pr("Using %s cached file for %s\n", file, cached_filename)
+        return cached_filename
+    end
+
+    if in_snd_dir(file) then
+        -- pr("Path exists in sounds dir: %s\n", file and true or false)
+        file_cache[file] = file
+        log_file_cache.normal = log_file_cache.normal + 1
+        return file
+
+    elseif not in_snd_dir(file) then
+
+        -- Split the end digit. Engine adds an extra digit idk why
+        local end_digit = "1"
+        for mtch in file:gmatch("_%d+") do
+            end_digit = mtch:gsub("_", "")
+        end
+        local filename_prefix = file:gsub(end_digit, "")
+        for i=1, end_digit:len() do
+            local new_file = filename_prefix .. end_digit:sub(i, i)
+            if in_snd_dir(new_file) then
+                -- pr("After Spliting: %s, found: %s\n", file, new_file)
+                log_file_cache.split = log_file_cache.split + 1
+                file_cache[file] = new_file
+                return new_file
+            end
+        end
+
+        -- Try to walk back end_digit 
+        local end_digits = get_end_digits(file)
+        for i=1, #end_digits do
+            local end_digit = end_digits[#end_digits + 1 - i]
+            local end_digit_num = tonumber(end_digit)
+
+            if end_digit_num > 0 then
+                -- pr("Walking back end digit on soundname from %s to 1\n", end_digit_num)
+                for l=1, end_digit_num do
+                    local prefix = file:gsub("%d+$", "")
+                    local new_file = prefix .. tostring(end_digit_num + 1 - l)
+                    -- pr("Trying path: %s", new_file)
+                    if in_snd_dir(new_file) then
+                        -- pr("Walked back end digit on soundname and found: %s\n", new_file)
+                        file_cache[file] = new_file
+                        log_file_cache.norm_walkback = log_file_cache.norm_walkback + 1
+                        return new_file
+                    end
+                end
+            end
+        end
+        
+        -- Engine also jumbles up fight paths, feel like it's used as a queue in string form
+        -- the last part that includes fight should be partnered with the inital sound prefix
+        -- Example str: characters_voice\human\csky_1\fight\attack\attack_,fight\attack\attack_one_,fight\fire\fire_7
+        
+        local start, fin = file:find("fight")
+        if start then
+            -- pr("Parsing weird fight string: %s", file)
+            local prefix = file:sub(0, start - 1)
+            local fight_str = file:sub(start, file:len())
+            
+            local end_digits = ""
+            local tkns = {}
+            for a, b in pairs(split(fight_str, ",")) do
+                tkns[#tkns + 1] = b:gsub("%d+$", "")
+            end
+            
+            local end_digits = get_end_digits(file)
+
+            for i=1, #tkns do
+                for j=1, #end_digits do
+                    local fight_tkn = tkns[#tkns + 1 - i]
+                    local end_digit = end_digits[#end_digits + 1 - j]
+                    local fight_file = prefix .. fight_tkn .. end_digit
+
+                    -- pr("Trying path: %s", fight_file)
+                    if in_snd_dir(fight_file) then
+                        -- pr("Found Weird Fight String: %s\n", fight_file)
+                        log_file_cache.fight = log_file_cache.fight + 1
+                        file_cache[file] = fight_file
+                        return fight_file
+                    else
+                        local end_digit_num = tonumber(end_digit)
+                        if end_digit_num > 0 then
+                            -- pr("Walking back end digit from %s to 1", end_digit_num)
+                            for l=1, end_digit_num do
+                                fight_file = prefix .. fight_tkn .. tostring(end_digit_num + 1 - l)
+                                if in_snd_dir(fight_file) then
+                                    -- pr("Walked back end digit and found: %s\n", fight_file)
+                                    file_cache[file] = fight_file
+                                    log_file_cache.fight_walkback = log_file_cache.fight_walkback + 1
+                                    return fight_file
+                                end
+                            end
+                        end
+                    
+                    end
+                end
+            end
+        end
+        -- pr("Invalid path: %s\n", file)
+        log_file_cache.invalid = log_file_cache.invalid + 1
+    end
+end
+
+function subtitle_them(path, npc)
+    if not path or not npc then return end
+    if not db.actor then return end
+    
+    local npc_id = npc:id()
+    if npc_id == AC_ID then return end
+    --local name = get_npc_name(npc)
+    local xml_id = path_to_xml(path)
+    local xml_text = gts(xml_id)
+    local snd = sound_object(path)
+    local length = snd:length()
+
+    local subtitle_info = {
+        xml_id = xml_id,
+        xml_text = xml_text,
+        length = length,
+        path = path,
+        npc_id = npc_id,
+        tokens = xml_to_tokens(xml_text),
+        sound_duration = length + time_global(),
+        show_time = length + (FADE_TIME * 1000) + time_global(),
+        id = strformat("%s_%s", npc_id, xml_id),
+        caption_tmr = 0,
+        fade_tmr = 0,
+        caption_opacity = MAX_CAPTION_OPACITY,
+        tokens_added = 0,
+        decreases = calc_decreases(MAX_CAPTION_OPACITY)
+    }
+    subtitle_info.token_size = #subtitle_info.tokens
+    subtitle_info.decreases_num = #subtitle_info.decreases
+    
+    if not validate_subtitle(subtitle_info) then return end
+    queue_subtitle(subtitle_info, npc)
+end
+
+function validate_subtitle(info)
+    set_debug_level("all")
+    if info.xml_text == info.xml_id then
+        pr("No xml text found for %s", info.xml_id)    
+        return false
+    end
+
+    if contains(exclude_subs, info.xml_text) then 
+        pr("Invalid subtitle: %s", info.xml_id)
+        return false
+    end
+
+    if not ENABLE_FIGHT_SUBS and info.xml_id:find("fight") then
+        return false
+    end
+    
+
+    return true
+end
+
+function queue_subtitle(info)
+    set_debug_level("dev")
+    local id = info.npc_id
+    if not contains(QUEUED_SUBTITLES, id, true) then
+        QUEUED_SUBTITLES[id] = {}
+        pr("init subs: %s", id)
+    end
+    pr("queuing subs for: %s", id)
+    QUEUED_SUBTITLES[id][#QUEUED_SUBTITLES[id] + 1] = info
+end
+
+function xml_to_tokens(xml_text, sep)
+    local words = get_word_tokens(xml_text, sep)
+    local sub_tokens = get_sub_tokens(words)
+    return sub_tokens
+end
+
+function get_word_tokens(text, sep)
+    sep = sep and sep or "%s"
+    local words = {}
+    local ending_mark = "[%.?!,]$"
+    local line_break = "\n"
+    for idx, tkn in pairs(split(text, sep)) do
+        if tkn:find(ending_mark) then
+            for mtch in tkn:gmatch(ending_mark) do
+                local end_char = mtch .. "$"
+                local rpl = mtch .. line_break
+                words[#words + 1] = tkn:gsub(end_char, rpl)
+            end
+        else
+            words[#words + 1] = tkn
+        end
+    end
+    return words
+end
+
+function get_sub_tokens(words)
+    local tokens = {}
+    --pr("words: %s", print_table(words))
+    if #words % WORDS_PER_SECOND == 0 then
+        --pr("is divisble by %s", WORDS_PER_SECOND)
+        local j = 1
+        for i=1, #words / WORDS_PER_SECOND do
+           tokens[#tokens + 1] = string.format("%s %s %s", words[j], words[j + 1], words[j + 2])
+           j = j + WORDS_PER_SECOND
+        end
+        --pr("tokens: %s", print_table(tokens))
+        return tokens
+    elseif #words > WORDS_PER_SECOND then
+        -- pr("word count: %s", #words)
+        local new_word_count = #words
+        for i=1, new_word_count do
+            new_word_count = new_word_count - 1
+            if new_word_count % WORDS_PER_SECOND == 0 then
+                break
+            end
+        end
+        -- pr("new word count: %s", new_word_count)
+        -- pr("getting main tokens")
+        tokens = get_sub_tokens(table_slice(words, 1, new_word_count))
+        -- pr("getting the remainder")
+        tokens[#tokens + 1] = table.concat(table_slice(words, new_word_count + 1, #words), " ")
+        tokens[#tokens] = tokens[#tokens]:gsub("%s$", "")
+        -- pr("tokens: %s", print_table(tokens))
+        return tokens
+    else
+        return words
+    end
+end
+
+function calc_decreases(opacity)
+    -- pr("calc decreases")
+    local decreases = {}
+    for i=1, FADE_TIME * 1000 do
+        if opacity <= 0 then break end
+        local norm_opacity = opacity / 255
+        local ms_opacity = norm_opacity * 1000
+        local decreased_opacity = ms_opacity - i
+        local new_opacity = (decreased_opacity / 1000) * 255
+        -- pr("Original Opacity: %s, Norm opacity: %s, Ms Opacity: %s, Decreased Opacity: %s, New_opacity: %s\n", opacity, norm_opacity, ms_opacity, decreased_opacity, new_opacity)
+        decreases[i] = new_opacity
+        opacity = new_opacity
+    end
+    return decreases
+end
+
+-- NPC Deaths
+
+function init_npc_death(id)
+    if not contains(recent_npc_deaths, id, true) then
+        recent_npc_deaths[id] = time_global() + 1500
+    end
+end
+
+function remove_npc_death(id)
+    if contains(recent_npc_deaths, id, true) then
+        recent_npc_deaths[id] = nil
+    end
+end
+
+function update_recent_npc_deaths()
+    if is_empty(recent_npc_deaths) then return end
+    local tg = time_global()
+    for id, remove_time in pairs(recent_npc_deaths) do
+        if tg >= remove_time then
+            remove_npc_death(id)
+        end
+    end
+end
+
+function npc_on_death_callback(npc, killer)
+    init_npc_death(npc:id())
+end
+
+function print_file_count()
+    set_debug_level("all")
+    pr("printing file cache count, total: %s\n %s", size_table(log_file_cache), print_table(log_file_cache))
+end
+
+function on_option_change(options)
+    -- FADE_TIME           = options["fade_time"]
+    MAX_HEAR_DIST       = options["hear_dist"]
+    -- WORDS_PER_SECOND    = options["words_per_second"]
+    -- MIN_CAPTION_OPACITY = options["min_caption_opacity"]
+    -- MAX_CAPTION_OPACITY = options["max_caption_opacity"]
+    ENABLE_SUBS         = options["enable_subs"]
+    ENABLE_FIGHT_SUBS   = options["enable_fight_subs"]
+end
+
+function on_game_start()
+    RegisterScriptCallback("on_phrase_callback", on_phrase_callback)
+    RegisterScriptCallback("actor_on_net_destroy", print_file_count)
+    RegisterScriptCallback("npc_on_death_callback", npc_on_death_callback)
+    RegisterScriptCallback("actor_on_update", update_recent_npc_deaths)
+    RegisterScriptCallback("as_on_option_change", on_option_change)
+end
+

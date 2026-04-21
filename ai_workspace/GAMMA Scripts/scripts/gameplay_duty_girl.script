@@ -1,0 +1,136 @@
+local HI = has_alife_info
+local GI = give_info
+local DI = disable_info
+function NI(str)
+	return not (has_alife_info(str))
+end
+
+--[[----------------------------------------------------------------------------------------------------
+	Main
+------------------------------------------------------------------------------------------------------]]
+function duty_girl_init()
+	if (NI("duty_girl_init")) then
+		if not (get_story_se_object("squad_duty_girl")) then
+			local smart = SIMBOARD.smarts_by_names["bar_dolg_general"]
+			local squad = SIMBOARD:create_squad(smart,"squad_duty_girl")
+			--[[
+			if (squad) then
+				for k in squad:squad_members() do
+					local se = k.id and alife():object(k.id)
+					if (se) then
+						local sim = alife()
+						for i=1,65534 do
+							local wpn = sim:object(i)
+							if (wpn and wpn.parent_id and (wpn.parent_id == se.id) and string.find(wpn:name(),"wpn_"))then
+								safe_release_manager.release(wpn)
+							end
+						end
+						alife():create("wpn_groza",se.position,se.m_level_vertex_id,se.m_game_vertex_id,se.id)
+					end
+				end
+			end
+			--]]
+		end
+		if (get_story_se_object("squad_duty_girl")) then
+			GI("duty_girl_init")
+		end
+	end
+end
+
+function anna_no_hip_allowed()
+	local ann = get_story_se_object("stalker_duty_girl")
+	if (ann and alife():has_info(ann.id,"npcx_is_companion")) then
+		local hip = get_story_se_object("devushka")
+		if (hip and alife():has_info(hip.id,"npcx_is_companion")) then
+			local npc = db.storage[ann.id] and db.storage[ann.id].object or level.object_by_id(ann.id)
+			if (npc) then
+				dialogs_axr_companion.remove_companions_from_squad(db.actor,npc)
+			end
+		end
+	else
+		return true
+	end
+end
+
+function actor_on_first_update()
+	duty_girl_init()
+	CreateTimeEvent(AC_ID,"anna_no_hip_allowed",1000,anna_no_hip_allowed)
+end
+
+function npcs_friendly_to_community(npc_1,npc_2,com)
+	local com_1 = npc_1 and character_community(npc_1)
+	local com_2 = npc_2 and character_community(npc_2)
+	if (com_1 and com_2 and (not game_relations.is_factions_enemies(com_1,com)) and (not game_relations.is_factions_enemies(com_2,com))) then
+		return true
+	end
+	return false
+end
+
+function npc_on_before_hit(npc,shit,bone_id,flags)
+	if (npc and string.find(npc:name(),"stalker_duty_girl")) then
+		flags.ret_value = false
+	end
+end
+
+function on_enemy_eval(npc,ene,flags)
+	if (npc:has_info("npcx_is_companion") or ene:has_info("npcx_is_companion")) then
+		local com = character_community(db.actor)
+		if (com and npcs_friendly_to_community(npc,ene,com)) then
+			flags.override = true
+			flags.result = false
+		end
+	end
+end
+--[[
+function npc_on_choose_weapon(npc,cur_wpn,flags)
+    if not (npc and unique_character_storage[npc:section()] and unique_character_storage[npc:section()].weapon) then
+		return
+	end
+	
+	local wpn_section = unique_character_storage[npc:section()].weapon
+	
+	if not (wpn_section and (wpn_section ~= "") and (wpn_section ~= "nil")) then
+		return
+	end
+	
+	if (cur_wpn and (cur_wpn:section() == wpn_section)) then
+		return
+	end
+	
+	local function itr(npc,itm)
+		if (itm and (itm:section() ~= wpn_section) and IsWeapon(itm)) then
+			local se = alife():object(itm:id())
+			if (se) then
+				safe_release_manager.release(se)
+			end
+		end
+	end
+	npc:iterate_inventory(itr,npc)
+	
+	if (npc:object(wpn_section)) then
+		return
+	end
+	alife():create(wpn_section,npc:position(),npc:level_vertex_id(),npc:game_vertex_id(),npc:id())
+end
+--]]
+
+--[[----------------------------------------------------------------------------------------------------
+	Registers
+------------------------------------------------------------------------------------------------------]]
+function on_game_start()
+	RegisterScriptCallback("actor_on_first_update",actor_on_first_update)
+	RegisterScriptCallback("npc_on_before_hit",npc_on_before_hit)
+	RegisterScriptCallback("on_enemy_eval",on_enemy_eval)
+	--RegisterScriptCallback("npc_on_choose_weapon",npc_on_choose_weapon)
+end
+
+--[[----------------------------------------------------------------------------------------------------
+	Debug
+------------------------------------------------------------------------------------------------------]]
+--[[
+cmd = debug_cmd_list.command_get_list()
+
+function cmd.chan()
+	duty_girl_init()
+end
+--]]

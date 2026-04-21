@@ -1,0 +1,86 @@
+
+; trader
+![animpoint@stand]
+on_info2 = {=trader_sleep_time} beh@xcvb_sleep_1
+
+[beh@xcvb_sleep_1]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+path_end = loop
+
+on_info = {!trader_sleep_time} animpoint@stand
+meet = no_meet
+combat_ignore_cond = {=is_warfare} false, {=actor_true_enemy =check_enemy_name(actor)} false, true
+combat_ignore_keep_when_attacked = {=is_warfare} false, true
+invulnerable = {=is_warfare} false, {!actor_true_enemy} true, false
+gather_items_enabled = false
+help_wounded_enabled = false
+corpse_detection_enabled = false
+
+pt1 = 20000, sleep | 		pos: -39.9, 8.3851, 36.4 	 	 look: -39.126, 7.3797, 35.4512 
+
+
+; mechanic
+![animpoint@stand2]
+on_info4 = {=mechanic_sleep_time} beh@xcvb_sleep_2
+
+[beh@xcvb_sleep_2]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+path_end = loop
+
+on_info = {!mechanic_sleep_time} animpoint@stand2
+meet = no_meet
+combat_ignore_cond = {=is_warfare} false, {=actor_true_enemy =check_enemy_name(actor)} false, true
+combat_ignore_keep_when_attacked = {=is_warfare} false, true
+invulnerable = {=is_warfare} false, {!actor_true_enemy} true, false
+gather_items_enabled = false
+help_wounded_enabled = false
+corpse_detection_enabled = false
+
+pt1 = 20000, sleep | 		pos: -51.8, 8.3851, 36.4 	 	 look: -51.7647, 7.386, 35.1063 
+
+
+; medic
+![animpoint@medic]
+on_info = {=medic_sleep_time} beh@xcvb_sleep_3
+
+[beh@xcvb_sleep_3]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+path_end = loop
+
+on_info = {!medic_sleep_time} animpoint@medic
+meet = no_meet
+combat_ignore_cond = {=is_warfare} false, {=actor_true_enemy =check_enemy_name(actor)} false, true
+combat_ignore_keep_when_attacked = {=is_warfare} false, true
+invulnerable = {=is_warfare} false, {!actor_true_enemy} true, false
+gather_items_enabled = false
+help_wounded_enabled = false
+corpse_detection_enabled = false
+
+pt1 = 20000, sleep | 		pos: -53.9, 8.2688, 28.7 	 	 look: -56.442, 7.3862, 28.8404 

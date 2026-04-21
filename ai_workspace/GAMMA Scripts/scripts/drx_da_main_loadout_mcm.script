@@ -1,0 +1,30 @@
+-- Add anomaly detector to loadouts
+local loadouts = new_game_loadout_injector_mcm
+
+loadouts.add_item({
+	section = "detector_anomaly",
+	points = 150,
+	faction = {
+		"stalker",
+		"dolg",
+		"freedom",
+		"csky",
+		-- "ecolog",
+		"killer",
+		"army",
+		"bandit",
+		"monolith",
+		"renegade",
+		"greh",
+		"isg",
+	},
+})
+
+loadouts.add_item({
+	section = "detector_anomaly",
+	points = 150,
+	faction = {
+		"ecolog",
+	},
+	add_to_inventory = true,
+})

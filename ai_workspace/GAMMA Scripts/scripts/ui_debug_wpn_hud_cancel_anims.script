@@ -1,0 +1,17 @@
+cancel_anims = {
+	anm_idle_aim = true,
+	anm_idle_g_aim = true,
+}
+
+function actor_on_hud_animation_play(anm_table)
+	local gui = ui_debug_wpn_hud.GUI
+	if gui and gui:IsShown() then
+		if (cancel_anims[anm_table.anm_name]) then
+			anm_table.anm_speed = 0.000000000000001
+		end
+	end
+end
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_hud_animation_play", actor_on_hud_animation_play)
+end

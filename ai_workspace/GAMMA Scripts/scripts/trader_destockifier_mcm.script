@@ -1,0 +1,35 @@
+op = {
+	id = "trader_destockifier", sh = true, gr = {
+    	{id = "banner", type = "slide", text = "ui_mcm_trader_destockifier_title", size = {512, 50}, spacing = 20},
+    	{id = "enable", type = "check", val = 1, def = true},
+    	{id = "debug_mode", type = "check", val = 1, def = false},
+    	{id = "divider", type = "line"},
+    	{id = "max_items_help", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_trader_destockifier_max_items_help"},
+    	{id = "divider", type = "line"},
+        {id = "max_guns", type = "track", val = 2, min = -1, max = 7, step = 1, def = 4},
+        {id = "max_handguns", type = "track", val = 2, min = -1, max = 6, step = 1, def = 3},
+        {id = "max_weapon_attachments", type = "track", val = 2, min = -1, max = 6, step = 1, def = 3},
+        {id = "max_knives", type = "track", val = 2, min = -1, max = 6, step = 1, def = 2},
+        {id = "max_explosives", type = "track", val = 2, min = -1, max = 12, step = 1, def = 7},
+        {id = "max_outfits", type = "track", val = 2, min = -1, max = 6, step = 1, def = 3},
+        {id = "max_helmets", type = "track", val = 2, min = -1, max = 6, step = 1, def = 2},
+        {id = "max_backpacks", type = "track", val = 2, min = -1, max = 6, step = 1, def = 2},
+        {id = "sell_only_guns_ammo", type = "check", val = 1, def = false},
+        {id = "max_ammo_percent", type = "track", val = 2, min = -10, max = 100, step = 10, def = 100},
+        {id = "divider", type = "line"},
+        {id = "max_food", type = "track", val = 2, min = -1, max = 28, step = 1, def = 16},
+        {id = "max_heal", type = "track", val = 2, min = -1, max = 28, step = 1, def = 18},
+        {id = "max_repair", type = "track", val = 2, min = -1, max = 28, step = 1, def = 20},
+        {id = "divider", type = "line"},
+        {id = "randomize", type = "check", val = 1, def = true},
+        {id = "randomize_deviation", type = "track", val = 2, min = 10, max = 100, step = 10, def = 20},
+        {id = "divider", type = "line"},
+        {id = "compatibility_help", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_trader_destockifier_compatibility_help"},
+        {id = "divider", type = "line"},
+        {id = "max_mags", type = "track", val = 2, min = -1, max = 12, step = 1, def = 6},
+    }
+}
+
+function on_mcm_load()
+    return op
+end

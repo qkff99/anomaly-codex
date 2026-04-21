@@ -1,0 +1,1737 @@
+-- demonized Mugging Squads
+-- Generated with AnomalyModCreator
+
+-- ; Original description by billwa
+-- ; Basically they yell a quote, surround you and a guy comes up to talk and you have 3 dialogue [ptions. Pay  mugging fee, get forced into kidnapping and the classic resist.
+-- ; Obviously when if you start shooting them before you're they're able to open up their yappers, all bets are off and it's a normal gun fight
+-- ; Monolith and sin will try kidnapping you always, no mugging. If you agree, it should bring you back to a base where all of your gear is removed until you convert and you have two options before you do, agree or fight, but lmao with no gear.
+-- ; It is entirely random and happens anywhere on the map except interiors like labs or main
+
+-- For the give me stuff part, it is possible to have the most common outcome being money/one item and then a rare chance of them taking all your shit
+-- Oh, and playing a sound upon mugging, can you make it like only a 50% chance that it happens
+
+-- Settings
+delaySpawn = 30 -- real seconds
+delayState = 5	-- real seconds
+
+local id = 70000
+local idOffset = 0
+local gizmos = {
+	sphereSquad = nil,
+}
+local debugMode = false
+local function printf(s, ...)
+	if debugMode then
+		-- _G.printf(s, ...)
+	end
+	return string.format(s, ...)
+end
+local function print_tip(...)
+	if debugMode and _G.print_tip then
+		return _G.print_tip(...)
+	end
+end
+local function print_err(s, ...)
+	s = "!" .. s
+	if debugMode and _G.print_tip then
+		_G.print_tip(s, ...)
+	else
+		-- _G.printf(s, ...)
+	end
+	return string.format(s, ...)
+end
+
+local gizmosInitialized = false
+function initializeGizmos()
+	if gizmosInitialized then return end
+	gizmosInitialized = true
+
+	gizmos.sphereSquad = debug_render.add_object(id + idOffset, DBG_ScriptObject.sphere):cast_dbg_sphere()
+end
+function reset(gizmosArr, force)
+	if debugMode or force then
+		if gizmosArr then
+			for i = 1, #gizmosArr do
+				local gizmo = gizmosArr[i]
+				if gizmos[gizmo] then
+					local v = gizmos[gizmo]
+					if type(v) == "table" then
+						for i = 1, #v do
+							local p = v[i]
+							p.visible = false
+						end
+					else
+						v.visible = false
+					end
+				end
+			end
+		else
+			for k, v in pairs(gizmos) do
+				if type(v) == "table" then
+					for i = 1, #v do
+						local p = v[i]
+						p.visible = false
+					end
+				else
+					v.visible = false
+				end
+			end		
+		end
+	end
+end
+function toggleDebugMode()
+	debugMode = not debugMode
+	if debugMode then
+		initializeGizmos()
+	else
+		reset(nil, true)
+	end
+end
+
+-- MCM
+function load_defaults()
+	local t = {}
+	local op = demonized_mugging_squads_mcm.op
+	for i, v in ipairs(op.gr) do
+		if v.def ~= nil then
+			t[v.id] = v.def
+		end
+	end
+	return t
+end
+
+settings = load_defaults()
+
+function load_settings()
+	settings = load_defaults()
+	if ui_mcm then
+		for k, v in pairs(settings) do
+			settings[k] = ui_mcm.get("demonized_mugging_squads/" .. k)
+		end
+	end
+	return settings
+end
+
+local function roundVec(v, num)
+	return vector():set(
+		round_idp(v.x, num),
+		round_idp(v.y, num),
+		round_idp(v.z, num)
+	)
+end
+
+local function shuffle(t)
+   	local random = math.random
+   	for i = #t, 2, -1 do
+     	local j = random(i)
+     	t[i], t[j] = t[j], t[i]
+   	end
+end
+
+activeSquads = {}	-- current active mugging squads
+
+local lastSpawnTime	-- the last time a mugging squad has been spawned
+local currentLevelSmarts = {}
+local linkedLevelSmarts = {}
+
+squadStages = {
+	approach = 1,
+	talk = 2,
+	done = 3,
+}
+
+--====================================< Utilities >====================================--
+function addToActiveSquads(squad)
+	activeSquads[squad.id] = {
+		name = squad:section_name(),
+		stage = squadStages.approach
+	}
+end
+
+function setSquadStage(squad, num)
+	activeSquads[squad.id].stage = num
+end
+
+function invalidateSquad(squad)
+	print_tip("-demonized_mugging_squads squad %s is invalidated", squad.id)
+	activeSquads[squad.id] = nil
+end
+
+function setSquadAsEnemy(squad)
+	print_tip("-demonized_mugging_squads squad %s is enemy!", squad.id)
+	if squad.force_set_goodwill then
+		squad:force_set_goodwill(-5000, db.actor)
+	end
+	for k in squad:squad_members() do
+		local obj = level.object_by_id(k.id)
+		local se_obj = alife_object(k.id)
+		if obj then
+			obj:set_relation(game_object.enemy, db.actor)
+			obj:force_set_goodwill(-5000, db.actor)
+		end
+		if se_obj then
+			se_obj:force_set_goodwill(-5000, db.actor)
+		end
+	end
+end
+
+function getFactions()
+	local factions = {}
+	for k, v in pairs(settings) do
+		if k:find("^muggingFactionsCanSpawn_") and v == true then
+			local faction = k:gsub("^muggingFactionsCanSpawn_", "")
+			factions[#factions + 1] = faction
+		end
+	end
+	return factions
+end
+
+function isFactionsEnemies(f1, f2)
+	return not game_relations.is_factions_friends(f1, f2)
+end
+
+function getSafeLevels()
+	return demonized_mugging_squads_options.safe_levels
+end
+
+function getSafeSmarts()
+	return demonized_mugging_squads_options.safe_smarts
+end
+
+function getFactionSquads()
+	local squads = {}
+	for k, v in pairs(demonized_mugging_squads_options.faction_squads) do
+		squads[k] = str_explode(v, ",")
+	end
+	return squads
+end
+
+function getDangerRanks()
+	return demonized_mugging_squads_options.danger_ranks
+end
+
+function getDangerReputations()
+	return demonized_mugging_squads_options.danger_reputations
+end
+
+function trySpawn()
+	local math_random = math.random
+	-- gather factions
+	local enemy_factions = {}
+	local factions = getFactions()
+	for i, faction in ipairs(factions) do
+		if settings.allowSameSquads or get_actor_true_community() ~= faction then
+			if settings.allowFriendlySquads or isFactionsEnemies(get_actor_true_community(), faction) then
+				enemy_factions[#enemy_factions + 1] = faction
+			end
+		end 
+	end
+
+	if is_empty(enemy_factions) then
+		print_err("-demonized_mugging_squads.trySpawn / no faction is possible to spawn, skip")
+		return
+	end
+
+	local picked_squad = enemy_factions[math_random(#enemy_factions)]
+
+	-- gather smarts
+	local spawn_smrts = {}
+	for name, smart in pairs(currentLevelSmarts) do
+		local dist = smart.position:distance_to_sqr(db.actor:position())
+		local spawnDistance = settings.spawnDistance * settings.spawnDistance
+		if dist > spawnDistance then
+			local smrt = SIMBOARD.smarts[smart.id]
+			if smrt then
+				local pass = true
+				for k, v in pairs(smrt.squads) do
+					local squad = alife_object(k)
+					if squad and squad.current_target_id and squad.current_target_id == smart.id and not squad:get_script_target() then
+						pass = false
+						break
+					end
+				end
+				if pass then
+					-- print_tip("-demonized_mugging_squads.trySpawn / [%s] is a possible smart found, distance: %s", name, dist)
+					spawn_smrts[#spawn_smrts+1] = name
+				end
+			end
+		end
+	end
+	
+	if #spawn_smrts > 0 then
+		local squads = getFactionSquads()[picked_squad]
+
+		if is_empty(squads) then
+			print_err("-demonized_mugging_squads.trySpawn / no squad can be found for faction %s, skip", picked_squad)
+			return
+		end
+
+		local squad = squads[math_random(#squads)]
+		local spawn_smrt = spawn_smrts[math_random(#spawn_smrts)]
+		local level = alife():level_name(game_graph():vertex(alife_object(SIMBOARD.smarts_by_names[spawn_smrt].id).m_game_vertex_id):level_id())
+		print_err("-demonized_mugging_squads.trySpawn / [%s] has been spawned in [%s], level [%s]", squad, spawn_smrt, level)
+	
+		-- Spawn squad and target the player
+		local sq = SIMBOARD:create_squad(SIMBOARD.smarts_by_names[spawn_smrt], squad)
+		sq.scripted_target = "actor"
+		sq.rush_to_target = true
+		
+		addToActiveSquads(sq)
+		lastSpawnTime = game.get_game_time()
+	else
+		print_err("-demonized_mugging_squads.trySpawn / no smart can be found to spawn squad of %s", picked_squad)
+	end
+end
+
+function attack(state, rush)
+	for k, v in pairs(activeSquads) do
+		local se = alife_object(k)
+		if se and se:section_name() == v.name then
+			se.scripted_target = state and v.stage == squadStages.approach and "actor" or nil
+			se.rush_to_target = rush == true and v.stage == squadStages.approach
+
+			print_tip("-demonized_mugging_squads. - target: %s - rush: %s, %s",
+				se.scripted_target,
+				se.rush_to_target, 
+				(function()
+					local commander = se:commander_id() and level.object_by_id(se:commander_id())
+					if commander then
+						return ("dist %s"):format(commander:position():distance_to(db.actor:position()))
+					else
+						local se_obj = alife_object(se:commander_id())
+						if se_obj then
+							local actor_level = level.name()
+							local squad_level = alife():level_name(game_graph():vertex(se_obj.m_game_vertex_id):level_id())
+							return ("level %s, actor level %s"):format(squad_level, actor_level)
+						else
+							return "failed to get distance, no commander se_obj"
+						end
+					end
+				end)()
+			)
+		end
+	end
+end
+
+function updateTalk()
+	if not load_var(db.actor, "force_all_talk", false) then
+		print_err("-demonized_mugging_squads actor not talking, updateTalk stop")
+		UnregisterScriptCallback("actor_on_update", updateTalk)
+		return
+	end
+	if not db.actor:is_talking() then
+		print_err("-demonized_mugging_squads actor stop talking, force_all_talk false and updateTalk stop")
+		save_var(db.actor, "force_all_talk", false)
+		UnregisterScriptCallback("actor_on_update", updateTalk)
+		return
+	end
+end
+
+function forceTalk(npc)
+	if not npc:is_talking() then
+		local meet = db.storage[npc:id()].meet
+		if meet then
+			local use = meet.meet_manager.use
+			meet.meet_manager.use = "true"
+		end
+
+		npc:enable_talk()
+		npc:set_start_dialog("muggingDialogGiveMeYourShit")
+		RegisterScriptCallback("actor_on_update", updateTalk)
+		save_var(db.actor, "force_all_talk", true)
+		npc:allow_break_talk_dialog(false)
+	    db.actor:run_talk_dialog(npc, true)
+	end
+end
+
+--====================================< Callbacks >====================================--
+function spawnTimer()
+	--printf("-mugging_squads.spawnTimer called")
+	ResetTimeEvent("demonized_mugging_squads", "mugging_squad_spawn", delaySpawn)
+	
+	local num = settings.maxActiveSquads
+
+	-- -- check rank
+	-- local rank = ranks.get_obj_rank_name(db.actor)
+	-- if getDangerRanks()[rank] then 
+	-- 	num = num + getDangerRanks()[rank]
+	-- end
+	
+	-- -- check reputaion
+	-- local reputaion = utils_obj.get_reputation_name(db.actor:character_reputation())
+	-- if getDangerReputations()[reputaion] then 
+	-- 	num = num + getDangerReputations()[reputaion]
+	-- end
+	
+	-- -- ignore if rank or rep doesn't meet the requirements
+	-- if (num == 0) then
+	-- 	return false
+	-- end
+	
+	-- read date
+	local current_time = game.get_game_time()
+	if not lastSpawnTime then
+		lastSpawnTime = current_time
+		return false
+	end
+	
+	-- ignore if timer hasn't been reached yet
+	local delay = settings.delayBetweenSpawns * 60 * 60
+	if current_time:diffSec(lastSpawnTime) < delay then
+		return false
+	end
+	
+	-- try to spawn if there isn't enough mugging squads
+	if size_table(activeSquads) < num then
+		print_tip("-demonized_mugging_squads.spawnTimer, is valid to spawn")
+		trySpawn()
+	end
+	
+	return false
+end
+
+function isSquadCommanderVisible(squad)
+	local obj = squad:commander_id() and level.object_by_id(squad:commander_id())
+	if obj then
+		if obj:position():distance_to_sqr(db.actor:position()) < 50^2 then
+			return true
+		end
+
+		local screenpos = game.world2ui(obj)
+		if screenpos.x > 0 and screenpos.x < 1024 and screenpos.y > 0 and screenpos.y < 768 then
+			if db.actor:see(obj) then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+function addMoreMembersToSquad(squad, num)
+	-- get squad positions
+	local commander = alife_object(squad:commander_id())
+	local pos = commander.position
+	local lvid = commander.m_level_vertex_id
+	local gvid = commander.m_game_vertex_id
+
+	local g_obj = level.object_by_id(squad:commander_id())
+
+	-- Spawn procedure when game object is available
+	if g_obj then
+		print_tip("-demonized_mugging_squads.addMoreMembersToSquad, game_object is available %s : %s", squad:name(), g_obj:name())
+
+		-- get npc to spawn section
+		local random_spawn = ini_sys:r_string_ex(squad:section_name(), "npc_random")
+		if not random_spawn then
+			print_err("-demonized_mugging_squads.addMoreMembersToSquad, cant add members to %s, no random_spawn", squad:name())
+			return
+		end
+		random_spawn = parse_names(random_spawn)
+
+		print_tip("-demonized_mugging_squads.addMoreMembersToSquad, add members to %s : %s", squad:name(), num)
+		for i = 1, num do
+			local random_sec = random_spawn[math.random(1, #random_spawn)]
+
+			-- add and setup new npc
+			local sim = alife()
+			local pos = g_obj:position()
+			local lvid = g_obj:level_vertex_id()
+			local gvid = g_obj:game_vertex_id()
+			local obj = alife_create(random_sec, pos, lvid, gvid)
+
+			if obj then
+				squad:register_member(obj.id)
+
+				local actor = sim:actor()
+				if (simulation_objects.is_on_the_same_level(obj, actor) and pos:distance_to_sqr(actor.position) <= sim:switch_distance()^2) then
+					db.spawned_vertex_by_id[obj.id] = lvid
+				end
+
+				print_tip("-demonized_mugging_squads.addMoreMembersToSquad, spawned member %s of %s", random_sec, squad:name())
+			else
+				print_err("-demonized_mugging_squads.addMoreMembersToSquad, failed to spawn member %s of %s", random_sec, squad:name())
+			end		
+		end
+
+	-- When isn't
+	else
+		print_tip("-demonized_mugging_squads.addMoreMembersToSquad, game_object is not available, use server object : %s", squad:name())
+
+		-- get squad smart
+		local squad_smart = squad.smart_id and SIMBOARD.smarts[squad.smart_id].smrt
+		if not squad_smart then
+			print_err("-demonized_mugging_squads.addMoreMembersToSquad, cant add members to %s, no smart", squad:name())
+			return
+		end
+
+		-- get npc to spawn section
+		local random_spawn = ini_sys:r_string_ex(squad:section_name(), "npc_random")
+		if not random_spawn then
+			print_err("-demonized_mugging_squads.addMoreMembersToSquad, cant add members to %s, no random_spawn", squad:name())
+			return
+		end
+		random_spawn = parse_names(random_spawn)
+
+		print_tip("-demonized_mugging_squads.addMoreMembersToSquad, add members to %s : %s", squad:name(), num)
+		for i = 1, num do
+			local random_sec = random_spawn[math.random(1, #random_spawn)]
+
+			-- add and setup new npc
+			local new_member_id = squad:add_squad_member(random_sec, pos, lvid, gvid)
+			local se_obj = new_member_id and alife_object(new_member_id)
+			if (se_obj) then
+				print_tip("-demonized_mugging_squads.addMoreMembersToSquad, spawned member %s of %s", random_sec, squad:name())
+				squad_smart:register_npc(se_obj)
+				SIMBOARD:setup_squad_and_group(se_obj)
+			else
+				print_err("-demonized_mugging_squads.addMoreMembersToSquad, failed to spawn member %s of %s", random_sec, squad:name())
+			end
+		end
+
+		squad:update()
+	end
+
+	
+end
+
+-- Simplified parsing of condition list
+defaultUseCond = "{=is_wounded} false, {!is_squad_commander} false, {=actor_enemy} false, {=has_enemy} false, {=dist_to_actor_le(3)} true, false"
+local function parseConditionTable(npc, conditions)
+	for _, v in ipairs(conditions) do
+		local functions = v[2]
+		local val = v[1]
+		if functions then
+			for _, func in ipairs(functions) do
+				local f = func[1]
+				local args = func[3] or {}
+				local requiredResult = func[2] == 3
+				if xr_conditions[f] then
+					local result = not not xr_conditions[f](db.actor, npc, args)
+					local r = result == requiredResult
+					if r then
+						return val
+					end
+				end
+			end
+		else
+			return val
+		end
+	end
+	return false
+end
+function parseCondition(npc, condString)
+	local conditions = xr_logic.parse_condlist(npc, nil, nil, condString)
+	local result = parseConditionTable(npc, conditions)
+	if result == "true" then
+		result = true
+	elseif result == "false" then
+		result = false
+	end
+	return result
+end
+
+-- Check if mugging squad is still valid for mugging
+function isValidActiveSquad(activeSquadId, activeSquadValue)
+	local id = activeSquadId
+	local v = activeSquadValue
+	local se = alife_object(id)
+	local squad = se
+
+	if not se then return false end
+	if se:section_name() ~= v.name then return false end
+	if squad:npc_count() == 0 then return false end
+
+	local allDead = true
+	for k in squad:squad_members() do
+		local npc_se = alife_object(k.id)
+		if npc_se and npc_se:alive() then
+			allDead = false
+			break
+		end
+	end
+	if allDead then return false end
+
+	return true
+end
+
+function stateTimer()
+	ResetTimeEvent("demonized_mugging_squads", "mugging_squad_state", delayState)
+	
+	-- clean
+	local currentActorStage
+	for id, v in pairs(activeSquads) do
+		local se = alife_object(id)
+		local squad = se
+
+		if not isValidActiveSquad(id, v) then
+			print_tip("-demonized_mugging_squads.stateTimer cleaning [%s] | section: %s - actual: %s", id, v.name, se and se:section_name())
+			invalidateSquad(se)
+		else
+			-- If squad is one man -- fill them up to random 2-5
+			if squad:npc_count() <= 1 and not isSquadCommanderVisible(squad) and v.stage == squadStages.approach then
+				local min = 3 - squad:npc_count()
+				local max = 4
+				addMoreMembersToSquad(squad, math.random(min, max))
+			end
+
+			if v.stage == squadStages.talk then
+				currentActorStage = squadStages.talk
+			elseif v.stage == squadStages.done then
+				if not (
+					simulation_objects.is_on_the_same_level(alife():actor(), squad)
+					and isSquadCommanderVisible(squad)
+				) then
+					SIMBOARD:remove_squad(squad)
+					invalidateSquad(squad)
+				end
+			end
+		end
+	end
+
+	if is_empty(activeSquads) then
+		return false
+	end
+
+	-- Don't attack if actor is talking to mugging squad
+	if currentActorStage == squadStages.talk then
+		attack(false, false)
+		return false
+	end
+	
+	-- don't attack if actor is in a safe level
+	if getSafeLevels()[level.name()] then
+		attack(false, false)
+		return false
+	end
+	
+	-- don't attack if actor is in a safe smart
+	local pos = db.actor:position()
+	local se_actor = alife():actor()
+	local safeSmarts = getSafeSmarts()
+	for name, smart in pairs(currentLevelSmarts) do
+		if safeSmarts[name] then
+			local dist = smart.position:distance_to_sqr(pos)
+			local safeSmartDistance = settings.safeSmartDistance * settings.safeSmartDistance
+			if dist < safeSmartDistance then
+				attack(false, false)
+				return false
+			end
+		end
+	end
+	
+	print_tip("-demonized_mugging_squads player is vulnerable to mugging, attack")
+	attack(true, true)
+	
+	return false
+end
+
+function load_state(m_data)
+	local demonized_mugging_squads = m_data.demonized_mugging_squads
+	if not demonized_mugging_squads then
+		return
+	end
+	
+	if DEV_DEBUG and demonized_mugging_squads then
+		for k, v in pairs(demonized_mugging_squads) do
+			print_err("-demonized_mugging_squads # LOADING: Mugging Squad | [%s]: %s", k, v)
+		end
+	end
+	
+	lastSpawnTime = demonized_mugging_squads.last_spawn_time and utils_data.CTime_from_table(demonized_mugging_squads.last_spawn_time) or game.get_game_time()
+	activeSquads = demonized_mugging_squads.active_squads or {}
+	for k, v in pairs(activeSquads) do
+		if type(v) ~= "table" then
+			activeSquads[k] = {
+				name = v,
+				stage = 1
+			}
+		end
+	end
+end
+
+function save_state(m_data)
+	if not lastSpawnTime then
+		return
+	end
+	
+	local demonized_mugging_squads = {}
+	demonized_mugging_squads.last_spawn_time = utils_data.CTime_to_table(lastSpawnTime)
+	demonized_mugging_squads.active_squads = activeSquads or {}
+	
+	if DEV_DEBUG then
+		for k, v in pairs(demonized_mugging_squads) do
+			print_err("-demonized_mugging_squads # SAVING: Mugging Squad | [%s]: %s", k, v)
+		end
+	end
+	
+	m_data.demonized_mugging_squads = demonized_mugging_squads
+end
+
+function server_entity_on_unregister(se_obj, typ)
+	activeSquads[se_obj.id] = nil
+end
+
+function actor_on_first_update()
+	local sim = alife()
+	if debugMode then
+		initializeGizmos()
+	end
+	for name, smart in pairs(SIMBOARD.smarts_by_names) do
+		if smart and simulation_objects.is_on_the_same_level(sim:actor(), smart) then
+			currentLevelSmarts[name] = smart
+		end
+		if smart and simulation_objects.is_on_the_linked_level(sim:actor(), smart) then
+			linkedLevelSmarts[name] = smart
+		end
+	end
+	CreateTimeEvent("demonized_mugging_squads", "mugging_squad_spawn", delaySpawn, spawnTimer)
+	CreateTimeEvent("demonized_mugging_squads", "mugging_squad_state", delayState, stateTimer)
+end
+
+function squad_on_update(squad)
+	local id = squad.id
+	if not activeSquads[id] then return end
+	
+	local commander = squad:commander_id() and level.object_by_id(squad:commander_id())
+	local requiredGoodwill = 0
+
+	if commander then
+		if debugMode then
+			gizmos.sphereSquad.visible = true
+			gizmos.sphereSquad.color = fcolor():set(1, 0, 0, 1)
+		    local scale_mat = matrix():identity():scale(0.1, 0.1, 0.1)
+		    local pos_mat = matrix():translate(commander:position())
+		    local mat = matrix():mul(pos_mat, scale_mat)
+		    gizmos.sphereSquad.matrix = mat
+		end
+		requiredGoodwill = math.max(0, -relation_registry.community_relation(character_community(commander), character_community(db.actor)))
+		-- print_tip("setting goodwill to %s", requiredGoodwill)
+	end
+
+	if squad.force_set_goodwill then
+		squad:force_set_goodwill(requiredGoodwill, db.actor)
+	end
+	for k in squad:squad_members() do
+		local obj = level.object_by_id(k.id)
+		local se_obj = alife_object(k.id)
+		if obj then
+			obj:set_relation(game_object.neutral, db.actor)
+			obj:force_set_goodwill(requiredGoodwill, db.actor)
+		end
+		if se_obj then
+			se_obj:force_set_goodwill(requiredGoodwill, db.actor)
+		end
+	end
+
+	if activeSquads[id].stage == squadStages.approach then
+		local commander = squad:commander_id() and level.object_by_id(squad:commander_id())
+		if commander then
+			local condition = parseCondition(commander, defaultUseCond)
+			if condition then
+				print_err("-demonized_mugging_squads npc %s start to talk, pos %s, actor %s, distance %s",
+					commander:id(),
+					utils_data.vector_to_string(roundVec(commander:position())),
+					utils_data.vector_to_string(roundVec(db.actor:position())),
+					commander:position():distance_to_sqr(db.actor:position())
+				)
+				attack(false, false)
+				setSquadStage(squad, squadStages.talk)
+				if math.random() < settings.talkChance then
+					xr_sound.stop_sounds_by_id(commander:id())
+					xr_sound.set_sound_play(commander:id(), "mugging_hello")
+				end
+				forceTalk(commander)
+			end
+		end
+	end
+end
+
+function npc_on_before_hit(npc, shit, bone_id, flags)
+	if shit.draftsman:id() ~= AC_ID then return end
+
+	local squad = get_object_squad(npc)
+	if not squad then return end
+	if not activeSquads[squad.id] then return end
+
+	invalidateSquad(squad)
+	setSquadAsEnemy(squad)
+end
+
+function on_game_start()	
+	RegisterScriptCallback("save_state", save_state)
+	RegisterScriptCallback("load_state", load_state)
+	RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+	RegisterScriptCallback("server_entity_on_unregister", server_entity_on_unregister)
+
+	RegisterScriptCallback("squad_on_update", squad_on_update)
+	RegisterScriptCallback("npc_on_before_hit", npc_on_before_hit)
+
+	RegisterScriptCallback("actor_on_first_update", load_settings)
+	RegisterScriptCallback("on_option_change", load_settings)
+end
+
+-- Scheme
+actid = 188125
+evaid = 188125
+class "evaluator_muggingSquadBehaviour" (property_evaluator)
+function evaluator_muggingSquadBehaviour:__init(npc, name, storage) super (nil, name)
+	self.st = storage
+end
+
+function evaluator_muggingSquadBehaviour:evaluate()
+	local npc = self.object
+	
+	if not npc:alive() then 
+		return false 
+	end 
+	
+	if IsWounded(npc) then 
+		return false 
+	end
+
+	if not db.actor then
+		return false
+	end
+
+	if not db.actor:alive() then
+		return false
+	end
+
+	local squad = get_object_squad(npc)
+	if not squad then return false end
+	if not activeSquads[squad.id] then return false end
+
+	local sq = activeSquads[squad.id]
+	if sq.stage == squadStages.talk or sq.stage == squadStages.done then
+		return true
+	end
+
+	return false
+end
+
+class "action_muggingSquadBehaviour" (action_base)
+function action_muggingSquadBehaviour:__init (npc, name, storage)
+	super(nil, name)
+	self.st = storage
+end
+function action_muggingSquadBehaviour:initialize()
+	action_base.initialize(self)
+
+	local npc = self.object
+	self.squad = get_object_squad(npc)
+	self.movement_type = npc:movement_type()
+	self.body_state = npc:body_state()
+	self.mental_state = npc:mental_state()
+	self.path = npc:path_type()
+
+	self.isCommander = self.squad:commander_id() and level.object_by_id(self.squad:commander_id()) and level.object_by_id(self.squad:commander_id()) == npc:id()
+
+	local activeMembers = {}
+	local squad = self.squad
+	for k in squad:squad_members() do
+		local obj = level.object_by_id(k.id)
+		if obj then
+			activeMembers[#activeMembers+1] = obj
+		end
+	end
+
+	self.squadMembersCount = 0
+	self.squadMemberNum = 1
+	for i, obj in ipairs(activeMembers) do
+		self.squadMembersCount = self.squadMembersCount + 1
+		if obj:id() == npc:id() then
+			self.squadMemberNum = self.squadMembersCount
+		end
+	end
+
+	npc:set_desired_position()
+	npc:set_desired_direction()
+	self.first_update = true
+end
+
+function action_muggingSquadBehaviour:validate(vid)
+	local npc = self.object
+	return vid and vid < 4294967295 and vid >= 0 -- Is existing lvid
+	and npc:accessible(vid) -- Accessible by npc
+	and vid ~= npc:level_vertex_id() -- Not current npc lvid
+	and not db.used_level_vertex_ids[vid] -- Not taken by another entity
+	and math.abs(level.vertex_position(vid).y - npc:position().y) < 2 -- Not higher or lower from npc position than this threshold so npcs wont run vertically
+end
+
+function action_muggingSquadBehaviour:lmove(vid)
+	-- Return if not valid
+	if not self:validate(vid) then 
+		return 
+	end
+
+	local npc = self.object
+	local st = self.st
+
+	if st.vid then 
+		db.used_level_vertex_ids[st.vid] = nil
+		st.vid = nil
+	end
+
+	db.used_level_vertex_ids[vid] = npc:id()
+	npc:set_dest_level_vertex_id(vid)
+	st.vid = vid
+	return vid
+end
+
+function action_muggingSquadBehaviour:findPos()
+	local math_random = math.random
+	local npc = self.object
+	local id = npc:id()
+	local base_point = npc:level_vertex_id()
+	local base_point_pos = npc:position()
+	local tries = 10
+	
+	for i = 1, tries do
+		-- Set new lvid and direction
+		-- Commander stays at the front and talks
+		-- Member #2 goes to the left of player
+		-- Member #3 goes to the right
+		-- Additional members surround player from the front
+		local dir = db.actor:direction()
+
+		if self.squadMemberNum == 2 then
+			dir = vector_rotate_y(dir, math_random(-90, -60))
+		elseif self.squadMemberNum == 3 then
+			dir = vector_rotate_y(dir, math_random(60, 90))
+		else
+			dir = vector_rotate_y(dir, random_choice(math_random(-55, -15), math_random(15, 55)))
+		end
+
+		dir:normalize()
+		local pos = db.actor:position():mad(dir, 2)
+		local dist = pos:distance_to(base_point_pos)
+		dir = vector():set(pos):sub(base_point_pos):normalize()
+
+		for radius = dist, 1, -1 do
+			local lvid = level.vertex_in_direction(base_point, dir, radius)
+			if self:validate(lvid) then
+				self.initial_dir = level.vertex_position(lvid):sub(npc:position()):normalize()
+				return self:lmove(lvid)
+			end
+		end
+	end
+end
+
+function action_muggingSquadBehaviour:execute()
+	local g_pairs = pairs
+	action_base.execute(self)
+
+	local npc = self.object	
+	
+	-- ensure and enforce path type
+	if npc:path_type() ~= game_object.level_path then 
+		npc:set_path_type(game_object.level_path)
+	end
+
+	local squad = activeSquads[self.squad.id]
+	if squad.stage == squadStages.talk then
+		-- Set panic state
+		local bw = npc:active_item()
+		local new_state = "panic"
+		local lvid = self.isCommander and npc:level_vertex_id()
+
+		-- Find new lvid to reach
+		if not self.isCommander then
+			if self.st.vid then
+				if npc:level_vertex_id() == self.st.vid then
+					new_state = "threat_na"
+				else
+					npc:set_dest_level_vertex_id(self.st.vid)
+				end 	
+				lvid = self.st.vid
+			else
+				lvid = self:findPos()
+			end
+		else
+			new_state = "threat_na"
+		end
+
+		-- Set sight in direction of new lvid and confirm the state
+		-- npc:set_sight(look.direction, lvid and level.vertex_position(lvid):sub(npc:position()):normalize() or npc:direction())
+		state_mgr.set_state(npc, new_state, nil, nil, {
+			-- look_position = utils_obj.safe_bone_pos(db.actor, "bip01_head"),
+			look_object = db.actor,
+			-- look_dir = utils_obj.safe_bone_pos(npc, "bip01_head"):sub(utils_obj.safe_bone_pos(db.actor, "bip01_head")):normalize(),
+		}, {
+			fast_set = true,
+			animation = false,
+		})
+	elseif squad.stage == squadStages.done then
+		-- Find a smart for mugging squad to move
+		if not self.chosenSmart then
+			local safeSmarts = getSafeSmarts()
+			local smartCandidates = {}
+			local dir = db.actor:direction()
+			dir.y = 0
+			dir:normalize()
+
+			for name, smart in g_pairs(currentLevelSmarts) do
+				if not safeSmarts[name] then
+					local pos = vector():set(smart.position)
+					local dirToActor = pos:sub(db.actor:position()):normalize()
+					dirToActor.y = 0
+					dirToActor:normalize()
+					if dirToActor:dotproduct(dir) > 0 then
+						smartCandidates[#smartCandidates + 1] = smart
+					end
+				end
+			end
+			if is_empty(smartCandidates) then
+				for name, smart in g_pairs(currentLevelSmarts) do
+					if not safeSmarts[name] then
+						smartCandidates[#smartCandidates + 1] = smart
+					end
+				end
+			end
+			if is_empty(smartCandidates) then
+				for name, smart in g_pairs(currentLevelSmarts) do
+					smartCandidates[#smartCandidates + 1] = smart
+				end
+			end
+
+			local minDist = 0
+			for i, smart in ipairs(smartCandidates) do
+				local dist = smart.position:distance_to_sqr(db.actor:position())
+				if dist > minDist then
+					minDist = dist
+					self.chosenSmart = smart
+				end
+			end
+		end
+
+		if self.chosenSmart then
+			if self.isCommander then
+				if npc:level_vertex_id() == self.chosenSmart.m_level_vertex_id then
+					invalidateSquad(self.squad)
+					return
+				end
+			end
+			local se = alife_object(self.squad.id)
+			se.scripted_target = self.chosenSmart:name()
+			se.rush_to_target = true
+
+			local smart = self.chosenSmart
+			local new_state = "panic"
+			local lvid = smart.m_level_vertex_id
+			self.st.vid = lvid
+
+			npc:set_dest_level_vertex_id(lvid)
+
+			state_mgr.set_state(npc, new_state, nil, nil, {
+				-- look_position = utils_obj.safe_bone_pos(db.actor, "bip01_head"),
+				-- look_object = db.actor,
+				-- look_dir = utils_obj.safe_bone_pos(npc, "bip01_head"):sub(utils_obj.safe_bone_pos(db.actor, "bip01_head")):normalize(),
+			}, {
+				fast_set = false,
+				animation = true,
+			})
+		end		
+	end
+
+	-- First update force movement 
+	if self.first_update then
+		npc:clear_animations()
+		npc:movement_enabled(true)
+		npc:set_movement_type(move.run)
+		npc:set_body_state(move.standing)
+		npc:set_mental_state(anim.panic)
+		self.first_update = false
+	end
+end
+
+function action_muggingSquadBehaviour:finalize()
+    action_base.finalize(self)
+    self.first_update = true
+    self.initial_dir = nil
+	if (self.st.vid) then 
+		db.used_level_vertex_ids[self.st.vid] = nil
+	end
+	self.st.vid = nil
+	self.chosenSmart = nil
+
+	local npc = self.object
+	npc:clear_animations()
+	npc:movement_enabled(true)
+	npc:set_movement_type(self.movement_type)
+	npc:set_body_state(self.body_state)
+	npc:set_mental_state(self.mental_state)
+	-- npc:set_path_type(self.path)
+end
+
+function setup_generic_scheme(npc, ini, scheme, section, stype, temp)
+	local st = xr_logic.assign_storage_and_bind(npc, ini, "muggingSquadBehaviour", section, temp)
+end
+
+function add_to_binder(npc, ini, scheme, section, storage, temp)
+	if not npc then return end
+	local manager = npc:motivation_action_manager()
+	if not manager then return end
+	
+	if not npc:alive() or npc:section() == "actor_visual_stalker" then
+		manager:add_evaluator(evaid, property_evaluator_const(false))
+		temp.needs_configured = false
+		return 
+	end
+
+	local evaluator = evaluator_muggingSquadBehaviour(npc, "eva_muggingSquadBehaviour", storage)
+	temp.action = action_muggingSquadBehaviour(npc, "act_muggingSquadBehaviour", storage)
+	
+	if not evaluator or not temp.action then return end
+	manager:add_evaluator(evaid, evaluator)
+	
+	temp.action:add_precondition(world_property(stalker_ids.property_alive, true))
+	-- temp.action:add_precondition(world_property(stalker_ids.property_danger, false))
+	temp.action:add_precondition(world_property(evaid, true))
+	
+	temp.action:add_effect(world_property(evaid, false))
+	
+	manager:add_action(actid, temp.action)
+	
+	--xr_logic.subscribe_action_for_events(npc, storage, temp.action)
+end
+
+function configure_actions(npc, ini, scheme, section, stype, temp)
+	if not npc then return end
+	local manager = npc:motivation_action_manager()
+	if not manager or not temp.action then return end
+
+	temp.action:add_precondition(world_property(xr_evaluators_id.sidor_wounded_base, false))
+	temp.action:add_precondition(world_property(xr_evaluators_id.wounded_exist, false))
+
+	-- if (_G.schemes["rx_ff"]) then 
+	-- 	temp.action:add_precondition(world_property(rx_ff.evaid, false))
+	-- end
+	if (_G.schemes["gl"]) then
+		temp.action:add_precondition(world_property(rx_gl.evid_gl_reload, false))
+	end
+	-- if (_G.schemes["facer"]) then
+	-- 	temp.action:add_precondition(world_property(xrs_facer.evid_facer, false))
+	-- 	temp.action:add_precondition(world_property(xrs_facer.evid_steal_up_facer, false))
+	-- end
+
+	local action
+	local p = {xr_danger.actid, stalker_ids.action_combat_planner, stalker_ids.action_danger_planner, xr_actions_id.state_mgr + 2, xr_actions_id.alife}
+	
+	for i=1,#p do
+		--printf("ACTION_ALIFE_ID(demonized_muggingSquadBehaviour.configure_actions): " .. tostring(p[i]))
+		action = manager:action(p[i])
+		if (action) then
+			action:add_precondition(world_property(evaid, false))
+		else
+			-- printf("-demonized_mugging_squads axr_panic: no action id p[%s]", i)
+		end
+	end
+end 
+
+function disable_generic_scheme(npc, scheme, stype)
+	local st = db.storage[npc:id()][scheme]
+	if st then
+		st.enabled = false
+	end
+end
+
+function npc_add_precondition(action)
+	if not action then return end
+	action:add_precondition(world_property(evaid, false))
+end
+
+LoadScheme(script_name(), "muggingSquadBehaviour", modules.stype_stalker)
+
+-- Dialogs
+local gt = game.translate_string
+
+local function getNpcAndActor(a, b)
+	local npc = a:id() == AC_ID and b or a
+	local actor = a:id() == AC_ID and a or b
+	return npc, actor
+end
+
+local talkingMuggingSquadInfo
+local function clearTalkingMuggingSquadInfo()
+	talkingMuggingSquadInfo = nil
+	math.randomseed(os.time())
+end
+
+function getRandomTranslatedText(st, faction, defaultSt)
+	faction = faction:gsub("_npc$", "")
+	local s = utils_data.collect_translations(st .. (faction or "") .. "_") 
+	if is_empty(s) then
+		return gt(defaultSt) or ""
+	else
+		return gt(s[math.random(#s)]) or ""
+	end
+end
+
+-- These items will never be requested
+ignoreItemsToMug = {
+	bolt = true,
+	bolt_bullet = true,
+	cash = true,
+}
+
+function relocateEverythingFromActor(npc)
+	local actor = db.actor	
+	local function itr(_, obj)
+		if not ignoreItemsToMug[obj:section()] then
+			local amount = IsItem("multiuse", obj:section()) and obj:get_remaining_uses() or 1
+			news_manager.relocate_item(actor, "out", obj:section(), amount)
+			actor:transfer_item(obj, npc)
+		end
+	end
+	actor:iterate_inventory(itr, actor)
+	dialogs.relocate_money(npc, actor:money(), "out")
+end
+
+
+function chooseRandomItemsFromActor(npc, amount)
+	local actor = db.actor
+	local items = {}
+
+	local function itr(_, obj)
+		if not ignoreItemsToMug[obj:section()] then
+			items[#items + 1] = obj
+		end
+	end
+	actor:iterate_inventory(itr, actor)
+
+	--50% chance that they want max cost items
+	if math.random() < 0.5 then
+		table.sort(items, function(a, b) return a:cost() < b:cost() end)
+	else
+		shuffle(items)
+	end
+
+	talkingMuggingSquadInfo.chosenItems = {}
+	while is_not_empty(items) and amount > 0 do
+		talkingMuggingSquadInfo.chosenItems[#talkingMuggingSquadInfo.chosenItems+1] = table.remove(items)
+		amount = amount - 1
+	end
+	return talkingMuggingSquadInfo.chosenItems
+end
+
+function relocateChosenItemsFromActor(npc, items)
+	local actor = db.actor
+	items = items or {}
+	for _, obj in ipairs(items) do
+		local amount = IsItem("multiuse", obj:section()) and obj:get_remaining_uses() or 1
+		news_manager.relocate_item(actor, "out", obj:section(), amount)
+		actor:transfer_item(obj, npc)
+	end
+end
+
+function relocateRandomMoneyFromActor(npc)
+	local actor = db.actor
+
+	-- 15% chance to request all money
+	if math.random() < 0.15 then
+		dialogs.relocate_money(npc, actor:money(), "out")
+	else
+		--Up to 50% of money, minimum 1000, in 100 fractions
+		local money = actor:money()
+		if money <= 1000 then
+			dialogs.relocate_money(npc, money, "out")
+		else
+			money = math.random(1000, math.floor(money / 2))
+			money = math.max(1000, math.floor(money / 100) * 100)
+			dialogs.relocate_money(npc, money, "out")
+		end
+	end
+end
+
+-- Determine what squad wants from actor
+-- Below are lists of functions that returns a table with texts that will determine what squad wants and a function that will be applied in demonized_mugging_squads_give_my_stuff function
+-- Defaults
+function defaultMuggingOption(squad, npc, actor)
+	local faction = character_community(npc)
+	
+	local whoAreYouText
+	local requestText
+	local requestFunc
+	local agreeText
+	local rejectText
+	local GTFOText
+	local GTFOOkText
+
+	whoAreYouText = function()
+		return getRandomTranslatedText("mugging_who_are_you_", faction, "mugging_who_are_you")
+	end
+	requestText = function()
+		return gt("mugging_give_me_stuff") or ""
+	end
+	requestFunc = function()
+		relocateRandomMoneyFromActor(npc)
+	end
+	agreeText = function()
+		return gt("mugging_here_is_my_stuff") or ""
+	end
+	rejectText = function()
+		return gt("mugging_fuck_you_and_start_fight") or ""
+	end
+	GTFOText = function()
+		return gt("mugging_thank_you") or ""
+	end
+	GTFOOkText = function()
+		return gt("mugging_ok") or ""
+	end
+
+	return {
+		whoAreYouText = whoAreYouText,
+		requestText = requestText, 
+		requestFunc = requestFunc, 
+		agreeText = agreeText, 
+		rejectText = rejectText, 
+		GTFOText = GTFOText, 
+		GTFOOkText = GTFOOkText, 
+	}
+end
+
+-- Get all items from actor
+function allItemsMuggingOption(squad, npc, actor)
+	local faction = character_community(npc)
+
+	local whoAreYouText
+	local requestText
+	local requestFunc
+	local agreeText
+	local rejectText
+	local GTFOText
+	local GTFOOkText
+
+	whoAreYouText = function()
+		return getRandomTranslatedText("mugging_who_are_you_", faction, "mugging_who_are_you")
+	end
+	requestText = function()
+		return getRandomTranslatedText("mugging_give_me_all_stuff_", faction, "mugging_give_me_all_stuff")
+	end
+	requestFunc = function()
+		relocateEverythingFromActor(npc)
+	end
+	agreeText = function()
+		return getRandomTranslatedText("mugging_here_is_all_my_stuff_", faction, "mugging_here_is_all_my_stuff")
+	end
+	rejectText = function()
+		return getRandomTranslatedText("mugging_fuck_you_and_start_fight_", faction, "mugging_fuck_you_and_start_fight")
+	end
+	GTFOText = function()
+		return getRandomTranslatedText("mugging_thank_you_", faction, "mugging_thank_you")
+	end
+	GTFOOkText = function()
+		return getRandomTranslatedText("mugging_finish_", faction, "mugging_finish")
+	end
+
+	return {
+		whoAreYouText = whoAreYouText,
+		requestText = requestText, 
+		requestFunc = requestFunc, 
+		agreeText = agreeText, 
+		rejectText = rejectText, 
+		GTFOText = GTFOText, 
+		GTFOOkText = GTFOOkText, 
+	}
+end
+
+function moneyMuggingOption(squad, npc, actor)
+	local faction = character_community(npc)
+
+	local whoAreYouText
+	local requestText
+	local requestFunc
+	local agreeText
+	local rejectText
+	local GTFOText
+	local GTFOOkText
+	
+	whoAreYouText = function()
+		return getRandomTranslatedText("mugging_who_are_you_", faction, "mugging_who_are_you")
+	end
+	requestText = function()
+		return getRandomTranslatedText("mugging_give_me_money_", faction, "mugging_give_me_money")
+	end
+	requestFunc = function()
+		relocateRandomMoneyFromActor(npc)
+	end
+	agreeText = function()
+		return getRandomTranslatedText("mugging_here_is_my_stuff_", faction, "mugging_here_is_my_stuff")
+	end
+	rejectText = function()
+		return getRandomTranslatedText("mugging_fuck_you_and_start_fight_", faction, "mugging_fuck_you_and_start_fight")
+	end
+	GTFOText = function()
+		return getRandomTranslatedText("mugging_thank_you_", faction, "mugging_thank_you")
+	end
+	GTFOOkText = function()
+		return getRandomTranslatedText("mugging_finish_", faction, "mugging_finish")
+	end
+
+	return {
+		whoAreYouText = whoAreYouText,
+		requestText = requestText, 
+		requestFunc = requestFunc, 
+		agreeText = agreeText, 
+		rejectText = rejectText, 
+		GTFOText = GTFOText, 
+		GTFOOkText = GTFOOkText, 
+	}
+end
+
+function someItemsMuggingOption(squad, npc, actor)
+	local faction = character_community(npc)
+
+	local whoAreYouText
+	local requestText
+	local requestFunc
+	local agreeText
+	local rejectText
+	local GTFOText
+	local GTFOOkText
+	
+	whoAreYouText = function()
+		return getRandomTranslatedText("mugging_who_are_you_", faction, "mugging_who_are_you")
+	end
+	requestText = function()
+		local items = chooseRandomItemsFromActor(npc, math.random(5))
+		local s = getRandomTranslatedText("mugging_give_me_some_item_", faction, "mugging_give_me_some_item")
+		for _, item in ipairs(items) do
+			s = s .. "\\n  " .. ui_item.get_sec_name(item:section())
+		end
+		return s
+	end
+	requestFunc = function()
+		relocateChosenItemsFromActor(npc, talkingMuggingSquadInfo.chosenItems)
+	end
+	agreeText = function()
+		return getRandomTranslatedText("mugging_here_is_my_stuff_", faction, "mugging_here_is_my_stuff")
+	end
+	rejectText = function()
+		return getRandomTranslatedText("mugging_fuck_you_and_start_fight_", faction, "mugging_fuck_you_and_start_fight")
+	end
+	GTFOText = function()
+		return getRandomTranslatedText("mugging_thank_you_", faction, "mugging_thank_you")
+	end
+	GTFOOkText = function()
+		return getRandomTranslatedText("mugging_finish_", faction, "mugging_finish")
+	end
+
+	return {
+		whoAreYouText = whoAreYouText,
+		requestText = requestText, 
+		requestFunc = requestFunc, 
+		agreeText = agreeText, 
+		rejectText = rejectText, 
+		GTFOText = GTFOText, 
+		GTFOOkText = GTFOOkText, 
+	}
+end
+
+function convertToNewFaction(squad, npc, actor)
+	local g_tonumber = tonumber
+	dialogs.break_dialog(npc, actor)
+	invalidateSquad(squad)
+
+	-- Set new community
+	local faction = character_community(npc)
+
+	-- Give default armor
+	local armorPriority = {
+		outfit_novice = 1,
+		outfit_light = 2,
+		outfit_medium = 3,
+		outfit_heavy = 4,
+		outfit_exo = 5,
+	}
+	local currentBestArmor
+	local currentBestArmorPriority = 1
+	local function itr(_, obj)
+		if IsOutfit(obj) then
+			local outfit = obj
+			local repair_type = SYS_GetParam(0, outfit:section(), "repair_type", "")
+			local priority = armorPriority[repair_type] or 1
+			if outfit:condition() >= 0.5 and priority >= currentBestArmorPriority then
+				currentBestArmor = outfit
+				currentBestArmorPriority = priority
+			end
+		end
+	end
+	actor:iterate_inventory(itr, actor)
+	
+	-- Find best suited armor given initial armor
+	local newArmorCandidates = {}
+	local newArmor
+	ini_sys:section_for_each(function(section)
+		local community = SYS_GetParam(0, section, "community", "")
+		local repair_type = SYS_GetParam(0, section, "repair_type", "")
+		if community == faction and armorPriority[repair_type] and armorPriority[repair_type] <= currentBestArmorPriority then
+			newArmorCandidates[#newArmorCandidates + 1] = {
+				section = section,
+				priority = armorPriority[repair_type]
+			}
+		end
+	end)
+
+	-- Filter armor by the best
+	if is_not_empty(newArmorCandidates) then
+		local newArmors = {}
+		local newBestPriority = 1
+		table.sort(newArmorCandidates, function(a, b) return a.priority > b.priority end)
+
+		for i, v in ipairs(newArmorCandidates) do
+			if is_not_empty(newArmors) then
+				if v.priority == newBestPriority then
+					newArmors[#newArmors + 1] = v.section
+				else
+					break
+				end
+			else
+				if v.priority <= currentBestArmorPriority then
+					newBestPriority = v.priority
+					newArmors[#newArmors + 1] = v.section
+				end
+			end
+		end
+
+		if is_empty(newArmors) then
+			print_err("-demonized_mugging_squads Failed to find best suited armor of faction %s, pick random", faction)
+			newArmors[#newArmors + 1] = newArmorCandidates[math.random(#newArmorCandidates)].section
+		end
+
+		newArmor = newArmors[math.random(#newArmors)]
+	else
+		print_err("-demonized_mugging_squads Failed to find any armors of faction %s, dont do anything", faction)
+	end
+
+	-- Set teleport to main faction base
+	local startLocationCandidates = {}
+	local startLocation
+	local ini_map = ini_file("plugins\\new_game_start_locations.ltx")
+	ini_map:section_for_each(function(section)
+		if section:find("^" .. faction .. "_start_location") then
+			local n = ini_map:line_count(section)
+			if n > 0 then
+				for i = 0,n-1 do
+					local res,id,val = ini_map:r_line(section,i,"","")
+					local levelParams = str_explode(val, ",")
+
+					-- Only levels with defined story_only variable is available to ensure same location as in new game screen
+					if levelParams[2] == "true" or levelParams[2] == "false" then
+						print_err("-demonized_mugging_squads add location candidate for %s: %s, %s", faction, id, val)
+						startLocationCandidates[#startLocationCandidates + 1] = {
+							name = id,
+							params = val
+						}
+					end
+				end
+			end
+		end
+	end)
+
+	if is_not_empty(startLocationCandidates) then
+		local location = startLocationCandidates[1]
+		local level = str_explode(location.params, ",")[1]
+		local params = utils_data.collect_section(ini_map, location.name, true)
+		startLocation = {
+			name = location.name,
+			level = level,
+			lvid = g_tonumber(params.lvid),
+			gvid = g_tonumber(params.gvid),
+			x = g_tonumber(params.x),
+			y = g_tonumber(params.y),
+			z = g_tonumber(params.z)
+		}
+	else
+		print_err("-demonized_mugging_squads failed to find start location for faction %s", faction)
+	end
+
+	if not startLocation then
+		return
+	end
+
+	-- If all is well - do it
+	if newArmor then
+		if currentBestArmor then
+			alife_release(currentBestArmor)
+		end
+		local se_obj = alife_create_item(newArmor, actor)
+		CreateTimeEvent("newArmorMoveToRuck", 0, 0, function()
+			local obj = level.object_by_id(se_obj.id)
+			if obj then
+				actor:move_to_slot(obj, 7)
+				return true
+			end
+			return false
+		end)
+	end
+
+	print_err("-demonized_mugging_squads change faction to %s", faction)
+	set_actor_true_community(faction, true)
+	relation_registry.set_community_goodwill(faction, AC_ID, 200)
+
+	-- Give psy helmet if factions are Sin or Monolith
+	if (faction == "greh" or faction == "monolith") and not (db.actor:object("good_psy_helmet") or db.actor:object("bad_psy_helmet")) then
+		alife_create_item("good_psy_helmet", actor)
+		news_manager.relocate_item(actor, "in", "good_psy_helmet")
+	end
+
+	CreateTimeEvent("muggingConvertionChangeLevel", 0, 0.5, function()
+		print_err("-demonized_mugging_squads commence change location to %s: %s: %s;%s;%s, %s, %s", startLocation.name, startLocation.level, round_idp(startLocation.x, 2), round_idp(startLocation.y, 2), round_idp(startLocation.z, 2), startLocation.lvid, startLocation.gvid)
+		ChangeLevel(vector():set(startLocation.x, startLocation.y, startLocation.z), startLocation.lvid, startLocation.gvid, VEC_ZERO, true)
+		clearTalkingMuggingSquadInfo()
+		return true
+	end)
+	
+end
+
+function factionConvertionOption(squad, npc, actor)
+	local faction = character_community(npc)
+
+	local whoAreYouText
+	local requestText
+	local requestFunc
+	local agreeText
+	local rejectText
+	local GTFOText
+	local GTFOOkText
+	
+	whoAreYouText = function()
+		return getRandomTranslatedText("mugging_who_are_you_", faction, "mugging_who_are_you")
+	end
+	requestText = function()
+		return getRandomTranslatedText("mugging_convert_to_us_", faction, "mugging_convert_to_us")
+	end
+	requestFunc = function()
+		convertToNewFaction(squad, npc, actor)
+	end
+	agreeText = function()
+		return getRandomTranslatedText("mugging_convert_agree_", faction, "mugging_convert_agree")
+	end
+	rejectText = function()
+		return getRandomTranslatedText("mugging_fuck_you_and_start_fight_", faction, "mugging_fuck_you_and_start_fight")
+	end
+	GTFOText = function()
+		return getRandomTranslatedText("mugging_thank_you_", faction, "mugging_thank_you")
+	end
+	GTFOOkText = function()
+		return getRandomTranslatedText("mugging_finish_", faction, "mugging_finish")
+	end
+
+	return {
+		whoAreYouText = whoAreYouText,
+		requestText = requestText, 
+		requestFunc = requestFunc, 
+		agreeText = agreeText, 
+		rejectText = rejectText, 
+		GTFOText = GTFOText, 
+		GTFOOkText = GTFOOkText, 
+	}
+end
+
+function dialogs.demonized_mugging_squads_prepare_dialog_info(a, b)
+	local gameTime = game.get_game_time()
+	local Y, M, D, h, m, s, ms = 0, 0, 0, 0, 0, 0, 0
+	Y, M, D, h, m, s, ms = gameTime:get(Y, M, D, h, m, s, ms)
+	local seed = tonumber(Y .. M .. D .. h)
+	math.randomseed(seed)
+
+	local npc, actor = getNpcAndActor(a, b)
+	local squad = get_object_squad(npc)
+	talkingMuggingSquadInfo = {
+		count = squad:npc_count(),
+		squad = squad,
+		faction = character_community(npc),
+		option = pickMuggingOption(squad, npc, actor),
+		seed = seed
+	}
+end
+
+function dialogs.demonized_mugging_squads_text_stop_right_there()
+	local npc = mob_trade.GetTalkingNpc()
+	if npc then
+		local faction = character_community(npc)
+		return getRandomTranslatedText("mugging_stop_right_there_", faction, "mugging_stop_right_there")
+	end
+	return gt("mugging_stop_right_there") or ""
+end
+
+function dialogs.demonized_mugging_squads_text_who_are_you()
+	return talkingMuggingSquadInfo.option.whoAreYouText()
+end
+
+function dialogs.demonized_mugging_squads_text_give_me_stuff()
+	return talkingMuggingSquadInfo.option.requestText()
+end
+
+function dialogs.demonized_mugging_squads_text_here_is_my_stuff()
+	return talkingMuggingSquadInfo.option.agreeText()
+end
+
+function dialogs.demonized_mugging_squads_give_my_stuff()
+	talkingMuggingSquadInfo.option.requestFunc()
+end     
+
+function dialogs.demonized_mugging_squads_text_thank_you_and_gtfo()
+	return talkingMuggingSquadInfo.option.GTFOText()
+end
+
+function dialogs.demonized_mugging_squads_text_ok()
+	return talkingMuggingSquadInfo.option.GTFOOkText()
+end
+
+function dialogs.demonized_mugging_squads_text_fuck_you_and_start_fight()
+	return talkingMuggingSquadInfo.option.rejectText()
+end
+
+function dialogs.demonized_mugging_squads_break_dialog(a, b)
+	dialogs.break_dialog(a, b)
+	local npc, actor = getNpcAndActor(a, b)
+	local squad = get_object_squad(npc)
+	setSquadStage(squad, squadStages.done)
+	clearTalkingMuggingSquadInfo()
+end
+
+function dialogs.demonized_mugging_squads_fuck_you_and_start_fight(a, b)
+	dialogs.break_dialog(a, b)
+	local npc, actor = getNpcAndActor(a, b)
+	local squad = get_object_squad(npc)
+	invalidateSquad(squad)
+	setSquadAsEnemy(squad)
+	if math.random() < settings.talkChance then
+		xr_sound.stop_sounds_by_id(npc:id())
+		xr_sound.set_sound_play(npc:id(), "mugging_fight")
+	end
+	clearTalkingMuggingSquadInfo()
+end
+
+-- Set mugging options per squad here
+factionToMuggingOptions = {}
+factionToMuggingOptions.bandit = function(squad, npc, actor)
+	-- 15% chance that they want all items
+	if math.random() < 0.15 then
+		return allItemsMuggingOption(squad, npc, actor)
+	else
+		-- choose either money or one item
+		if math.random() < 0.5 then
+			return someItemsMuggingOption(squad, npc, actor)
+		else
+			return moneyMuggingOption(squad, npc, actor)
+		end
+	end
+end
+factionToMuggingOptions.renegade = factionToMuggingOptions.bandit
+factionToMuggingOptions.killer = function(squad, npc, actor)
+	return moneyMuggingOption(squad, npc, actor)
+end
+factionToMuggingOptions.isg = factionToMuggingOptions.killer
+factionToMuggingOptions.monolith = function(squad, npc, actor)
+	return factionConvertionOption(squad, npc, actor)
+end
+factionToMuggingOptions.greh = factionToMuggingOptions.monolith
+
+function pickMuggingOption(squad, npc, actor)
+	local faction = character_community(npc)
+	local result = factionToMuggingOptions[faction] and factionToMuggingOptions[faction](squad, npc, actor) or defaultMuggingOption(squad, npc, actor)
+	return result
+end

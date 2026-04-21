@@ -1,0 +1,26 @@
+function on_mcm_load()
+    return {
+        id = 'zone_keeper', gr = {
+            { id= "configuration", text="ui_mcm_zone_keeper_menu_configuration"     	 ,gr={
+                { id= "general" ,sh=true, text="ui_mcm_zone_keeper_menu_configuration_general"     	 ,gr={
+                    {id = 'title', type= 'slide', link= 'ui_options_slider_control', text='ui_mcm_zone_keeper_menu_configuration_general_title', size= {512,50}, spacing= 20},
+                    {id = "debug", type ="check", val=1,def=false},
+                    {id = "line", type = "line"},
+                    {id = "delete_store_help", type = "desc", clr = {200, 200, 255, 200}, text="ui_mcm_zone_keeper_configuration_general_delete_store_help1"},
+                    {id = "delete_store_help", type = "desc", clr = {200, 200, 255, 200}, text="ui_mcm_zone_keeper_configuration_general_delete_store_help2"},
+                    {id = "delete_store", type ="check", val=1,def=false},
+                },},
+            },},
+        }
+    }
+end
+
+function get_config(key)
+    if ui_mcm then return ui_mcm.get('zone_keeper/' .. key) else return defaults[key] end
+end
+
+function set_config(key, value)
+    if ui_mcm then 
+        ui_mcm.set('zone_keeper/' .. key, value)
+    end
+end

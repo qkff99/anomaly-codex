@@ -1,0 +1,47 @@
+local clr_w  = utils_xml.get_color("pda_white")
+
+function item_charges_string(kit, left)
+    if left == nil then
+        left = 0
+    end
+
+    local maximum = kit:get_max_uses()
+    local section = kit:section()
+    local state = ""
+
+    if left <= 0 then
+        local clr = utils_xml.get_color_con(0)
+        state = clr .. game.translate_string("st_repair_notifications_no_charges") .. clr_w
+    else
+        local color_ratio = 100 * tonumber(left)/tonumber(maximum)
+        local clr = utils_xml.get_color_con(color_ratio)
+        state = clr .. left .. clr_w .. "/" .. maximum
+    end
+
+    local r = string.format("%s (%s)", ui_item.get_sec_name(section), state)
+    return r
+end
+
+function item_condition_string(section, left)
+    if left == nil then
+        left = 0
+    end
+
+    local state = ""
+
+    if left <= 0 then
+        local clr = utils_xml.get_color_con(0)
+        state = clr .. game.translate_string("st_repair_notifications_no_charges") .. clr_w
+    else
+        local color_ratio = 100 * tonumber(left)/tonumber(1)
+        local clr = utils_xml.get_color_con(color_ratio)
+        state = clr .. round(left*100) .. "%" .. clr_w .. "/" .. 100 .. "%"
+    end
+
+    local r = string.format("%s (%s)", ui_item.get_sec_name(section), state)
+    return r
+end
+
+function get_disassemble_string(section, con)
+    return "\\n" .. item_condition_string(section, con) .. "\\n" .. game.translate_string("st_dis_text_9")
+end

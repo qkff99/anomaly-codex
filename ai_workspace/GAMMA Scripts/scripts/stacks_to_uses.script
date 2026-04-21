@@ -1,0 +1,20 @@
+function on_game_start()
+	Base_Add_Counter = utils_ui.UICellItem.Add_Counter
+    function utils_ui.UICellItem.Add_Counter(self, xml, obj, sec)
+		Base_Add_Counter(self, xml, obj, sec)
+
+		local is_ammo = IsItem("ammo",sec) and (not IsItem("grenade_ammo",sec))
+		local has_childs = self:HasChild()
+		if is_ammo or not has_childs then return end
+		local uses = obj and obj:get_remaining_uses()
+		if uses and uses >= 1 then
+			for id, c in pairs(self.childs) do
+				local stack_item = get_object_by_id(id)
+				if stack_item and stack_item:get_remaining_uses() and stack_item:get_remaining_uses() >= 1 then
+					uses = uses + stack_item:get_remaining_uses()
+				end
+			end
+			self.cnt:TextControl():SetText("x" .. uses)
+		end
+	end
+end

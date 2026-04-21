@@ -1,0 +1,52 @@
+[squad_duty_girl]:online_offline_group
+npc				= stalker_duty_girl
+faction			= dolg
+story_id		= squad_duty_girl
+logic			= scripts\squad_duty_girl.ltx
+
+;----------------------------------------------------------------------------------------------------
+;	Quests
+;----------------------------------------------------------------------------------------------------
+[squad_duty_girl_hunting_chimera]:online_offline_group
+npc				= chimera_strong4
+faction			= monster
+story_id		= squad_duty_girl_hunting_chimera
+logic			= scripts\task_duty_girl\squad_duty_girl_hunting_chimera.ltx
+
+[squad_duty_girl_monolith_elite_mono]:online_offline_group
+npc_random		= sim_default_monolith_4,sim_default_monolith_3
+npc_in_squad	= 9
+faction			= monolith
+story_id		= squad_duty_girl_monolith_elite_mono
+logic			= scripts\task_duty_girl\squad_duty_girl_monolith_elite.ltx
+
+[squad_duty_girl_monolith_elite_duty]:online_offline_group
+npc_random		= sim_default_duty_3
+npc_in_squad	= 8
+faction			= dolg
+story_id		= squad_duty_girl_monolith_elite_duty
+logic			= scripts\task_duty_girl\squad_duty_girl_monolith_elite.ltx
+
+[squad_duty_girl_capture_the_brirge_mono_1]:online_offline_group
+npc_random		= sim_default_monolith_4,sim_default_monolith_3,sim_default_monolith_3,sim_default_monolith_2
+npc_in_squad	= 10
+faction			= monolith
+story_id		= squad_duty_girl_capture_the_brirge_mono_1
+logic			= scripts\task_duty_girl\squad_duty_girl_capture_the_brirge.ltx
+
+[squad_duty_girl_capture_the_brirge_mono_2]:squad_duty_girl_capture_the_brirge_mono_1
+story_id		= squad_duty_girl_capture_the_brirge_mono_2
+
+[squad_duty_girl_capture_the_brirge_duty]:online_offline_group
+npc_random		= sim_default_duty_3
+npc_in_squad	= 6
+faction			= dolg
+story_id		= squad_duty_girl_capture_the_brirge_duty
+logic			= scripts\task_duty_girl\squad_duty_girl_capture_the_brirge.ltx
+
+[squad_duty_girl_capture_the_brirge_lone]:online_offline_group
+npc_random		= sim_default_stalker_3
+npc_in_squad	= 3
+faction			= stalker
+story_id		= squad_duty_girl_capture_the_brirge_lone
+logic			= scripts\task_duty_girl\squad_duty_girl_capture_the_brirge.ltx

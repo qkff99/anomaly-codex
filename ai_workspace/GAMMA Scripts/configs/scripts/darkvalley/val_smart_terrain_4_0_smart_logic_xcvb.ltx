@@ -1,0 +1,296 @@
+[beh@general]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+gather_items_enabled = true
+help_wounded_enabled = true
+corpse_detection_enabled = true
+meet = meet@general
+wounded = wounded@ignore
+use_camp = false
+path_end = loop
+
+
+[beh@combat]:beh@general
+wait_anim = patrol
+walk_anim = patrol
+jog_anim = patrol
+run_anim = patrol
+sound_idle = state
+
+
+[beh@campfire]:beh@general
+turn_on_campfire = true
+sound_idle = state
+
+[beh@sleep]:beh@general
+gather_items_enabled = false
+corpse_detection_enabled = false
+meet = no_meet
+
+
+[meet@general]
+close_anim 		= nil
+close_victim 	= nil
+far_anim 		= nil
+far_victim 		= nil
+close_distance  = 0
+far_distance 	= 0
+use = {=actor_enemy} false, {=dist_to_actor_le(3)} true, false
+snd_on_use = {!dist_to_actor_le(3)} nil
+meet_on_talking = false
+
+[wounded@ignore]
+hp_state        = 0|wounded_heavy@help_heavy
+hp_state_see    = 0|wounded_heavy@help_heavy
+hp_victim       = 0|nil
+hp_fight        = 0|false
+hp_cover        = 0|false
+
+; =======================
+; ------------- DAY ---------------
+; =======================
+; ------------- 59
+; (guard 1 east)
+[logic@val_4_0_xcvb_day_1]
+active = beh@day_1
+suitable = {!surge_started !is_night} true
+prior = 59
+
+[beh@day_1]:beh@combat
+pt1 = 10000, guard | 		pos: -87.5, 1.4017, -475.3 	 	 look: -81.9527, 0.2268, -471.1777 
+
+
+; (guard 1 north)
+[logic@val_4_0_xcvb_day_2]
+active = beh@day_2
+suitable = {!surge_started !is_night} true
+prior = 59
+
+[beh@day_2]:beh@combat
+pt1 = 10000, guard | 		pos: -117.6, 1.2353, -462.7 	 	 look: -121.8063, 0.0057, -454.5933 
+
+
+; ------------- 58
+; (patrol north - east)
+[logic@val_4_0_xcvb_day_3]
+active = beh@day_3
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[beh@day_3]:beh@combat
+pt1 = 10000, guard | 		pos: -130.2, 1.3777, -463.4 	 	 look: -129.9232, 0.1566, -456.7726 
+pt2 = 10000, guard | 		pos: -95.2, 1.4017, -471.8 	 	 look: -90.4048, 0.3322, -471.186 
+walk_anim = patrol
+jog_anim = patrol
+run_anim = patrol
+
+
+; ------------- 57
+; (campfire 1)
+[logic@val_4_0_xcvb_day_4]
+active = animpoint@day_4
+suitable = {!surge_started !is_night} true
+prior = 57
+
+[animpoint@day_4]
+cover_name = val_smart_terrain_4_0_animpoint_kamp1
+use_camp = true
+turn_on_campfire = true
+
+
+; (campfire 2)
+[logic@val_4_0_xcvb_day_5]
+active = animpoint@day_5
+suitable = {!surge_started !is_night} true
+prior = 57
+
+[animpoint@day_5]
+cover_name = val_smart_terrain_4_0_animpoint_kamp2
+use_camp = true
+turn_on_campfire = true
+
+
+; ------------- 56
+; (guard 1 east)
+[logic@val_4_0_xcvb_day_6]
+active = beh@day_6
+suitable = {!surge_started !is_night} true
+prior = 56
+
+[beh@day_6]:beh@combat
+pt1 = 10000, guard | 		pos: -99.4, 1.2251, -465.5 	 	 look: -90.4991, 0.25, -468.0832 
+
+
+; (guard 1 north)
+[logic@val_4_0_xcvb_day_7]
+active = beh@day_7
+suitable = {!surge_started !is_night} true
+prior = 56
+
+[beh@day_7]:beh@combat
+pt1 = 10000, guard | 		pos: -123.9, 1.5135, -470.4 	 	 look: -128.0343, 0.2202, -459.2881 
+
+
+; ------------- 55
+; (campfire 3)
+[logic@val_4_0_xcvb_day_8]
+active = animpoint@day_8
+suitable = {!surge_started !is_night} true
+prior = 55
+
+[animpoint@day_8]
+cover_name = val_smart_terrain_4_0_animpoint_kamp3
+use_camp = true
+turn_on_campfire = true
+
+
+; (campfire 4)
+[logic@val_4_0_xcvb_day_9]
+active = animpoint@day_9
+suitable = {!surge_started !is_night} true
+prior = 55
+
+[animpoint@day_9]
+cover_name = val_smart_terrain_4_0_animpoint_kamp4
+use_camp = true
+turn_on_campfire = true
+
+
+; (campfire 5)
+[logic@val_4_0_xcvb_day_10]
+active = animpoint@day_10
+suitable = {!surge_started !is_night} true
+prior = 55
+
+[animpoint@day_10]
+cover_name = val_smart_terrain_4_0_animpoint_kamp5
+use_camp = true
+turn_on_campfire = true
+
+
+
+; =======================
+; ------------ NIGHT -------------
+; =======================
+; ------------- 59
+; (guard 1 east)
+[logic@val_4_0_xcvb_night_1]
+active = beh@night_1
+suitable = {!surge_started =is_night} true
+prior = 59
+
+[beh@night_1]:beh@combat
+pt1 = 10000, guard | 		pos: -87.5, 1.4017, -475.3 	 	 look: -81.9527, 0.2268, -471.1777 
+
+
+; (guard 1 north)
+[logic@val_4_0_xcvb_night_2]
+active = beh@night_2
+suitable = {!surge_started =is_night} true
+prior = 59
+
+[beh@night_2]:beh@combat
+pt1 = 10000, guard | 		pos: -117.6, 1.2353, -462.7 	 	 look: -121.8063, 0.0057, -454.5933 
+
+
+; ------------- 58
+; (campfire 1)
+[logic@val_4_0_xcvb_night_3]
+active = animpoint@night_3
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[animpoint@night_3]
+cover_name = val_smart_terrain_4_0_animpoint_kamp1
+use_camp = true
+turn_on_campfire = true
+
+
+; (campfire 2)
+[logic@val_4_0_xcvb_night_4]
+active = animpoint@night_4
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[animpoint@night_4]
+cover_name = val_smart_terrain_4_0_animpoint_kamp2
+use_camp = true
+turn_on_campfire = true
+
+
+; ------------- 57
+; (patrol north - east)
+[logic@val_4_0_xcvb_night_5]
+active = beh@night_5
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[beh@night_5]:beh@combat
+pt1 = 10000, guard | 		pos: -130.2, 1.3777, -463.4 	 	 look: -129.9232, 0.1566, -456.7726 
+pt2 = 10000, guard | 		pos: -95.2, 1.4017, -471.8 	 	 look: -90.4048, 0.3322, -471.186 
+walk_anim = patrol
+jog_anim = patrol
+run_anim = patrol
+
+
+; ------------- 56
+; (campfire 2)
+[logic@val_4_0_xcvb_night_6]
+active = animpoint@night_6
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[animpoint@night_6]
+cover_name = val_smart_terrain_4_0_animpoint_kamp3
+use_camp = true
+turn_on_campfire = true
+
+
+; (sleep 1)
+[logic@val_4_0_xcvb_night_7]
+active = beh@night_7
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[beh@night_7]:beh@sleep
+pt1 = 10000, sleep | 		pos: -128.1, 2.0348, -504.7 	 	 look: -127.9521, 0.9113, -501.8723 
+
+
+; (sleep 2)
+[logic@val_4_0_xcvb_night_8]
+active = beh@night_8
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[beh@night_8]:beh@sleep
+pt1 = 10000, sleep | 		pos: -128.1, 1.949, -506.1 	 	 look: -128.6703, 0.9483, -508.412 
+
+
+
+; ------------- 55
+; (guard 1 east)
+[logic@val_4_0_xcvb_night_9]
+active = beh@night_9
+suitable = {!surge_started =is_night} true
+prior = 55
+
+[beh@night_9]:beh@combat
+pt1 = 10000, guard | 		pos: -99.4, 1.2251, -465.5 	 	 look: -90.4991, 0.25, -468.0832 
+
+
+; (guard 1 north)
+[logic@val_4_0_xcvb_night_10]
+active = beh@night_10
+suitable = {!surge_started =is_night} true
+prior = 55
+
+[beh@night_10]:beh@combat
+pt1 = 10000, guard | 		pos: -123.9, 1.5135, -470.4 	 	 look: -128.0343, 0.2202, -459.2881 

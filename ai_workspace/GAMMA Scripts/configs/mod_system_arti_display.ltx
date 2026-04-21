@@ -1,0 +1,36 @@
+[decor_arti_display]:tch_junk
+class									= II_ATTCH
+kind								    = i_tool
+visual									= dynamics\Decor\arti_display.ogf
+
+description								= st_placeable_arti_display_descr
+inv_name								= st_placeable_arti_display
+inv_name_short							= st_placeable_arti_display
+
+icons_texture							= ui\ui_decor
+inv_grid_x								= 14
+inv_grid_y								= 16
+inv_grid_width							= 3
+inv_grid_height							= 2
+
+cost									= 30000
+inv_weight								= 5
+
+use1_functor         				    = placeable_furniture.place_item
+use1_action_functor  					= placeable_furniture.func_place_item
+
+placeable_type                          = stash
+placeable_section                       = placeable_arti_display
+
+[placeable_arti_display]:inv_backpack
+visual									= dynamics\Decor\arti_display.ogf
+capacity                                = 100
+placeable_type                          = stash
+base_rotation                           = 0
+
+item_section                            = decor_arti_display
+
+ui_texture                              = ui_decor_arti_display
+
+bounding_box_size                        = 2.5715, 0.841151, 1.89212
+bounding_box_origin                      = 0.008889, 0.944653, -0.105933

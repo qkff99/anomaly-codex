@@ -1,0 +1,377 @@
+pmain = pda_inter_gui
+local gt = game.translate_string
+local CustomPDAX = pda_inter_gui.CustomPDAX
+local pr = pda_inter_gui.pr
+
+function CustomPDAX:BuildFindUpperMenu()
+	local xml = self.xml
+
+	self.cur_left_btn_find = 0		-- similar to self.cur_tree (set to 0 on reset)
+	self.selected_find_item = nil		-- selected item to pass further, resets on this menu open and OnClickSend	(set to nil on reset)
+
+	-- left side menus
+	self.find_menu = self.find_menu or {}
+
+	self.left_list_find = xml:InitStatic("mid_container_2:left_btn_list", self.pda_t[2].mid_cont)
+
+	for i = 1, 3 do
+		-- buttons
+		self.find_menu[i] = self.find_menu[i] or {}
+		self.find_menu[i].btn = xml:Init3tButton("mid_container_2:left_btn_list:left_btn_" .. i, self.left_list_find)
+		self:Register(self.find_menu[i].btn, "left_btn_" .. i)
+
+		-- child menus
+		self.find_menu[i].child_menu = xml:InitStatic("mid_container_2:right_panel_" .. i, self.pda_t[2].mid_cont)
+	end
+
+	-- arrow
+	self.find_arrow = xml:InitStatic("mid_container_2:left_btn_list:arrow_r", self.left_list_find)
+	self.find_arrow:Show(false)
+
+
+	-- Build childs
+	self:BuildFindUpperChildArtefact(xml)
+	self:BuildFindUpperChildMutant(xml)
+	self:BuildFindUpperChildStalker(xml)
+
+end
+
+function CustomPDAX:BuildFindUpperChildArtefact(xml)
+	-- sort list by rarity value
+	self.table_map_artefact_find = pmain.t_to_ar_by_val(pmain.pdax_artefact_list, nil, "k")
+
+	-- list
+	self.artefact_list_find = xml:InitListBox("mid_container_2:right_panel_1:artefact_list", self.find_menu[1].child_menu)
+	self.artefact_list_find:SetAutoDelete(true)
+	self:Register(self.artefact_list_find, "artefact_list")
+	--pmain.align_element(self, self.artefact_list_find, self.find_menu[1].child_menu, "c")
+
+	-- img
+	self.artefact_img_find = xml:InitStatic("mid_container_2:right_panel_1:artefact_img", self.find_menu[1].child_menu)
+	--pmain.align_element(self, self.artefact_img_find, self.find_menu[1].child_menu, "c")
+
+end
+
+function CustomPDAX:BuildFindUpperChildMutant(xml)
+	-- sort list by rarity value
+	self.table_map_mutant_find = pmain.t_to_ar_by_val(pmain.pdax_mutant_list, nil, "k")
+
+	-- list
+	self.mutant_list_find = xml:InitListBox("mid_container_2:right_panel_2:mutant_list", self.find_menu[2].child_menu)
+	self.mutant_list_find:SetAutoDelete(true)
+	self:Register(self.mutant_list_find, "mutant_list")
+	--pmain.align_element(self, self.mutant_list_find, self.find_menu[2].child_menu, "c")
+
+	-- img
+	self.mutant_img_find = xml:InitStatic("mid_container_2:right_panel_2:mutant_img", self.find_menu[2].child_menu)
+	--pmain.align_element(self, self.mutant_img_find, self.find_menu[2].child_menu, "c")
+
+end
+
+function CustomPDAX:BuildFindUpperChildStalker(xml)
+	-- input box
+	self.stalker_box_find = xml:InitEditBox("mid_container_2:right_panel_3:stalker_input", self.find_menu[3].child_menu)
+	self:Register(self.stalker_box_find, "stalker_input")
+	pmain.align_element(self, self.stalker_box_find, self.find_menu[3].child_menu, "c")
+
+	-- confirm button
+	self.stalker_btn_find = xml:Init3tButton("mid_container_2:right_panel_3:stalker_btn", self.find_menu[3].child_menu)
+	self:Register(self.stalker_btn_find, "stalker_btn")
+	pmain.align_element(self, self.stalker_btn_find, self.find_menu[3].child_menu, "c")
+
+end
+
+function CustomPDAX:InitFindCallbacks()
+	for i = 1, 3 do
+		CustomPDAX["OnClickFindMenu_".. i] = function(self)
+			self:OnClickFindMenu(i)
+		end
+		self:AddCallback("left_btn_" .. i, ui_events.BUTTON_CLICKED, self["OnClickFindMenu_" .. i], self)
+	end
+
+	self:AddCallback("artefact_list", ui_events.LIST_ITEM_CLICKED, self.OnSelectFindArtefact, self)
+	self:AddCallback("mutant_list", ui_events.LIST_ITEM_SELECT, self.OnSelectFindMutant, self)
+	self:AddCallback("stalker_btn", ui_events.BUTTON_CLICKED, self.OnInputStalker, self)
+end
+
+class "list_item" (CUIListBoxItem)
+function list_item:__init(di) super(di)
+	self:SetTextColor(GetARGB(255, 170, 170, 170))
+	self.fn = self:GetTextItem()
+	self.fn:SetFont(GetFontLetterica18Russian())
+	self.fn:SetEllipsis(true)
+	self:SetWndSize		(vector2():set(201,21))
+
+	self.fn:SetWndPos(vector2():set(0,0))
+	self.fn:SetWndSize	(vector2():set(201,21))
+	--self.fn:SetText		(gt(GUI.table_map_raid[di]))
+	--self.map_id = GUI.table_map_raid[di]
+end
+
+function list_item:__finalize()
+end
+
+function CustomPDAX:ResetFindMenu()
+	self.cur_left_btn_find = 0
+	self.selected_find_item = nil
+
+	-- hide child menu arrow
+	self.find_arrow:Show(false)
+
+	-- hide all child menus
+	for i = 1, #self.find_menu do
+		self.find_menu[i].child_menu:Show(false)
+	end
+
+	-- disable "Send" button
+	self.send_btn:Enable(false)
+
+	-- Reset All child menus
+	------------ 1 ------------
+		-- clear list and fill it up again (the only way to reset selected ID)
+	self.artefact_list_find:RemoveAll()
+	for i = 1, #self.table_map_artefact_find do
+		local str = self.table_map_artefact_find[i]
+		local _itm = list_item(i)
+		_itm.art_id = str
+		_itm.fn:SetText		(gt("st_" .. str .. "_name"))
+		self.artefact_list_find:AddExistingItem(_itm)
+	end
+
+	-- update str and img and hide img
+	self.artefact_img_find:Show(false)
+
+	------------ 2 ------------
+	-- clear list and fill it up again
+	self.mutant_list_find:RemoveAll()
+	for i = 1, #self.table_map_mutant_find do
+		local str = self.table_map_mutant_find[i]
+		local _itm = list_item(i)
+		_itm.mut_id = str
+		_itm.fn:SetText		(gt("encyclopedia_mutants_" .. str))
+		self.mutant_list_find:AddExistingItem(_itm)
+	end
+
+	-- update str and hide img
+	self.mutant_img_find:Show(false)
+
+	------------ 3 ------------
+	self.stalker_box_find:SetText("")
+
+end
+
+--leftovers from 2D
+--[[function CustomPDAX:ResetFindMenu()
+	self.cur_left_btn_find = 0
+	self.selected_find_item = nil
+
+	-- hide child menu arrow
+	self.find_arrow:Show(false)
+
+	-- hide all child menus
+	for i = 1, #self.find_menu do
+		self.find_menu[i].child_menu:Show(false)
+	end
+
+	-- disable "Send" button
+	self.send_btn:Enable(false)
+
+	-- Reset All child menus
+	------------ 1 ------------
+		-- clear list and fill it up again (the only way to reset selected ID)
+	self.artefact_list_find:ClearList()
+	for i = 1, #self.table_map_artefact_find do
+		local str = self.table_map_artefact_find[i]
+		self.artefact_list_find:AddItem(gt("st_" .. str .. "_name"), i)
+	end
+
+	-- update str and img and hide img
+	self.artefact_list_find:SetText("")
+	self.artefact_img_find:Show(false)
+
+	------------ 2 ------------
+	-- clear list and fill it up again
+	self.mutant_list_find:ClearList()
+	for i = 1, #self.table_map_mutant_find do
+		local str = self.table_map_mutant_find[i]
+		self.mutant_list_find:AddItem(gt("encyclopedia_mutants_" .. str), i)
+	end
+
+	-- update str and hide img
+	self.mutant_list_find:SetText("")
+	self.mutant_img_find:Show(false)
+
+	------------ 3 ------------
+	self.stalker_box_find:SetText("")
+
+end]]
+
+function CustomPDAX:OnClickFindMenu(num)		-- (art, mutant, stalker)
+
+	if self.cur_left_btn_find ~= num then
+
+		-- reset all child menus
+		self:ResetFindMenu()
+
+		-- set pressed child menu button
+		self.cur_left_btn_find = num
+
+		-- show and repos child menu arrow
+		self.find_arrow:Show(true)
+		local arrow_pos = self.find_arrow:GetWndPos()
+		local arrow_pos_y = (num - 1) * 50
+		self.find_arrow:SetWndPos(vector2():set(arrow_pos.x, arrow_pos_y))
+
+		-- show clicked child menu
+		self.find_menu[num].child_menu:Show(true)		-- right side container
+
+	end
+
+end
+
+function CustomPDAX:OnClickSendFind()
+	local item = self.selected_find_item
+
+	pmain.pda_msg_states[self.cur_tree].state = 5
+
+	-- save current map for strings
+	pmain.pda_msg_states[self.cur_tree].active_str = item
+
+	-- set active message
+	local str = gt("encyclopedia_mutants_" .. item)
+	local is_stalker = (not pmain.pdax_mutant_list[item]) and (not pmain.pdax_artefact_list[item])
+	local is_artefact = pmain.pdax_artefact_list[item] and string.find(item, "af_")
+	if is_stalker then
+		str = item
+	elseif is_artefact then
+		str = gt("st_" .. item .. "_name")
+	end
+	self.active_text:SetText(gt("pda_cur_active") .. "    " .. gt("pda_cur_active_find") .. " " .. (str))
+
+	-- disable buttons of ALL big menus till cancelled/failed
+	self:UpdMenuButtons()
+
+	-- store potential senders
+	pda_inter_x_buyinfo.store_senders()
+end
+
+function CustomPDAX:OnClickExecFind(num)
+	local senders_t = pda_inter_x_buyinfo.Find_available_messages
+
+	-- check if actor has enough money
+	local price = pda_inter_x_buyinfo.Find_available_messages[num].price
+	local has_enough_money = db.actor:money() > price
+
+	if has_enough_money then
+
+		-- hide bottom containers
+		self:ResetLowerMenus()
+
+		-- set state to 0
+		pmain.pda_msg_states[2].state = 0
+
+		-- take actor money
+		db.actor:give_money(-price)
+
+		-- update money text
+		self:UpdMoneyText()
+
+		-- reset active message
+		self.active_text:SetText(gt("pda_cur_active") .. "    " .. gt("pda_cur_active_none"))
+
+		-- send message with locations
+		pda_inter_x_buyinfo.send_accept_message(num)
+
+		-- clear tables
+		pda_inter_x_buyinfo.clear_find_tables()
+
+	end
+
+end
+
+function CustomPDAX:OnSelectFindArtefact()
+	-- set selected_find_item to current "table_map_artefact_find" key
+	--self.selected_find_item = self.table_map_artefact_find[self.artefact_list_find:CurrentID()] OLD
+	self.selected_find_item = self.artefact_list_find:GetSelectedItem().art_id
+
+	-- update image
+	self.artefact_img_find:InitTexture("encyclopedia_artefacts_" .. self.selected_find_item .. "_image")
+	self.artefact_img_find:Show(true)
+
+	-- enable send button when artefact has been chosen
+	self.send_btn:Enable(true)
+
+end
+
+function CustomPDAX:OnSelectFindMutant()
+	pr("mutant selected, 'Send' enabled")
+	-- set selected_find_item to current "table_map_mutant_find" key
+	--self.selected_find_item = self.table_map_mutant_find[self.mutant_list_find:CurrentID()] OLD
+	self.selected_find_item = self.mutant_list_find:GetSelectedItem().mut_id
+
+	-- update image
+	self.mutant_img_find:InitTexture("encyclopedia_mutants_" .. self.selected_find_item .. "_image")
+	self.mutant_img_find:Show(true)
+
+	-- enable send button when mutant has been chosen
+	self.send_btn:Enable(true)
+
+end
+
+function CustomPDAX:OnInputStalker()
+	local cur_str = self.stalker_box_find:GetText()
+
+	-- if input string isnt empty
+	if cur_str ~= "" then
+
+		-- set selected_find_item to current input box string
+		self.selected_find_item = cur_str
+
+		-- enable send button when mutant has been chosen
+		self.send_btn:Enable(true)
+
+	else
+		self.send_btn:Enable(false)
+	end
+
+end
+
+function CustomPDAX:UpdFindLowerMenu()
+	-- updating from pda_inter_x_buyinfo to refresh character info
+	local info_t = pda_inter_x_buyinfo.Find_available_messages
+
+	-- reset menu first
+	self:ResetLowerMenus()
+
+	for i = 1, #info_t do
+
+		-- show character container
+		if not (self.bottom[i].big:IsShown()) then
+			self.bottom[i].big:Show(true)
+		end
+
+		-- update icon
+		self.bottom[i].icon:InitTexture(info_t[i].icon)
+
+		-- update description
+		local name = gt("st_mm_new_game_name")
+		local faction = gt("st_mm_new_game_faction_2")
+		local comm = info_t[i].comm == "trader" and gt("st_ui_pda_legend_trader") or gt("st_faction_" .. info_t[i].comm)
+
+		local reputation = gt("ui_st_reputation")
+		local def_clr = strformat("%c[%s,%s,%s,%s]", 255, 190, 190, 190)
+		local rep_clr = pmain.val_to_clr(info_t[i].reputation, "red_to_green", -2000, 2000)
+		local rel_clr = pmain.val_to_clr(info_t[i].relation, "relation")
+		local rep_to_name = gt(utils_obj.get_reputation_name(info_t[i].reputation))
+		local relations = gt("pda_btn_relations")
+		local rel_name = gt("pda_relation_" .. info_t[i].relation)
+
+		self.bottom[i].descr:SetText(name .. " " .. info_t[i].name .. "\\n" .. faction .. " " .. comm .. "\\n" .. reputation .. ": " .. rep_clr .. rep_to_name .. "\\n" .. def_clr .. relations .. ": " .. rel_clr .. rel_name)
+
+		-- update button
+		local buy = gt("ui_st_buy")
+		self.bottom[i].btn:TextControl():SetText(buy .. ": " .. info_t[i].price .. "  RU")
+
+	end
+
+end

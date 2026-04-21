@@ -1,0 +1,135 @@
+-- Mugging squads
+
+-- Original description by billwa
+-- Basically they yell a quote, surround you and a guy comes up to talk and you have 3 dialogue [ptions. Pay  mugging fee, get forced into kidnapping and the classic resist.
+-- Obviously when if you start shooting them before you're they're able to open up their yappers, all bets are off and it's a normal gun fight
+-- Monolith and sin will try kidnapping you always, no mugging. If you agree, it should bring you back to a base where all of your gear is removed until you convert and you have two options before you do, agree or fight, but lmao with no gear.
+-- It is entirely random and happens anywhere on the map except interiors like labs or main bases.
+
+-- Things that every mugging has in common:
+-- The player cannot be mugged by the same faction they are part of and they cannot be mugged by a faction they are friendly with
+-- The mugging group consists of 2 to 5 members
+-- A dialogue option must pop up with options. Options vary between who is doing the mugging.
+-- The time it takes place is random but there is a cool down. We can talk discuss this later.
+-- It cannot take place in interior levels (labs x18, etc...)
+-- Players can shoot the muggers upon approaching to cancel the dialogue.
+-- Muggers will have guns drawn on the player if they have time to initiate the dialogue option.
+-- They will play the sprint animation upon approaching the player.
+-- Muggers will play a random combat line from their faction dialogue upon charging the player to mug them
+-- The player will have these options to choose from: Give them what they want (mugger exclusive), convert (only monolith and sin) or just start combat.
+-- Upon giving the muggers what they want they will back off, tell you to move away with guns drawn, then run away with a sprint
+
+-- Bandits/renegades:
+-- Will request money or a random item from the players inventory, or all of their items (rare chance of all items being taken)
+-- Will take all the money from the player if the player is being mugged or want the items (or some items) in their inventory.
+-- Kidnapping option which can have a 50% chance, just tp to a bandit base in an area guarded by a guy and if they leave the area they are cornered in they will get shot. I'm still trying to think about this one but it may be difficult. There could be a timer at the top in which they want in the cell and just after that the screen goes black and they are dumped somewhere random on the game map.
+ 
+-- Merc:
+-- Will just request money and item taking. No kidnapping option.
+
+-- Monolith/Sin exclusive:
+-- Conversion. Players will be taken back with their full equipment to a monolith/sin base and have their faction changed to monolith/sin nd have all faction relations reset to a just started monolith/sin player.
+-- No mugging. Monolith doesn't care about cash really.
+
+-- Factions that cannot mug/kidnap/anything:
+-- Free stalkers
+-- UNSIG
+-- Zombies
+-- Ecologists
+-- Clear Sky
+-- Military
+-- Duty
+-- Freedom
+
+-- Mugging squads will stop targeting the player if he is in one of these maps
+safe_levels = { 
+	---- North
+	"l13_generators",
+	"l12_stancia_2",
+	"l12_stancia",
+	-- "l11_pripyat",
+	-- "l10_radar",
+	-- "l11_hospital",
+
+	---- Underground
+	"jupiter_underground",   
+	"labx8",                 
+	"l03u_agr_underground",  
+	"l04u_labx18",           
+	"l08u_brainlab",         
+	"l10u_bunker",           
+	"l12u_control_monolith", 
+	"l12u_sarcofag",         
+	"l13u_warlab",   
+
+	-- Usual
+	"l05_bar",            	  
+	"fake_start",
+}            
+
+-- Mugging squads will stop targeting the player if he's in one of those smarts
+safe_smarts = {
+	"agr_smart_terrain_1_6",
+	"agr_smart_terrain_1_6_near_1",
+	"agr_smart_terrain_1_6_near_2",
+	"val_smart_terrain_7_3",
+	"val_smart_terrain_7_4",
+	"val_smart_terrain_7_5",
+	"val_smart_terrain_9_4",
+	"val_smart_terrain_8_6",
+	"cit_killers",
+	"esc_smart_terrain_2_12",
+	"esc_smart_terrain_3_16",
+	"jup_a6",
+	"jup_b41",
+	"mar_smart_terrain_base",
+	"mil_smart_terrain_7_7",
+	"mil_smart_terrain_7_8",
+	"mil_smart_terrain_7_10",
+	"mil_smart_terrain_7_12",
+	"yan_smart_terrain_6_4",
+	"zat_stalker_base_smart",
+}
+
+factions_to_levels = {}        
+
+-- Mugging squad sections
+faction_squads = {	
+	["army"]     = "army_sim_squad_alpha, army_sim_squad_advanced, army_sim_squad_veteran",
+	["bandit"]   = "bandit_sim_squad_advanced, bandit_sim_squad_veteran, bandit_sim_squad_alpha",
+	["csky"]     = "csky_sim_squad_alpha, csky_sim_squad_advanced, csky_sim_squad_veteran",
+	["dolg"]     = "dolg_sim_squad_alpha, duty_sim_squad_advanced, duty_sim_squad_veteran",
+	["ecolog"]	 = "ecolog_sim_squad_advanced, ecolog_sim_squad_veteran",
+	["freedom"]  = "freedom_sim_squad_alpha, freedom_sim_squad_advanced, freedom_sim_squad_veteran",
+	["greh"]	 = "greh_sim_squad_alpha, greh_sim_squad_advanced, greh_sim_squad_veteran",
+	["isg"]		 = "isg_sim_squad_alpha, isg_sim_squad_advanced, isg_sim_squad_veteran",
+	["killer"]   = "killer_sim_squad_alpha, merc_sim_squad_advanced, merc_sim_squad_veteran",
+	["monolith"] = "monolith_sim_squad_alpha, monolith_sim_squad_advanced, monolith_sim_squad_veteran",
+	["renegade"] = "renegade_sim_squad_alpha, renegade_sim_squad_advanced, renegade_sim_squad_veteran",
+	["stalker"]  = "stalker_sim_squad_alpha, stalker_sim_squad_advanced, stalker_sim_squad_veteran",
+}
+
+-- Player ranks and the number of possible bounty squad to spawn when a rank is met
+danger_ranks = {
+	["novice"]       = 0,
+	["trainee"]      = 0,
+	["experienced"]  = 0,
+	["professional"] = 0,
+	["veteran"]      = 1,
+	["expert"]       = 1,
+	["master"]       = 2,
+	["legend"]       = 2,
+}
+
+-- Player reputations and the number of possible bounty squad to spawn when a reputation is met 
+danger_reputations = {
+	["excellent"]   = 0,
+	["really_good"] = 0,
+	["very_good"]   = 0,
+	["good"]        = 0,
+	["neutral"]     = 0,
+	["bad"]         = 0,
+	["very_bad"]    = 1,
+	["really_bad"]  = 1,
+	["terrible"]    = 1,
+}

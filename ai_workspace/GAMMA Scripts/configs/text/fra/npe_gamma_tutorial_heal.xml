@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="windows-1252"?>
+
+<string_table>
+
+<!--
+F.R.I.T.E.S | Thundard
+Dernière révision : 24 novembre 2025
+-->
+
+    <string id="ui_mcm_npe_module_gamma_tutorial_heal_heal">
+        <text>Tutoriel sur le système de soins</text>
+    </string>
+
+    <string id="ui_mcm_npe_module_gamma_tutorial_heal_title">
+        <text>Tutoriels G.A.M.M.A.</text>
+    </string>
+
+    <string id="ui_mcm_npe_module_gamma_tutorial_health_desc">
+        <text>Système de soins</text>
+    </string>
+
+    <!-- MCM -->
+    <!-- Name of the toggle that sets if tutorial has been completed-->
+    <string id="ui_mcm_npe_module_gamma_tutorial_heal">
+        <text>Soins G.A.M.M.A.</text>
+    </string>
+    <!-- MCM -->
+
+    <!-- Title of the whole tutorial -->
+    <string id="ui_mcm_npe_module_gamma_tutorial_heal_title">
+        <text>Tutoriel sur le système de soins</text>
+    </string>
+
+    <!-- Cards -->
+    <!-- 1 -->
+    <string id="ui_gamma_tutorial_heal_card_01_title">
+        <text>Santé principale et membres individuels
+</text>
+    </string>
+
+    <string id="ui_gamma_tutorial_heal_card_01_description">
+        <text>Tu viens d'utiliser un objet pour te soigner. Cependant, le soin dans GAMMA est un peu plus complexe que de simplement utiliser des trousses de secours.\n \n
+         @ Ta santé est répartie dans plusieurs jauges distinctes :\n
+  | - Santé principale (icône du personnage). \n
+  | - Santé des membres individuels. \n
+  | - Santé psy. \n
+ @ Tu meurs si ta Santé principale atteint 0, si la Santé de la tête atteint 0, si la Santé du buste atteint 0 ou si la Santé psy atteint 0.\n
+ @ Les barres de jambes et de bras ont divers effets une fois épuisées : \n
+  | - Des bras blessés rendent la visée instable. \n
+  | - Des jambes blessées te ralentissent et infligent des dégâts à ta Santé principale lorsque tu cours sur une jambe cassée. \n
+</text>
+    </string>
+    <!-- 1 -->
+
+    <!-- 2 -->
+    <string id="ui_gamma_tutorial_heal_card_02_title">
+        <text>Régénération de la santé principale
+</text>
+    </string>
+
+    <string id="ui_gamma_tutorial_heal_card_02_description">
+        <text>@ La Santé principale peut être soignée à l'aide d'objets affichant une icône de coeur rouge, principalement :\n
+  | - Trousse de secours (régénération lente). \n
+  | - Stimpak (régénération rapide). \n
+  | - Artefacts, peaux et objets de ceinture possédant une régénération passive de santé. \n  \n
+
+  @ Plus le grade de la trousse de secours ou du stimpak est élevé, plus la récupération est efficace.  \n
+</text>
+    </string>
+    <!-- 2 -->
+    
+    <!-- 3 -->
+    <string id="ui_gamma_tutorial_heal_card_03_title">
+        <text>Soins des membres
+</text>
+    </string>
+
+    <string id="ui_gamma_tutorial_heal_card_03_description">
+        <text>%c[ui_white]@ La santé des membres contient deux types de jauge :\n
+| - %c[d_orange]Santé temporaire du membre%c[ui_white] (jaune), qui diminue progressivement au fil du temps.\n
+| - %c[ui_gray_2]Santé permanente du membre%c[ui_white] (blanc).\n
+  @ La %c[d_orange]Santé temporaire du membre%c[ui_white] se restaure en utilisant des objets de premiers secours affichant un coeur rouge, comme les bandages, trousses de secours, stimpaks...\n
+  @ La %c[d_orange]Santé temporaire du membre%c[ui_white] peut être convertie en %c[ui_gray_2]Santé permanente du membre%c[ui_white] à l'aide d'objets post-soin affichant un coeur blanc, comme Yadulin, antidote, ibuprofène... \n
+  @ Les soins des membres se font donc en utilisant un objet de premiers secours (ex : bandage) puis un objet post-soin (ex : ibuprofène).\n
+  @ Les détails sur la restauration de %c[d_orange]Santé temporaire du membre%c[ui_white] et la conversion en %c[ui_gray_2]Santé permanente du membre%c[ui_white] de chaque objet sont indiqués dans leur description.\n
+  @ La %c[d_orange]Santé temporaire du membre%c[ui_white] est consommée avant la %c[ui_gray_2]Santé permanente du membre%c[ui_white]. Ainsi, en combat, utilise seulement des bandages jusqu'à la fin du combat, puis convertis la %c[d_orange]Santé temporaire du membre%c[ui_white] en %c[ui_gray_2]Santé permanente du membre%c[ui_white].\n
+</text>
+    </string>
+    <!-- 3 -->
+
+    <!-- 4 -->
+    <string id="ui_gamma_tutorial_heal_card_04_title">
+        <text>Saignement
+</text>
+    </string>
+
+    <string id="ui_gamma_tutorial_heal_card_04_description">
+        <text>@ Lorsqu'on reçoit des dégâts, il y a une probabilité que la blessure saigne. Le saignement est indiqué par une icône de goutte de sang sur le HUD. Plus le saignement est fort, plus le pourtour de l'icône sera rouge (blanc > jaune > rouge).\n \n
+
+  @ Les saignements doivent être traités rapidement car ils s'aggravent et infligent beaucoup de dégâts sur la durée. Ils peuvent être stoppés en utilisant :\n 
+  | - Bandage (soin lent du saignement). \n
+  | - Garrot (soin rapide du saignement). \n
+  | - Artefacts, peaux et objets de ceinture possédant une régénération passive des saignements. \n \n
+
+  @ Certains artefacts réduisent la vitesse de récupération du saignement, qu'il faudra alors compenser avec des effets positifs sous peine de voir les saignements s'aggraver très vite.\n
+</text>
+    </string>
+    <!-- 4 -->
+
+    <!-- 5 -->
+    <string id="ui_gamma_tutorial_heal_card_05_title">
+        <text>Santé psy
+</text>
+    </string>
+
+    <string id="ui_gamma_tutorial_heal_card_05_description">
+        <text>Certains ennemis peuvent infliger des dégâts à ton cerveau via des émissions psy (comme les contrôleurs). Les objets augmentant ta Résistance psy restaurent également ta Santé psy. Ceux-ci affichent une icône d'ondes bleues, et comprennent :\n
+  | - Psy-bloc. \n
+  | - Somnifères. \n
+  | - Etpérazine. \n
+  | - Marijuana et joints. \n
+  | - Certaines boissons. \n
+  | - Artefacts. \n  \n
+ 
+%c[yellow]Tu peux revoir ce tutoriel en allant dans Mod Config Menu (MCM) > NPE Modules > G.A.M.M.A. et en décochant le tutoriel.\n \n
+</text>
+    </string>
+    <!-- 5 -->
+    <!-- Cards -->
+
+</string_table>

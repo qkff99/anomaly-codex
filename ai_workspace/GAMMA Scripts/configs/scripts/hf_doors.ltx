@@ -1,0 +1,25 @@
+[logic]
+active = ph_door@closed
+
+[ph_door@closed]
+locked = false
+closed = true 
+snd_open_start = wood_small_open
+snd_close_start = wood_small_close_start
+snd_close_stop = wood_small_close_stop
+tip_open = tip_door_open
+on_use = ph_door@open 
+not_for_npc = false
+
+[ph_door@open]
+locked = false
+closed = false
+snd_open_start = wood_small_open
+snd_close_start = wood_small_close_start
+snd_close_stop = wood_small_close_stop
+tip_close = tip_door_close
+on_use = ph_door@closed
+
+
+[collide]
+ignore_static

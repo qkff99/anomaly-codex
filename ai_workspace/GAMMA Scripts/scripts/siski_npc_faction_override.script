@@ -1,0 +1,481 @@
+siski = siski or {}
+
+local type = _G.type
+local pcall = _G.pcall
+local tostring = _G.tostring
+local tonumber = _G.tonumber
+local rawget = _G.rawget
+local pairs = _G.pairs
+local next = _G.next
+local alife = _G.alife
+local db = _G.db
+local level = _G.level
+
+local COMMUNITY_SET = {
+    stalker = true,
+    bandit = true,
+    csky = true,
+    army = true,
+    dolg = true,
+    freedom = true,
+    ecolog = true,
+    killer = true,
+    monolith = true,
+    trader = true,
+    zombied = true,
+    greh = true,
+    isg = true,
+    renegade = true,
+}
+
+local RUNTIME = {
+    enabled_prev = false,
+    first_update_done = false,
+    applied_squads = {},
+    applied_members = {},
+    warned_invalid_factions = {},
+}
+
+local function reset_runtime(reason)
+    RUNTIME.applied_squads = {}
+    RUNTIME.applied_members = {}
+    if siski and siski.log and siski.log.debug then
+        siski.log.debug("NPC_FACTION", "RESET_RUNTIME reason=%s", tostring(reason or "-"))
+    end
+end
+
+local function safe_call(tag, fn, ...)
+    local safe = siski and siski.safe
+    if safe and safe.safe_call then
+        return safe.safe_call(tag, fn, ...)
+    end
+    return pcall(fn, ...)
+end
+
+local function log_info(fmt, ...)
+    if siski and siski.log and siski.log.info then
+        siski.log.info("NPC_FACTION", fmt, ...)
+    end
+end
+
+local function log_warn(fmt, ...)
+    if siski and siski.log and siski.log.warn then
+        siski.log.warn("NPC_FACTION", fmt, ...)
+    end
+end
+
+local function log_debug(fmt, ...)
+    if siski and siski.log and siski.log.debug then
+        siski.log.debug("NPC_FACTION", fmt, ...)
+    end
+end
+
+local function get_board()
+    return rawget(_G, "SIMBOARD")
+end
+
+local function payload_args(payload)
+    if type(payload) ~= "table" then
+        return {}
+    end
+    return type(payload.args) == "table" and payload.args or {}
+end
+
+local function is_valid_server_id(id)
+    id = tonumber(id) or 0
+    return id > 0 and id ~= 65535
+end
+
+local function feature_enabled()
+    local sw = siski and siski.switches or nil
+    if not (sw and sw.npc_faction_override == true) then
+        return false
+    end
+
+    local cfg = siski and siski.config
+    if not (cfg and cfg.get) then
+        return false
+    end
+
+    if cfg.get("enabled", true) ~= true then
+        return false
+    end
+
+    return cfg.get("npc_faction_override_enabled", false) == true
+end
+
+local function get_override_map()
+    local cfg = siski and siski.config
+    if not (cfg and cfg.get_section_kv_map) then
+        return {}
+    end
+    return cfg.get_section_kv_map("npc_faction_override") or {}
+end
+
+local function get_online_object(npc_id)
+    local storage = db and db.storage and db.storage[npc_id] or nil
+    if storage and storage.object then
+        return storage.object
+    end
+    if level and level.object_by_id then
+        local ok_obj, obj = safe_call("level.object_by_id", level.object_by_id, npc_id)
+        if ok_obj then
+            return obj
+        end
+    end
+    return nil
+end
+
+local function get_override_for_squad(se_squad, override_map)
+    if not se_squad then
+        return nil, nil
+    end
+    local ok_section, squad_section = safe_call("se_squad:section_name", function()
+        return se_squad:section_name()
+    end)
+    if not (ok_section and type(squad_section) == "string" and squad_section ~= "") then
+        return nil, nil
+    end
+    local target_faction = type(override_map) == "table" and override_map[squad_section] or nil
+    return squad_section, target_faction
+end
+
+local function apply_member_faction(sim, npc_id, target_faction)
+    local npc = get_online_object(npc_id)
+    if not npc then
+        log_debug("MEMBER_OFFLINE npc_id=%s faction=%s", tostring(npc_id), tostring(target_faction))
+        return false
+    end
+
+    local ok_alive, alive = safe_call("npc:alive", function() return npc:alive() end)
+    if not (ok_alive and alive == true) then
+        return false
+    end
+
+    local ok_comm, current_comm = safe_call("npc:character_community", function() return npc:character_community() end)
+    if ok_comm and current_comm == target_faction then
+        RUNTIME.applied_members[npc_id] = target_faction
+        return false
+    end
+
+    local se_member = nil
+    local ok_se, res_se = false, nil
+    if is_valid_server_id(npc_id) then
+        ok_se, res_se = safe_call("alife:object(member)", function() return sim:object(npc_id) end)
+    end
+    if ok_se then
+        se_member = res_se
+    end
+
+    local current_squad = se_member and tonumber(se_member.squad) or 0
+    local current_group = se_member and tonumber(se_member.group) or 0
+
+    local ok_apply = safe_call(
+        "npc:set_character_community",
+        function()
+            npc:set_character_community(target_faction, current_squad or 0, current_group or 0)
+        end
+    )
+    if not ok_apply then
+        return false
+    end
+
+    RUNTIME.applied_members[npc_id] = target_faction
+    return true
+end
+
+local function apply_squad_override(sim, se_squad, override_map, reason)
+    if not (sim and se_squad and type(override_map) == "table") then
+        return false, 0, nil
+    end
+    local squad_section, target_faction = get_override_for_squad(se_squad, override_map)
+    if not (squad_section and target_faction) then
+        return false, 0, squad_section
+    end
+    if not COMMUNITY_SET[target_faction] then
+        if not RUNTIME.warned_invalid_factions[target_faction] then
+            RUNTIME.warned_invalid_factions[target_faction] = true
+            log_warn("INVALID_FACTION squad=%s faction=%s", tostring(squad_section), tostring(target_faction))
+        end
+        return false, 0, squad_section
+    end
+
+    local updated_squad = false
+    if se_squad.player_id ~= target_faction then
+        local ok_set = safe_call("se_squad.player_id", function()
+            se_squad.player_id = target_faction
+        end)
+        if ok_set then
+            updated_squad = true
+        end
+    end
+
+    local updated_members = 0
+    local ok_members = safe_call("se_squad:squad_members", function() return se_squad:squad_members() end)
+    if ok_members then
+        for member in se_squad:squad_members() do
+            local npc_id = member and member.id or nil
+            if npc_id and apply_member_faction(sim, npc_id, target_faction) then
+                updated_members = updated_members + 1
+            end
+        end
+    end
+
+    local squad_id = tonumber(se_squad.id) or nil
+    if squad_id then
+        RUNTIME.applied_squads[squad_id] = target_faction
+    end
+
+    if updated_squad or updated_members > 0 then
+        log_debug(
+            "APPLY reason=%s squad=%s faction=%s squad_changed=%s members=%s",
+            tostring(reason or "-"),
+            tostring(squad_section),
+            tostring(target_faction),
+            tostring(updated_squad),
+            tostring(updated_members)
+        )
+    end
+
+    return updated_squad, updated_members, squad_section
+end
+
+local function apply_existing_squads(reason)
+    local sim = alife and alife() or nil
+    if not sim then
+        return
+    end
+
+    local override_map = get_override_map()
+    local configured = 0
+    for _ in pairs(override_map) do
+        configured = configured + 1
+    end
+    if configured == 0 then
+        if reason == "first_update" or reason == "load_state" then
+            log_info("HYDRATION_DONE reason=%s configured=0 squads=0 members=0", tostring(reason))
+        end
+        return
+    end
+
+    local matched_sections = {}
+    local updated_squads = 0
+    local updated_members = 0
+    local seen_sids = {}
+    local board_index = siski and siski.board_index or nil
+    local levels = board_index and board_index.get_known_smart_levels and board_index.get_known_smart_levels() or {}
+    local used_index = false
+
+    for i = 1, #levels do
+        local list = board_index and board_index.get_level_squads and board_index.get_level_squads(levels[i]) or {}
+        if #list > 0 then
+            used_index = true
+        end
+        for j = 1, #list do
+                local sid = tonumber(list[j]) or nil
+                if is_valid_server_id(sid) and seen_sids[sid] ~= true then
+                    seen_sids[sid] = true
+                    local ok_squad, se_squad = safe_call("alife:object(indexed_squad)", function()
+                        return sim:object(sid)
+                end)
+                if ok_squad and se_squad then
+                    local squad_changed, member_count, squad_section = apply_squad_override(sim, se_squad, override_map, reason)
+                    if squad_section then
+                        matched_sections[squad_section] = true
+                    end
+                    if squad_changed then
+                        updated_squads = updated_squads + 1
+                    end
+                    updated_members = updated_members + (tonumber(member_count) or 0)
+                end
+            end
+        end
+    end
+
+    if used_index ~= true and (reason == "first_update" or reason == "load_state") then
+        local board = get_board()
+        if board and board.squads then
+            for sid_key in pairs(board.squads) do
+                    local sid = tonumber(sid_key) or nil
+                    if is_valid_server_id(sid) and seen_sids[sid] ~= true then
+                        seen_sids[sid] = true
+                        local ok_squad, res_squad = safe_call("alife:object(existing_squad)", function()
+                            return sim:object(sid)
+                    end)
+                    local se_squad = ok_squad and res_squad or nil
+                    if se_squad then
+                        local squad_changed, member_count, squad_section = apply_squad_override(sim, se_squad, override_map, reason)
+                        if squad_section then
+                            matched_sections[squad_section] = true
+                        end
+                        if squad_changed then
+                            updated_squads = updated_squads + 1
+                        end
+                        updated_members = updated_members + (tonumber(member_count) or 0)
+                    end
+                end
+            end
+        end
+    end
+
+    for squad_section in pairs(override_map) do
+        if not matched_sections[squad_section] then
+            log_debug("SQUAD_NOT_FOUND squad=%s", tostring(squad_section))
+        end
+    end
+
+    if reason == "first_update" or reason == "load_state" or reason == "mcm_toggle" then
+        log_info(
+            "HYDRATION_DONE reason=%s configured=%s squads=%s members=%s",
+            tostring(reason),
+            tostring(configured),
+            tostring(updated_squads),
+            tostring(updated_members)
+        )
+    elseif updated_squads > 0 or updated_members > 0 then
+        log_info("APPLY_EXISTING reason=%s squads=%s members=%s", tostring(reason), tostring(updated_squads), tostring(updated_members))
+    end
+end
+
+local function on_actor_first_update()
+    RUNTIME.first_update_done = true
+    RUNTIME.enabled_prev = feature_enabled()
+    if not RUNTIME.enabled_prev then
+        reset_runtime("first_update_disabled")
+        return
+    end
+    reset_runtime("first_update")
+    apply_existing_squads("first_update")
+end
+
+local function on_option_change()
+    local enabled = feature_enabled()
+    if not enabled then
+        RUNTIME.enabled_prev = false
+        reset_runtime("option_disabled")
+        return
+    end
+    if RUNTIME.enabled_prev == true then
+        return
+    end
+    RUNTIME.enabled_prev = true
+    reset_runtime("option_enabled")
+    apply_existing_squads("mcm_toggle_enable")
+end
+
+local function on_load_state()
+    if not feature_enabled() then
+        RUNTIME.enabled_prev = false
+        reset_runtime("load_disabled")
+        return
+    end
+    RUNTIME.enabled_prev = true
+    reset_runtime("load_state")
+    apply_existing_squads("load_state")
+end
+
+local function on_server_entity_register(se_obj, type_name)
+    if feature_enabled() ~= true then
+        return
+    end
+    if type(type_name) ~= "string" or type_name ~= "sim_squad_scripted" or not se_obj then
+        return
+    end
+    local sim = alife and alife() or nil
+    if not sim then
+        return
+    end
+    local override_map = get_override_map()
+    if next(override_map) == nil then
+        return
+    end
+    apply_squad_override(sim, se_obj, override_map, "register")
+end
+
+local function on_squad_npc_creation(squad, npc)
+    if feature_enabled() ~= true then
+        return
+    end
+    local sim = alife and alife() or nil
+    if not (sim and squad and npc) then
+        return
+    end
+    local override_map = get_override_map()
+    local squad_section, target_faction = get_override_for_squad(squad, override_map)
+    if not (squad_section and target_faction and COMMUNITY_SET[target_faction]) then
+        return
+    end
+    local npc_id = tonumber(npc and npc.id) or tonumber(npc)
+    if npc_id and apply_member_faction(sim, npc_id, target_faction) then
+        log_debug("MEMBER_APPLIED reason=npc_creation squad=%s npc_id=%s faction=%s", tostring(squad_section), tostring(npc_id), tostring(target_faction))
+    end
+end
+
+local function on_server_entity_unregister(se_obj, type_name)
+    if type(type_name) ~= "string" or type_name ~= "sim_squad_scripted" or not se_obj then
+        return
+    end
+    local squad_id = tonumber(se_obj.id) or nil
+    if squad_id then
+        RUNTIME.applied_squads[squad_id] = nil
+    end
+    local ok_members = safe_call("se_squad:squad_members(unregister)", function()
+        return se_obj:squad_members()
+    end)
+    if ok_members then
+        for member in se_obj:squad_members() do
+            local npc_id = tonumber(member and member.id) or nil
+            if npc_id then
+                RUNTIME.applied_members[npc_id] = nil
+            end
+        end
+    end
+end
+
+local function on_squad_npc_death(squad, npc)
+    local npc_id = tonumber(npc and npc.id) or tonumber(npc)
+    if npc_id then
+        RUNTIME.applied_members[npc_id] = nil
+    end
+    if squad then
+        local squad_id = tonumber(squad.id) or nil
+        if squad_id and feature_enabled() ~= true then
+            RUNTIME.applied_squads[squad_id] = nil
+        end
+    end
+end
+
+local function on_game_start()
+end
+
+if siski and siski.bus and siski.bus.subscribe then
+    siski.bus.subscribe("actor_on_first_update", "siski_npc_faction_override", function()
+        on_actor_first_update()
+    end)
+    siski.bus.subscribe("on_option_change", "siski_npc_faction_override", function()
+        on_option_change()
+    end)
+    siski.bus.subscribe("load_state", "siski_npc_faction_override", function()
+        on_load_state()
+    end)
+    siski.bus.subscribe("server_entity_on_register", "siski_npc_faction_override", function(payload)
+        local args = payload_args(payload)
+        on_server_entity_register(args[1], args[2])
+    end)
+    siski.bus.subscribe("server_entity_on_unregister", "siski_npc_faction_override", function(payload)
+        local args = payload_args(payload)
+        on_server_entity_unregister(args[1], args[2])
+    end)
+    siski.bus.subscribe("squad_on_npc_creation", "siski_npc_faction_override", function(payload)
+        local args = payload_args(payload)
+        on_squad_npc_creation(args[1], args[2])
+    end)
+    siski.bus.subscribe("squad_on_npc_death", "siski_npc_faction_override", function(payload)
+        local args = payload_args(payload)
+        on_squad_npc_death(args[1], args[2])
+    end)
+end
+
+siski.npc_faction_override = {
+    on_game_start = on_game_start,
+}

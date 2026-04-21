@@ -1,0 +1,707 @@
+--[[
+=======================================================================================
+    DevTools Profiler - Function Wrapping Engine
+    
+    Handles function wrapping, unwrapping, deep table traversal, and class method
+    wrapping. This is the most complex module in the profiler subsystem.
+    
+    Depends on:
+    - devtools_profiler_state (shared state)
+    - devtools_profiler_stats (timing functions)
+=======================================================================================
+--]]
+
+-- Reference to shared state
+local S = devtools_profiler_state
+
+-- Reference to stats module
+local Stats = devtools_profiler_stats
+
+-- ============================================================================
+-- FUNCTION WRAPPING CORE
+-- ============================================================================
+
+-- Wrap a single function with timing
+local function wrap_function(module_name, func_name, original_func)
+	return function(...)
+		local full_name = module_name .. "." .. func_name
+
+		-- Runtime blacklist check (fail-safe)
+		if S.is_function_blacklisted(func_name) or S.is_module_blacklisted(module_name) then
+			S.safety_stats.blacklist_violations = S.safety_stats.blacklist_violations + 1
+			return original_func(...)
+		end
+
+		-- Check call depth to prevent stack overflow
+		if #S.active_call_stack >= S.MAX_CALL_DEPTH then
+			S.safety_stats.skipped_depth = S.safety_stats.skipped_depth + 1
+			return original_func(...)
+		end
+
+		-- Special handling for axr_main.make_callback: extract callback name
+		local callback_name = nil
+		if module_name == "axr_main" and func_name == "make_callback" then
+			local first_arg = select(1, ...)
+			if type(first_arg) == "string" then
+				callback_name = first_arg
+			end
+		end
+
+		-- Get parent before pushing to call stack
+		local parent_name = nil
+		if #S.active_call_stack > 0 then
+			parent_name = S.active_call_stack[#S.active_call_stack]
+		end
+
+		-- Push to call stack (for depth tracking)
+		table.insert(S.active_call_stack, full_name)
+
+		-- If this is make_callback, add a virtual frame for the callback name
+		if callback_name then
+			table.insert(S.active_call_stack, callback_name)
+		end
+
+		-- Track parent relationship
+		if parent_name then
+			Stats.track_parent_call(full_name, parent_name)
+		end
+
+		-- Start timing
+		Stats.start_timer(full_name)
+
+		-- Track child time for self_time_ms
+		local child_time_ms = 0
+		local parent = S.active_call_stack[#S.active_call_stack - (callback_name and 1 or 0) - 1]
+		if parent then
+			S._child_time_stack = S._child_time_stack or {}
+			S._child_time_stack[#S.active_call_stack] = 0
+		end
+
+		-- Execute function directly
+		local results = { pcall(original_func, ...) }
+		local success = results[1]
+
+		-- Get child time (if any)
+		if S._child_time_stack then
+			child_time_ms = S._child_time_stack[#S.active_call_stack] or 0
+			S._child_time_stack[#S.active_call_stack] = nil
+		end
+
+		local duration_ms, self_time_ms = Stats.end_timer(full_name, child_time_ms)
+
+		-- Propagate child time up the stack
+		if S._child_time_stack and #S.active_call_stack > 1 then
+			local parent_idx = #S.active_call_stack - 1
+			S._child_time_stack[parent_idx] = (S._child_time_stack[parent_idx] or 0) + duration_ms
+		end
+
+		if S.flamegraph_enabled and S.ENABLED and duration_ms then
+			local stack_trace = {}
+			for i = 1, #S.active_call_stack do
+				table.insert(stack_trace, S.active_call_stack[i])
+			end
+			if #stack_trace == 0 or stack_trace[#stack_trace] ~= full_name then
+				table.insert(stack_trace, full_name)
+			end
+
+			local stack_key = table.concat(stack_trace, ";")
+			S.flamegraph_samples[stack_key] = (S.flamegraph_samples[stack_key] or 0) + duration_ms
+			S.flamegraph_total_samples = S.flamegraph_total_samples + 1
+		end
+
+		-- Pop callback name frame if we added one
+		if callback_name then
+			table.remove(S.active_call_stack)
+		end
+
+		-- Pop from call stack
+		table.remove(S.active_call_stack)
+
+		if not success then
+			-- Function failed - re-throw error
+			error(results[2])
+		end
+
+		-- Return all values
+		return unpack(results, 2)
+	end
+end
+
+-- ============================================================================
+-- HELPER FUNCTIONS
+-- ============================================================================
+
+-- Check if a table looks like an Anomaly class
+local function is_anomaly_class(t)
+	if type(t) ~= "table" then
+		return false
+	end
+	if type(t.__init) == "function" then
+		return true
+	end
+	if type(t.__finalize) == "function" then
+		return true
+	end
+	local func_count = 0
+	for k, v in pairs(t) do
+		if type(v) == "function" and type(k) == "string" then
+			func_count = func_count + 1
+			if func_count >= 3 then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+local function is_safe_table_to_traverse(t)
+	if type(t) ~= "table" then
+		return false
+	end
+	if S.SYSTEM_TABLES[t] then
+		return false
+	end
+	return true
+end
+
+local function is_safe_function_to_wrap(func, key_str)
+	if type(func) ~= "function" then
+		return false
+	end
+	if S.DO_NOT_WRAP_FUNCS[func] then
+		return false
+	end
+	if type(key_str) == "string" and S.is_function_blacklisted(key_str) then
+		return false
+	end
+	return true
+end
+
+-- Check if table has any functions (optimization)
+local function table_has_any_function(t)
+	for _, vv in pairs(t) do
+		if type(vv) == "function" then
+			return true
+		end
+	end
+	return false
+end
+
+-- ============================================================================
+-- DEEP TABLE WRAPPING
+-- ============================================================================
+
+local function deep_wrap_table(module_name, tbl, prefix, originals, count_ref, visit_ref, already_wrapped, wrapped_func_identities)
+	if not is_safe_table_to_traverse(tbl) then
+		return
+	end
+	if S.visited_tables[tbl] then
+		return
+	end
+	S.visited_tables[tbl] = true
+
+	visit_ref[1] = visit_ref[1] + 1
+	if visit_ref[1] > S.MAX_TABLE_VISITS_PER_MODULE then
+		return
+	end
+	
+	wrapped_func_identities = wrapped_func_identities or {}
+
+	for k, v in pairs(tbl) do
+		if count_ref[1] >= S.MAX_WRAPS_PER_MODULE then
+			return
+		end
+
+		local key_str = tostring(k)
+		
+		if key_str ~= "" and key_str ~= "nil" then
+			if type(v) == "function" then
+				local is_in_wrapped_funcs = S.wrapped_funcs[v]
+				if is_in_wrapped_funcs then
+					printf("[DEVTOOLS] SKIP WRAPPER: %s.%s (in wrapped_funcs)", prefix, key_str)
+				elseif wrapped_func_identities[v] then
+					printf("[DEVTOOLS] SKIP WRAPPER: %s.%s (in wrapped_func_identities)", prefix, key_str)
+				elseif is_safe_function_to_wrap(v, key_str) then
+					local full_path = prefix .. "." .. key_str
+
+					if not already_wrapped[full_path] then
+						local belongs_to_other_module = false
+						for other_name, other_table in pairs(_G) do
+							if type(other_table) == "table" and type(other_name) == "string"
+							   and other_name ~= module_name
+							   and not S.is_module_blacklisted(other_name)
+							   and rawget(other_table, key_str) == v then
+								belongs_to_other_module = true
+								if S.DEBUG_TIMING then
+									printf("[DEVTOOLS] Skipping '%s' - belongs to module '%s'", key_str, other_name)
+								end
+								break
+							end
+						end
+						
+						if not belongs_to_other_module then
+							local func_suffix = full_path:sub(#module_name + 2)
+							originals[full_path] = v
+							already_wrapped[full_path] = true
+							local wrapper = wrap_function(module_name, func_suffix, v)
+							tbl[k] = wrapper
+							S.wrapped_funcs[wrapper] = true
+							wrapped_func_identities[wrapper] = true
+							count_ref[1] = count_ref[1] + 1
+
+							if S.DEBUG_TIMING then
+								printf("[DEVTOOLS] Wrapped NEW: %s", full_path)
+							end
+						end
+					else
+						if S.DEBUG_TIMING then
+							printf("[DEVTOOLS] Skipped (already wrapped): %s", full_path)
+						end
+					end
+				end
+			elseif type(v) == "table" then
+				local is_other_module = false
+				for other_name, other_table in pairs(_G) do
+					if other_table == v and type(other_name) == "string" and other_name ~= module_name then
+						is_other_module = true
+						if S.DEBUG_TIMING then
+							printf("[DEVTOOLS] Skipping nested table - it's module '%s'", other_name)
+						end
+						break
+					end
+				end
+				
+				if not is_other_module and is_safe_table_to_traverse(v) then
+					local has_funcs = table_has_any_function(v)
+					if S.DEBUG_TIMING then
+						printf("[DEVTOOLS]   Checking nested table: %s.%s (has_funcs=%s)", prefix, key_str, tostring(has_funcs))
+					end
+					if has_funcs then
+						deep_wrap_table(module_name, v, prefix .. "." .. key_str, originals, count_ref, visit_ref, already_wrapped, wrapped_func_identities)
+					end
+				end
+			end
+		end
+	end
+
+	-- Follow metatable __index for class-like tables
+	local mt = getmetatable(tbl)
+	if mt and type(mt) == "table" then
+		local index = rawget(mt, "__index")
+		if index and type(index) == "table" and is_safe_table_to_traverse(index) then
+			if not S.visited_tables[index] then
+				if S.DEBUG_TIMING then
+					printf("[DEVTOOLS]   Following __index metatable for: %s", prefix)
+				end
+				deep_wrap_table(module_name, index, prefix, originals, count_ref, visit_ref, already_wrapped, wrapped_func_identities)
+			end
+		end
+	end
+end
+
+-- ============================================================================
+-- PATH HELPERS
+-- ============================================================================
+
+-- Set value by path (handles both tables and userdata)
+local function set_by_path(module_table, full_path, value)
+	local parts = {}
+	for part in string.gmatch(full_path, "[^%.]+") do
+		table.insert(parts, part)
+	end
+	if #parts < 2 then
+		return false
+	end
+
+	local first_part = parts[1]
+	local root_table
+	
+	if module_table and type(module_table[first_part]) == "table" then
+		root_table = module_table
+	elseif _G[first_part] and (type(_G[first_part]) == "table" or type(_G[first_part]) == "userdata") then
+		root_table = _G
+	else
+		return false
+	end
+
+	local t = root_table[first_part]
+	for i = 2, #parts - 1 do
+		local k = parts[i]
+		if type(t) == "table" then
+			local next_val = t[k]
+			if type(next_val) ~= "table" and type(next_val) ~= "userdata" then
+				return false
+			end
+			t = next_val
+		elseif type(t) == "userdata" then
+			local ok, next_val = pcall(function() return t[k] end)
+			if not ok or (type(next_val) ~= "table" and type(next_val) ~= "userdata") then
+				return false
+			end
+			t = next_val
+		else
+			return false
+		end
+	end
+
+	local final_key = parts[#parts]
+	if type(t) == "table" then
+		t[final_key] = value
+		return true
+	elseif type(t) == "userdata" then
+		local ok = pcall(function() t[final_key] = value end)
+		return ok
+	end
+	return false
+end
+
+-- Get function by path (handles both tables and userdata)
+local function get_function_by_path(module_table, full_path, module_name)
+	local parts = {}
+	for part in string.gmatch(full_path, "[^%.]+") do
+		table.insert(parts, part)
+	end
+	
+	if #parts < 2 then
+		return nil
+	end
+	
+	local t = module_table
+	for i = 2, #parts - 1 do
+		local k = parts[i]
+		if type(t) == "table" then
+			t = t[k]
+		elseif type(t) == "userdata" then
+			local ok, val = pcall(function() return t[k] end)
+			if ok then
+				t = val
+			else
+				return nil
+			end
+		else
+			return nil
+		end
+	end
+	
+	local final_key = parts[#parts]
+	if type(t) == "table" then
+		return t[final_key]
+	elseif type(t) == "userdata" then
+		local ok, val = pcall(function() return t[final_key] end)
+		if ok then
+			return val
+		end
+	end
+	return nil
+end
+
+-- ============================================================================
+-- CLASS GLOBAL WRAPPING
+-- ============================================================================
+
+-- Wrap a class global
+local function wrap_class_global(class_name, class_table, parent_module_name, originals, count_ref, visit_ref, already_wrapped)
+	if S.wrapped_class_globals[class_name] then
+		return 0
+	end
+	if S.SYSTEM_TABLES[class_table] then
+		return 0
+	end
+	
+	S.wrapped_class_globals[class_name] = true
+	
+	local class_count_ref = { 0 }
+	deep_wrap_table(parent_module_name, class_table, class_name, originals, class_count_ref, visit_ref, already_wrapped)
+	
+	if class_count_ref[1] > 0 then
+		if DEVTOOLS_VERBOSE then
+			printf("[DEVTOOLS]   Wrapped class global '%s': %s methods", class_name, tostring(class_count_ref[1]))
+		end
+	end
+	
+	return class_count_ref[1]
+end
+
+-- Parse a script file to find LuaBind class definitions
+local function parse_script_for_classes(module_name)
+	local classes = {}
+	
+	local script_path = getFS():update_path("$game_scripts$", "") .. module_name .. ".script"
+	local file = io.open(script_path, "r")
+	if not file then
+		script_path = getFS():update_path("$game_data$", "") .. "scripts\\" .. module_name .. ".script"
+		file = io.open(script_path, "r")
+	end
+	
+	if not file then
+		return classes
+	end
+	
+	local content = file:read("*all")
+	file:close()
+	
+	if not content then
+		return classes
+	end
+	
+	local current_class = nil
+	for line in content:gmatch("[^\r\n]+") do
+		local class_name = line:match('^%s*class%s+["\']([%w_]+)["\']')
+		if class_name then
+			current_class = class_name
+			classes[class_name] = {}
+		end
+		
+		local cls, method = line:match('^%s*function%s+([%w_]+):([%w_]+)%s*%(')
+		if cls and method and classes[cls] then
+			if method:sub(1, 2) ~= "__" then
+				table.insert(classes[cls], method)
+			end
+		end
+	end
+	
+	return classes
+end
+
+-- Scan _G for class globals that might belong to this module
+local function wrap_related_class_globals(module_name, originals, count_ref, visit_ref, already_wrapped)
+	local class_count = 0
+	local classes_found = 0
+	
+	if DEVTOOLS_VERBOSE then
+		printf("[DEVTOOLS] Scanning module '%s' for LuaBind class methods...", module_name)
+	end
+	
+	local module_table = _G[module_name]
+	if not module_table or type(module_table) ~= "table" then
+		if DEVTOOLS_VERBOSE then
+			printf("[DEVTOOLS] Module '%s' not found or not a table", module_name)
+		end
+		return 0
+	end
+	
+	local parsed_classes = parse_script_for_classes(module_name)
+	local parsed_count = 0
+	for _ in pairs(parsed_classes) do parsed_count = parsed_count + 1 end
+	if DEVTOOLS_VERBOSE then
+		printf("[DEVTOOLS]   Parsed %s classes from source file", tostring(parsed_count))
+	end
+	
+	for class_name, method_names in pairs(parsed_classes) do
+		local class_obj = module_table[class_name]
+		if class_obj and type(class_obj) == "userdata" then
+			if DEVTOOLS_VERBOSE then
+				printf("[DEVTOOLS]   Found class: %s with %s methods", class_name, tostring(#method_names))
+			end
+			classes_found = classes_found + 1
+			
+			if not S.wrapped_class_globals[class_name] then
+				S.wrapped_class_globals[class_name] = true
+				local methods_wrapped = 0
+				
+				for _, method_name in ipairs(method_names) do
+					local ok_get, method_val = pcall(function() return class_obj[method_name] end)
+					if ok_get and type(method_val) == "function" then
+						if S.wrapped_funcs[method_val] then
+							if S.DEBUG_TIMING then
+								printf("[DEVTOOLS] Skipped class method (is wrapper): %s.%s.%s", module_name, class_name, method_name)
+							end
+						else
+							local full_path = module_name .. "." .. class_name .. "." .. method_name
+							
+							if not already_wrapped[full_path] and not S.BLACKLISTED_FUNCTIONS[method_name] then
+								originals[full_path] = method_val
+								already_wrapped[full_path] = true
+								
+								local wrapper = wrap_function(module_name .. "." .. class_name, method_name, method_val)
+								local ok_set = pcall(function() class_obj[method_name] = wrapper end)
+								if ok_set then
+									S.wrapped_funcs[wrapper] = true
+									methods_wrapped = methods_wrapped + 1
+									count_ref[1] = count_ref[1] + 1
+								end
+							end
+						end
+					end
+				end
+				
+				class_count = class_count + methods_wrapped
+				if DEVTOOLS_VERBOSE then
+					printf("[DEVTOOLS]     Wrapped %s methods from %s", tostring(methods_wrapped), class_name)
+				end
+			end
+		elseif class_obj then
+			if DEVTOOLS_VERBOSE then
+				printf("[DEVTOOLS]   Class %s exists but is type '%s' (expected userdata)", class_name, type(class_obj))
+			end
+		else
+			if DEVTOOLS_VERBOSE then
+				printf("[DEVTOOLS]   Class %s not found in module table", class_name)
+			end
+		end
+	end
+	
+	if DEVTOOLS_VERBOSE then
+		printf("[DEVTOOLS] Class scan complete: found %s classes, wrapped %s methods total", tostring(classes_found), tostring(class_count))
+	end
+	
+	return class_count
+end
+
+-- ============================================================================
+-- PUBLIC MODULE WRAPPING API
+-- ============================================================================
+
+function wrap_module(module_name, module_table)
+	if not module_table then
+		if DEVTOOLS_VERBOSE then
+			printf("[DEVTOOLS] Cannot wrap module '" .. tostring(module_name) .. "' - not found")
+		end
+		return 0
+	end
+
+	if S.wrapped_modules[module_name] then
+		printf("[DEVTOOLS] Module '%s' already has wrapped_modules entry - skipping", module_name)
+		return 0
+	end
+
+	if S.is_module_blacklisted(module_name) then
+		if DEVTOOLS_VERBOSE then
+			printf("[DEVTOOLS] Skipping blacklisted module: " .. tostring(module_name))
+		end
+		return 0
+	end
+
+	local wrapper_count_before = 0
+	for _ in pairs(S.wrapped_funcs) do
+		wrapper_count_before = wrapper_count_before + 1
+	end
+	printf("[DEVTOOLS] wrap_module('%s'): wrapped_funcs has %d entries before wrapping", module_name, wrapper_count_before)
+
+	local originals = {}
+	local count_ref = { 0 }
+	local visit_ref = { 0 }
+
+	S.reset_visited_tables()
+
+	local already_wrapped = {}
+	deep_wrap_table(module_name, module_table, module_name, originals, count_ref, visit_ref, already_wrapped)
+
+	local class_count = wrap_related_class_globals(module_name, originals, count_ref, visit_ref, already_wrapped)
+
+	S.wrapped_modules[module_name] = originals
+	S.wrapped_function_count = S.wrapped_function_count + count_ref[1]
+
+	local msg = string.format("[DEVTOOLS] Wrapped %d functions (deep) in '%s' (visited %d tables, total count now: %d)", 
+		count_ref[1], tostring(module_name), visit_ref[1], S.wrapped_function_count)
+	if class_count > 0 then
+		msg = msg .. string.format(" + %d class methods", class_count)
+	end
+	printf(msg)
+	
+	return count_ref[1]
+end
+
+function unwrap_module(module_name, module_table)
+	if not module_table then
+		return 0
+	end
+
+	local originals = S.wrapped_modules[module_name]
+	if not originals then
+		return 0
+	end
+
+	local count = 0
+	local total = 0
+	local failed_paths = {}
+	
+	for full_path, original_func in pairs(originals) do
+		total = total + 1
+		
+		local current_wrapper = get_function_by_path(module_table, full_path, module_name)
+		if current_wrapper and S.wrapped_funcs[current_wrapper] then
+			S.wrapped_funcs[current_wrapper] = nil
+		end
+		
+		if set_by_path(module_table, full_path, original_func) then
+			count = count + 1
+		else
+			if #failed_paths < 5 then
+				table.insert(failed_paths, full_path)
+			end
+		end
+	end
+
+	S.wrapped_function_count = S.wrapped_function_count - count
+	S.wrapped_modules[module_name] = nil
+
+	printf("[DEVTOOLS] Unwrapped %d/%d functions in '%s'", count, total, tostring(module_name))
+	if #failed_paths > 0 then
+		printf("[DEVTOOLS] WARNING: Failed to unwrap %d functions. Examples: %s", total - count, table.concat(failed_paths, ", "))
+	end
+	
+	return count
+end
+
+-- Re-wrap any newly added or overwritten functions in registered modules
+function rewrap_registered_modules()
+	if not S.auto_profile_enabled then
+		return 0
+	end
+
+	local total_new = 0
+
+	for module_name, _ in pairs(S.registered_modules) do
+		local module_table = _G[module_name]
+		local originals = S.wrapped_modules[module_name]
+		if module_table and type(module_table) == "table" and originals then
+			local count_ref = { 0 }
+			local visit_ref = { 0 }
+			S.reset_visited_tables()
+			
+			local already_wrapped = {}
+			local wrapped_func_identities = {}
+			for path, original_func in pairs(originals) do
+				already_wrapped[path] = true
+				local current_func = get_function_by_path(module_table, path, module_name)
+				if current_func and type(current_func) == "function" then
+					wrapped_func_identities[current_func] = true
+				end
+			end
+			
+			deep_wrap_table(module_name, module_table, module_name, originals, count_ref, visit_ref, already_wrapped, wrapped_func_identities)
+			
+			local class_new = wrap_related_class_globals(module_name, originals, count_ref, visit_ref, already_wrapped)
+			
+			if count_ref[1] > 0 then
+				S.wrapped_function_count = S.wrapped_function_count + count_ref[1]
+				total_new = total_new + count_ref[1]
+				printf("[DEVTOOLS] Rewrap: added %s new functions in '%s' (visited %s tables)", tostring(count_ref[1]), tostring(module_name), tostring(visit_ref[1]))
+			end
+		end
+	end
+
+	return total_new
+end
+
+-- ============================================================================
+-- MODULE EXPORTS
+-- ============================================================================
+
+devtools_profiler_wrap = devtools_profiler_wrap or {}
+local M = devtools_profiler_wrap
+
+-- Core wrapping functions
+M.wrap_function = wrap_function
+M.wrap_module = wrap_module
+M.unwrap_module = unwrap_module
+M.rewrap_registered_modules = rewrap_registered_modules
+
+-- Helpers (exported for potential external use)
+M.is_anomaly_class = is_anomaly_class
+M.is_safe_table_to_traverse = is_safe_table_to_traverse
+M.is_safe_function_to_wrap = is_safe_function_to_wrap
+M.parse_script_for_classes = parse_script_for_classes
+M.get_function_by_path = get_function_by_path
+M.set_by_path = set_by_path

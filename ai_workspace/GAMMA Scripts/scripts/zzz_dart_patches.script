@@ -1,0 +1,57 @@
+local Dart    = dart_core
+local Utils   = dart_utils
+local Module  = dart_module
+local Patches = factionid_hud_mcm
+
+
+local mod = "patches"
+
+
+-- store mod's initial values
+local initialValues = {
+  xo = Patches.xo,
+  xp = Patches.xp,
+  xn = Patches.xn,
+  xr = Patches.xr,
+  yo = Patches.yo,
+}
+
+
+local factionIDLoadSettings = Patches.loadsettings
+
+function Patches.loadsettings()
+  -- restore initial values
+  Patches.xo = initialValues.xo
+  Patches.xp = initialValues.xp
+  Patches.xn = initialValues.xn
+  Patches.xr = initialValues.xr
+  Patches.yo = initialValues.yo
+
+  -- load settings from mcm
+  factionIDLoadSettings()
+
+  -- make sure state is populated
+  CScriptXmlInit():ParseFile("ui_patches.xml")
+
+  local config = Module.config(mod)
+  local state  = Module.state(mod)
+
+  local xmlAspectRatio, patchSize =
+    state.xmlAspectRatio,
+    state.patchSize
+
+  local scaleSettings = {
+    offset   = config.offset,
+    safezone = config.safezone
+  }
+
+  Patches.xp = (Patches.xp + patchSize.x / 2) * config.scale
+  Patches.xn = (Patches.xn + patchSize.x / 2) * config.scale
+  Patches.xr = (Patches.xr + patchSize.x / 2) * config.scale
+
+  Patches.xo = Utils.correctX(Patches.xo, xmlAspectRatio, scaleSettings)
+  Patches.yo = Utils.correctY(Patches.yo, xmlAspectRatio, scaleSettings)
+  Patches.xp = Utils.correctX(Patches.xp, xmlAspectRatio)
+  Patches.xn = Utils.correctX(Patches.xn, xmlAspectRatio)
+  Patches.xr = Utils.correctX(Patches.xr, xmlAspectRatio)
+end

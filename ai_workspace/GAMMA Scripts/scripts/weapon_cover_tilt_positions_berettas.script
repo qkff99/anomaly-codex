@@ -1,0 +1,66 @@
+-- Extension script for weapon_cover_tilt_positions.script file
+-- Open weapon_cover_tilt_positions.script file for instructions
+
+if weapon_cover_tilt_positions then
+
+	if not weapon_cover_tilt_positions.weapon_offsets then
+		weapon_cover_tilt_positions.weapon_offsets = {}
+	end
+	
+	local o = weapon_cover_tilt_positions.weapon_offsets
+    
+	o["wpn_beretta"] = {
+		y = 0.32,
+	}
+	o["wpn_fn57"] = {
+		y = 0.32,
+	}
+	o["wpn_beretta_alt"] = {
+		y = 0.32,
+	}
+	o["wpn_beretta_modern"] = {
+		y = 0.32,
+	}
+	o["wpn_beretta_camo"] = {
+		y = 0.32,
+	}
+	o["wpn_fort_snag"] = {
+		y = 0.32,
+	}
+	o["wpn_fort17"] = {
+		y = 0.32,
+	}
+	o["wpn_fort"] = {
+		y = 0.32,
+	}
+	o["wpn_walther"] = {
+		y = 0.32,
+	}
+	o["wpn_walther_custom"] = {
+		y = 0.32,
+	}
+	o["wpn_oc33"] = {
+		y = 0.32,
+	}
+	o["wpn_fnp45"] = {
+		y = 0.32,
+	}
+	o["wpn_fnx45"] = {
+		y = 0.32,
+	}
+	o["wpn_fnx45_alt"] = {
+		y = 0.32,
+	}
+	o["wpn_fnx45_custom"] = {
+		y = 0.32,
+	}
+	o["wpn_glock"] = {
+		y = 0.32,
+	}
+	o["wpn_glock_modern"] = {
+		y = 0.32,
+	}
+	o["wpn_glock_custom"] = {
+		y = 0.32,
+	}
+end

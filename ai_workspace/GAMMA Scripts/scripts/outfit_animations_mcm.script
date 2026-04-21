@@ -1,0 +1,112 @@
+local defaults = {
+    ["keybind"] = bind_to_dik(key_bindings.kCAM_ZOOM_IN),
+    ["modifier"] = 3,
+    ["mode"] = 0,
+    ["memory"] = true,
+    ["memory_size"] = 3,
+    ["allow_movement"] = true,
+    ["enable_outfit_equip"] = true,
+    ["enable_backpack_equip"] = true,
+    ["enable_patches"] = true,
+    ["enable_patches_inventory"] = true,
+}
+
+
+function on_mcm_load()
+    local options = {
+        id = "liz_outfit_animations",
+        sh = true,
+        gr = {
+            {
+                id = "liz_outfit_animations",
+                type = "slide",
+                link = "ui_options_slider_player",
+                text = "ui_mcm_menu_liz_outfit_animations",
+                size = { 512, 50 },
+                spacing = 20
+            },
+            {
+                id = "keybind",
+                type = "key_bind",
+                val = 2,
+                def = defaults["keybind"],
+            },
+            {
+                id = "mode",
+                type = ui_mcm.kb_mod_radio,
+                val = 2,
+                def = 0,
+                hint = "mcm_kb_mode",
+                content = { { 0, "mcm_kb_mode_press" }, { 1, "mcm_kb_mode_dtap" }, { 2, "mcm_kb_mode_hold" } }
+            },
+            {
+                id = "modifier",
+                type = ui_mcm.kb_mod_radio,
+                val = 2,
+                def = 3,
+                hint = "mcm_kb_modifier",
+                content = { { 0, "mcm_kb_mod_none" }, { 1, "mcm_kb_mod_shift" }, { 3, "mcm_kb_mod_alt" } }
+            },
+            {
+                id = "desc_mcm",
+                type = "desc",
+                text = "ui_mcm_liz_outfit_animations_update_mcm",
+                clr = { 255, 175, 0, 0 },
+                precondition = { function () return not (ui_mcm and ui_mcm.key_hold) end } --warning message
+            },
+            { id = "divider", type = "line" },
+            {
+                id = "memory",
+                type = "check",
+                val = 1,
+                def = true
+            },
+            {
+                id = "memory_size",
+                type = "track",
+                val = 2,
+                step = 1,
+                def = 3,
+                max = 10,
+                min = -1
+            },
+            { id = "divider", type = "line" },
+            {
+                id = "allow_movement",
+                type = "check",
+                val = 1,
+                def = true
+            },
+            { id = "divider", type = "line" },
+            {
+                id = "enable_outfit_equip",
+                type = "check",
+                val = 1,
+                def = true
+            },
+            {
+                id = "enable_backpack_equip",
+                type = "check",
+                val = 1,
+                def = true
+            },
+            {
+                id = "enable_patches",
+                type = "check",
+                val = 1,
+                def = true
+            },
+            {
+                id = "enable_patches_inventory",
+                type = "check",
+                val = 1,
+                def = true
+            },
+        }
+    }
+    return options
+end
+
+function get_config(key)
+    if ui_mcm and ui_mcm.key_hold then return ui_mcm.get("liz_outfit_animations/" .. key) else return defaults[key] end
+end

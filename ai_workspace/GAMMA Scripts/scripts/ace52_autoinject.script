@@ -1,0 +1,57 @@
+
+-- supply tables
+
+local trade_table = {
+	{ -- freedom, sid, skadovsk, freedom jupiter, bandit olivius
+		[1] = {
+			["wpn_ace52"] = 1,
+		},
+	},
+}
+
+-- spawning guns
+
+local traders = {
+	["mar_base_owl_stalker_trader"] 				= { chance = 80, idx = 1 },
+	["red_greh_trader"] 				= { chance = 80, idx = 1 },
+	["pri_monolith_monolith_trader_stalker"] 				= { chance = 80, idx = 1 },
+	["zat_stancia_trader_merc"] 				= { chance = 80, idx = 1 },
+	["mil_smart_terrain_7_10_freedom_trader_stalker"] 				= { chance = 80, idx = 1 },
+	["trader_monolith_kbo"] 				= { chance = 80, idx = 1 },
+	["cit_killers_merc_trader_stalker"] 				= { chance = 80, idx = 1 },
+	["jup_a6_freedom_trader_ashot"] 				= { chance = 80, idx = 1 },
+	["zat_b30_owl_stalker_trader"] 					= { chance = 80, idx = 1 },
+	["val_smart_terrain_7_4_bandit_trader_stalker"] = { chance = 80, idx = 1 },
+	["dasc_trade_mlr19703"] 						= { chance = 80, idx = 1 },
+	["m_trader"] 									= { chance = 55, idx = 1 }
+}
+
+function m1a1_trade_spawn(npc)
+	local trader = npc:section()
+
+	if (not traders[trader]) then
+		return
+	end
+
+	local loot_table = traders[trader].chance >= math.random(100) and trade_table[traders[trader].idx]
+
+	if (not loot_table) then 
+		return 
+	end
+
+	local supply_level = clamp(trader_autoinject.supply_level(npc, true) or 0, 0, 5)
+
+	for k,v in pairs(loot_table) do
+		if supply_level >= k then
+			trader_autoinject.spawn_items(npc, loot_table[k], true)
+		end
+	end
+end
+
+
+TraderAuto = trader_autoinject.update
+function trader_autoinject.update(npc)
+    TraderAuto(npc)
+    m1a1_trade_spawn(npc)
+end
+

@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="windows-1251"?>
+
+<!-- 
+	MCM
+-->
+<string_table>
+    <string id="ui_mcm_revision_title">
+        <text>RE:VISION for Enhanced Visual Awareness and Motion Perception</text>
+    </string>
+
+    <string id="ui_mcm_menu_revision">
+        <text>RE:VISION</text>
+    </string>
+    
+    <!-- 1. General System Controls -->
+    <string id="ui_mcm_revision_enable_debug">
+        <text>Enable Debug</text>
+    </string>
+    <string id="ui_mcm_revision_enable_debug_desc">
+        <text>Shows on-screen logs and console messages for testing visibility behavior and debugging system responses.</text>
+    </string>
+
+    <string id="ui_mcm_revision_debug_type">
+        <text>Debug Type</text>
+    </string>
+    <string id="ui_mcm_revision_debug_type_desc">
+        <text>Choose between focusing on VDT calculation and Lum calculation.</text>
+    </string>
+
+    <string id="ui_mcm_lst_VDT">
+        <text>Visible Distance Threshold Calculation</text>
+    </string>
+
+    <string id="ui_mcm_lst_LUM">
+        <text>Luminosity Calculation</text>
+    </string>
+
+
+    <string id="ui_mcm_revision_detection_range">
+        <text>Detection Range</text>
+    </string>
+    <string id="ui_mcm_revision_detection_range_desc">
+        <text>Sets the maximum distance at which NPCs can detect or see the player and other npcs.</text>
+    </string>
+
+    <!-- 2. Weather Adjustments -->
+
+    <string id="ui_mcm_revision_weather_clear">
+        <text>Clear Weather</text>
+    </string>
+    <string id="ui_mcm_revision_weather_clear_desc">
+        <text>Sets the multiplier for this weather type based on the master weather profile</text>
+    </string>
+
+    <string id="ui_mcm_revision_weather_partly_cloudy">
+        <text>Partly Cloudy Weather</text>
+    </string>
+    <string id="ui_mcm_revision_weather_partly_cloudy_desc">
+        <text>Sets the multiplier for this weather type based on the master weather profile</text>
+    </string>
+
+    <string id="ui_mcm_revision_weather_cloudy">
+        <text>Cloudy Weather</text>
+    </string>
+    <string id="ui_mcm_revision_weather_cloudy_desc">
+        <text>Sets the multiplier for this weather type based on the master weather profile</text>
+    </string>
+
+    <string id="ui_mcm_revision_weather_cloudy_dark">
+        <text>Cloudy Dark Weather</text>
+    </string>
+    <string id="ui_mcm_revision_weather_cloudy_dark_desc">
+        <text>Sets the multiplier for this weather type based on the master weather profile</text>
+    </string>
+
+    <string id="ui_mcm_revision_weather_rain">
+        <text>Rainy Weather</text>
+    </string>
+    <string id="ui_mcm_revision_weather_rain_desc">
+        <text>Sets the multiplier for this weather type based on the master weather profile</text>
+    </string>
+
+    <string id="ui_mcm_revision_weather_storm">
+        <text>Stormy Weather</text>
+    </string>
+    <string id="ui_mcm_revision_weather_storm_desc">
+        <text>Sets the multiplier for this weather type based on the master weather profile</text>
+    </string>
+
+    <string id="ui_mcm_revision_weather_fog">
+        <text>Foggy Weather</text>
+    </string>
+    <string id="ui_mcm_revision_weather_fog_desc">
+        <text>Sets the multiplier for this weather type based on the master weather profile</text>
+    </string>
+
+
+
+
+    <!-- 3. Luminance Normalization Controls -->
+    <string id="ui_mcm_revision_global_luminance_multiplier">
+        <text>Global Luminance Multiplier</text>
+    </string>
+    <string id="ui_mcm_revision_global_luminance_multiplier_desc">
+        <text>Adjusts the overall brightness sensitivity of NPC vision. Higher values make the world appear brighter to AI. Use this to calibrate RE:Tinal to your weather system.</text>
+    </string>
+
+    <string id="ui_mcm_revision_dark_area_boost_strength">
+        <text>Dark Area Adjustment Strength</text>
+    </string>
+    <string id="ui_mcm_revision_dark_area_boost_strength_desc">
+        <text>Amplifies or reduce visibility in dark areas so NPCs don't become completely blind in near-total darkness. Use this to calibrate RE:Tinal to your weather system.</text>
+    </string>
+
+    <string id="ui_mcm_revision_bright_area_nerf_strength">
+        <text>Bright Area Adjustment Strength</text>
+    </string>
+    <string id="ui_mcm_revision_bright_area_nerf_strength_desc">
+        <text>Amplifies or reduce visibility influence from very bright environments to prevent overexposure effects in AI vision. Use this to calibrate RE:Tinal to your weather system.</text>
+    </string>
+
+    <!-- 4. Movement and Body Factors -->
+    <string id="ui_mcm_revision_crouch_visibility_multiplier">
+        <text>Crouch Visibility Multiplier</text>
+    </string>
+    <string id="ui_mcm_revision_crouch_visibility_multiplier_desc">
+        <text>Adjusts how much your visibility decreases while crouching. Lower values mean better concealment.</text>
+    </string>
+
+    <string id="ui_mcm_revision_slow_crouch_visibility_multiplier">
+        <text>Slow Crouch Visibility Multiplier</text>
+    </string>
+    <string id="ui_mcm_revision_slow_crouch_visibility_multiplier_desc">
+        <text>Further reduces visibility when crouch-moving slowly, improving stealth precision during slow movement.</text>
+    </string>
+
+    <string id="ui_mcm_revision_sprinting_visibility_multiplier">
+        <text>Sprinting Visibility Multiplier</text>
+    </string>
+    <string id="ui_mcm_revision_sprinting_visibility_multiplier_desc">
+        <text>Increases visibility while sprinting, reflecting the higher body motion and noise during fast movement.</text>
+    </string>
+
+    <string id="ui_mcm_revision_surface_noise_intensity">
+        <text>Surface Material Coefficient</text>
+    </string>
+    <string id="ui_mcm_revision_surface_noise_intensity_desc">
+        <text>Scales how surface types like grass and bushes affect NPC perception. Higher values make you less noticeable to AI.</text>
+    </string>
+
+    <!-- 5. Lighting and Environmental Factors -->
+    <string id="ui_mcm_revision_campfire_influence_distance">
+        <text>Campfire Influence Distance</text>
+    </string>
+    <string id="ui_mcm_revision_campfire_influence_distance_desc">
+        <text>Sets how far campfires and similar light sources illuminate NPC perception zones.</text>
+    </string>
+
+    <string id="ui_mcm_revision_use_ray_casting">
+        <text>Use Ray-Casting</text>
+    </string>
+    <string id="ui_mcm_revision_use_ray_casting_desc">
+        <text>Use Ray-Casting for more precise precise luminance calculation for indoor locations.</text>
+    </string>
+
+    <string id="ui_mcm_revision_indoor_check_frequency">
+        <text>Indoor check frequency</text>
+    </string>
+    <string id="ui_mcm_revision_indoor_check_frequency_desc">
+        <text>Sets how frequent the script checks if actor is indoors or outdoors. Uses ray-casting.</text>
+    </string>
+
+    <!-- 6. Animation & Perception Factors -->
+    <string id="ui_mcm_revision_fov_central_vision_angle">
+        <text>NPC Central Vision Angle</text>
+    </string>
+    <string id="ui_mcm_revision_fov_central_vision_angle_desc">
+        <text>Adjusts how wide the central vision of NPCs will be. They get full perception inside their central vision.</text>
+    </string>
+
+    <string id="ui_mcm_revision_fov_peripheral_vision_angle">
+        <text>NPC Peripheral Vision Angle</text>
+    </string>
+    <string id="ui_mcm_revision_fov_peripheral_vision_angle_desc">
+        <text>Adjusts how wide the peripheral vision of NPCs will be. They get lesser perception inside thier peripheral vision. Also affected by luminosity.</text>
+    </string>
+
+    <!-- 7. Camo & NVG Factors -->
+    <string id="ui_mcm_revision_nvg_bonus_strength">
+        <text>NVG Bonus Strength</text>
+    </string>
+    <string id="ui_mcm_revision_nvg_bonus_strength_desc">
+        <text>Determines how much Night Vision Goggles enhance NPC perception in low light conditions.</text>
+    </string>
+
+    <string id="ui_mcm_revision_agressive_response">
+        <text>Agressive Response</text>
+    </string>
+    <string id="ui_mcm_revision_agressive_response_desc">
+        <text>Shooting npcs beyond VDT would cause them to respond agressively when shot.</text>
+    </string>
+
+     <!-- 8. Master Weather Profile -->
+    
+    <string id="ui_mcm_revision_master_profile">
+        <text>Weather Master Profile</text>
+    </string>
+    <string id="ui_mcm_revision_key_0_desc">
+        <text>Allows you to set the luminosity of each key time points of the master profile</text>
+    </string>
+
+    <string id="ui_mcm_revision_key_0">
+    <text>12:00 midnight</text>
+    </string>
+    <string id="ui_mcm_revision_key_0_desc">
+    <text>Set the luminosity for this time key point</text>
+    </string>
+    <string id="ui_mcm_revision_key_2">
+    <text>2:00 in the morning</text>
+    </string>
+    <string id="ui_mcm_revision_key_2_desc">
+    <text>Set the luminosity for this time key point</text>
+    </string>
+    <string id="ui_mcm_revision_key_4">
+    <text>4:00 in the morning</text>
+    </string>
+    <string id="ui_mcm_revision_key_4_desc">
+    <text>Set the luminosity for this time key point</text>
+    </string>
+    <string id="ui_mcm_revision_key_6">
+    <text>6:00 in the morning</text>
+    </string>
+    <string id="ui_mcm_revision_key_6_desc">
+    <text>Set the luminosity for this time key point</text>
+    </string>
+    <string id="ui_mcm_revision_key_8">
+    <text>8:00 in the morning</text>
+    </string>
+    <string id="ui_mcm_revision_key_8_desc">
+    <text>Set the luminosity for this time key point</text>
+    </string>
+    <string id="ui_mcm_revision_key_10">
+    <text>10:00 in the morning</text>
+    </string>
+    <string id="ui_mcm_revision_key_10_desc">
+    <text>Set the luminosity for this time key point</text>
+    </string>
+    <string id="ui_mcm_revision_key_12">
+    <text>12:00 noon</text>
+    </string>
+    <string id="ui_mcm_revision_key_12_desc">
+    <text>Set the luminosity for this time key point</text>
+    </string>
+    <string id="ui_mcm_revision_key_14">
+    <text>2:00 in the afternoon</text>
+    </string>
+    <string id="ui_mcm_revision_key_14_desc">
+    <text>Set the luminosity for this time key point</text>
+    </string>
+    <string id="ui_mcm_revision_key_16">
+    <text>4:00 in the afternoon</text>
+    </string>
+    <string id="ui_mcm_revision_key_16_desc">
+    <text>Set the luminosity for this time key point</text>
+    </string>
+    <string id="ui_mcm_revision_key_18">
+    <text>6:00 in the afternoon</text>
+    </string>
+    <string id="ui_mcm_revision_key_18_desc">
+    <text>Set the luminosity for this time key point</text>
+    </string>
+    <string id="ui_mcm_revision_key_20">
+    <text>8:00 in the evening</text>
+    </string>
+    <string id="ui_mcm_revision_key_20_desc">
+    <text>Set the luminosity for this time key point</text>
+    </string>
+    <string id="ui_mcm_revision_key_22">
+    <text>10:00 in the evening</text>
+    </string>
+    <string id="ui_mcm_revision_key_22_desc">
+    <text>Set the luminosity for this time key point</text>
+    </string>
+
+    <string id="ui_mcm_revision_something">
+        <text>Place holder</text>
+    </string>    
+</string_table>

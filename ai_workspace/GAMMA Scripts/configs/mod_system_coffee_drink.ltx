@@ -1,0 +1,33 @@
+[item_drink_coffee_hud]:item_ea_energy_drink_nonstop_hud
+item_visual = dynamics\coffee\drink_coffee_hud.ogf
+
+[coffee_drink]:booster
+$spawn = "food and drugs\coffee_drink"
+cform = skeleton
+visual = dynamics\coffee\drink_coffee
+kind = i_drink
+description = st_coffee_drink_descr
+cost = 690
+inv_name = st_coffee_drink
+inv_name_short = st_coffee_drink
+inv_weight = 0.33
+script_binding = bind_item.bind
+inv_grid_width = 1
+inv_grid_height = 1
+icons_texture = coffee\item_coffee_icon
+inv_grid_x = 0
+inv_grid_y = 0
+attach_angle_offset = 0.000000, 0.000000, 0.000000
+attach_position_offset = 0.087266, -0.078540, 0.052360
+attach_bone_name = bip01_r_hand
+auto_attach = false
+boost_time = 300
+boost_max_weight = 1.0
+boost_radiation_restore = 0.00005
+boost_power_restore = 0.0025
+eat_alcohol = -0.250
+eat_satiety = 0.120
+eat_sleepiness = -0.06
+eat_thirstiness = -2.30
+use_sound = interface\inv_drink_can2
+tier = 1

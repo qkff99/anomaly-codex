@@ -1,0 +1,197 @@
+![wpn_axe_sounds]:base_sounds
+snd_draw				                                          = $no_sound
+snd_holster				                                          = $no_sound
+snd_shoot				                                          = $no_sound
+snd_shoot1				                                          = $no_sound
+snd_shoot2				                                          = $no_sound
+snd_empty				                                          = $no_sound
+snd_reload				                                          = $no_sound
+snd_bore				                                          = $no_sound
+
+;--------------------------------------------------------------------------------------------AXE---------------------
+![wpn_axe]:new_axe_sounds
+
+hud_fov                                    = 0.5
+icons_texture                              = ui\heavy_melee_icons
+description                                = st_axe2_descr
+inv_grid_width			                   = 4
+inv_grid_height			                   = 2
+inv_grid_x			                       = 4
+inv_grid_y			                       = 0
+
+;Sounds Handled In Scripts
+scripted_snd_attack                                               = weapons\new_axe\axe_swing, true
+scripted_snd_attack_variant1                                      = weapons\new_axe\axe_swing_var1, true
+scripted_snd_attack_variant2                                      = weapons\new_axe\axe_swing_var2, true
+scripted_snd_attack2                                              = weapons\new_axe\heavy_overhead_swing, true
+
+![wpn_axe_hud]
+
+item_visual                 = anomaly_weapons\wpn_axe\wpn_axe_hud
+
+item_position               = 0, 0, 0
+item_orientation            = 0, 0, 0
+
+hands_orientation                = -0.5, 1, 10
+hands_orientation_16x9           = -0.5, 1, 10
+hands_position                   = -0.001529, -0.168825, 0.198185
+hands_position_16x9              = -0.001529, -0.168825, 0.198185
+
+lowered_hud_offset_pos           = -0.042576, -0.016771, -0.10611
+lowered_hud_offset_pos_16x9      = -0.042576, -0.016771, -0.10611
+lowered_hud_offset_rot           = 0.274172, -0.033762, -0.066
+lowered_hud_offset_rot_16x9      = 0.274172, -0.033762, -0.066
+
+anm_attack                  = barry_axe_light_hands
+anm_attack2                 = barry_axe_heavy_hands
+anm_hide                    = barry_axe_holster_hands
+anm_idle                    = barry_axe_idle_hands
+anm_idle_aim                = barry_axe_idle_hands
+anm_idle_moving             = barry_axe_walk_hands
+anm_idle_sprint             = barry_axe_sprint_hands
+anm_show                    = barry_axe_draw_hands
+anm_show_empty              = barry_axe_draw_hands
+anm_bore                    = barry_axe_inspect_hands
+
+; Custom Animation Types Handled In Scripts
+anm_attack_variant1         = barry_axe_light_hands_alt1
+anm_attack_variant2         = barry_axe_light_hands_alt2
+anm_1h_show                 = barry_axe_1h_draw_hands
+
+; Transition/Intermediate Animations
+anm_walk2sprint             = barry_axe_transition_hands
+anm_sprint2walk             = barry_axe_transition_hands_alt
+
+; Transition Definitions
+ts_pattern_walk2sprint      = .+, anm_idle_sprint, anm_walk2sprint, 1
+ts_pattern_sprint2walk      = anm_idle_sprint, ^anm_idle.*, anm_sprint2walk, 1
+
+[new_axe_sounds]:base_sounds
+snd_draw				                                          = weapons\new_axe\heavy_draw
+snd_holster				                                          = weapons\new_axe\heavy_holster
+snd_shoot				                                          = $no_sound
+snd_shoot1				                                          = $no_sound
+snd_shoot2				                                          = $no_sound
+
+;Sounds Handled In Scripts
+scripted_snd_attack                                               = weapons\new_axe\axe_swing, true
+scripted_snd_attack_variant1                                      = weapons\new_axe\axe_swing_var1, true
+scripted_snd_attack_variant2                                      = weapons\new_axe\axe_swing_var2, true
+scripted_snd_attack2                                              = weapons\new_axe\heavy_overhead_swing, true
+
+;------------------------------------------------------------------------------------------AXE2-----------------------
+![wpn_axe2]:new_axe_sounds
+
+hud_fov                                    = 0.5
+icons_texture                              = ui\heavy_melee_icons
+inv_grid_width			                   = 4
+inv_grid_height			                   = 2
+inv_grid_x			                       = 4
+inv_grid_y			                       = 0
+
+;Sounds Handled In Scripts
+scripted_snd_attack                                               = weapons\new_axe\axe_swing, true
+scripted_snd_attack_variant1                                      = weapons\new_axe\axe_swing_var1, true
+scripted_snd_attack_variant2                                      = weapons\new_axe\axe_swing_var2, true
+scripted_snd_attack2                                              = weapons\new_axe\heavy_overhead_swing, true
+
+![wpn_axe2_hud]
+
+item_visual                 = anomaly_weapons\wpn_axe\wpn_axe_hud
+
+item_position               = 0, 0, 0
+item_orientation            = 0, 0, 0
+
+hands_orientation                = -0.5, 1, 10
+hands_orientation_16x9           = -0.5, 1, 10
+hands_position                   = -0.001529, -0.168825, 0.198185
+hands_position_16x9              = -0.001529, -0.168825, 0.198185
+
+lowered_hud_offset_pos           = -0.042576, -0.016771, -0.10611
+lowered_hud_offset_pos_16x9      = -0.042576, -0.016771, -0.10611
+lowered_hud_offset_rot           = 0.274172, -0.033762, -0.066
+lowered_hud_offset_rot_16x9      = 0.274172, -0.033762, -0.066v
+
+anm_attack                  = barry_axe_light_hands
+anm_attack2                 = barry_axe_heavy_hands
+anm_hide                    = barry_axe_holster_hands
+anm_idle                    = barry_axe_idle_hands
+anm_idle_aim                = barry_axe_idle_hands
+anm_idle_moving             = barry_axe_walk_hands
+anm_idle_sprint             = barry_axe_sprint_hands
+anm_show                    = barry_axe_draw_hands
+anm_show_empty              = barry_axe_draw_hands
+anm_bore                    = barry_axe_inspect_hands
+
+; Custom Animation Types Handled In Scripts
+anm_attack_variant1         = barry_axe_light_hands_alt1
+anm_attack_variant2         = barry_axe_light_hands_alt2
+anm_1h_show                 = barry_axe_1h_draw_hands
+
+; Transition/Intermediate Animations
+anm_walk2sprint             = barry_axe_transition_hands
+anm_sprint2walk             = barry_axe_transition_hands_alt
+
+; Transition Definitions
+ts_pattern_walk2sprint      = .+, anm_idle_sprint, anm_walk2sprint, 1
+ts_pattern_sprint2walk      = anm_idle_sprint, ^anm_idle.*, anm_sprint2walk, 1
+
+;-------------------------------------------------------------------------------------SLEDGE-HAMMER----------------------------
+![wpn_axe3]:new_axe_sounds
+
+hud_fov                     = 0.5
+description			        = st_sledge_hammer_descr
+inv_name			        = st_sledge_hammer
+inv_name_short			    = st_sledge_hammer
+icons_texture               = ui\heavy_melee_icons
+inv_grid_width			    = 4
+inv_grid_height			    = 2
+inv_grid_x			        = 4
+inv_grid_y			        = 2
+
+;Sounds Handled In Scripts
+scripted_snd_attack                                               = weapons\new_axe\axe_swing, true
+scripted_snd_attack_variant1                                      = weapons\new_axe\axe_swing_var1, true
+scripted_snd_attack_variant2                                      = weapons\new_axe\axe_swing_var2, true
+scripted_snd_attack2                                              = weapons\new_axe\heavy_overhead_swing_sledge, true
+
+![wpn_axe3_hud]
+
+item_visual                 = anomaly_weapons\wpn_sledge_hammer\wpn_sledge_hud.ogf
+
+item_position               = 0, 0, 0
+item_orientation            = 0, 0, 0
+
+hands_orientation           = 6.3614, -4.82933, 9.645867
+hands_orientation_16x9      = 6.3614, -4.82933, 9.645867
+hands_position              = 0.001152, -0.127219, 0.102892
+hands_position_16x9         = 0.001152, -0.127219, 0.102892
+
+lowered_hud_offset_pos           = -0.042576, -0.016771, -0.10611
+lowered_hud_offset_pos_16x9      = -0.042576, -0.016771, -0.10611
+lowered_hud_offset_rot           = 0.274172, -0.033762, -0.066
+lowered_hud_offset_rot_16x9      = 0.274172, -0.033762, -0.066v
+
+anm_attack                  = barry_axe_light_hands
+anm_attack2                 = barry_axe_heavy_hands
+anm_hide                    = barry_axe_holster_hands
+anm_idle                    = barry_axe_idle_hands
+anm_idle_aim                = barry_axe_idle_hands
+anm_idle_moving             = barry_axe_walk_hands
+anm_idle_sprint             = barry_axe_sprint_hands
+anm_show                    = barry_axe_draw_hands
+anm_show_empty              = barry_axe_draw_hands
+anm_bore                    = barry_sledge_inspect_hands
+
+; Custom Animation Types Handled In Scripts
+anm_attack_variant1         = barry_axe_light_hands_alt1
+anm_attack_variant2         = barry_axe_light_hands
+anm_1h_show                 = barry_axe_1h_draw_hands
+
+; Transition/Intermediate Animations
+anm_walk2sprint             = barry_axe_transition_hands
+anm_sprint2walk             = barry_axe_transition_hands_alt
+
+; Transition Definitions
+ts_pattern_walk2sprint      = .+, anm_idle_sprint, anm_walk2sprint, 1
+ts_pattern_sprint2walk      = anm_idle_sprint, ^anm_idle.*, anm_sprint2walk, 1

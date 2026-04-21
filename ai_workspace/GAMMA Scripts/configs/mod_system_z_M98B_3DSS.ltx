@@ -1,0 +1,91 @@
+;====================================================================================
+![wpn_m98b]
+parent_section 	= wpn_m98b
+scopes			= pn23, skeet
+
+lewd_lens_hide_enabled       = true	
+lewd_lens_hide_bone          = lens
+lewd_lens_hide_delays        = 0.1,0
+lewd_lens_hide_aim_mode      = true, false, false
+
+        scope_zoom_factor                = 6	
+		min_scope_zoom_factor			 = 30
+        scope_texture                    =	
+		scope_dynamic_zoom               = on	
+		
+	s3ds_reticle_size 	= 4.3
+	s3ds_eye_relief 	= 4
+	s3ds_exit_pupil		= 0.37	
+	s3ds_ffp			= 1
+	magnifications 		= 3-20	
+	
+
+![wpn_m98b_hud]	
+        aim_hud_offset_pos               = -0.059841, 0.001045, -0.062282
+        aim_hud_offset_pos_16x9          = -0.059841, 0.001045, -0.062282
+        aim_hud_offset_rot               = -0.014413, -0.004149, 0
+        aim_hud_offset_rot_16x9          = -0.014413, -0.004149, 0
+		
+;-------------------------------------------------------------------------------------------
+[wpn_m98b_pn23]:wpn_m98b
+hud                                      = wpn_m98b_pn23_hud
+
+1icon_layer                              = pn23f
+1icon_layer_x                            = 144
+1icon_layer_y                            = 5
+
+inv_weight                               = 6.5
+zoom_rotate_time                         = 0.25
+
+		scope_status                     = 1
+        scope_zoom_factor                = 6	
+		min_scope_zoom_factor			 = 30
+		scope_dynamic_zoom               = on
+
+	s3ds_reticle_size 	= 4.3
+	s3ds_eye_relief 	= 4
+	s3ds_exit_pupil		= 0.37	
+	s3ds_ffp			= 1
+	s3ds_image_type		= 1
+	s3ds_reticle_type	= 7
+	ms_count 			= 2
+	magnifications 		= 3-20
+	
+[wpn_m98b_pn23_hud]:wpn_m98b_hud
+item_visual                              = anomaly_weapons\wpn_m98b\wpn_m98b_pn23_hud.ogf
+        aim_hud_offset_pos               = -0.059841, 0.001045, -0.062282
+        aim_hud_offset_pos_16x9          = -0.059841, 0.001045, -0.062282
+        aim_hud_offset_rot               = -0.014413, -0.004149, 0
+        aim_hud_offset_rot_16x9          = -0.014413, -0.004149, 0
+		
+;-------------------------------------------------------------------------------------------
+[wpn_m98b_skeet]:wpn_m98b
+hud                                      = wpn_m98b_skeet_hud
+
+1icon_layer                              = skeet_x
+1icon_layer_x                            = 150
+1icon_layer_y                            = 5
+
+inv_weight                               = 6.5
+zoom_rotate_time                         = 0.25
+
+		scope_status                     = 1
+        scope_zoom_factor                = 6	
+		min_scope_zoom_factor			 = 30
+		scope_dynamic_zoom               = on
+
+	s3ds_reticle_size 	= 4.3
+	s3ds_eye_relief 	= 4
+	s3ds_exit_pupil		= 0.37	
+	s3ds_ffp			= 1
+	s3ds_image_type		= 3
+	s3ds_reticle_type	= 7
+	ms_count			= 0
+	magnifications 		= 3-20
+	
+[wpn_m98b_skeet_hud]:wpn_m98b_hud
+item_visual                              = anomaly_weapons\wpn_m98b\wpn_m98b_skeet_hud.ogf
+        aim_hud_offset_pos               = -0.059841, 0.001045, -0.062282
+        aim_hud_offset_pos_16x9          = -0.059841, 0.001045, -0.062282
+        aim_hud_offset_rot               = -0.014413, -0.004149, 0
+        aim_hud_offset_rot_16x9          = -0.014413, -0.004149, 0		

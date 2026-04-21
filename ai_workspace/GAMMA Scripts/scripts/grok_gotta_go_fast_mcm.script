@@ -1,0 +1,20 @@
+-- If you don't use MCM, change your defaults from here.
+local defaults = {
+    ["gotta_go_fast_run"] = 1.05,
+    ["gotta_go_fast_sprint"] = 1.05,
+}
+
+function get_config(key)
+    if ui_mcm then return ui_mcm.get("gggf/"..key) else return defaults[key] end
+end
+
+function on_mcm_load()
+    op = { id= "gggf",sh=true ,gr={
+            { id= "title",type= "slide",link= "ui_options_slider_player",text="ui_mcm_gggf_title",size= {512,50},spacing= 20 },
+            {id = "gotta_go_fast_run", type = "track", val = 2, min=0.1,max=2,step=0.01, def = 1.05},
+            {id = "gotta_go_fast_sprint", type = "track", val = 2, min=1,max=3,step=0.01, def = 1.05},
+        }
+    }
+        
+    return op
+end

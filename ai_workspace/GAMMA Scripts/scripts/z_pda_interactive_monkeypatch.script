@@ -1,0 +1,8 @@
+local og_func1 = pda.set_active_subdialog
+function pda.set_active_subdialog(section)
+	local value = og_func1(section)
+	if (section == "eptInteractive") then
+		return pda_inter_gui.start_PDAX()
+	end
+	return value
+end

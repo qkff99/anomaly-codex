@@ -1,0 +1,2166 @@
+-- Draggable Hud Editor by demonized
+-- Possibility to set hud values by mouse dragging
+-- Adjusting world model position and orientation for strapped/unstrapped poses
+-- 2023
+
+--[[
+	Script by Tronex
+	Engine edits by Rezy
+	2019/9/15
+	Weapon HUD editor
+	
+	Weapon HUD editor allows you to change Weapon HUD position and orientation in real-time.
+	The GUI is interactive and easy to use, with ability to save adjusted pos in a temp file "temp_hud.ltx".
+	Edited values are temporarly cached for the weapons you worked on. You can return to them in case you turned off the editor (Avoid exiting or reloading when you have unsaved values).
+	Keybinds:
+	• Up Arrow: 		select previous parameter.
+	• Down Arrow: 		select next parameter.
+	• Left Arrow: 		reduce\rotate value of selected parameter.
+	• Right Arrow: 		increase\rotate value of selected parameter.
+	• LShift (hold): 	x10 value step.
+	• LAlt (hold): 		x50 value step.
+	• C: 				copy current section settings.
+	• V: 				paste/apply current section settings.
+	• Delete: 			clean temp cache.
+	• H: 				toggle hint window.
+	• Esc or Home: 		turn off editor.
+--]]
+
+local EPS = 0.0000100
+local function fsimilar(value, to, eps)
+	return math.abs(value - to) < eps
+end
+
+local function generate_orthonormal_basis_normalized(d)
+	local dir = vector():set(d):normalize()
+	local up = vector():set(0,0,0)
+	local right = vector():set(0,0,0)
+	local fInvLength
+	if (fsimilar(dir.y, 1.0, EPS)) then
+		up:set(0, 0, 1)
+		fInvLength = 1 / math.sqrt(dir.x * dir.x + dir.y * dir.y)
+		right.x = -dir.y * fInvLength
+		right.y = dir.x * fInvLength
+		right.z = 0
+		up.x = -dir.z * right.y
+		up.y = dir.z * right.x
+		up.z = dir.x * right.y - dir.y * right.x
+	else
+		up:set(0, 1, 0)
+		fInvLength = 1 / math.sqrt(dir.x * dir.x + dir.z * dir.z)
+		right.x = dir.z * fInvLength
+		right.y = 0
+		right.z = -dir.x * fInvLength
+		up.x = dir.y * right.z
+		up.y = dir.z * right.x - dir.x * right.z
+		up.z = -dir.y * right.x
+	end
+	return dir, up, right
+end
+
+local precision = 6 -- allowed number of zeros
+local t_dir = "items\\weapons\\"
+local parameters = {
+-- Type: 0 = string | 1 = number | 2 = 3d vector | 3 = 4d vector | 
+	["hands_position"]		            = { name = "Hands Position",         typ = 2, def = {0,0,0}, indx = 1,  min = -180,   max = 180, step = 0.0001, idxa = 0, idxb = 0,  hud = true },
+	["hands_orientation"]	            = { name = "Hands Orientation",      typ = 2, def = {0,0,0}, indx = 2,  min = -180,   max = 180, step = 0.0001, idxa = 1, idxb = 0,  hud = true },
+	["base_hud_offset_pos"]		        = { name = "Base Position",          typ = 2, def = {0,0,0}, indx = 3,  min = -180,   max = 180, step = 0.0001, idxa = 0, idxb = 5,  hud = true },
+	["base_hud_offset_rot"]	            = { name = "Base Orientation",       typ = 2, def = {0,0,0}, indx = 4,  min = -180,   max = 180, step = 0.0001, idxa = 1, idxb = 5,  hud = true },
+	["aim_hud_offset_pos"]		        = { name = "Aim Position",           typ = 2, def = {0,0,0}, indx = 5,  min = -180,   max = 180, step = 0.0001, idxa = 0, idxb = 1,  hud = true },
+	["aim_hud_offset_rot"]	            = { name = "Aim Orientation",        typ = 2, def = {0,0,0}, indx = 6,  min = -180,   max = 180, step = 0.0001, idxa = 1, idxb = 1,  hud = true },
+	["gl_hud_offset_pos"]		        = { name = "GL Position",            typ = 2, def = {0,0,0}, indx = 7,  min = -180,   max = 180, step = 0.0001, idxa = 0, idxb = 2,  hud = true },
+	["gl_hud_offset_rot"]		        = { name = "GL Orientation",         typ = 2, def = {0,0,0}, indx = 8,  min = -180,   max = 180, step = 0.0001, idxa = 1, idxb = 2,  hud = true },
+	["aim_hud_offset_alt_pos"]	        = { name = "Alt Position",           typ = 2, def = {0,0,0}, indx = 9,  min = -180,   max = 180, step = 0.0001, idxa = 0, idxb = 3,  hud = true },
+	["aim_hud_offset_alt_rot"]			= { name = "Alt Orientation",        typ = 2, def = {0,0,0}, indx = 10,  min = -180,   max = 180, step = 0.0001, idxa = 1, idxb = 3,  hud = true },
+	["lowered_hud_offset_pos"]			= { name = "Lowered Position",       typ = 2, def = {0,0,0}, indx = 11,  min = -180,   max = 180, step = 0.0001, idxa = 0, idxb = 4,  hud = true },
+	["lowered_hud_offset_rot"]			= { name = "Lowered Orientation",    typ = 2, def = {0,0,0}, indx = 12, min = -180,   max = 180, step = 0.0001, idxa = 1, idxb = 4,  hud = true },
+	["fire_point"]	        			= { name = "Fire Point",           	 typ = 2, def = {0,0,0}, indx = 13, min = -180,   max = 180, step = 0.0001, idxa = 0, idxb = 10, hud = true, no_16x9 = true },
+	["fire_point2"]	       				= { name = "Fire Point 2 (GL)",      typ = 2, def = {0,0,0}, indx = 14, min = -180,   max = 180, step = 0.0001, idxa = 0, idxb = 11, hud = true, no_16x9 = true },
+	["fire_direction"]					= { name = "Fire Direction",         typ = 2, def = {0,0,1}, indx = 15, min = -180,   max = 180, step = 0.0001, idxa = 1, idxb = 10, hud = true, no_16x9 = true },
+	["shell_point"]						= { name = "Shell Point",        	 typ = 2, def = {0,0,0}, indx = 16, min = -180,   max = 180, step = 0.0001, idxa = 1, idxb = 11, hud = true, no_16x9 = true },
+	["custom_ui_pos"]	       		 	= { name = "UI Position",            typ = 2, def = {0,0,0}, indx = 17, min = -180,   max = 180, step = 0.0001, idxa = 0, idxb = 20 }, --idxb 20 is reserved for device ui
+	["custom_ui_rot"]					= { name = "UI Orientation",         typ = 2, def = {0,0,0}, indx = 18, min = -180,   max = 180, step = 1, 		 idxa = 1, idxb = 20 },
+	["item_position"]	        		= { name = "Item Position",          typ = 2, def = {0,0,0}, indx = 19, min = -180,   max = 180, step = 0.0001, idxa = 0, idxb = 12, hud = true, no_16x9 = true },
+	["item_orientation"]	       		= { name = "Item Orientation",       typ = 2, def = {0,0,0}, indx = 20, min = -180,   max = 180, step = 0.0001, idxa = 1, idxb = 12, hud = true, no_16x9 = true },
+	["scope_zoom_factor"]				= { name = "Zoom Factor",        	 typ = 1, def = 0, 		 indx = 21, min = 0,  	  max = 120, step = 0.1 },
+	["gl_zoom_factor"]					= { name = "GL Zoom Factor",         typ = 1, def = 0, 		 indx = 22, min = 0,  	  max = 120, step = 0.1 },
+	["scope_zoom_factor_alt"]			= { name = "Alt Zoom Factor",        typ = 1, def = 0, 		 indx = 23, min = 0,  	  max = 120, step = 0.1 }, 
+}
+
+local third_person_parameters = {
+	["position"]		            = { name = "Position",         typ = 2, def = {0,0,0}, indx = 1,  min = -180,   max = 180, step = 0.0001, idxa = 0, idxb = 0,  hud = false, no_16x9 = true },
+	["orientation"]	            = { name = "Orientation",      typ = 2, def = {0,0,0}, indx = 2,  min = -180,   max = 180, step = 0.0001, idxa = 1, idxb = 0,  hud = false, no_16x9 = true },
+	["strap_position"]		        = { name = "Strap Position",           typ = 2, def = {0,0,0}, indx = 3,  min = -180,   max = 180, step = 0.0001, idxa = 0, idxb = 1,  hud = false, no_16x9 = true },
+	["strap_orientation"]	            = { name = "Strap Orientation",        typ = 2, def = {0,0,0}, indx = 4,  min = -180,   max = 180, step = 0.0001, idxa = 1, idxb = 1,  hud = false, no_16x9 = true },
+	["fire_point"]	            = { name = "Fire Point",        typ = 2, def = {0,0,0}, indx = 5,  min = -180,   max = 180, step = 0.0001, idxa = 1, idxb = 1,  hud = false, no_16x9 = true },
+	["fire_point2"]	            = { name = "Fire Point 2 (GL)",        typ = 2, def = {0,0,0}, indx = 6,  min = -180,   max = 180, step = 0.0001, idxa = 1, idxb = 1,  hud = false, no_16x9 = true },
+	["shell_point"]	            = { name = "Shell Point",        typ = 2, def = {0,0,0}, indx = 7,  min = -180,   max = 180, step = 0.0001, idxa = 1, idxb = 1,  hud = false, no_16x9 = true },
+}
+
+local adjust_active = nil
+
+local is_wide = utils_xml.is_widescreen()
+local _width = (device().width)-400
+local _hight = (device().height)
+local msg_width = is_wide and (_width*0.8) or _width
+
+-- general values cache
+local _memo = {} 	-- _memo[section] = {...}
+local _memo_i = {}  -- _memo_i[section] = {...}
+
+-- cache current values
+local _cache = {}
+local _cache_i = {}
+local _selected = {}
+local _selected_group = {}
+
+local key_timer = 0
+local jump_1 = 1
+local jump_2 = 10
+local jump_3 = 50
+local jump = jump_1
+
+local dummy_npc
+
+local enable_debug = false
+function print_dbg(...)
+	if enable_debug then
+		printf(...)
+	end
+end
+
+
+-------------------------------------------------------------------
+GUI = nil -- instance, don't touch
+function start(owner)
+	-- Hide the owner
+	if owner then
+		if (owner:IsShown()) then
+			print_dbg("~ hide owner: %s", owner.name or "?")
+			owner:HideDialog()
+			owner:Show(false)
+		end
+	else
+		hide_hud_inventory()
+	end
+	
+	local wpn = db.actor:active_item()
+	local det = db.actor:active_detector()
+	if wpn or det then
+	
+		if (not GUI) then
+			GUI = WpnHudEditor(owner, wpn and wpn:section() or det:section())
+		end
+	
+		
+		if (GUI) and (not GUI:IsShown()) then
+		
+			-- Enable hud adjust mode
+			if (not adjust_active) then
+				adjust_active = true
+				hud_adjust.enabled(true)
+				print_dbg("~ Enabled hud adjust mode")
+			end
+	
+			GUI:ShowDialog(true)
+			GUI.section = wpn and wpn:section() or det:section()
+			GUI:Reset()
+			GUI:Send_MSG("Press H for info")
+			
+			RegisterScriptCallback("on_key_release",on_key_release)
+			RegisterScriptCallback("on_key_hold",on_key_hold)
+			
+			Register_UI("WpnHudEditor","ui_debug_wpn_hud")
+		else
+			ui_debug_launcher.resume()
+			printe("! Ok... Something is fucked...")
+		end
+	else
+		ui_debug_launcher.resume()
+		actor_menu.set_msg(1, "Hold the weapon you want to edit in your hands first!",5)
+	end
+end
+
+function on_key_release(key)
+	-- jump = jump_1
+end
+
+function on_key_hold(key)
+	-- if GUI then
+	-- 	if (key == DIK_keys["DIK_LSHIFT"]) then
+	-- 		jump = jump_2
+	-- 		key_timer = time_global() + 200
+	-- 	elseif (key == DIK_keys["DIK_LMENU"]) then
+	-- 		jump = jump_3
+	-- 		key_timer = time_global() + 200
+	-- 	end
+	-- end
+end
+
+-------------------------------------------------------------------
+class "WpnHudEditor" (CUIScriptWnd)
+
+function WpnHudEditor:__init(owner,section) super()
+	self.owner = owner
+	self.section = section
+
+	self.data = {}
+
+	self.tables = {parameters, third_person_parameters}
+	
+	for i, v in ipairs(self.tables) do
+		_selected[v] = _selected[v] or 1
+		_selected_group[v] = _selected_group[v] or 1
+
+		self.data[v] = {}
+		self.data[v].selected = _selected[v]
+		self.data[v].selected_group = _selected_group[v]
+		self.data[v].cnt = 0 		 -- parameters counter / index
+		self.data[v].cnt_group = {} -- parameters counter / index per parent parameter
+		self.data[v].cnt_to_group = {} -- parameters counter to group relation
+		
+		self.data[v].name = {} 		 -- parameters name (by index)
+		self.data[v].typ = {} 	 	 -- parameter type (by index)
+		self.data[v].value = {}  	 -- parameter value (by index)
+		self.data[v].value_i = {}  	 -- parameter value (by parent)
+		self.data[v].parent = {} 	 -- parameter parent, useful for dealing with vector values (by index)
+		self.data[v].index = {}		 -- list parameter index, to trace list value
+		
+		self.data[v].par = {}        -- parameter element (by index)
+		self.data[v].par_cap = {}    -- parameter cap (by index)
+		self.data[v].par_hl = {}     -- parameter hightlighting (by index)
+		self.data[v].par_list = {}	 -- parameter list for lists (by index)
+		self.data[v].par_list_n = {} -- parameter numbered list for lists (by index)
+	end
+
+	self.active_table = parameters
+	self.third_person_mode = false
+	self:ResetNpcCam()
+	
+	self:InitControls()
+	self:InitCallBacks()
+	
+	self:Reset(true)
+	
+	self:Send_MSG("Press H for info")
+end
+
+function WpnHudEditor:__finalize()
+end
+
+function WpnHudEditor:InitControls()
+	self:SetWndRect			(Frect():set(0,0,1024,768))
+	self:SetAutoDelete(true)
+	
+	if self.owner then
+		self.xml = self.owner.xml
+	else
+		self.xml = CScriptXmlInit()
+	end
+	
+	local xml = self.xml
+	if (not self.owner) then
+		xml:ParseFile			("ui_debug_launcher.xml")
+	end
+	
+	-- Guides
+	local width = device().width
+	local hight = device().height
+	local w_fac = (1024/width)
+	local h_fac = (768/hight)
+	local thic = 2
+	
+	self._w = xml:InitStatic("dbg_wpn_hud_editor:align", self)
+	--self._w:SetWndPos(vector2():set( 			0 								, 		((hight/2 * h_fac) - (thic/2)) 		))
+	--self._w:SetWndSize(vector2():set( 			(width * w_fac) 				, 		(thic * h_fac) 						))
+	self._w:Show(false)
+	
+	self._h = xml:InitStatic("dbg_wpn_hud_editor:align", self)
+	--self._h:SetWndPos(vector2():set( 			((width/2 * w_fac) - (thic/2)) 	, 		0 									))
+	--self._h:SetWndSize(vector2():set( 			(thic * w_fac) 					, 		(hight * h_fac) 					))
+	self._h:Show(false)
+	
+	local pos_w = self._w:GetWndPos()
+	--printf("_W | x=%s y=%s w=%s h=%s", pos_w.x, pos_w.y, self._w:GetWidth(), self._w:GetHeight())
+	
+	local pos_h = self._h:GetWndPos()
+	--printf("_H | x=%s y=%s w=%s h=%s", pos_h.x, pos_h.y, self._h:GetWidth(), self._h:GetHeight())
+	
+	-- Dialog
+	self.dialog	= xml:InitStatic("dbg_wpn_hud_editor", self)
+	
+	xml:InitFrame("dbg_wpn_hud_editor:frame", self.dialog)
+	xml:InitStatic("dbg_wpn_hud_editor:cap",self.dialog)
+	
+	self.txt_section = xml:InitTextWnd("dbg_wpn_hud_editor:section",self.dialog)
+	
+	-- Ratio saving
+	xml:InitStatic("dbg_wpn_hud_editor:cap_ratio", self.dialog)
+	
+	self.btn_ratio = xml:InitCheck("dbg_wpn_hud_editor:check_ratio", self.dialog)
+	self:Register(self.btn_ratio, "btn_ratio")
+	self.btn_ratio:SetCheck(true)
+	
+	-- Show alignment
+	self.btn_align = xml:Init3tButton("dbg_wpn_hud_editor:btn_alignment", self.dialog)
+	self:Register(self.btn_align, "btn_align")
+
+	-- Third person switch
+	self.btn_third_person = xml:Init3tButton("dbg_wpn_hud_editor:btn_third_person", self.dialog)
+	self:Register(self.btn_third_person, "btn_third_person")
+	
+	-- Copy section settings
+	self.btn_ini_copy = xml:Init3tButton("dbg_wpn_hud_editor:btn_ini_copy", self.dialog)
+	self:Register(self.btn_ini_copy, "btn_copy")
+	
+	-- Paste section settings
+	self.btn_ini_paste = xml:Init3tButton("dbg_wpn_hud_editor:btn_ini_paste", self.dialog)
+	self:Register(self.btn_ini_paste, "btn_paste")
+	
+	-- Save file
+	self.btn_save = xml:Init3tButton("dbg_wpn_hud_editor:btn_save", self.dialog)
+	self:Register(self.btn_save, "btn_save")
+	
+	-- Reload hud values
+	self.btn_reload = xml:Init3tButton("dbg_wpn_hud_editor:btn_reload", self.dialog)
+	self:Register(self.btn_reload, "btn_reload")
+
+	self:ResetSelects()
+	
+	-- Parameters
+	for i, v in ipairs(self.tables) do
+		self.data[v].scroll_par = xml:InitScrollView("dbg_wpn_hud_editor:scroll_par", self.dialog)
+		self.data[v].scroll_par:Clear()
+		
+		local functor = function(t,a,b) return t[a].indx < t[b].indx end
+		local v1 = v
+		for par,v in spairs(v,functor) do
+			local _st = xml:InitStatic("dbg_wpn_hud_editor:tmp_par", nil)
+			
+			-- Parameter cap
+			local n = #self.data[v1].par_cap + 1
+			self.data[v1].par_cap[n] = xml:InitTextWnd("dbg_wpn_hud_editor:op_par:cap", _st)
+			self.data[v1].par_cap[n]:SetText(v.name)
+			
+			-- Multi boxes for vectors
+			local par_i = ((v.typ == 2) and 3) or ((v.typ == 3) and 4) or 1
+			for i=1,par_i do
+			
+				-- Tracers
+				local ext = self:GetStringByType(i,v.typ)
+				local str = par .. ext
+				self.data[v1].cnt = self.data[v1].cnt + 1
+				self.data[v1].name[self.data[v1].cnt] = str
+				self.data[v1].typ[self.data[v1].cnt] = v.typ
+				self.data[v1].parent[self.data[v1].cnt] = par
+				
+				self.data[v1].cnt_group[n] = self.data[v1].cnt_group[n] or {}
+				local size_cg = #self.data[v1].cnt_group[n] + 1
+				self.data[v1].cnt_group[n][size_cg] = self.data[v1].cnt
+				self.data[v1].cnt_to_group[self.data[v1].cnt] = n
+				
+				-- Parameter element and hightlight texture
+				if v.typ == 0 then
+					self.data[v1].par[self.data[v1].cnt] = xml:InitComboBox("dbg_wpn_hud_editor:op_par:list", _st)
+					self:Register(self.data[v1].par[self.data[v1].cnt],tostring(v1) .. "par_" .. self.data[v1].cnt)
+					
+					self.data[v1].par_hl[self.data[v1].cnt] = xml:InitStatic("dbg_wpn_hud_editor:op_par:hl_list", _st)
+				else
+					self.data[v1].par[self.data[v1].cnt] = xml:InitEditBox("dbg_wpn_hud_editor:op_par:input" .. ext, _st)
+					self:Register(self.data[v1].par[self.data[v1].cnt],tostring(v1) .. "par_" .. self.data[v1].cnt)
+					
+					if v.typ == 1 then
+						self.data[v1].par[self.data[v1].cnt]:SetText(v.def)
+					else
+						self.data[v1].par[self.data[v1].cnt]:SetText(v.def[i])
+					end
+					
+					self.data[v1].par_hl[self.data[v1].cnt] = xml:InitStatic("dbg_wpn_hud_editor:op_par:hl" .. ext, _st)
+				end
+				
+				-- Hightlight last selected parameter
+				if (self.data[v1].cnt ~= _selected[v1]) then
+					self.data[v1].par_hl[self.data[v1].cnt]:Show(false)
+				end
+			end
+			
+			self.data[v1].scroll_par:AddWindow(_st, true)
+			_st:SetAutoDelete(false)
+		end
+		if i > 1 then
+			self.data[v].scroll_par:Show(false)
+		end
+	end
+	
+	
+	-- Lines
+	xml:InitStatic("dbg_wpn_hud_editor:line_1",self.dialog)
+	xml:InitStatic("dbg_wpn_hud_editor:line_2",self.dialog)
+	
+	
+	-- Message Window 
+	self.msg_wnd = xml:InitFrame("hint_wnd:background",self)
+	self.msg_wnd:SetAutoDelete(false)
+	self.msg_wnd_text = xml:InitTextWnd("hint_wnd:text",self.msg_wnd)
+	self.msg_wnd_text:SetTextAlignment(2)
+	
+	self.msg_wnd:Show(false)
+	self.msg_wnd:SetColor(GetARGB(255,0,0,0))
+	
+	-- Hint Window 
+	self.hint_wnd = xml:InitFrame("help_wnd:background",self)
+	self.hint_wnd:SetAutoDelete(false)
+	self.hint_wnd_text = xml:InitTextWnd("help_wnd:text",self.hint_wnd)
+	--self.hint_wnd_text:SetTextAlignment(2)
+	self.hint_wnd_text:SetText(game.translate_string("st_ui_dbg_hud_about"))
+	self.hint_wnd_text:AdjustHeightToText()
+	self.hint_wnd_text:SetWndSize(vector2():set(msg_width, self.hint_wnd_text:GetHeight()+10))
+	self.hint_wnd_text:SetWndPos(vector2():set(20,10))
+	
+	self.hint_wnd:Show(false)
+	self.hint_wnd:SetWndSize(vector2():set(msg_width, 700))
+	self.hint_wnd:SetWndPos(vector2():set( self.dialog:GetWidth() , 1 ))
+	self.hint_wnd:SetColor(GetARGB(255,0,0,0))
+
+	self.disable_drag = true
+	self.pos = nil
+	self.mouse_hold = nil
+	self.save_mode = true
+end
+
+function WpnHudEditor:ResetSelects(state_only)
+	local xml = self.xml
+
+	-- State Select
+	self.dummy_npc_states = {
+		{"Unstrapped", "guard_na"},
+		{"Strapped", "wait_na"},
+		{"Threat", "threat"},
+		{"Fire", "threat_fire"},
+	}
+	self.list_dummy_npc_state = self.list_dummy_npc_state or xml:InitComboBox("dbg_wpn_hud_editor:list_dummy_npc_state", self.dialog)
+	self.list_dummy_npc_state:ClearList()
+	for i = 1, #self.dummy_npc_states do
+		self.list_dummy_npc_state:AddItem(self.dummy_npc_states[i][1], i)
+	end
+	self.list_dummy_npc_state:enable_id(1)
+	self.list_dummy_npc_state:SetText(self.dummy_npc_states[1][1])
+	self.dummy_npc_state = self.dummy_npc_states[1][2]
+	if dummy_npc then
+		db.storage[dummy_npc.id].ui_debug_wpn_hud_dummy.state = self.dummy_npc_state
+	end
+
+	if state_only then return end
+
+	-- Time Factor Select
+	self.tf = {
+		{"TF Normal (1)", 1},
+		{"TF Slow-mo (0.1)", 0.1},
+		{"TF Freeze (0.01)", 0.01},
+	}
+	self.tf_select = self.tf_select or xml:InitComboBox("dbg_wpn_hud_editor:list_tf", self.dialog)
+	self.tf_select:ClearList()
+	for i = 1, #self.tf do
+		self.tf_select:AddItem(self.tf[i][1], i)
+	end
+	self.tf_select:enable_id(1)
+	self.tf_select:SetText(self.tf[1][1])
+	exec_console_cmd("time_factor " .. 1)
+
+	-- Drag Mode Select (Persistent)
+	if not self.select_registered then
+		self.drag_modes = {
+			{"Drag per-group", true},
+			{"Drag per-value", false},
+		}
+		self.list_drag_mode = self.list_drag_mode or xml:InitComboBox("dbg_wpn_hud_editor:list_drag_mode", self.dialog)
+		self.list_drag_mode:ClearList()
+		for i = 1, #self.drag_modes do
+			self.list_drag_mode:AddItem(self.drag_modes[i][1], i)
+		end
+		self.list_drag_mode:enable_id(1)
+		self.list_drag_mode:SetText(self.drag_modes[1][1])
+		self.drag_mode = self.drag_modes[1][2]		
+	end
+
+	if not self.select_registered then
+		self.select_registered = true
+		self:Register(self.tf_select, "tf_select")
+		self:Register(self.list_dummy_npc_state, "list_dummy_npc_state")
+		self:Register(self.list_drag_mode, "list_drag_mode")
+	end
+end
+
+function WpnHudEditor:InitCallBacks()
+	self:AddCallback("btn_copy", ui_events.BUTTON_CLICKED, self.OnButtonCopy, self)
+	self:AddCallback("btn_paste", ui_events.BUTTON_CLICKED, self.OnButtonPaste, self)
+	self:AddCallback("btn_save", ui_events.BUTTON_CLICKED, self.OnButtonSave, self)
+	self:AddCallback("btn_reload", ui_events.BUTTON_CLICKED, self.OnButtonResume, self)
+	self:AddCallback("btn_align", ui_events.BUTTON_CLICKED, self.OnButtonAlign, self)
+	self:AddCallback("btn_third_person", ui_events.BUTTON_CLICKED, self.OnButtonThirdPerson, self)
+
+	self:AddCallback("tf_select", ui_events.LIST_ITEM_SELECT, self.OnTfSelect, self)
+	self:AddCallback("list_dummy_npc_state", ui_events.LIST_ITEM_SELECT, self.OnDummyNpcStateChange, self)
+	self:AddCallback("list_drag_mode", ui_events.LIST_ITEM_SELECT, self.OnDragModeChange, self)
+	--self:AddCallback("btn_ratio", ui_events.BUTTON_CLICKED, self.OnButtonRatio, self)
+
+	for i, v in ipairs(self.tables) do
+		for i=1,self.data[v].cnt do
+			local f = tostring(v).."OnInput_" .. i
+			self[f] = function(self)
+				self:OnInput(i)
+				local group = self.data[v].cnt_to_group[i]
+				self:SwitchParamByIndex(group, i)
+			end
+			self:AddCallback(tostring(v) .. "par_" .. i, ui_events.EDIT_TEXT_COMMIT, self[f], self)
+		end
+	end
+end
+
+function WpnHudEditor:OnTfSelect()
+	local id = self.tf_select:CurrentID()
+	local tf = self.tf[id][2]
+	exec_console_cmd("time_factor " .. tf)
+end
+
+function WpnHudEditor:OnDummyNpcStateChange()
+	local id = self.list_dummy_npc_state:CurrentID()
+	local state = self.dummy_npc_states[id][2]
+	self.dummy_npc_state = state
+	if dummy_npc then
+		db.storage[dummy_npc.id].ui_debug_wpn_hud_dummy.state = self.dummy_npc_state
+	end
+end
+
+function WpnHudEditor:OnDragModeChange()
+	local id = self.list_drag_mode:CurrentID()
+	local state = self.drag_modes[id][2]
+	self.drag_mode = state
+end
+
+function WpnHudEditor:ResetNpcCam()
+	self.dummy_npc_cam_offset = {
+		heading = 0,
+		pitch = 0,
+		height = 1.2,
+		zoom = 1.5,
+		move = -0.2,
+	}
+	self:SetCam()
+end
+
+function WpnHudEditor:SetCam()
+	if dummy_npc then
+		local obj = level.object_by_id(dummy_npc.id)
+		if obj then
+			local pos = obj:position():add(vector():set(0, self.dummy_npc_cam_offset.height, 0))
+			local obj_pos = vector():set(pos)
+			local dir = vector():setHP(utils_data.deg2rad(self.dummy_npc_cam_offset.heading), self.dummy_npc_cam_offset.pitch):normalize()
+
+			pos = pos:mad(dir, self.dummy_npc_cam_offset.zoom)
+			dir = vector():set(obj_pos):sub(pos):normalize()
+			
+			-- dir = vector_rotate_y(dir, 15)
+			local d, u, r = generate_orthonormal_basis_normalized(dir)
+			pos:mad(r, self.dummy_npc_cam_offset.move)
+
+			dir = vector():set(
+				dir:getH(),
+				dir:getP(),
+				0
+			)
+
+			level.set_cam_custom_position_direction(pos, dir)
+		end
+	end
+end
+
+function WpnHudEditor:ChangeNpcCam(heading, height, zoom, move, pitch)
+	if heading then
+		self.dummy_npc_cam_offset.heading = self.dummy_npc_cam_offset.heading + heading
+	end
+	if pitch then
+		self.dummy_npc_cam_offset.pitch = clamp(self.dummy_npc_cam_offset.pitch + pitch,
+			-math.pi / 2.6, math.pi / 2.05)
+	end
+	if height then
+		self.dummy_npc_cam_offset.height = clamp(self.dummy_npc_cam_offset.height + height, 0.2, 2)
+	end
+	if zoom then
+		self.dummy_npc_cam_offset.zoom = clamp(self.dummy_npc_cam_offset.zoom + zoom, 0.2, 2.5)
+	end
+	if move then
+		self.dummy_npc_cam_offset.move = clamp(self.dummy_npc_cam_offset.move + move, -1.5, 1.5)
+	end
+	self:SetCam()
+end
+
+function WpnHudEditor:StopCam()
+	if dummy_npc then
+		alife():release(dummy_npc)
+		dummy_npc = nil
+	end
+	if level.remove_cam_custom_position_direction then level.remove_cam_custom_position_direction() end
+	RemoveTimeEvent("ui_debug_wpn_hud_dummy", "ui_debug_wpn_hud_dummy_npc")
+	RemoveTimeEvent("ui_debug_wpn_hud_dummy", "ui_debug_wpn_hud_dummy_weapon")
+	self.dummy_npc_state = self.dummy_npc_states[1][2]
+end
+
+function WpnHudEditor:DisableWCT(v)
+	if weapon_cover_tilt and weapon_cover_tilt.set_force_disabled then
+		weapon_cover_tilt.set_force_disabled(v)
+	end
+end
+
+function WpnHudEditor:Reset(force,use_cache)
+	local _use_cache = use_cache and is_not_empty(_cache) and is_not_empty(_cache_i) and true
+
+	self:DisableWCT(true)
+		
+	local section = self.section
+	local hud_section = ini_sys:r_string_ex(section,"hud")
+	local str = utils_xml.is_widescreen() and "_16x9" or ""
+	local ltx = ini_file("temp_hud.ltx")
+	local section_found = ltx and ltx:section_exist(hud_section)
+	
+	self.txt_section:SetText(section)
+
+	for i, v in ipairs(self.tables) do
+		empty_table(self.data[v].index)
+
+		local _use_cache = use_cache and is_not_empty(_cache) and is_not_empty(_cache[v]) and is_not_empty(_cache_i) and is_not_empty(_cache_i[v]) and true
+		
+		-- Read values and convert to numbers if needed
+		if _use_cache then 
+			--print_dbg("/ WpnHudEditor:Reset | use cache")
+			copy_table(self.data[v].value_i, _cache_i[v])
+			
+			if not _memo_i[v] then _memo_i[v] = {} end
+			if (not _memo_i[v][section]) then _memo_i[v][section] = {} end
+			copy_table(_memo_i[v][section], _cache_i[v])
+		elseif _memo_i[v] and _memo_i[v][section] then
+			--print_dbg("/ WpnHudEditor:Reset | use memo | file: %s - hour: %s", file, hour)
+			copy_table(self.data[v].value_i, _memo_i[v][section])
+		else
+			local v1 = v
+			for par,v in pairs(v1) do
+				local t = {}
+				if (v.hud) then
+					local par_str = v.no_16x9 and par or (par..str)
+					if section_found and ltx:r_string_ex(hud_section,(par_str)) then
+						t = parse_list(ltx, hud_section, (par_str))
+					else
+						t = parse_list(ini_sys, hud_section, (par_str))
+					end
+				else
+					if ltx:r_string_ex(section, par) then
+						t = parse_list(ltx, section, par)
+					else
+						t = parse_list(ini_sys, section, par)
+					end
+				end
+				
+				self.data[v1].value_i[par] = {}
+				for i=1,#t do
+					if (v.typ ~= 0) then
+						self.data[v1].value_i[par][i] = tonumber(t[i])
+					end
+				end
+				
+				-- use default values if nothing is found
+				if (#self.data[v1].value_i[par] == 0) then
+					if (v.typ == 1) then
+						self.data[v1].value_i[par][1] = v.def
+					else
+						copy_table(self.data[v1].value_i[par], v.def)
+					end
+				end
+			end
+		end
+		
+		-- Fill current values
+		for i=1,self.data[v].cnt do
+			local value
+			if _use_cache then
+				value = _cache[v][i]
+				
+				if (not _memo[v]) then _memo[v] = {} end
+				if (not _memo[v][section]) then _memo[v][section] = {} end
+				_memo[v][section][i] = _cache[v][i]
+			elseif _memo[v] and _memo[v][section] then
+				value = _memo[v][section][i]
+			else
+				value = self:GetParameterValue(i, v)
+			end
+			-- print_dbg("/ WpnHudEditor:Reset | Filler | self.value[%s] (%s) = %s", i, self.parent[i], value)
+			
+			self.data[v].value[i] = value
+			self.data[v].par[i]:SetText(value)
+		end
+	end
+
+	
+	-- Apply values in-game
+	for i, t in ipairs(self.tables) do
+		if t == third_person_parameters then
+			self:ApplyThirdPersonParameterValue()
+		else
+			for par,v in pairs(t) do
+				self:ApplyParameterValue(v.typ, par, t)
+			end
+		end
+	end
+	
+	-- Crosshair state
+	self.crosshair = get_console_cmd(1,"hud_crosshair")
+	if self._w:IsShown() then
+		exec_console_cmd("hud_crosshair on")
+	end
+
+	self.disable_drag = true
+	self.pos = nil
+	self.mouse_hold = nil
+	-- self.drag_mode = true
+end
+
+
+---------------< Utility >---------------
+local indx_str = {
+	[1] = "_x",
+	[2] = "_y",
+	[3] = "_z",
+	[4] = "_a",
+}
+function WpnHudEditor:GetStringByType(indx,typ)
+	if (typ == 0) or (typ == 1) then
+		return ""
+	else
+		return indx_str[indx]
+	end
+end
+
+function WpnHudEditor:GetParameterValue(cnt, v)
+	local str = self.data[v].name[cnt]
+	local parent = self.data[v].parent[cnt]
+	local typ = self.data[v].typ[cnt]
+	
+	print_dbg("/ WpnHudEditor:GetParameterValue | str: %s - parent: %s - typ: %s", str, parent, typ)
+	if (typ == 0) or (typ == 1) then
+		return self.data[v].value_i[parent][1]
+	end
+	
+	if (string.sub(str,-2) == "_x") then return self.data[v].value_i[parent][1]
+	elseif (string.sub(str,-2) == "_y") then return self.data[v].value_i[parent][2]
+	elseif (string.sub(str,-2) == "_z") then return self.data[v].value_i[parent][3]
+	elseif (string.sub(str,-2) == "_a") then return self.data[v].value_i[parent][4]
+	end
+	printe("!ERROR no returned value for %s!", parent)
+end
+
+function WpnHudEditor:SetParameterValue(cnt,value)
+	local v = self.active_table
+	local str = self.data[v].name[cnt]
+	local parent = self.data[v].parent[cnt]
+	local typ = self.data[v].typ[cnt]
+	
+	if self:IsInvalidValue(cnt,typ,value) then
+		self:Send_MSG("!ERROR nil value found for parameter [%s]", str)
+		return
+	end
+	
+	if (typ == 1) then
+		self.data[v].value_i[parent][1] = value
+	elseif (string.sub(str,-2) == "_x") then self.data[v].value_i[parent][1] = value
+	elseif (string.sub(str,-2) == "_y") then self.data[v].value_i[parent][2] = value
+	elseif (string.sub(str,-2) == "_z") then self.data[v].value_i[parent][3] = value
+	elseif (string.sub(str,-2) == "_a") then self.data[v].value_i[parent][4] = value
+	end
+	
+	local section = self.section
+	if not _memo[v] then _memo[v] = {} end
+	if not _memo_i[v] then _memo_i[v] = {} end
+
+	if (not _memo[v][section]) then _memo[v][section] = {} end
+	copy_table(_memo[v][section], self.data[v].value)
+	
+	if (not _memo_i[v][section]) then _memo_i[v][section] = {} end
+	copy_table(_memo_i[v][section], self.data[v].value_i)
+end
+
+function WpnHudEditor:ApplyParameterValue(typ, parent, v)
+	v = v or self.active_table
+	print_dbg("# Setting now: %s",parent)
+	
+	if v == third_person_parameters then
+		self:ApplyThirdPersonParameterValue()
+	else
+		if (typ == 1) then
+			local value = self.data[v].value_i[parent][1]
+			if value and (type(value) == "number") then
+				hud_adjust.set_value(parent, value)
+				print_dbg("-hud_adjust.set_value(%s,%s)",parent,value)
+			else
+				printe("! MISSING VALUE: WpnHudEditor:ApplyParameterValue(%s, %s)", typ ,parent)
+			end
+		elseif (typ == 2) then
+			local value_1 = self.data[v].value_i[parent][1]
+			local value_2 = self.data[v].value_i[parent][2]
+			local value_3 = self.data[v].value_i[parent][3]
+			if value_1 and (type(value_1) == "number")
+			and value_2 and (type(value_2) == "number")
+			and value_3 and (type(value_3) == "number")
+			then
+				hud_adjust.set_vector(v[parent].idxa, v[parent].idxb, value_1, value_2, value_3)
+				print_dbg("-hud_adjust.set_vector[%s]([%s][%s]: %s,%s,%s)", parent, v[parent].idxa, v[parent].idxb, value_1, value_2, value_3)
+			else
+				printe("! MISSING VALUE: WpnHudEditor:ApplyParameterValue(%s, %s)", typ ,parent)
+			end
+		elseif (typ == 3) then
+			local value_1 = self.data[v].value_i[parent][1]
+			local value_2 = self.data[v].value_i[parent][2]
+			local value_3 = self.data[v].value_i[parent][3]
+			local value_4 = self.data[v].value_i[parent][4]
+			if value_1 and (type(value_1) == "number")
+			and value_2 and (type(value_2) == "number")
+			and value_3 and (type(value_3) == "number")
+			and value_4 and (type(value_4) == "number")
+			then
+				--weather.set_value_vector(parent,value_1,value_2,value_3,value_4)
+				print_dbg("-weather.set_value_vector2(%s,%s,%s,%s,%s)",parent,value_1,value_2,value_3,value_4)
+			else
+				printe("! MISSING VALUE: WpnHudEditor:ApplyParameterValue(%s, %s)", typ ,parent)
+			end
+		end
+	end
+end
+
+function WpnHudEditor:ApplyThirdPersonParameterValue()
+	if not self.weapon_cobj then
+		print_dbg("no active weapon to set")
+		return
+	end
+
+	if not (
+		self.weapon_cobj.Set_mOffset 
+		and self.weapon_cobj.Set_mStrapOffset
+		and self.weapon_cobj.Set_mFirePoint
+		and self.weapon_cobj.Set_mFirePoint2
+		and self.weapon_cobj.Set_mShellPoint
+	) then
+		self:Print(nil, "Modded exes not installed, third person editor is unavailable")
+		return
+	end
+
+	local params = {}
+	for par,v in pairs(third_person_parameters) do
+		local typ = v.typ
+		local parent = par
+		if (typ == 1) then
+			local value = self.data[third_person_parameters].value_i[parent][1]
+			if value and (type(value) == "number") then
+				params[parent] = value
+				print_dbg("-third_person_value(%s,%s)",parent,value)
+			else
+				printe("! MISSING VALUE: third_person_value(%s,%s)", typ ,parent)
+			end
+		elseif (typ == 2) then
+			local value_1 = self.data[third_person_parameters].value_i[parent][1]
+			local value_2 = self.data[third_person_parameters].value_i[parent][2]
+			local value_3 = self.data[third_person_parameters].value_i[parent][3]
+			if value_1 and (type(value_1) == "number")
+			and value_2 and (type(value_2) == "number")
+			and value_3 and (type(value_3) == "number")
+			then
+				params[parent] = vector():set(value_1, value_2, value_3)
+				print_dbg("-third_person_value(%s,%s,%s,%s)",parent,value_1, value_2, value_3)
+			else
+				printe("! MISSING VALUE: third_person_value(%s, %s)", typ ,parent)
+			end
+		end
+	end
+
+	if params.position and params.orientation then
+		self.weapon_cobj:Set_mOffset(params.position, params.orientation)
+	end
+
+	if params.strap_position and params.strap_orientation then
+		self.weapon_cobj:Set_mStrapOffset(params.strap_position, params.strap_orientation)
+	end
+
+	if params.fire_point then
+		self.weapon_cobj:Set_mFirePoint(params.fire_point)
+	end
+
+	if params.fire_point2 then
+		self.weapon_cobj:Set_mFirePoint2(params.fire_point2)
+	end
+
+	if params.shell_point then
+		self.weapon_cobj:Set_mShellPoint(params.shell_point)
+	end
+end
+
+function WpnHudEditor:IsInvalidValue(cnt,typ,value)
+	
+	-- Numbers
+	if not (value and value ~= "" and tonumber(value)) then
+		return true
+	end
+	
+	return false
+end
+
+function WpnHudEditor:Send_MSG(text,...)
+	printf(text, ...)
+	self:Print(nil, strformat(text,...))
+	-- local str = strformat(text,...)
+	
+	-- self.msg_wnd:Show(true)
+	-- self.msg_wnd_text:SetText(str)
+	-- self.msg_wnd_text:AdjustHeightToText()
+	-- self.msg_wnd_text:SetWndSize(vector2():set(msg_width, self.msg_wnd_text:GetHeight()+10))
+	-- self.msg_wnd_text:SetWndPos(vector2():set(0,20))
+	
+	-- self.msg_wnd:SetWndSize(vector2():set(msg_width, self.msg_wnd_text:GetHeight()+44))
+	-- self.msg_wnd:SetWndPos(vector2():set( self.dialog:GetWidth() , (_hight - self.msg_wnd:GetHeight()) ))
+	
+	-- self.msg_wnd_timer = time_global() + 4000
+end
+
+local toggle_hint = false
+function WpnHudEditor:ShowHint()
+	toggle_hint = not toggle_hint
+
+	self.hint_wnd_show = toggle_hint
+end
+
+function WpnHudEditor:Update()
+	CUIScriptWnd.Update(self)
+
+	if key_state(DIK_keys.DIK_LSHIFT) == 1 then
+		jump = jump_2
+	elseif key_state(DIK_keys.DIK_LMENU) == 1 then
+		jump = jump_3
+	else
+		jump = jump_1
+	end
+
+	self:SetCam()
+	self:On_Drag()
+
+	if self.third_person_mode then
+		if key_state(bind_to_dik(key_bindings.kFWD)) == 1 then
+			self:ChangeNpcCam(nil, nil, -0.003)
+		elseif key_state(bind_to_dik(key_bindings.kBACK)) == 1 then
+			self:ChangeNpcCam(nil, nil, 0.003)
+		end
+
+		if key_state(bind_to_dik(key_bindings.kL_STRAFE)) == 1 then
+			self:ChangeNpcCam(nil, nil, nil, -0.003)
+		elseif key_state(bind_to_dik(key_bindings.kR_STRAFE)) == 1 then
+			self:ChangeNpcCam(nil, nil, nil, 0.003)
+		end
+
+		-- Lock condition and ammo count in TP
+		if self.weapon_cobj then
+			self.weapon_cobj:SetAmmoElapsed(30)
+			self.weapon:set_condition(1)
+		end
+	end
+	
+	if (self.msg_wnd_timer and time_global() > self.msg_wnd_timer) then 
+		self.msg_wnd_timer = nil
+		self.msg_wnd:Show(false)
+	end
+	
+	if (self.hint_wnd_show) then 
+		self.hint_wnd:Show(true)
+	else
+		self.hint_wnd:Show(false)
+	end
+end
+
+function WpnHudEditor:Print(s, str, ...)
+	actor_menu.set_msg(1, string.format(str, ...), 2)
+end
+
+local tg = 0
+local tg_interval = 20
+local tg_print = 0
+function WpnHudEditor:On_Drag()
+
+	if (self.disable_drag) then
+		return
+	end
+
+	-- local t = time_global()
+	-- if t < tg then return end
+	-- tg = t + tg_interval
+	
+	if not self.pos then self.pos = GetCursorPosition() end
+
+	local pos = GetCursorPosition()
+	local diff_y = pos.y - self.pos.y
+	local diff_x = pos.x - self.pos.x
+	local rounded_diff_y = math.abs(round_idp(diff_y, 4)) * device().width / 1920
+	local rounded_diff_x = math.abs(round_idp(diff_x, 4)) * device().width / 1920
+
+	-- if time_global() - tg_print > 100 then
+	-- 	printf("ratio %s", device().width / 1920)
+	-- 	printf("%s, %s", rounded_diff_x, rounded_diff_y)
+	-- 	self:Print(nil, rounded_diff_x .. ", " .. rounded_diff_y)
+	-- 	tg_print = time_global()
+	-- end
+
+	if self.mouse_hold and self.mouse_hold == DIK_keys.MOUSE_3 and self.third_person_mode then
+		if key_state(DIK_keys.DIK_LCONTROL) == 1 then
+			if diff_y < 0 then
+				self:ChangeNpcCam(nil, nil, 0.003 * -rounded_diff_y)
+			elseif diff_y > 0 then
+				self:ChangeNpcCam(nil, nil, 0.003 * rounded_diff_y)
+			end
+		elseif key_state(DIK_keys.DIK_LSHIFT) == 1 then
+			if diff_x < 0 then
+				self:ChangeNpcCam(nil, nil, nil, 0.0015 * rounded_diff_x)
+			elseif diff_x > 0 then
+				self:ChangeNpcCam(nil, nil, nil, 0.0015 * -rounded_diff_x)
+			end
+			if diff_y < 0 then
+				self:ChangeNpcCam(nil, 0.0015 * -rounded_diff_y)
+			elseif diff_y > 0 then
+				self:ChangeNpcCam(nil, 0.0015 * rounded_diff_y)
+			end
+		else
+			if diff_x < 0 then
+				self:ChangeNpcCam(0.15 * rounded_diff_x)
+			elseif diff_x > 0 then
+				self:ChangeNpcCam(0.15 * -rounded_diff_x)
+			end
+			if diff_y < 0 then
+				self:ChangeNpcCam(nil, nil, nil, nil, 0.0015 * -rounded_diff_y)
+			elseif diff_y > 0 then
+				self:ChangeNpcCam(nil, nil, nil, nil, 0.0015 * rounded_diff_y)
+			end
+		end
+	end
+
+	local v = self.active_table
+	if self.drag_mode == true then
+		local group = self.data[v].cnt_group[self.data[v].selected_group]
+		if self.mouse_hold and self.mouse_hold == DIK_keys.MOUSE_1 then
+			if self.data[v].selected_group == 2 then -- Hands orientation
+				if diff_y < 0 then
+					self:SwitchValue(true, group[2], 8 * rounded_diff_y)
+				elseif diff_y > 0 then
+					self:SwitchValue(false, group[2], 8 * rounded_diff_y)
+				end
+				if diff_x < 0 then
+					self:SwitchValue(true, group[1], 8 * rounded_diff_x)
+				elseif diff_x > 0 then
+					self:SwitchValue(false, group[1], 8 * rounded_diff_x)
+				end
+			elseif self.data[v].selected_group == 3 and MODDED_EXES_VERSION >= 20240412 then -- Base position
+				if diff_y < 0 then
+					self:SwitchValue(true, group[2], 1 * rounded_diff_y)
+				elseif diff_y > 0 then
+					self:SwitchValue(false, group[2], 1 * rounded_diff_y)
+				end
+				if diff_x > 0 then
+					self:SwitchValue(true, group[1], 1 * rounded_diff_x)
+				elseif diff_x < 0 then
+					self:SwitchValue(false, group[1], 1 * rounded_diff_x)
+				end
+			elseif self.data[v].selected_group == 4 and MODDED_EXES_VERSION >= 20240412 then -- Base orientation
+				if diff_y > 0 then
+					self:SwitchValue(true, group[1], 8 * rounded_diff_y)
+				elseif diff_y < 0 then
+					self:SwitchValue(false, group[1], 8 * rounded_diff_y)
+				end
+				if diff_x > 0 then
+					self:SwitchValue(true, group[2], 8 * rounded_diff_x)
+				elseif diff_x < 0 then
+					self:SwitchValue(false, group[2], 8 * rounded_diff_x)
+				end
+			elseif self.data[v].selected_group == 6 and v == third_person_parameters then -- TP Strapped Orientation
+				if diff_y > 0 then
+					self:SwitchValue(true, group[1], 8 * rounded_diff_y)
+				elseif diff_y < 0 then
+					self:SwitchValue(false, group[1], 8 * rounded_diff_y)
+				end
+				if diff_x > 0 then
+					self:SwitchValue(true, group[2], 8 * rounded_diff_x)
+				elseif diff_x < 0 then
+					self:SwitchValue(false, group[2], 8 * rounded_diff_x)
+				end
+			elseif self.data[v].selected_group == 6 then -- Aim orientation
+				if diff_y > 0 then
+					self:SwitchValue(true, group[1], 1 * rounded_diff_y)
+				elseif diff_y < 0 then
+					self:SwitchValue(false, group[1], 1 * rounded_diff_y)
+				end
+				if diff_x > 0 then
+					self:SwitchValue(true, group[2], 1 * rounded_diff_x)
+				elseif diff_x < 0 then
+					self:SwitchValue(false, group[2], 1 * rounded_diff_x)
+				end
+			elseif self.data[v].selected_group == 8 and v ~= third_person_parameters then -- GL orientation
+				if diff_y > 0 then
+					self:SwitchValue(true, group[1], 1 * rounded_diff_y)
+				elseif diff_y < 0 then
+					self:SwitchValue(false, group[1], 1 * rounded_diff_y)
+				end
+				if diff_x > 0 then
+					self:SwitchValue(true, group[2], 1 * rounded_diff_x)
+				elseif diff_x < 0 then
+					self:SwitchValue(false, group[2], 1 * rounded_diff_x)
+				end
+			elseif self.data[v].selected_group == 8 then -- Alt orientation
+				if diff_y > 0 then
+					self:SwitchValue(true, group[1], 1 * rounded_diff_y)
+				elseif diff_y < 0 then
+					self:SwitchValue(false, group[1], 1 * rounded_diff_y)
+				end
+				if diff_x > 0 then
+					self:SwitchValue(true, group[2], 1 * rounded_diff_x)
+				elseif diff_x < 0 then
+					self:SwitchValue(false, group[2], 1 * rounded_diff_x)
+				end
+			elseif self.data[v].selected_group == 19 then -- Item Position
+				if diff_y < 0 then
+					self:SwitchValue(true, group[2], rounded_diff_y)
+				elseif diff_y > 0 then
+					self:SwitchValue(false, group[2], rounded_diff_y)
+				end
+				if diff_x > 0 then
+					self:SwitchValue(true, group[1], rounded_diff_x)
+				elseif diff_x < 0 then
+					self:SwitchValue(false, group[1], rounded_diff_x)
+				end
+			elseif self.data[v].selected_group == 20 then -- Item Orientation
+				if diff_y < 0 then
+					self:SwitchValue(true, group[2], 8 * rounded_diff_y)
+				elseif diff_y > 0 then
+					self:SwitchValue(false, group[2], 8 * rounded_diff_y)
+				end
+				if diff_x < 0 then
+					self:SwitchValue(true, group[1], 8 * rounded_diff_x)
+				elseif diff_x > 0 then
+					self:SwitchValue(false, group[1], 8 * rounded_diff_x)
+				end
+			elseif self.data[v].selected_group == 18 then -- UI orientation
+				if diff_y > 0 then
+					self:SwitchValue(true, group[1], round_idp(0.02 * rounded_diff_y, 4))
+				elseif diff_y < 0 then
+					self:SwitchValue(false, group[1], round_idp(0.02 * rounded_diff_y, 4))
+				end
+				if diff_x > 0 then
+					self:SwitchValue(true, group[2], round_idp(0.02 * rounded_diff_x, 4))
+				elseif diff_x < 0 then
+					self:SwitchValue(false, group[2], round_idp(0.02 * rounded_diff_x, 4))
+				end
+			elseif self.data[v].selected_group == 12 then -- Lowered orientation
+				if diff_y > 0 then
+					self:SwitchValue(true, group[1], 1 * rounded_diff_y)
+				elseif diff_y < 0 then
+					self:SwitchValue(false, group[1], 1 * rounded_diff_y)
+				end
+				if diff_x > 0 then
+					self:SwitchValue(true, group[2], 1 * rounded_diff_x)
+				elseif diff_x < 0 then
+					self:SwitchValue(false, group[2], 1 * rounded_diff_x)
+				end
+			elseif 	self.data[v].selected_group == 23 or 
+					self.data[v].selected_group == 22 or 
+					self.data[v].selected_group == 21 then  -- Last 3 groups with single value
+				if diff_y < 0 then
+					self:SwitchValue(true, group[1], round_idp(0.2 * rounded_diff_y, 4))
+				elseif diff_y > 0 then
+					self:SwitchValue(false, group[1], round_idp(0.2 * rounded_diff_y, 4))
+				end
+			else  -- Everything else
+				if diff_y < 0 then
+					self:SwitchValue(true, group[2], 1 * rounded_diff_y)
+				elseif diff_y > 0 then
+					self:SwitchValue(false, group[2], 1 * rounded_diff_y)
+				end
+				if diff_x > 0 then
+					self:SwitchValue(true, group[1], 1 * rounded_diff_x)
+				elseif diff_x < 0 then
+					self:SwitchValue(false, group[1], 1 * rounded_diff_x)
+				end
+			end
+		elseif self.mouse_hold and self.mouse_hold == DIK_keys.MOUSE_2 then
+			if self.data[v].selected_group == 2 then -- Hands orientation
+				if diff_y < 0 then
+					self:SwitchValue(true, group[3], 8 * rounded_diff_y)
+				elseif diff_y > 0 then
+					self:SwitchValue(false, group[3], 8 * rounded_diff_y)
+				end
+			elseif self.data[v].selected_group == 3 and MODDED_EXES_VERSION >= 20240412 then -- Base position
+				if diff_y < 0 then
+					self:SwitchValue(true, group[3], 1 * rounded_diff_y)
+				elseif diff_y > 0 then
+					self:SwitchValue(false, group[3], 1 * rounded_diff_y)
+				end
+			elseif self.data[v].selected_group == 4 and MODDED_EXES_VERSION >= 20240412 then -- Base orientation
+				if diff_y < 0 then
+					self:SwitchValue(true, group[3], 8 * rounded_diff_y)
+				elseif diff_y > 0 then
+					self:SwitchValue(false, group[3], 8 * rounded_diff_y)
+				end
+			elseif self.data[v].selected_group == 6 and v == third_person_parameters then -- TP Strapped Orientation
+				if diff_y < 0 then
+					self:SwitchValue(true, group[3], 8 * rounded_diff_y)
+				elseif diff_y > 0 then
+					self:SwitchValue(false, group[3], 8 * rounded_diff_y)
+				end
+			elseif self.data[v].selected_group == 18 then -- UI orientation
+				if diff_y < 0 then
+					self:SwitchValue(true, group[3], round_idp(0.02 * rounded_diff_y, 4))
+				elseif diff_y > 0 then
+					self:SwitchValue(false, group[3], round_idp(0.02 * rounded_diff_y, 4))
+				end
+			elseif self.data[v].selected_group == 19 then -- Item Position
+				if diff_y < 0 then
+					self:SwitchValue(true, group[3], 2 * rounded_diff_y)
+				elseif diff_y > 0 then
+					self:SwitchValue(false, group[3], 2 * rounded_diff_y)
+				end
+			elseif self.data[v].selected_group == 20 then -- Item Orientation
+				if diff_y < 0 then
+					self:SwitchValue(true, group[3], 8 * rounded_diff_y)
+				elseif diff_y > 0 then
+					self:SwitchValue(false, group[3], 8 * rounded_diff_y)
+				end
+			elseif 	self.data[v].selected_group == 23 or 
+				self.data[v].selected_group == 22 or 
+				self.data[v].selected_group == 21 then  -- Last 3 groups with single value
+				if diff_y < 0 then
+					self:SwitchValue(true, group[1], round_idp(0.2 * rounded_diff_y, 4))
+				elseif diff_y > 0 then
+					self:SwitchValue(false, group[1], round_idp(0.2 * rounded_diff_y, 4))
+				end
+			else  -- Everything else
+				if diff_y < 0 then
+					self:SwitchValue(true, group[3], 1 * rounded_diff_y)
+				elseif diff_y > 0 then
+					self:SwitchValue(false, group[3], 1 * rounded_diff_y)
+				end
+			end
+		end
+	elseif self.drag_mode == false then
+		if self.mouse_hold and (self.mouse_hold == DIK_keys.MOUSE_1 or self.mouse_hold == DIK_keys.MOUSE_2) then
+			if self.data[v].selected_group == 2 then -- Hands orientation
+				if diff_y < 0 then
+					self:SwitchValue(true, self.data[v].selected, 8 * rounded_diff_y)
+				elseif diff_y > 0 then
+					self:SwitchValue(false, self.data[v].selected, 8 * rounded_diff_y)
+				end
+			elseif self.data[v].selected_group == 3 and MODDED_EXES_VERSION >= 20240412 then -- Base position
+				if diff_y < 0 then
+					self:SwitchValue(true, self.data[v].selected, 1 * rounded_diff_y)
+				elseif diff_y > 0 then
+					self:SwitchValue(false, self.data[v].selected, 1 * rounded_diff_y)
+				end
+			elseif self.data[v].selected_group == 4 and MODDED_EXES_VERSION >= 20240412 then -- Base orientation
+				if diff_y < 0 then
+					self:SwitchValue(true, self.data[v].selected, 8 * rounded_diff_y)
+				elseif diff_y > 0 then
+					self:SwitchValue(false, self.data[v].selected, 8 * rounded_diff_y)
+				end
+			elseif self.data[v].selected_group == 6 and v == third_person_parameters then -- TP Strapped Orientation
+				if diff_y < 0 then
+					self:SwitchValue(true, self.data[v].selected, 8 * rounded_diff_y)
+				elseif diff_y > 0 then
+					self:SwitchValue(false, self.data[v].selected, 8 * rounded_diff_y)
+				end	
+			elseif self.data[v].selected_group == 18 then -- UI orientation
+				if diff_y < 0 then
+					self:SwitchValue(true, self.data[v].selected, round_idp(0.02 * rounded_diff_y, 4))
+				elseif diff_y > 0 then
+					self:SwitchValue(false, self.data[v].selected, round_idp(0.02 * rounded_diff_y, 4))
+				end
+			elseif 	self.data[v].selected_group == 23 or 
+					self.data[v].selected_group == 22 or 
+					self.data[v].selected_group == 21 then  -- Last 3 groups with single value
+				if diff_y < 0 then
+					self:SwitchValue(true, self.data[v].selected, round_idp(0.2 * rounded_diff_y, 4))
+				elseif diff_y > 0 then
+					self:SwitchValue(false, self.data[v].selected, round_idp(0.2 * rounded_diff_y, 4))
+				end
+			else  -- Everything else
+				if diff_y < 0 then
+					self:SwitchValue(true, self.data[v].selected, 1 * rounded_diff_y)
+				elseif diff_y > 0 then
+					self:SwitchValue(false, self.data[v].selected, 1 * rounded_diff_y)
+				end
+			end
+		end
+	end
+
+	SetCursorPosition(self.pos)
+end
+
+
+---------------< Callbacks >---------------
+function WpnHudEditor:OnButtonCopy()
+	local v = self.active_table
+	_cache[v] = _cache[v] or {}
+	_cache_i[v] = _cache_i[v] or {}
+	copy_table(_cache[v], self.data[v].value)
+	copy_table(_cache_i[v], self.data[v].value_i)
+	
+	self:Send_MSG("Copied values")
+end
+
+function WpnHudEditor:OnButtonPaste()
+	local v = self.active_table
+	if (_cache and _cache_i and _cache[v] and _cache_i[v]) then
+		self:Reset(false, true)
+		self:Send_MSG("Applied copied values")
+	else
+		self:Send_MSG("No values are copied yet!")
+	end
+end
+
+function WpnHudEditor:SaveCacheDbg()
+	local section = self.section
+	local hud_section = ini_sys:r_string_ex(section,"hud")
+	local prefix = utils_xml.is_widescreen() and "_16x9" or ""
+	local all_prefix = self.btn_ratio:GetCheck()
+	local ini_cc = ui_debug_launcher.ini_cc
+	
+	local function saveParams()
+		local to_save = {}
+		for par,v in pairs(parameters) do
+			local value, value_def
+			if (v.typ == 2) then
+				value = self.data[parameters].value_i[par][1] ..",".. self.data[parameters].value_i[par][2] ..",".. self.data[parameters].value_i[par][3]
+				value_def = v.def[1] ..",".. v.def[2] ..",".. v.def[3]
+			elseif (v.typ == 3) then
+				value = self.data[parameters].value_i[par][1] ..",".. self.data[parameters].value_i[par][2] ..",".. self.data[parameters].value_i[par][3] ..",".. self.data[parameters].value_i[par][4]
+				value_def = v.def[1] ..",".. v.def[2] ..",".. v.def[3] ..",".. v.def[4]
+			else
+				value = self.data[parameters].value_i[par][1]
+				value_def = v.def
+			end
+			
+			value = tostring(value)
+			value_def = tostring(value_def)
+			local par_str = (v.hud and not v.no_16x9) and (par_str) or par
+			local old_value = v.hud and ini_sys:r_string_ex(hud_section, par_str) or ini_sys:r_string_ex(section, par)
+			local c_sec = v.hud and hud_section or section
+			local c_par = par_str
+			
+			if (value ~= old_value) and (value ~= value_def) then
+				if (to_save[c_sec] == nil) then to_save[c_sec] = {} end
+				to_save[c_sec][c_par] = value
+			end
+		end
+		
+		if is_empty(to_save) then
+			self:Print(nil, "No HUD values are modified for %s", section)
+			return
+		end
+		
+		local params_wide = {
+			["hands_position"] = true,
+			["hands_orientation"] = true,
+			["base_hud_offset_pos"] = true,
+			["base_hud_offset_rot"] = true,
+			["aim_hud_offset_pos"] = true,
+			["aim_hud_offset_rot"] = true,
+			["gl_hud_offset_pos"] = true,
+			["gl_hud_offset_rot"] = true,
+			["aim_hud_offset_alt_pos"] = true,
+			["aim_hud_offset_alt_rot"] = true,
+			["lowered_hud_offset_pos"] = true,
+			["lowered_hud_offset_rot"] = true,
+			["strafe_hud_offset_pos"] = true,
+			["strafe_hud_offset_rot"] = true,
+			["strafe_aim_hud_offset_pos"] = true,
+			["strafe_aim_hud_offset_rot"] = true,
+		}
+		
+		for k, v in pairs(to_save) do
+			for k1, v1 in pairs(v) do
+				ini_cc:w_value(k, k1, v1)
+				if all_prefix then
+					if params_wide[k1] then
+						ini_cc:w_value(k, k1 .. "_16x9", v1)
+					end
+				end
+			end
+		end
+
+		return true
+	end
+
+	local function saveThirdPersonParams()
+		local to_save = {}
+		for par,v in pairs(third_person_parameters) do
+			local value, value_def
+			if (v.typ == 2) then
+				value = self.data[third_person_parameters].value_i[par][1] ..",".. self.data[third_person_parameters].value_i[par][2] ..",".. self.data[third_person_parameters].value_i[par][3]
+				value_def = v.def[1] ..",".. v.def[2] ..",".. v.def[3]
+			elseif (v.typ == 3) then
+				value = self.data[third_person_parameters].value_i[par][1] ..",".. self.data[third_person_parameters].value_i[par][2] ..",".. self.data[third_person_parameters].value_i[par][3] ..",".. self.data[third_person_parameters].value_i[par][4]
+				value_def = v.def[1] ..",".. v.def[2] ..",".. v.def[3] ..",".. v.def[4]
+			else
+				value = self.data[third_person_parameters].value_i[par][1]
+				value_def = v.def
+			end
+			
+			value = tostring(value)
+			value_def = tostring(value_def)
+			local par_str = par
+			local old_value = ini_sys:r_string_ex(section, par)
+			local c_sec = section
+			local c_par = par_str
+			
+			if (value ~= old_value) and (value ~= value_def) then
+				if (to_save[c_sec] == nil) then to_save[c_sec] = {} end
+				to_save[c_sec][c_par] = value
+			end
+		end
+		
+		if is_empty(to_save) then
+			self:Print(nil, "No Third Person values are modified for %s", section)
+			return
+		end
+		
+		for k, v in pairs(to_save) do
+			for k1, v1 in pairs(v) do
+				ini_cc:w_value(k, k1, v1)
+			end
+		end
+
+		return true
+	end
+
+	local res = saveParams()
+	res = saveThirdPersonParams() or res
+	if res then
+		ini_cc:save()
+		self:Print(nil, "%s section is saved in cache_dbg.ltx", section)
+	else
+		self:Print(nil, "%s no changes were made", section)
+	end
+end
+
+function WpnHudEditor:CleanCacheDbg()
+	local path = getFS():update_path('$game_config$', '') .. "cache_dbg.ltx"
+	local ini_io = io.open(path, 'w')
+	ini_io:close()
+	ui_debug_launcher.ini_cc = ini_file_ex("cache_dbg.ltx",true)
+	self:Print(nil, "cache_dbg.ltx file cleaned")
+end
+
+function WpnHudEditor:OnButtonSave()
+	if self.save_mode then
+		return self:SaveCacheDbg()
+	end
+	local section = self.section
+	local hud_section = ini_sys:r_string_ex(section,"hud")
+	local prefix = utils_xml.is_widescreen() and "_16x9" or ""
+	local all_prefix = self.btn_ratio:GetCheck()
+	
+	local to_save = {}
+	for par,v in pairs(parameters) do
+		local value, value_def
+		if (v.typ == 2) then
+			value = self.data[parameters].value_i[par][1] ..",".. self.data[parameters].value_i[par][2] ..",".. self.data[parameters].value_i[par][3]
+			value_def = v.def[1] ..",".. v.def[2] ..",".. v.def[3]
+		elseif (v.typ == 3) then
+			value = self.data[parameters].value_i[par][1] ..",".. self.data[parameters].value_i[par][2] ..",".. self.data[parameters].value_i[par][3] ..",".. self.data[parameters].value_i[par][4]
+			value_def = v.def[1] ..",".. v.def[2] ..",".. v.def[3] ..",".. v.def[4]
+		else
+			value = self.data[parameters].value_i[par][1]
+			value_def = v.def
+		end
+		
+		value = tostring(value)
+		value_def = tostring(value_def)
+		local par_str = (v.hud and not v.no_16x9) and (par..prefix) or par
+		local old_value = v.hud and ini_sys:r_string_ex(hud_section, par_str) or ini_sys:r_string_ex(section, par)
+		local c_sec = v.hud and hud_section or section
+		local c_par = par_str
+		
+		if (value ~= old_value) and (value ~= value_def) then
+			if (to_save[c_sec] == nil) then to_save[c_sec] = {} end
+			to_save[c_sec][c_par] = value
+		end
+	end
+	
+	if is_empty(to_save) then
+		self:Print(nil, "No HUD values are modified for [%s]", section)
+		return
+	end
+	
+	local function file_exists(path)
+		return io.open(path) ~= nil
+	end
+	
+	local save_done
+	local ini_cc = ui_debug_launcher.ini_cc
+	local function on_execute(path,filename,quit)
+	
+		if is_empty(to_save) then
+			return
+		end
+				
+		local fullpath = path.."\\"..filename
+		local ltx = io.open(fullpath,"rb")
+		if (ltx) then
+			local data = ltx:read("*all")
+			ltx:close()
+			if (data) then
+				for sec,v in pairs(to_save) do
+					if (string.find(data,"["..sec.."]",nil,true)) then
+						ltx = utils_data.cfg_file(fullpath, true)
+						if (ltx) then
+							for par,val in pairs(v) do
+								local p = { par }
+								if all_prefix then
+									local p2 = par
+									if (prefix == "_16x9") then
+										p2 = string.gsub(p2, "_16x9", "")
+									else
+										p2 = p2 .. "_16x9"
+									end
+									p[2] = p2
+								end
+								
+								for i=1,#p do
+									ltx:SetValue(sec, p[i], val)
+									
+									-- Cache values for the first time so you can return to it upon reseting values
+									local cached_val = ini_cc:r_value(sec, p[i])
+									if not (cached_val and cached_val ~= "") then
+										local val_old = ini_sys:r_string_ex(sec, p[i])
+										ini_cc:w_value(sec, p[i], val_old)
+									end
+									
+									printf("% WpnHudEditor | saving [%s]->[%s]->[%s]",sec, p[i], val)
+								end
+							end
+							
+							ltx:SaveExt()
+							to_save[sec] = nil
+							save_done = true
+							
+							self:Print(nil, "Applied and saved the new values for [%s]\\nFile: %s", sec, t_dir .. filename)
+							printf("% WpnHudEditor | saved changes for {%s}", fullpath)
+						end
+					end
+				end
+			end
+		end
+	end
+	
+	local sp = getFS():update_path('$game_config$', t_dir)
+	sp = string.sub(sp,0,string.len(sp)-1)
+	lua_ext.recurse_subdirectories_and_execute(sp,{"ltx"},on_execute)
+	
+	-- Reload system_ini() to adapt the new values in game
+	reload_ini_sys()
+	
+	self:Reset()
+	
+	if (not save_done) then
+		self:Print(nil, "No changes are made on [%s].\\nKeep in mind that configs must be unpacked before applying changes!", section)
+	else
+		-- Cache original values
+		ini_cc:save()
+		
+		-- Remove cached HUD model from engine, so it updates to the new values
+		hud_adjust.remove_hud_model(section)
+		
+		-- Close the UI
+		self:Close()
+		
+		local str = strformat( "Changes are saved to [%s]", section)
+		actor_menu.set_msg(1, str,5)
+		
+		-- Clean memory of this section to adapt the new changes
+		_memo[section] = nil
+		_memo_i[section] = nil
+	end
+end
+
+function WpnHudEditor:OnButtonAlign()
+	if self._h:IsShown() then
+		self._h:Show(false)
+		self._w:Show(false)
+		exec_console_cmd("hud_crosshair off")
+		print_dbg("! WpnHudEditor | Hide alignments")
+	else
+		self._h:Show(true)
+		self._w:Show(true)
+		exec_console_cmd("hud_crosshair on")
+		print_dbg("- WpnHudEditor | Show alignments")
+	end
+end
+
+function WpnHudEditor:OnButtonResume()
+	self:Close()
+	
+	-- Resume normal hud behavior
+	hud_adjust.enabled(false)
+	adjust_active = false
+	
+	actor_menu.set_msg(1, "HUD adjust mode is stopped",5)
+	
+	--ui = nil
+end
+
+function WpnHudEditor:CleanMemo()
+	empty_table(_memo)
+	empty_table(_memo_i)
+	self:Reset(false)
+	self:Send_MSG("Cleared memory!")
+end
+
+function WpnHudEditor:SwitchParam(state, vert)
+
+	local v = self.active_table
+	local function get_param_index(state, vert)
+	
+		--// Vertical movement
+		if vert then
+			local jumps = ((jump == jump_3) and 3) or ((jump == jump_2) and 2) or 1
+			
+			if state then
+				self.data[v].selected_group = self.data[v].selected_group + jumps
+			else
+				self.data[v].selected_group = self.data[v].selected_group - jumps
+			end
+			
+			if (self.data[v].selected_group > #self.data[v].cnt_group) then
+				self.data[v].selected_group = 1
+			elseif (self.data[v].selected_group < 1) then
+				self.data[v].selected_group = #self.data[v].cnt_group
+			end
+			
+			return self.data[v].cnt_group[self.data[v].selected_group][1]
+		
+		--// Horizental movement
+		else
+			print_dbg("selected_group: %s", self.data[v].selected_group)
+			local group = self.data[v].cnt_group[self.data[v].selected_group]
+			if group then
+				local first = group[1]
+				local last = group[#group]
+				if state and (self.data[v].selected < last) then
+					self.data[v].selected = self.data[v].selected + 1
+				elseif (not state) and (self.data[v].selected > first) then
+					self.data[v].selected = self.data[v].selected - 1
+				end
+			else
+				printe("! group doesn't exist for selected_group: %s", self.data[v].selected_group)
+			end
+			return self.data[v].selected
+		end
+	end
+	
+	if (not self.data[v].selected) or (not self.data[v].selected_group) then
+		self.data[v].selected = _selected[v] or 1
+		self.data[v].selected_group = _selected_group[v] or 1
+	else
+		self.data[v].par_hl[self.data[v].selected]:Show(false)
+		self.data[v].selected = get_param_index(state, vert)
+	end
+
+	self.data[v].par_hl[self.data[v].selected]:Show(true)
+	_selected[v] = self.data[v].selected
+	_selected_group[v] = self.data[v].selected_group
+end
+
+function WpnHudEditor:SwitchParamByIndex(group, index)
+	local v = self.active_table
+
+	self.data[v].par_hl[self.data[v].selected]:Show(false)
+	self.data[v].selected_group = group
+	self.data[v].selected = index
+	self.data[v].par_hl[self.data[v].selected]:Show(true)
+
+	_selected[v] = self.data[v].selected
+	_selected_group[v] = self.data[v].selected_group
+end
+
+function WpnHudEditor:SwitchValue(state, selected, extra_k)
+	local v = self.active_table
+	if not extra_k then extra_k = 1 end
+	if not (selected) then
+		return
+	end
+	
+	local n = selected
+	local typ = self.data[v].typ[n]
+	local parent = self.data[v].parent[n]
+	local val = self.data[v].value[n]
+	
+	local new_val
+	if typ ~= 0 then
+		local input_val = self.data[v].par[n]:GetText()
+		local curr_val = (not self:IsInvalidValue(n,typ,input_val)) and tonumber(input_val)
+		if (not curr_val) then
+			self:Send_MSG("Couldn't read previous input for parameter (%s)", self.data[v].name[n])
+			return
+		end
+		curr_val = round_idp(curr_val, precision)
+		
+		local max_val = v[parent].max
+		local min_val = v[parent].min
+		local step = v[parent].step * jump * extra_k
+	
+		if state then
+			curr_val = curr_val + step
+		else
+			curr_val = curr_val - step
+		end
+		local precision = precision
+		if curr_val > 100 then
+			precision = precision - 2
+		elseif curr_val > 10 then
+			precision = precision - 1
+		end
+		curr_val = round_idp(curr_val, precision)
+		new_val = clamp(curr_val, min_val, max_val)
+	else
+		local curr_val = self.data[v].par[n]:GetText()
+		if (not curr_val) then
+			return
+		end
+		
+		if not (self.data[v].par_list_n[n]) then
+			return
+		end
+		
+		if (not self.data[v].index[n]) then
+			for i=1,#self.data[v].par_list_n[n] do
+				if (self.data[v].par_list_n[n][i] == curr_val) then
+					self.data[v].index[n] = i
+					break
+				end
+			end
+			if (not self.data[v].index[n]) then
+				return
+			end
+		end
+		
+		local num = #self.data[v].par_list_n[n]
+		if state then
+			self.data[v].index[n] = (self.data[v].index[n] < num) and (self.data[v].index[n] + 1) or self.data[v].index[n]
+		else
+			self.data[v].index[n] = (self.data[v].index[n] > 0) and (self.data[v].index[n] - 1) or self.data[v].index[n]
+		end
+		
+		local txt = self.data[v].par_list_n[n][self.data[v].index[n]]
+		if self:IsInvalidValue(n,0,txt) then
+			self:Send_MSG("Invalid path/section for parameter (%s)", self.data[v].name[n])
+			return
+		end
+		
+		new_val = txt
+	end
+	
+	if new_val then
+		self.data[v].value[n] = new_val
+		self.data[v].par[n]:SetText(new_val)
+		self:SetParameterValue(n,new_val)
+		self:ApplyParameterValue(typ,parent,v)
+		-- self:Send_MSG(self.data[v].name[n] .. " := " .. self.data[v].value[n], 4)
+	else
+		self:Send_MSG("No value can be set for (%s)",self.data[v].name[n])
+	end
+end
+
+function WpnHudEditor:SwitchValueGroup(state, selected_group)
+	local v = self.active_table
+	if (not selected_group) then
+		return
+	end
+	print_dbg("/ WpnHudEditor | selected_group: %s", selected_group)
+	local group = self.data[v].cnt_group[selected_group]
+	local size = (#group > 3) and 3 or #group -- no need for alpha value
+	for i=1,size do
+		self:SwitchValue(state, group[i])
+	end
+end
+
+function WpnHudEditor:OnInput(cnt)
+	local v = self.active_table
+	local val = self.data[v].par[cnt]:GetText()
+	local typ = self.data[v].typ[cnt]
+	local parent = self.data[v].parent[cnt]
+	
+	if self:IsInvalidValue(cnt,typ,val) then
+		self:Send_MSG("Error with input for parameter (%s)", self.data[v].name[cnt])
+		return
+	end
+	
+	if (typ == 0) then
+		val = val or ""
+	else
+		val = tonumber(val)
+		val = round_idp(val, precision)
+	end
+	
+	self.data[v].value[cnt] = val
+	self:SetParameterValue(cnt,val)
+	self:ApplyParameterValue(typ,parent,v)
+end
+
+function WpnHudEditor:Close()
+	local v = self.active_table
+	if v ~= parameters then
+		self.data[v].scroll_par:Show(false)
+	end
+	self.weapon_cobj = nil
+	self.active_table = parameters
+	local v = self.active_table
+	self.data[v].scroll_par:Show(true)
+	self.third_person_mode = false
+
+	self:ResetSelects()
+
+	self:StopCam()
+	self:DisableWCT(false)
+
+	self:HideDialog()
+	self:Show(false)
+
+	--ui = nil
+	
+	if adjust_active then
+		actor_menu.set_msg(1, "HUD adjust mode is still active",5)
+	end
+	
+	exec_console_cmd("hud_crosshair " .. (self.crosshair and "on" or "off"))
+	
+	UnregisterScriptCallback("on_key_release",on_key_release)
+	UnregisterScriptCallback("on_key_hold",on_key_hold)
+	
+	Unregister_UI("WpnHudEditor")
+	
+	if (level.present()) then
+		printf("- main_menu off")
+		exec_console_cmd("main_menu off")
+	end
+end
+
+local K_M1      = DIK_keys.MOUSE_1
+local K_M2      = DIK_keys.MOUSE_2
+local K_M3      = DIK_keys.MOUSE_3
+local E_PRESS   = ui_events.WINDOW_KEY_PRESSED
+local E_RELEASE = ui_events.WINDOW_KEY_RELEASED
+function WpnHudEditor:OnKeyboard(dik, keyboard_action)
+	local v = self.active_table
+	local res = CUIScriptWnd.OnKeyboard(self,dik,keyboard_action)
+	if (res == false) then
+		local bind = dik_to_bind(dik)
+		-- Mouse
+		if dik == K_M1 or dik == K_M2 or (dik == K_M3 and self.third_person_mode) then
+			if (keyboard_action == E_PRESS) then
+				-- printf("mouse hold")
+				self.mouse_hold = dik
+				self.disable_drag = false
+			elseif (keyboard_action == E_RELEASE) then
+				-- printf("mouse release")
+				self.disable_drag = true
+				self.pos = nil
+				self.mouse_hold = nil
+			end
+		elseif keyboard_action == ui_events.WINDOW_KEY_PRESSED then
+			if dik == DIK_keys.DIK_NUMPAD8 then
+				self:SwitchValue(true, self.data[v].selected)
+			elseif dik == DIK_keys.DIK_NUMPAD2 then
+				self:SwitchValue(false, self.data[v].selected)
+			elseif dik == DIK_keys.DIK_NUMPAD9 then
+				self:SwitchValueGroup(true, self.data[v].selected_group)
+			elseif dik == DIK_keys.DIK_NUMPAD3 then
+				self:SwitchValueGroup(false, self.data[v].selected_group)
+			elseif dik == DIK_keys.DIK_NUMPADENTER then
+				self.save_mode = not self.save_mode
+				self:Print(nil, self.save_mode == true and "save to cache_dbg.ltx" or "vanilla save")
+
+			elseif dik == DIK_keys.DIK_NUMPAD1 then
+				self:CleanCacheDbg()
+				
+			elseif dik == DIK_keys.DIK_UP then
+				self:SwitchParam(false, true)
+			elseif dik == DIK_keys.DIK_DOWN then
+				self:SwitchParam(true, true)
+			elseif dik == DIK_keys.DIK_RIGHT then
+				self:SwitchParam(true, false)
+			elseif dik == DIK_keys.DIK_LEFT then
+				self:SwitchParam(false, false)
+				
+			elseif dik == DIK_keys.DIK_NUMPAD5 then
+				self:OnButtonCopy()
+			elseif dik == DIK_keys.DIK_NUMPAD6 then
+				self:OnButtonPaste()
+			elseif dik == DIK_keys.DIK_G then
+				self:OnButtonAlign()
+				
+			elseif dik == DIK_keys.DIK_DELETE then
+				self:CleanMemo()
+			elseif dik == DIK_keys.DIK_H then
+				self:ShowHint()
+			elseif dik == DIK_keys.DIK_ESCAPE then
+				self:Close()
+			end
+		end
+	end
+	return res
+end
+
+function WpnHudEditor:OnButtonThirdPerson()
+	if not db.actor:active_item() then
+		self:Print(nil, "Actor has no current item, abort")
+		return
+	end
+	if not (
+		level.set_cam_custom_position_direction
+		and level.remove_cam_custom_position_direction
+	) then
+		self:Print(nil, "Missing camera functions from modded exes, TP mode is unavailable")
+		return
+	end
+	self.third_person_mode = not self.third_person_mode
+
+	local v = self.active_table
+	self.data[v].scroll_par:Show(false)
+
+	if self.third_person_mode then
+		self.active_table = third_person_parameters
+		self:ResetSelects(true)
+		hud_adjust.enabled(false)
+
+		dummy_npc = alife_create("sim_default_stalker_0", db.actor:position(), db.actor:level_vertex_id(), db.actor:game_vertex_id())
+		local antifreeze_state = get_console_cmd(0, "spawn_antifreeze")
+		exec_console_cmd("spawn_antifreeze " .. 0)
+		CreateTimeEvent("ui_debug_wpn_hud_dummy", "ui_debug_wpn_hud_dummy_npc", 0, function()
+			local obj = level.object_by_id(dummy_npc.id)
+			if obj then
+				db.storage[obj:id()] = db.storage[obj:id()] or {}
+				db.storage[obj:id()].ui_debug_wpn_hud_dummy = {
+					state = self.dummy_npc_states[1][2]
+				}
+				obj:iterate_inventory(function(owner, item)
+					alife_release_id(item:id())
+				end, obj)
+				local weapon_sec = db.actor:active_item():section()
+				local weapon = alife_create_item(weapon_sec, obj)
+				CreateTimeEvent("ui_debug_wpn_hud_dummy", "ui_debug_wpn_hud_dummy_weapon", 0, function()
+					local w = level.object_by_id(weapon.id)
+					if w then
+						self.weapon = w
+						self.weapon_cobj = w:cast_Weapon()
+						self:ApplyThirdPersonParameterValue()
+						exec_console_cmd("spawn_antifreeze " .. antifreeze_state)
+						return true
+					end
+					return false
+				end) 
+				self:ResetNpcCam()
+				return true
+			end
+			return false
+		end)
+
+		-- self.weapon_cobj = db.actor:active_item():cast_Weapon()
+	else
+		self.active_table = parameters
+		self.weapon_cobj = nil
+		self.weapon = nil
+		self:StopCam()
+		hud_adjust.enabled(true)
+	end
+
+	local v = self.active_table
+	self.data[v].scroll_par:Show(true)
+end
+
+-- NPC Dummy
+actid = 198122
+evaid = 198122
+
+class "evaluator_stalker_ui_debug_wpn_hud_dummy" (property_evaluator)
+function evaluator_stalker_ui_debug_wpn_hud_dummy:__init(npc,name,storage) super (nil, name)
+	self.st = storage
+end
+
+function evaluator_stalker_ui_debug_wpn_hud_dummy:evaluate()
+	--utils_data.debug_write("eva_panic")
+	local npc = self.object
+	local id = npc:id()
+	db.storage[id] = db.storage[id] or {}
+	local st = db.storage[id]
+	-- printf("checking dummy_npc %s", npc:name())
+	if st.ui_debug_wpn_hud_dummy then
+		return true
+	end
+	return false
+end
+
+class "action_stalker_ui_debug_wpn_hud_dummy" (action_base)
+function action_stalker_ui_debug_wpn_hud_dummy:__init (npc,name,storage) super (nil,name)
+	self.st = storage
+end
+
+function action_stalker_ui_debug_wpn_hud_dummy:initialize()
+	action_base.initialize(self)
+	-- local npc = self.object
+	-- npc:set_desired_position()
+	-- npc:set_desired_direction()
+	self.first_update = true
+end
+
+function action_stalker_ui_debug_wpn_hud_dummy:execute()
+	--utils_data.debug_write(strformat("action_stalker_ui_debug_wpn_hud_dummy:execute start"))
+	action_base.execute(self)
+
+	local npc = self.object	
+	--printf("enemy = %s",enemy and enemy:name())
+	
+	-- ensure and enforce path type
+	-- if (npc:path_type() ~= game_object.level_path) then 
+	-- 	npc:set_path_type(game_object.level_path)
+	-- end
+
+	-- printf("executing dummy_npc %s", npc:name())
+
+	npc:set_desired_position()
+	npc:set_desired_direction()
+	npc:set_dest_level_vertex_id(npc:level_vertex_id())
+
+	state_mgr.set_state(npc, db.storage[npc:id()].ui_debug_wpn_hud_dummy.state, nil, nil, {
+		-- look_position = self.st.lvid and level.vertex_position(self.st.lvid) or npc:position(),
+		-- look_object = db.actor,
+		-- look_dir = self.st.lvid and level.vertex_position(self.st.lvid):sub(npc:position()):normalize() or npc:direction(),
+	}, {
+		fast_set = true,
+		animation = true,
+	})
+
+	-- First update force movement 
+	if self.first_update then
+		-- npc:clear_animations()
+		-- npc:movement_enabled(false)
+		-- npc:set_movement_type(move.stand)
+		-- npc:set_body_state(move.standing)
+		-- npc:set_mental_state(anim.danger)
+		self.first_update = false
+	end
+end
+
+function action_stalker_ui_debug_wpn_hud_dummy:finalize()
+    action_base.finalize(self)
+    self.first_update = true
+	db.storage[self.object:id()].ui_debug_wpn_hud_dummy = nil
+	self.object:clear_animations()
+	self.object:movement_enabled(true)
+end
+
+function setup_generic_scheme(npc,ini,scheme,section,stype,temp)
+	local st = xr_logic.assign_storage_and_bind(npc,ini,"stalker_ui_debug_wpn_hud_dummy",section,temp)
+end
+
+function add_to_binder(npc,ini,scheme,section,storage,temp)
+	if not npc then return end
+	local manager = npc:motivation_action_manager()
+	if not manager then return end
+	
+	if not npc:alive() then
+		manager:add_evaluator(evaid,property_evaluator_const(false))
+		temp.needs_configured = false
+		return 
+	end
+
+	local evaluator = evaluator_stalker_ui_debug_wpn_hud_dummy(npc,"eva_stalker_ui_debug_wpn_hud_dummy",storage)
+	temp.action = action_stalker_ui_debug_wpn_hud_dummy(npc,"act_stalker_ui_debug_wpn_hud_dummy",storage)
+	
+	if not evaluator or not temp.action then return end
+	manager:add_evaluator(evaid,evaluator)
+	
+	temp.action:add_precondition(world_property(stalker_ids.property_alive,true))
+	temp.action:add_precondition(world_property(stalker_ids.property_danger, false))
+	temp.action:add_precondition(world_property(evaid,true))
+	
+	temp.action:add_effect(world_property(evaid,false))
+	
+	manager:add_action(actid,temp.action)
+	
+	--xr_logic.subscribe_action_for_events(npc, storage, temp.action)
+end
+
+function configure_actions(npc,ini,scheme,section,stype,temp)
+	if not npc then return end
+	local manager = npc:motivation_action_manager()
+	if not manager or not temp.action then return end
+
+	temp.action:add_precondition(world_property(xr_evaluators_id.sidor_wounded_base,false))
+	-- temp.action:add_precondition(world_property(xr_evaluators_id.wounded_exist,false))
+
+	-- if (_G.schemes["rx_ff"]) then 
+	-- 	temp.action:add_precondition(world_property(rx_ff.evaid,false))
+	-- end
+	if (_G.schemes["gl"]) then
+		temp.action:add_precondition(world_property(rx_gl.evid_gl_reload,false))
+	end
+	-- if (_G.schemes["facer"]) then
+	-- 	temp.action:add_precondition(world_property(xrs_facer.evid_facer,false))
+	-- 	temp.action:add_precondition(world_property(xrs_facer.evid_steal_up_facer,false))
+	-- end
+
+	local action
+	local p = {xr_danger.actid, stalker_ids.action_combat_planner, stalker_ids.action_danger_planner, xr_actions_id.state_mgr + 2, xr_actions_id.alife}
+	
+	for i=1,#p do
+		--printf("ACTION_ALIFE_ID(permaban_material.configure_actions): " .. tostring(p[i]))
+		action = manager:action(p[i])
+		if (action) then
+			action:add_precondition(world_property(evaid,false))
+		else
+			printf("axr_panic: no action id p[%s]",i)
+		end
+	end
+end 
+
+function disable_generic_scheme(npc,scheme,stype)
+	local st = db.storage[npc:id()][scheme]
+	if st then
+		st.enabled = false
+	end
+end
+
+function npc_add_precondition(action)
+	if not action then return end
+	action:add_precondition(world_property(evaid,false))
+end
+
+LoadScheme("ui_debug_wpn_hud", "stalker_ui_debug_wpn_hud_dummy", modules.stype_stalker)
+
+function on_enemy_eval(obj, enemy, flags)
+	if dummy_npc and (obj:id() == dummy_npc.id or enemy:id() == dummy_npc.id) then
+        flags.override = true
+        flags.result = false
+	end
+end
+
+ function npc_on_before_hit(npc,shit,bone_id,flags)
+ 	if dummy_npc and npc:id() == dummy_npc.id then
+ 		flags.ret_value = false
+ 	end
+ end
+
+function on_game_start()
+	local function on_localization_change()
+		GUI = nil -- clear ui to force initing again
+	end
+	RegisterScriptCallback("on_localization_change",on_localization_change)
+	RegisterScriptCallback("on_enemy_eval", on_enemy_eval)
+	RegisterScriptCallback("npc_on_before_hit", npc_on_before_hit)
+end

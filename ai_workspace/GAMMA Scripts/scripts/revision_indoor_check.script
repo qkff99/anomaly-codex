@@ -1,0 +1,82 @@
+local ray_table = {}
+local ray_count_circle = 16
+local ray_count_vertical = 8
+
+function init_ray_table()
+    ray_table = {}
+    local counter = 1
+    for i = 1, ray_count_circle do
+        for ii = 0, ray_count_vertical - 1 do
+            if not (ii == ray_count_vertical - 1 and i % 3 ~= 0) and not (ii == ray_count_vertical - 2 and i % 2 == 0) then
+                local ray_dir = vector():set(0, 0, 1)
+                local angle = (ii / (ray_count_vertical - 1)) * 82
+
+                ray_dir.y = math.sin(angle * 0.017453292519943295769236907684886)
+                ray_dir.z = math.cos(angle * 0.017453292519943295769236907684886)
+
+                local rot_angle = (i / ray_count_circle) * 360
+                ray_dir = vector_rotate_y(ray_dir, rot_angle):normalize()
+
+                ray_table[counter] = vector():set(ray_dir)
+                counter = counter + 1
+            end
+        end
+    end
+end
+
+-- requires demonized_geometry_ray.script to work
+function cover_percentage()
+    local pos = db.actor:position()
+    if IsMoveState("mcCrouch") and IsMoveState("mcAccel") then -- Prone
+        pos.y = pos.y + 0.25
+    elseif IsMoveState("mcCrouch") then
+        pos.y = pos.y + 0.5
+    else
+        pos.y = pos.y + 0.75
+    end
+
+    local total_points = 0
+    local ray_count = size_table(ray_table)
+    local ray_range = 10 -- Range of each ray
+
+    for i = 1, ray_count do
+        local ray_args = {
+            ray_range = ray_range,
+            contact_range = ray_range - 0.01,
+            flags = (1 + 2 + 4 + 8),
+            ignore_object = db.actor
+        }
+
+        local ray_dir = ray_table[i]
+        local ray = demonized_geometry_ray.geometry_ray(ray_args)
+        local result = ray:get(pos, ray_dir)
+
+        while result.in_contact and result.result.material_name do
+            local name = result.result.material_name
+            if not (string.find(name, "bush") or string.find(name, "water")) then
+                break -- break out of the loop if contact is not a bush
+            end
+            ray_args.ray_range = ray_args.ray_range - result.distance
+            ray_args.contact_range = ray_args.contact_range - result.distance
+            ray = demonized_geometry_ray.geometry_ray(ray_args)
+            local new_pos = vector():set(result.position):add(vector():set(ray_dir):mul(0.01))
+            result = ray:get(new_pos, ray_dir)
+        end
+
+        if result.in_contact then
+            total_points = total_points + 1
+        end
+    end
+
+    local cover_prcnt = (total_points / ray_count)
+    return cover_prcnt
+end
+
+
+function actor_on_first_update()
+   init_ray_table()
+end
+
+function on_game_start()
+   RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+end

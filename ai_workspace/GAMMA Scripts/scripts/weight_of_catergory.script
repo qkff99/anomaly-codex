@@ -1,0 +1,36 @@
+local weight_unit = game.translate_string("st_kg")
+
+function on_game_start()
+	local inv_ini = ui_inventory.UIInventory.InitControls
+	function ui_inventory.UIInventory.InitControls(self)
+		inv_ini(self)
+		local wnd_pos = self.player_weight_cap:GetWndPos()
+		wnd_pos.x = wnd_pos.x - 20
+		self.player_weight_cap:SetWndPos(wnd_pos)
+
+		wnd_pos = self.player_weight:GetWndPos()
+		wnd_pos.x = wnd_pos.x - 8
+		self.player_weight:SetWndPos(wnd_pos)
+	end
+
+	local base_parse = ui_inventory.UIInventory.ParseInventory
+	function ui_inventory.UIInventory.ParseInventory(self, npc, all, id_list, ignore_kind)
+		local inv = base_parse(self, npc, all, id_list, ignore_kind)
+		if not npc or npc:id() ~= AC_ID then return inv end
+		if self.possible_kind["s_all"] then return inv end
+		--if all then return inv end
+
+		local cat_weight = 0
+
+		for id, obj in pairs(inv) do
+			cat_weight = cat_weight + obj:weight()
+		end
+
+		local tot_weight = db.actor:get_total_weight()
+
+		-- Note: this also removes the space between total weight and kg
+		self.player_weight:SetText( strformat("[%s] %s%s", round_idp(cat_weight, 1), round_idp(tot_weight,1), weight_unit) )
+
+		return inv
+	end
+end

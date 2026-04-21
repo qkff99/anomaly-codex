@@ -1,0 +1,10 @@
+function on_mcm_load()
+    op = {
+        id = "no_laser_while_ads", sh = true, gr = {
+            {id = "title", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_title_no_laser_while_ads", size= {512,50}, spacing = 20},
+            {id = "primary_aim", type = "check", val = 1, def = true},
+            {id = "alt_aim", type = "check", val = 1, def = false},
+        }
+    }
+    return op
+end

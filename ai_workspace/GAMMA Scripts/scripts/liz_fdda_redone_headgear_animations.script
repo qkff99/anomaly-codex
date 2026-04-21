@@ -1,0 +1,356 @@
+--imports (kinda)
+local r_nvg = z_beefs_nvgs or z_vanilla_nvgs
+local uiio = zzzz_liz_fdda_redone_ui_inventory
+
+local mcm_enable_animation = true
+local mcm_animation_speed = 1
+
+--helmets that don't trigger animation (loaded from ini file)
+local ini_blacklist = {}
+
+--helmets that don't require nvg removal to equip or unequip
+local headgear_nvg_blacklist = {
+    ["helm_bandana"] = true,
+    ["helm_rp_bala"] = true,
+    ["helm_resp"] = true,
+    ["helm_cloth_mask"] = true,
+}
+
+--- ----------------------------------------------------------------------
+--- init
+--- ----------------------------------------------------------------------
+
+function on_game_start()
+    RegisterScriptCallback("on_game_load", initialize)
+    RegisterScriptCallback("on_option_change", initialize)
+    RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+end
+
+function initialize()
+    ini_blacklist = ini_file("items\\items\\headgear_blacklist.ltx")
+    mcm_enable_animation = liz_fdda_redone_mcm.get_config("headgear_anm/enable")
+    mcm_animation_speed = liz_fdda_redone_mcm.get_config("headgear_anm/speed")
+end
+
+function actor_on_first_update()
+    uiio.Add_Handler("headgear", predicate, on_eqiup, on_unequip, on_drop, on_swap)
+end
+
+function predicate(obj)
+    if IsHeadgear(obj) then
+        return true
+    end
+    return false
+end
+
+function on_eqiup(obj, bag)
+    if not mcm_enable_animation then
+        uiio.Equip(obj, bag)
+        return
+    end
+    uiio.Set_Item_in_Use(obj:id(), true)
+    lam2.add_action(ta_equip(obj, bag))
+end
+
+function on_unequip(obj, bag)
+    if not mcm_enable_animation then
+        uiio.Unequip(obj, bag)
+        return
+    end
+    uiio.Set_Item_in_Use(obj:id(), true)
+    lam2.add_action(ta_unequip(obj, bag, "unequip"))
+end
+
+function on_drop(obj, bag)
+    if not mcm_enable_animation or bag ~= "actor_equ" then
+        uiio.Drop(obj, bag)
+        return
+    end
+    uiio.Set_Item_in_Use(obj:id(), true)
+    lam2.add_action(ta_unequip(obj, bag, "drop"))
+end
+
+function on_swap(obj_prev, obj_next, bag)
+    if not mcm_enable_animation then
+        db.actor:move_to_ruck(obj_prev)
+        uiio.Equip(obj_next, bag)
+        return
+    end
+    uiio.Set_Item_in_Use(obj_next:id(), true)
+    lam2.add_action(ta_equip(obj_next, bag))
+end
+
+--- ----------------------------------------------------------------------
+--- monkey patch
+--- ----------------------------------------------------------------------
+
+local originalPIF = actor_effects.play_item_fx
+function actor_effects.play_item_fx(item)
+    if item == "helm" then return end
+    originalPIF(item)
+end
+
+--- ----------------------------------------------------------------------
+--- main
+--- ----------------------------------------------------------------------
+
+function on_toggle_equip(obj)
+    if not mcm_enable_animation then
+        db.actor:move_to_slot(obj, 12)
+        return
+    end
+    uiio.Set_Item_in_Use(obj:id(), true)
+    lam2.add_action(ta_equip(obj, "actor_bag"))
+end
+
+
+function on_toggle_unequip(obj)
+    if not mcm_enable_animation then
+        db.actor:move_to_ruck(obj)
+        return
+    end
+    uiio.Set_Item_in_Use(obj:id(), true)
+    lam2.add_action(ta_unequip(obj, "actor_equ", "unequip"))
+end
+
+--- ----------------------------------------------------------------------
+--- utils
+--- ----------------------------------------------------------------------
+
+function is_use_fade(section)
+    return ini_sys:r_bool_ex(section .. "_headgear_hud", "fade_use")
+end
+
+function fade_start()
+    level.add_pp_effector("deimos_short.ppe", 4277, false)
+end
+
+function fade_stop()
+    level.remove_pp_effector(4277)
+end
+
+--- ----------------------------------------------------------------------
+--- action templates
+--- ----------------------------------------------------------------------
+
+function ta_unequip_fade()
+    local a = {
+        tag = "headgear_animation",
+        name = "headgear_unequip_fade",
+        hands = 2,
+        fade_started = false,
+        fade_stopped = false,
+        execute = function (self, time)
+            --start fade
+            if not self.fade_started then
+                self.fade_started = true
+                fade_start()
+                return lam2.states.running
+            end
+            --disable fade
+            if not self.fade_stopped then
+                self.fade_stopped = true
+                fade_stop()
+                return lam2.states.running
+            end
+            --stop delay
+            if time > 0.4 then
+                return lam2.states.success
+            end
+            return lam2.states.running
+        end
+    }
+    return a
+end
+
+
+function ta_animation_equip(section)
+    local a = lam2.get_template_action_play_animation()
+    local sec = section .. "_headgear_hud"
+    a.tag = "headgear_animation"
+    a.name = "headgear_equip"
+    a.sec = ini_sys:section_exist(sec) and sec or "gasmask_headgear_hud"
+    a.anm = "anm_equip"
+    a.cam = "cam_equip"
+    a.snd = "snd_equip"
+    a.speed = mcm_animation_speed
+    a.fade_enabled = ini_sys:r_bool_ex(sec, "fade_use")
+    a.fade_started = false
+    a.fade_stopped = false
+    a.on_execute = function (self, time)
+        --start fade
+        if self.fade_enabled and time > self.duration - 0.35 and not self.fade_started then
+            self.fade_started = true
+            fade_start()
+        end
+        --interrupt fade
+        if self.fade_enabled and time > self.duration - 0.25 and not self.fade_stopped then
+            self.fade_stopped = true
+            fade_stop()
+        end
+    end
+    return a
+end
+
+
+function ta_animation_unequip(section)
+    local a = lam2.get_template_action_play_animation()
+    local sec = section .. "_headgear_hud"
+    a.tag = "headgear_animation"
+    a.name = "headgear_ta_animation_unequip"
+    a.sec = ini_sys:section_exist(sec) and sec or "gasmask_headgear_hud"
+    a.anm = "anm_unequip"
+    a.cam = "cam_unequip"
+    a.snd = "snd_unequip"
+    a.speed = mcm_animation_speed
+    return a
+end
+
+
+function ta_mask_hud_off(value)
+    local a = {}
+    a.tag = "headgear_animation"
+    a.name = "headgear_disable_mask_hud"
+    a.value = value
+    a.enter = function (self)
+        if ui_options.get("video/player/mask_hud") then
+            actor_effects.helm_off = self.value
+            actor_effects.Update_Mask(db.actor)
+        end
+    end
+    return a
+end
+
+
+function ta_try_set_nightvision(state)
+    local a = {}
+    a.tag = "headgear_animation"
+    a.name = "headgear_set_nightvision"
+    a.target = state
+    a.enter = function (self)
+        if r_nvg and item_device.nv_state ~= self.target then
+            local torch = db.actor:item_in_slot(10)
+            r_nvg.set_nightvision_animated(torch and torch:section(), not item_device.nv_state)
+        end
+    end
+    return a
+end
+
+
+function ta_move_item(obj, bag, action)
+    local a = {}
+    a.tag = "headgear_animation"
+    a.obj_id = obj:id()
+    a.bag = bag
+    a.action = action
+    a.enter = function (self)
+        local item_obj = level.object_by_id(self.obj_id)
+        if item_obj then
+            if self.action == "equip" then
+                uiio.Set_Item_in_Use(self.obj_id, false)
+                uiio.Equip(item_obj, self.bag)
+            elseif self.action == "unequip" then
+                uiio.Set_Item_in_Use(self.obj_id, false)
+                uiio.Unequip(item_obj, self.bag)
+            elseif self.action == "drop" then
+                uiio.Set_Item_in_Use(self.obj_id, false)
+                uiio.Drop(item_obj, self.bag)
+            elseif self.action == "move_to_ruck" then
+                db.actor:move_to_ruck(item_obj)
+            elseif self.action == "move_to_slot" then
+                db.actor:move_to_slot(item_obj, 12)
+            end
+        end
+    end
+    return a
+end
+
+
+--actions here added in backwards order (from bottom to top) cuz we add them at the beginning of the queue (lam2.add_action_first)
+--todo: make composite action or use fsm maybe?
+function ta_equip(obj, bag)
+    local a = {}
+    a.name = "headgear_ta_equip"
+    a.obj_id = obj:id()
+    a.bag = bag
+    a.execute = function (self, time)
+        --- nvg?
+        --- equip
+        local item_obj_equip = level.object_by_id(self.obj_id)
+        if item_obj_equip then
+            lam2.add_action_first(ta_move_item(item_obj_equip, self.bag, "equip"))
+            if not ini_blacklist:section_exist(item_obj_equip:section()) then
+                lam2.add_action_first(ta_animation_equip(item_obj_equip:section()))
+            end
+        end
+        --nvg
+        if not headgear_nvg_blacklist[item_obj_equip:section()] then
+            lam2.add_action_first(ta_try_set_nightvision(false))
+        end
+        --unequip
+        local item_obj_uneqiup = db.actor:item_in_slot(12)
+        if item_obj_uneqiup then
+            if not ini_blacklist:section_exist(item_obj_uneqiup:section()) then
+                lam2.add_action_first(ta_mask_hud_off(false))
+                lam2.add_action_first(ta_move_item(item_obj_uneqiup, self.bag, "move_to_ruck"))
+                lam2.add_action_first(ta_animation_unequip(item_obj_uneqiup:section()))
+                lam2.add_action_first(ta_mask_hud_off(true))
+            else
+                lam2.add_action_first(ta_move_item(item_obj_uneqiup, self.bag, "move_to_ruck"))
+            end
+            if is_use_fade(item_obj_uneqiup:section()) then
+                lam2.add_action_first(ta_unequip_fade())
+            end
+            --- nvg?
+            if not headgear_nvg_blacklist[item_obj_uneqiup:section()] then
+                lam2.add_action_first(ta_try_set_nightvision(false))
+            end
+        end
+        return lam2.states.success
+    end
+    return a
+end
+
+
+function ta_unequip(obj, bag, action)
+    local a = {}
+    a.name = "headgear_ta_unequip"
+    a.obj_id = obj:id()
+    a.bag = bag
+    a.action = action
+    a.execute = function (self, time)
+        --get item to unequip from slot
+        local item_obj = db.actor:item_in_slot(12)
+        if item_obj and item_obj:id() == self.obj_id then
+            local item_section = item_obj:section()
+            --nvg end
+            --if nvg
+            --check if headgear requires nvg removal
+            --reaply nvg
+            --unequip
+            if not ini_blacklist:section_exist(item_section) then
+                lam2.add_action_first(ta_mask_hud_off(false))
+                lam2.add_action_first(ta_move_item(item_obj, self.bag, self.action))
+                lam2.add_action_first(ta_animation_unequip(item_section))
+                lam2.add_action_first(ta_mask_hud_off(true))
+            else
+                lam2.add_action_first(ta_move_item(item_obj, self.bag, self.action))
+            end
+            if is_use_fade(item_section) then
+                lam2.add_action_first(ta_unequip_fade())
+            end
+            --nvg start
+            --if nvg
+            --check if headgear requires nvg removal
+            --remove nvg
+            if not headgear_nvg_blacklist[item_section] then
+                lam2.add_action_first(ta_try_set_nightvision(false))
+            end
+        else
+            uiio.Set_Item_in_Use(self.obj_id, false)
+            return lam2.states.fail
+        end
+        return lam2.states.success
+    end
+    return a
+end

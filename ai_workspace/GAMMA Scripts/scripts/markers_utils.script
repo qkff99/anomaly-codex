@@ -1,0 +1,194 @@
+local get_config = compass_mcm.get_config
+
+local fade_range = tc_variables.TC_FADE_DISTANCE
+local screen_center = tc_variables.TC_SCREEN_CENTER
+local deadbody_up = tc_variables.TC_DEADBODY_UP
+local deadbody_down = tc_variables.TC_DEADBODY_DOWN
+local markers_up = tc_variables.TC_MARKERS_UP
+local markers_down = tc_variables.TC_MARKERS_DOWN
+
+-- Markers 
+function define_distance_to_marker(marker_type)
+    local config = markers_definitions.marker_configs[marker_type]
+
+    return {
+        distance = get_config("tc_markers/" .. config.distance),
+        is_enabled = get_config("tc_markers/" .. config.is_enabled),
+        is_distance = get_config("tc_markers/" .. config.is_distance),
+        is_always_visible = get_config("tc_markers/" .. config.is_always_visible)
+    }
+end
+
+function define_marker_y(pos_state, marker_type)
+    local marker_y
+
+    if pos_state == 1 and marker_type == "deadbody" then
+        marker_y = deadbody_up
+    elseif marker_type == "deadbody" then
+        marker_y = deadbody_down
+    elseif pos_state == 1 then
+        marker_y = markers_up
+    else
+        marker_y = markers_down
+    end
+
+    return marker_y
+end
+
+function get_world_coordinates(id)
+    local pos = nil
+	local obj = db.storage[id] and db.storage[id].object or level.object_by_id(id)
+
+    if (obj and (IsStalker(obj) or IsMonster(obj))) then
+		pos = obj and utils_obj.safe_bone_pos(obj, "bip01_head")
+
+        return pos
+	elseif (obj and (type(obj.position) == "function")) then
+		local tmp = obj:position()
+		pos = tmp and vector():set(tmp.x, tmp.y + 1, tmp.z)
+
+        return pos
+	end
+
+	if (pos == nil) then
+		local se = alife_object(id)
+		if not (se and se.online) then
+			return nil
+
+		elseif (se:clsid() == clsid.smart_terrain) then
+			local tmp = se and se.position
+			pos = tmp and vector():set(tmp.x, tmp.y + 1, tmp.z)
+
+            return pos
+		elseif (se:clsid() == clsid.online_offline_group_s) then
+			local i = se:commander_id()
+			local npc = i and db.storage[i] and db.storage[i].object or level.object_by_id(i)
+			pos = npc and utils_obj.safe_bone_pos(npc, "bip01_head")
+
+            return pos
+		end
+	end
+
+	return nil
+end
+
+function get_screen_coordinates(id)
+    local pos = id and get_world_coordinates(id)
+    local vec = pos and game.world2ui(vector():set(pos.x, pos.y + 0.5, pos.z), false)
+
+    return vec
+end
+
+function calc_position(world_pos, actor_pos, actor_dir, prev_marker_x)
+	local marker_pos = screen_center
+
+    local flat_pos
+
+    if world_pos then
+        flat_pos = vector():set(world_pos.x, actor_pos.y, world_pos.z)
+    end
+
+    local target_dir = flat_pos:sub(actor_pos):normalize()
+    local dot_product = target_dir:dotproduct(actor_dir)
+
+    if dot_product < -0.99 then
+        return tonumber(clamp(screen_center - 300, screen_center + 300))
+    end
+
+    local cross = VEC_ZERO
+    cross:crossproduct(target_dir, actor_dir)
+    local side_factor = (cross.y < 0) and 1 or -1
+    local offset = side_factor * (1 - dot_product) * 220
+
+    marker_pos = screen_center + offset
+
+    local lerp_factor = 0.1
+    if prev_marker_x and math.abs(marker_pos - prev_marker_x) > 100 then
+        lerp_factor = 0.5
+    end
+
+    marker_pos = lerp(prev_marker_x or screen_center, marker_pos, lerp_factor)
+    marker_pos = clamp(marker_pos, screen_center - 300, screen_center + 300)
+
+    return tonumber(marker_pos)
+end
+
+function lerp(a, b, t)
+	return a + (b - a) * t
+end
+
+function calc_distance_to_target(target_world_pos, actor_pos)
+    if target_world_pos and actor_pos then
+        return math.floor(target_world_pos:distance_to(actor_pos))
+    end
+
+    return nil
+end
+
+function is_looking_at_target(marker_x)
+    return marker_x and math.abs( marker_x - screen_center ) <= 10
+end
+
+function set_distance_text(marker, marker_x, distance_to_target, is_distance, is_always_visible, marker_alpha)
+    local is_looking = is_looking_at_target(marker_x)
+
+    if (is_distance and marker_alpha ~= 0) or is_always_visible then
+        if is_looking then
+            marker:TextControl():SetText(distance_to_target)
+        else
+            marker:TextControl():SetText("")
+        end
+    else
+        marker:TextControl():SetText("")
+    end
+end
+
+function calc_alpha(is_always_visible, distance_to_npc, max_distance)
+    local fade_start = max_distance
+    local fade_end = max_distance + fade_range
+
+    if is_always_visible then
+        return 255
+    end
+
+    if distance_to_npc <= fade_start then
+        return 255
+    elseif distance_to_npc >= fade_end then
+        return 0
+    else
+        local progress = (distance_to_npc - fade_start) / fade_range
+
+        return 255 - (progress * 255)
+    end
+end
+
+function draw_arrow(actor_pos, marker_world_pos, marker, marker_alpha, marker_type)
+    local actor_pos_y = math.floor(actor_pos and actor_pos.y or 0)
+    local marker_pos_y = math.floor(marker_world_pos and marker_world_pos.y or 0)
+
+    local y_diff = actor_pos_y - marker_pos_y
+
+    if marker_type ~= "deadbody" then
+       if y_diff < -2 then
+            marker.arrow:Show(true)
+            init_arrow_texture(marker, "tc_arrow_up")
+            marker.arrow:SetTextureColor(GetARGB(marker_alpha, 255, 255, 255))
+        elseif y_diff > 2 then
+            marker.arrow:Show(true)
+            init_arrow_texture(marker, "tc_arrow_down")
+            marker.arrow:SetTextureColor(GetARGB(marker_alpha, 255, 255, 255))
+        else
+            marker.arrow:Show(false)
+        end
+    end
+end
+
+function init_arrow_texture(marker, texture)
+    marker.arrow:InitTexture(texture)
+    marker.arrow:SetWndPos(vector2():set(marker:GetWidth() / 2, -2))
+end
+
+-- Callback registration
+function actor_map_location_added(binder, spot_item, id)
+	SendScriptCallback("actor_map_location_added", binder, spot_item, id)
+end

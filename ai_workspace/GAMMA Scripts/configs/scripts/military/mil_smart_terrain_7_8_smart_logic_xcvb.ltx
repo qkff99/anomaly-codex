@@ -1,0 +1,251 @@
+[beh@general]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+gather_items_enabled = true
+help_wounded_enabled = true
+corpse_detection_enabled = true
+meet = meet@general
+wounded = wounded@ignore
+use_camp = false
+path_end = loop
+
+
+[beh@combat]:beh@general
+walk_dist = 25
+jog_dist = 220
+wait_anim = patrol
+walk_anim = patrol
+jog_anim = patrol
+run_anim = patrol
+sound_idle = state
+
+
+[beh@campfire]:beh@general
+turn_on_campfire = true
+sound_idle = state
+
+[beh@sleep]:beh@general
+gather_items_enabled = false
+corpse_detection_enabled = false
+meet = no_meet
+
+
+[meet@general]
+close_anim 		= nil
+close_victim 	= nil
+far_anim 		= nil
+far_victim 		= nil
+close_distance  = 0
+far_distance 	= 0
+use = {=actor_enemy} false, {=dist_to_actor_le(3)} true, false
+snd_on_use = {!dist_to_actor_le(3)} nil
+meet_on_talking = false
+
+[wounded@ignore]
+hp_state        = 0|wounded_heavy@help_heavy
+hp_state_see    = 0|wounded_heavy@help_heavy
+hp_victim       = 0|nil
+hp_fight        = 0|false
+hp_cover        = 0|false
+
+
+; =======================
+; ------------- DAY ---------------
+; =======================
+; ------------- 59
+; (guard 1 entrance)
+[logic@mil_7_8_xcvb_day_1]
+active = beh@day_1
+suitable = {!surge_started !is_night} true
+prior = 59
+
+[beh@day_1]:beh@combat
+pt1 = 20000, guard | 		pos: -9.8, -5.1252, 81.9 	 	 look: -8.6988, -6.0535, 87.464 
+
+
+; (guard 2 entrance)
+[logic@mil_7_8_xcvb_day_2]
+active = beh@day_2
+suitable = {!surge_started !is_night} true
+prior = 59
+
+[beh@day_2]:beh@combat
+pt1 = 60000, ward | 		pos: -2.8, -5.1117, 81.9 	 	 look: -7.0365, -6.1812, 91.0019 
+pt2 = 20000, smoking_stand | 		pos: -2.8, -5.1117, 81.9 	 	 look: -7.0365, -6.1812, 91.0019 
+
+
+; (guard 3 entrance sniper)
+[logic@mil_7_8_xcvb_day_3]
+active = beh@day_3
+suitable = {!surge_started !is_night =guard_has_rifle} true
+prior = 59
+
+[beh@day_3]:beh@combat
+pt1 = 40000, threat_heli | 		pos: -16.8, 9.9481, 72.1 	 	 look: -17.9478, -5.0219, 112.8278 
+pt2 = 15000, binocular | 		pos: -16.8, 9.9481, 72.1 	 	 look: -17.9478, -5.0219, 112.8278 
+
+
+; ------------- 58
+; (guard down the road 1)
+[logic@mil_7_8_xcvb_day_4]
+active = beh@day_4
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[beh@day_4]:beh@combat
+pt1 = 20000, guard | 		pos: -11.9, -11.6599, 140 	 	 look: -18.9581, -12.716, 141.985 
+pt2 = 20000, guard | 		pos: -7, -5.0914, 87.5 	 	 look: -7.2454, -6.1708, 90.818 
+
+
+; (patrol 1 bridge)
+[logic@mil_7_8_xcvb_day_5]
+active = beh@day_5
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[beh@day_5]:beh@combat
+pt1 = 20000, guard | 		pos: -9.8, -5.1614, 67.2 	 	 look: -6.8445, -6.1284, 71.6312 
+pt2 = 20000, guard | 		pos: -9.8, -5.1614, 26.6 	 	 look: -5.5972, -6.1765, 26.723 
+
+
+; (patrol 2 bridge tower)	(pt2 and pt4 are mid)
+[logic@mil_7_8_xcvb_day_6]
+active = beh@day_6
+suitable = {!surge_started !is_night =guard_has_rifle} true
+prior = 58
+
+[beh@day_6]:beh@combat
+pt1 = 20000, guard | 		pos: -11.9, 1.1086, 35.7 	 	 look: -11.2926, 0.0931, 36.6489 
+pt2 = 1, guard | 		pos: -18.2, 1.1521, 35 	 	 look: -18.1765, 0.1255, 32.7932 
+pt3 = 20000, guard | 		pos: -18.2, 1.1199, 30.8 	 	 look: -18.6474, 0.0897, 29.6275 
+pt4 = 1, guard | 		pos: -12.6, 1.1137, 30.1 	 	 look: -11.7019, 0.107, 31.1694 
+
+
+; ------------- 57
+; (guard down the road 2)
+[logic@mil_7_8_xcvb_day_7]
+active = beh@day_7
+suitable = {!surge_started !is_night} true
+prior = 57
+
+[beh@day_7]:beh@combat
+pt1 = 20000, guard | 		pos: -19.6, -16.5274, 161 	 	 look: -27.2639, -17.2454, 160.3794 
+
+
+; (guard down the road 3)
+[logic@mil_7_8_xcvb_day_8]
+active = beh@day_8
+suitable = {!surge_started !is_night} true
+prior = 57
+
+[beh@day_8]:beh@combat
+pt1 = 20000, guard | 		pos: -12.6, -17.3282, 172.9 	 	 look: -12.0802, -19.0527, 183.9963 
+
+
+; =======================
+; ------------ NIGHT -------------
+; =======================
+; ------------- 59
+; (guard 1 entrance)
+[logic@mil_7_8_xcvb_night_1]
+active = beh@night_1
+suitable = {!surge_started =is_night} true
+prior = 59
+
+[beh@night_1]:beh@combat
+pt1 = 20000, guard | 		pos: -9.8, -5.1252, 81.9 	 	 look: -8.6988, -6.0535, 87.464 
+
+
+; (guard 2 entrance)
+[logic@mil_7_8_xcvb_night_2]
+active = beh@night_2
+suitable = {!surge_started =is_night} true
+prior = 59
+
+[beh@night_2]:beh@combat
+pt1 = 60000, ward | 		pos: -2.8, -5.1117, 81.9 	 	 look: -7.0365, -6.1812, 91.0019 
+pt2 = 20000, smoking_stand | 		pos: -2.8, -5.1117, 81.9 	 	 look: -7.0365, -6.1812, 91.0019 
+
+
+; ------------- 58
+; (guard 3 entrance sniper)
+[logic@mil_7_8_xcvb_night_3]
+active = beh@night_3
+suitable = {!surge_started =is_night =guard_has_rifle} true
+prior = 58
+
+[beh@night_3]:beh@combat
+pt1 = 40000, threat_heli | 		pos: -16.8, 9.9481, 72.1 	 	 look: -17.9478, -5.0219, 112.8278 
+pt2 = 15000, binocular | 		pos: -16.8, 9.9481, 72.1 	 	 look: -17.9478, -5.0219, 112.8278 
+
+
+; (sleep 1)
+[logic@mil_7_8_xcvb_night_4]
+active = beh@night_4
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[beh@night_4]:beh@sleep
+pt1 = 20000, sleep | 		pos: 9.1, -6.2139, 13.3 	 	 look: 10.3236, -7.3228, 13.1886 
+
+
+; (sleep 2)		(sit)
+[logic@mil_7_8_xcvb_night_5]
+active = beh@night_5
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[beh@night_5]:beh@sleep
+pt1 = 20000, drunk_sit_ass | 		pos: 15.4, -6.285, 20.3 	 	 look: 15.8663, -7.3045, 18.3581 
+
+
+; ------------- 57
+; (sleep 3)
+[logic@mil_7_8_xcvb_night_6]
+active = beh@night_6
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[beh@night_6]:beh@sleep
+pt1 = 20000, sleep | 		pos: 9.1, -6.1462, 20.3 	 	 look: 6.7914, -7.262, 20.1939 
+
+
+; (sleep 4)
+[logic@mil_7_8_xcvb_night_7]
+active = beh@night_7
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[beh@night_7]:beh@sleep
+pt1 = 20000, drunk_sit_ass | 		pos: 14, -6.2895, 16.8 	 	 look: 15.8697, -7.3105, 16.9416 
+
+
+; (patrol 1 bridge)
+[logic@mil_7_8_xcvb_night_8]
+active = beh@night_8
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[beh@night_8]:beh@combat
+pt1 = 20000, guard | 		pos: -9.8, -5.1614, 67.2 	 	 look: -6.8445, -6.1284, 71.6312 
+pt2 = 20000, guard | 		pos: -6.3, -7.8624, -23.1 	 	 look: -6.3645, -8.8768, -20.6853 
+
+
+; ------------- 56
+; (guard down the road 1)
+[logic@mil_7_8_xcvb_night_9]
+active = beh@night_9
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[beh@night_9]:beh@combat
+pt1 = 20000, guard | 		pos: -11.9, -11.6599, 140 	 	 look: -18.9581, -12.716, 141.985 
+pt2 = 20000, guard | 		pos: -7, -5.0914, 87.5 	 	 look: -7.2454, -6.1708, 90.818 

@@ -1,0 +1,69 @@
+[beh@general]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+gather_items_enabled = false
+help_wounded_enabled = false
+corpse_detection_enabled = false
+meet = no_meet
+wounded = wounded@ignore
+use_camp = false
+
+[meet@general]
+close_anim 		= nil
+close_victim 	= nil
+far_anim 		= nil
+far_victim 		= nil
+close_distance  = 0
+far_distance 	= 0
+use = {=actor_enemy} false, {=dist_to_actor_le(3)} true, false
+snd_on_use = {!dist_to_actor_le(3)} nil
+meet_on_talking = false
+
+[wounded@ignore]
+hp_state        = 0|wounded_heavy@help_heavy
+hp_state_see    = 0|wounded_heavy@help_heavy
+hp_victim       = 0|nil
+hp_fight        = 0|false
+hp_cover        = 0|false
+
+; =======================
+; ------- DAY and NIGHT -------
+; =======================
+[logic@esc_5_9_xcvb_day_1]
+active = walker@day_1
+suitable = {!surge_started} true
+prior = 57
+
+[walker@day_1]
+path_walk = comander_walk
+path_look = comander_look
+
+
+[logic@esc_5_9_xcvb_day_2]
+active = beh@day_2
+suitable = {!surge_started} true
+prior = 59
+
+[beh@day_2]:beh@general
+pt1 = 20000, guard | 		pos: 7, 3.5726, 72.8 	 	 look: 14.4971, 2.4153, 62.778 
+path_end = loop
+meet = meet@general
+
+
+[logic@esc_5_9_xcvb_day_3]
+active = beh@day_3
+suitable = {!surge_started} true
+prior = 58
+
+[beh@day_3]:beh@general
+pt1 = 20000, guard | 		pos: -4.2, 3.6478, 92.4 	 	 look: 7.1118, 3.0143, 104.0844 
+path_end = loop
+meet = meet@general

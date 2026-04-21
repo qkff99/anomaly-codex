@@ -1,0 +1,139 @@
+--[[
+	Functionality for specialized storage boxes
+	Author: HarukaSai (visit us at: https://discord.gg/efp)
+	19-06-2023
+]]
+
+-- no real way to tell apart canned food, so we just have a table with them
+canned_food = {
+    ["beans"] = true,
+    ["chili"] = true,
+    ["conserva"] = true,
+    ["corn"] = true,
+    ["tomato"] = true,
+    ["tushonka"] = true
+}
+
+storage_types = {
+    ["ammo"] = function(obj) 
+        return IsAmmo(obj) 
+    end,
+    ["meds"] = function(obj) 
+        return SYS_GetParam(0, obj:section(), "kind") == "i_medical" 
+    end,
+    ["canned_food"] = function(obj)
+        local sec = obj:section()
+        return canned_food[sec] or false
+    end
+}
+
+-- Wrapper for CreateTimeEvent that checks if object exists
+function CreateSafeObjEvent(obj, ev_id, act_id, timer, f, ...)
+    local id = obj:id()
+    
+    CreateTimeEvent(ev_id, act_id, timer, function(...)
+        if level.object_by_id(id) then
+            return f(obj, ...)
+        end
+        
+        return true
+    end, ...)
+end
+
+local check_ids = {
+    [EDDListType.iActorBag]     = true,
+    [EDDListType.iActorBelt]    = true,
+    [EDDListType.iActorTrade]   = true,
+    [EDDListType.iActorSlot]    = true
+}
+
+function actor_on_item_before_move(flags, npc_id, obj, mode, bag_id)
+    if not (check_ids[bag_id] and obj and mode == "loot") then return end
+
+    local box = get_object_by_id(npc_id)
+
+    if (not box) then return end
+
+    local specialized_storage = SYS_GetParam(0, box:section(), "specialized_storage")
+
+    if (not storage_types[specialized_storage]) or storage_types[specialized_storage](obj) then
+        return
+    end
+
+	flags.ret_value = false
+end
+
+local levels = {
+    [0] = 0,
+    [1] = 1,
+    [2] = 2,
+    [3] = 2,
+    [4] = 3,
+}
+
+function update_display(box)
+    local items = 0
+
+    box:iterate_inventory_box(function(box)
+        items = items + 1
+    end, box)
+
+    local level = levels[clamp(math.floor(items/12), 0, 4)] or 0
+    
+    for i = 1, 3 do
+        local ev_id = string.format("update_tuna_box_bone_%s_%s", box:id(), i)
+        
+        CreateSafeObjEvent(box, ev_id, ev_id, i/25, function()
+            box:set_bone_visible("tuna_" .. i, level >= i, false, false)
+            return true
+        end)
+    end
+end
+
+function update_tuna_box(box)
+    local id = box:id()
+
+    ResetTimeEvent("update_tuna_box" .. id, "update_tuna_box" .. id, 0.1)
+    
+    CreateSafeObjEvent(box, "update_tuna_box" .. id, "update_tuna_box" .. id, 0.1, function()
+        update_display(box)
+        return true
+    end, id)
+end
+
+function is_tuna_box(box)
+    return box:section() == "placeable_cans_tuna"
+end
+
+function actor_on_item_take_from_box(box, item)
+    if (not is_tuna_box(box)) then
+        return
+    end
+
+    update_tuna_box(box)
+end
+
+function actor_on_item_put_in_box(box, item)
+    if (not is_tuna_box(box)) then
+        return
+    end
+
+    update_tuna_box(box)
+end
+
+binder_update = bind_physic_object.generic_physics_binder.update
+
+bind_physic_object.generic_physics_binder.update = function(self, delta)
+    binder_update(self, delta)
+
+    if is_tuna_box(self.object) and (not self.tuna_box_updated) then
+        update_display(self.object)
+        self.tuna_box_updated = true
+    end
+end
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_item_take_from_box", actor_on_item_take_from_box)
+    RegisterScriptCallback("actor_on_item_put_in_box", actor_on_item_put_in_box)
+    RegisterScriptCallback("ActorMenu_on_item_before_move", actor_on_item_before_move)
+end

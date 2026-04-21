@@ -1,0 +1,152 @@
+--[[
+
+Controls for laser shader in BaS
+Author: HarukaSai
+
+Credits: LVutner, Ishmaeel
+Last edit: 20-10-2021
+
+
+	== No Laser While ADS ==
+	Original file from BAS patch 28-12-21
+	Modified actor_on_update and added MCM options
+	Author: neonBarnacle
+	
+]]
+
+local updated = 0
+local interval = 500
+local saved_lasers = {}
+local snd_laser = sound_object("interface\\inv_torch")
+
+local opt_no_laser_while_ads_primary_aim = false
+local opt_no_laser_while_ads_alt_aim = false
+
+CloneWep = _G.alife_clone_weapon
+function _G.alife_clone_weapon(se_obj, section, parent_id)
+	local old_id = se_obj.id
+	local new_wep = CloneWep(se_obj, section, parent_id)
+	local new_id = new_wep and new_wep.id
+	if saved_lasers and saved_lasers[old_id] and new_id then
+		saved_lasers[new_id] = saved_lasers[old_id]
+		saved_lasers[old_id] = nil
+	end
+	return new_wep
+end
+
+function actor_on_update()
+    if time_global() < updated then return end
+    updated = time_global() + interval
+    local wpn = db.actor:active_item()
+    local section = wpn and wpn:section()
+	local wpn_id = wpn and wpn:id()
+    if not (section and has_laser(section)) then return end
+--	printf("SNK info [%s],[%s]", section, wpn_id)
+    if wpn_id and saved_lasers[wpn_id] ~= nil then
+		local zoom_type = wpn:cast_Weapon():GetZoomType()
+		if (wpn:cast_Weapon():IsZoomed() and ((zoom_type == 0 and opt_no_laser_while_ads_primary_aim) or (zoom_type == 1 and opt_no_laser_while_ads_alt_aim))) then
+			set_laser(0)
+		else
+			set_laser(saved_lasers[wpn_id] and 1 or 0)
+		end
+--		printf("SNK toggle on [%s]", wpn_id)
+    else
+        saved_lasers[wpn_id] = false
+        set_laser(0)
+--		printf("SNK toggle off [%s]", wpn_id)
+    end
+end
+
+local TorchToggle = actor_effects.Hit_TorchToggle
+
+function actor_effects.Hit_TorchToggle()
+    return
+end
+
+local laser_change_state = false
+
+function on_key_press(key)
+    local bind = dik_to_bind(key)
+    if bind ~= key_bindings.kTORCH then return end
+    if not actor_menu.is_hud_free() or device():is_paused() then
+        TorchToggle()
+        return
+    end
+    local wpn = db.actor:active_item()
+    local section = wpn and wpn:section()
+	local w_id = wpn and wpn:id()
+    if not section then TorchToggle() return end
+    if not w_id then TorchToggle() return end
+    if not has_laser(section) then TorchToggle() return end
+    local state = wpn:get_state()
+    if state ~= 0 then TorchToggle() return end
+    CreateTimeEvent("haruka_hold", "haruka_long_hold", 0.5, function()
+        laser_change_state = true
+        toggle_laser(w_id)
+        return true
+    end)
+end
+
+function on_key_release(key)
+    local bind = dik_to_bind(key)
+    if bind ~= key_bindings.kTORCH then return end
+    RemoveTimeEvent("haruka_hold", "haruka_long_hold")
+
+    if not laser_change_state then
+        TorchToggle()
+    end
+
+    laser_change_state = false
+end
+
+function has_laser(section)
+    return ini_sys:r_bool_ex(section, "laser_status", false)
+end
+
+function toggle_laser(id)
+    level.add_cam_effector("camera_effects\\weapon\\ak74_switch_off.anm", 9342, false, '')
+
+    CreateTimeEvent("haruka_laser", "haruka_laser", 0.1, function()
+        if saved_lasers[id] ~= nil then
+            saved_lasers[id] = not saved_lasers[id]
+        else
+            saved_lasers[id] = true
+        end
+
+        snd_laser:play(db.actor, 0, sound_object.s2d)
+        snd_laser.frequency = saved_lasers[id] and 1.15 or 0.85
+        set_laser(saved_lasers[id] and 1 or 0)
+
+        return true
+    end)
+end
+
+function set_laser(arg)
+    exec_console_cmd(string.format("shader_param_5 %s, 0, 0, 0", arg))
+--	printf("SNK argument:[%s]",arg)
+end
+
+function save_state(m_data)
+    m_data.saved_lasers_id = saved_lasers
+end
+
+function load_state(m_data)
+    saved_lasers = m_data.saved_lasers_id or {}
+end
+
+function no_laser_while_ads_load_settings()
+	if ui_mcm then
+		opt_no_laser_while_ads_primary_aim = ui_mcm.get("no_laser_while_ads/primary_aim")
+		opt_no_laser_while_ads_alt_aim = ui_mcm.get("no_laser_while_ads/alt_aim")
+	end
+end
+
+function on_game_start()
+    RegisterScriptCallback("on_key_press", on_key_press)
+    RegisterScriptCallback("on_key_release", on_key_release)
+    RegisterScriptCallback("save_state", save_state)
+    RegisterScriptCallback("load_state", load_state)
+    RegisterScriptCallback("actor_on_update", actor_on_update)
+    RegisterScriptCallback("actor_on_first_update", no_laser_while_ads_load_settings)
+	RegisterScriptCallback("on_option_change", no_laser_while_ads_load_settings)
+end

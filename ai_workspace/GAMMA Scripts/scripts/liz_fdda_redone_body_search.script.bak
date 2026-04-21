@@ -1,0 +1,319 @@
+--- TODO
+--- - fix bug when crouch doesn't work if mcm_disable_walk is turned on
+
+is_looting = false
+local is_crouching = false
+local is_weapon_lowered = false
+local is_shift_pressed = false
+local is_crouch_togglable = true
+local mcm_enable_animation = true
+local mcm_ui_open_delay = 0.42
+local mcm_wpn_lower_mode
+local mcm_enable_anm_for_containers
+local mcm_enable_crouch
+local mcm_disable_walk
+local mcm_enable_random_search_time
+local mcm_random_search_time_max
+
+
+--- -------------------------------------------------
+--- init
+--- -------------------------------------------------
+
+function on_game_start()
+    RegisterScriptCallback("on_option_change", initialize)
+    RegisterScriptCallback("actor_on_first_update", initialize)
+    RegisterScriptCallback("on_key_press", on_key_press)
+    RegisterScriptCallback("on_key_release", on_key_release)
+end
+
+function initialize()
+    is_crouch_togglable = get_console_cmd(1, "g_crouch_toggle")
+    mcm_enable_animation = liz_fdda_redone_mcm.get_config("body_search/enable")
+    mcm_ui_open_delay = liz_fdda_redone_mcm.get_config("body_search/ui_open_delay")
+    mcm_wpn_lower_mode = liz_fdda_redone_mcm.get_config("body_search/wpn_lower_mode")
+    mcm_enable_anm_for_containers = liz_fdda_redone_mcm.get_config("body_search/enable_anm_for_containers")
+    mcm_enable_crouch = liz_fdda_redone_mcm.get_config("body_search/enable_crouch")
+    mcm_disable_walk = liz_fdda_redone_mcm.get_config("body_search/disable_walk")
+    mcm_enable_random_search_time = liz_fdda_redone_mcm.get_config("body_search/enable_random_search_time")
+    mcm_random_search_time_max = liz_fdda_redone_mcm.get_config("body_search/random_search_time_max")
+end
+
+function on_key_press(key)
+    if (key == DIK_keys.DIK_LSHIFT) or (key == DIK_keys.DIK_RSHIFT) then is_shift_pressed = true end
+end
+
+function on_key_release(key)
+    if (key == DIK_keys.DIK_LSHIFT) or (key == DIK_keys.DIK_RSHIFT) then is_shift_pressed = false end
+end
+
+--- -------------------------------------------------
+--- monkey patches
+--- -------------------------------------------------
+
+local baseUIS = ui_inventory.start
+ui_inventory.start = function (mode, obj)
+    if mode == "loot" and not is_shift_pressed then
+        start_body_search(obj, true)
+    else
+        baseUIS(mode, obj)
+    end
+end
+
+
+-- PATCH. Haruka Skill system compatibility patch
+if haru_skills then
+    originalCRI = haru_skills.CreateReleaseItem
+    -- remove haruka scavenger skill code
+    haru_skills.CreateReleaseItem = nil
+    haru_skills.death_manager.create_release_item = nil
+    -- set flag that scavenger skill should run when open inventory evnet fires
+    local is_haruka_scav_skill_add = false
+    local haruka_scav_skill_npc = nil
+    function death_manager.create_release_item(npc)
+        originalCRI(npc)
+        CreateTimeEvent("haruka_scavenger", "haruka_scavanger", 0.1, function()
+            -- haru_skills.scavanger_effect(npc)
+            lam2.log("[BODY SEARCH] haruka patch timed event called")
+            is_haruka_scav_skill_add = true
+            haruka_scav_skill_npc = npc
+            return true
+        end)
+    end
+
+    -- subscribe to event and fire it if scavenger skill should run
+    function haruka_scavanger_effect()
+        if not is_haruka_scav_skill_add then return end
+        if not haruka_scav_skill_npc then return end
+        lam2.log("[BODY SEARCH] event on inventory open called")
+        lam2.log("[BODY SEARCH] skill add variable: %s | npc variable: %s", is_haruka_scav_skill_add, haruka_scav_skill_npc and "true" or "nil")
+        haru_skills.scavanger_effect(haruka_scav_skill_npc)
+        is_haruka_scav_skill_add = false
+        haruka_scav_skill_npc = nil
+    end
+end
+
+--- -------------------------------------------------
+--- utils
+--- -------------------------------------------------
+
+function pick_hand()
+    -- wpn = db.ator:active_item()
+    local active_slot = db.actor:active_slot()
+    wpn = active_slot ~= 0 and active_slot ~= 15 -- support for wpn_hands
+    detector = db.actor:active_detector()
+
+    if wpn and detector then
+        return 1
+    elseif wpn and not detector then
+        return 1
+    elseif detector and not wpn then
+        return 0
+    else
+        return 2
+    end
+end
+
+function is_should_crouch(target_pos)
+    if not mcm_enable_crouch then return false end
+
+    local actor_pos = device().cam_pos
+    local height_delta = actor_pos.y - target_pos.y
+    -- printf("liz. height delta is: %s", height_delta)
+    if height_delta < -0.9 and is_crouching then        --if object above us and we crouched - get up
+        return true
+    elseif height_delta > 0.9 and not is_crouching then --if object below us far ennough and we standing - crouch
+        return true
+    else
+        return false
+    end
+end
+
+function clamp_target_pos_height(target_pos, max_distance)
+    local pos = target_pos
+    local actor_pos = device().cam_pos
+    local height_delta = actor_pos.y - target_pos.y
+    if height_delta > max_distance then
+        pos.y = actor_pos.y - max_distance
+    elseif height_delta < -max_distance then
+        pos.y = actor_pos.y + max_distance
+    end
+    return pos
+end
+
+--- -------------------------------------------------
+--- main
+--- -------------------------------------------------
+
+function start_body_search(obj, show_ui)
+    if not mcm_enable_animation then
+        -- took from Kute's FDDA:R Fixes addon
+        if haru_skills and not (ui_hud_dotmarks and ui_hud_dotmarks.cfg and ui_hud_dotmarks.cfg.fddar_fix_scav_bug) then
+            CreateTimeEvent("fddar_manual_scav", 0, 0.15, function()
+                haruka_scavanger_effect()
+                return true
+            end)
+        end
+        baseUIS("loot", obj)
+        return
+    end
+
+    local is_stalker = IsStalker(obj)
+    local is_companion = is_stalker and obj:alive() and obj:has_info("npcx_is_companion") and true or false
+
+    lam2.log("[BODY SEARCH] Start check: %s", lam2.get_action_with_tag("body_search"))
+    if lam2.get_action_with_tag("body_search") then return end
+
+    if not mcm_enable_anm_for_containers and not is_stalker then
+        baseUIS("loot", obj)
+        return
+    end
+    if is_companion then
+        baseUIS("loot", obj)
+        return
+    end
+
+    lam2.add_action(get_template_action_looting_start(obj, show_ui))
+    lam2.add_action(get_template_action_looting_idle(obj:id(), not show_ui))
+end
+
+--- -------------------------------------------------
+--- action templates
+--- -------------------------------------------------
+
+function get_template_action_looting_start(obj, show_ui)
+    -- calc pos to look at
+    local target_pos = IsStalker(obj) and obj:bone_position('bip01_spine1') or obj:position()
+    target_pos = clamp_target_pos_height(target_pos, 7)
+    -- get anim
+    local a = lam2.get_template_action_play_animation()
+    a.tag = "body_search"
+    a.sec = "liz_body_search_animation"
+    a.anm = "anm_start"
+    a.hands = pick_hand()
+    a.anm_blend = true
+    a.can_skip = false
+    a.target_pos = target_pos
+    a.is_show_ui = show_ui
+    a.on_enter = function (self)
+        --look at body
+        db.actor:actor_look_at_point(self.target_pos)
+        --crouch. remember crouch state only when we start looting (aka showing ui)
+        if self.is_show_ui then
+            is_crouching = IsMoveState('mcCrouch')
+        end
+        if is_should_crouch(self.target_pos) then
+            if not is_crouch_togglable then exec_console_cmd("g_crouch_toggle 1") end
+            level.press_action(bind_to_dik(key_bindings.kCROUCH))
+            level.release_action(bind_to_dik(key_bindings.kCROUCH))
+        end
+        --lower weapon
+        if mcm_wpn_lower_mode ~= 0 then
+            local wpn = db.actor:active_item()
+            local is_wpn_pistol = wpn and IsPistol(wpn)
+            if (mcm_wpn_lower_mode == 1 and is_wpn_pistol) or (mcm_wpn_lower_mode == 2) then
+                is_weapon_lowered = game.actor_weapon_lowered()
+                if not is_weapon_lowered then game.actor_lower_weapon(true) end
+            end
+        end
+        --disable input if mcm optoin is set
+        if mcm_disable_walk then level.disable_input() end
+    end
+    a.on_exit = function (self)
+        --stop looking at body
+        if db.actor.actor_stop_look_at_point then db.actor:actor_stop_look_at_point() end
+        if mcm_disable_walk then level.enable_input() end
+    end
+    return a
+end
+
+
+function get_template_action_looting_idle(obj_id, is_ui_enabled)
+    local a = lam2.get_template_action_play_animation()
+    a.tag = "body_search"
+    a.sec = "liz_body_search_animation"
+    a.anm = "anm_idle"
+    a.hands = pick_hand()
+    a.anm_blend = true
+    a.only_allow_movekeys = false
+    a.can_skip = false
+    a.obj_id = obj_id
+    a.ui_open_delay = mcm_enable_random_search_time and math.random(mcm_ui_open_delay, mcm_random_search_time_max) or mcm_ui_open_delay
+    a.is_ui_enabled = is_ui_enabled
+    a.inv_gui = nil
+    a.force_close = false
+    a.is_input_enabled = false
+    a.on_enter = function (self)
+        self.inv_gui = ui_inventory.GUI
+        if mcm_disable_walk then level.disable_input() end
+        --get target object by id, if it's missing stop looting
+        self.target = level.object_by_id(self.obj_id)
+        if not self.target then
+            self.force_close = true
+        end
+    end
+    a.on_execute = function (self, time)
+        if lam2.has_queued_actions() or self.force_close then
+            lam2.add_action_first(get_template_action_looting_end())
+            return lam2.states.success
+        end
+        --PATCH. npc loot claim
+        if npc_loot_claim and npc_loot_claim.actor_looting_claimed then
+            self.force_close = true
+        end
+        if time > self.ui_open_delay then
+            --show ui
+            if not self.is_ui_enabled and not self.inv_gui:IsShown() then
+                self.is_ui_enabled = true
+                baseUIS("loot", self.target)
+                --PATCH. looting takes time
+                -- if self.inv_gui then self.inv_gui.CC["npc_bag"]:Reset() end
+                return lam2.states.running
+            end
+            --enable input if mcm optoin is set
+            if not self.is_input_enabled then
+                self.is_input_enabled = true
+                if mcm_disable_walk then level.enable_input() end
+            end
+            --if inventory gui is closed stop loot anim
+            if not self.inv_gui or not self.inv_gui:IsShown() then
+                self.force_close = true
+                return lam2.states.running
+            end
+            --PATCH. naruka's skill system
+            if haru_skills then haruka_scavanger_effect() end
+        end
+        return lam2.states.running
+    end
+    a.on_exit = function (self)
+        if not self.is_input_enabled then
+            if mcm_disable_walk then level.enable_input() end
+        end
+    end
+    return a
+end
+
+
+function get_template_action_looting_end()
+    local a = lam2.get_template_action_play_animation()
+    a.tag = "body_search"
+    a.sec = "liz_body_search_animation"
+    a.anm = "anm_end"
+    a.hands = pick_hand()
+    a.anm_blend = true
+    a.can_skip = false
+    a.on_enter = function(self)
+        -- stop crouching
+        if is_crouching ~= IsMoveState('mcCrouch') then
+            level.press_action(bind_to_dik(key_bindings.kCROUCH))
+            level.release_action(bind_to_dik(key_bindings.kCROUCH))
+            if not is_crouch_togglable then exec_console_cmd("g_crouch_toggle 0") end
+            -- if not is_crouch_togglable then get_console():execute("g_crouch_toggle 0") end
+        end
+        --rise weapon
+        if mcm_wpn_lower_mode ~= 0 then
+            if not is_weapon_lowered then game.actor_lower_weapon(false) end
+        end
+    end
+    return a
+end

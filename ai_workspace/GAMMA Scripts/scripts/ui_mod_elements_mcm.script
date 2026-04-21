@@ -1,0 +1,44 @@
+local track_step = 10
+local max_track = 10000
+local value_card_21_max_rate = 1000 
+local card_game_21_minimum_rate = 50
+if (ini_sys:r_string_ex("string_table","language") == "rus") then
+	st_min = "Установить минимальную ставку"
+	st_max = "Установить максимальную ставку"
+	st_name = "21 Очко"
+else
+	st_min = "Set minimum bet"
+	st_max = "Set maxumum bet"
+	st_name = "Blackjack"
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_option_change", loadsettings)  --MCM sends the same callback as ui_options 
+	loadsettings()
+end
+
+function loadsettings()
+	if ui_mcm then -- here we test to make sure ui_mcm exists before trying to call it's get function.
+		card_game_21_minimum_rate=ui_mcm.get("21_game/card_game_21_minimum_rate")
+		value_card_21_max_rate=ui_mcm.get("21_game/value_card_21_max_rate")
+		if value_card_21_max_rate < card_game_21_minimum_rate then
+			value_card_21_max_rate = card_game_21_minimum_rate
+			ui_mcm.set("21_game/value_card_21_max_rate",card_game_21_minimum_rate)
+		end
+		ui_mod_elements.card_game_21_minimum_rate=card_game_21_minimum_rate
+		ui_mod_elements.value_card_21_max_rate=value_card_21_max_rate
+	end
+end
+
+
+function on_mcm_load()
+		op = { id= "21_game"      	 	,sh=true ,gr={
+				{ id= "friendlyfire"				 ,type= "slide"	  ,link= "ui_options_slider_disguise"	 ,text= st_name		,size= {512,50}		,spacing= 20 },
+				{id = "card_game_21_minimum_rate", type = "track" ,  val = 2, min = 10, max = max_track, step= track_step, def = 50},
+				{id = "value_card_21_max_rate", type = "track" , val = 2, min = 100 , max = max_track, step= track_step, def = 1000},
+				}
+			}
+			
+		return op
+end
+

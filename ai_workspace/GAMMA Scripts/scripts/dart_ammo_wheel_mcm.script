@@ -1,0 +1,69 @@
+local Dart  = dart_core
+local MCM   = dart_mcm
+local Utils = dart_utils
+
+
+local config = {
+  anchor     = {"CENTER", "CENTER"},
+  offset     = {0, 0},
+  scale      = 1,
+  roundWheel = false,
+}
+
+Dart.config.ammoWheel = config
+Dart.state.ammoWheel  = {}
+
+
+function mcmOnConfig(mcmConfig)
+  local offsetX    = ui_mcm.get("dart/dart_ammoWheel/offsetX")
+  local offsetY    = ui_mcm.get("dart/dart_ammoWheel/offsetY")
+  local roundWheel = ui_mcm.get("dart/dart_ammoWheel/roundWheel")
+  local scale      = ui_mcm.get("dart/dart_ammoWheel/scale")
+
+  if scale then
+    mcmConfig.ammoWheel.scale = scale
+  end
+
+  mcmConfig.ammoWheel.offset = {
+    offsetX or config.offset[1],
+    offsetY or config.offset[2],
+  }
+
+  if roundWheel then
+    mcmConfig.ammoWheel.roundWheel = roundWheel
+  end
+end
+
+
+function mcmOnLoad(options)
+  options[8.1] = {
+    id = "dart_ammoWheel",
+    sh = true,
+    gr = {
+      MCM.getTitle(),
+      MCM.getSubtitle({text = "ui_mcm_dart_ammoWheel_title"}),
+      MCM.getScaleField({def = config.scale}),
+      MCM.getNote({text = "ui_mcm_dart_scale_note"}),
+      MCM.getLine(),
+      MCM.getOffsetXField({def = config.offset[1]}),
+      MCM.getOffsetYField({def = config.offset[2]}),
+      MCM.getLine(),
+      MCM.getCheckboxField({
+        id = "roundWheel",
+        hint = "dart_ammoWheel_roundWheel",
+        def = config.roundWheel
+      }),
+      MCM.getNote({text = "ui_mcm_dart_ammoWheel_roundWheel_note"}),
+    }
+  }
+end
+
+
+function onPreRefresh()
+  item_weapon.GUI = nil
+end
+
+
+RegisterScriptCallback("on_dart_mcm_load", mcmOnLoad)
+RegisterScriptCallback("on_dart_mcm_config", mcmOnConfig)
+RegisterScriptCallback("on_dart_pre_refresh", onPreRefresh)

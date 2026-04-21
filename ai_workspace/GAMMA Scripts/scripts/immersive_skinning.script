@@ -1,0 +1,391 @@
+kind_to_section = {
+	["SM_KARLIK"] 	 			= "karlik",
+	["SM_PSYSUCKER"] 			= "psysucker",
+	["SM_LURKER"] 	 			= "lurker",
+
+	-- Dynamic Mutants
+	["SM_GERMAN_SHEPHERD"] 		= "german_shepherd",
+	["SM_FOX"] 	 				= "fox",
+	["SM_PIRANHA"] 	 			= "piranha",
+	["SM_VOLK"] 	 			= "volk",
+	["SM_TARK"] 	 			= "tark",
+	["SM_MEDVED"] 	 			= "medved",
+	["SM_MONSTER_BOAR"] 		= "monster_boar",
+	["SM_VENDIGO"] 				= "vendigo",
+	["SM_CHICKEN"] 				= "chicken",
+	["SM_POLTER_CORP"] 			= "poltergeist_corporeal",
+}
+clsid_to_section = {
+	[clsid.bloodsucker_s] 	= "bloodsucker",
+	[clsid.boar_s] 			= "boar",
+	[clsid.burer_s] 		= "burer",
+	[clsid.chimera_s]		= "chimera",
+	[clsid.controller_s]	= "controller",
+	[clsid.dog_s]			= "dog",
+	[clsid.flesh_s]			= "flesh",
+	[clsid.gigant_s]		= "gigant",
+	[clsid.poltergeist_s]	= "poltergeist",
+	[clsid.psy_dog_s]		= "psy_dog",
+	[clsid.psy_dog_phantom_s] = "psy_dog",
+	[clsid.pseudodog_s]		= "pseudodog",
+	[clsid.snork_s]			= "snork",
+	[clsid.tushkano_s]		= "tushkano",
+	[clsid.cat_s]			= "cat",
+	[clsid.fracture_s]		= "fracture",
+	[clsid.zombie_s]		= "zombie",
+	[clsid.crow]			= "crow",
+	[clsid.rat_s]			= "rat"
+}
+clsdbg_to_section = {
+		["SM_KARLIK"] 	 = "karlik",
+		["SM_PSYSUCKER"] = "psysucker",
+		["SM_LURKER"] 	 = "lurker",
+
+		-- Dynamic Mutants
+		["SM_GERMAN_SHEPHERD"] 		= "german_shepherd",
+		["SM_FOX"] 	 				= "fox",
+		["SM_PIRANHA"] 	 			= "piranha",
+		["SM_VOLK"] 	 			= "volk",
+		["SM_TARK"] 	 			= "tark",
+		["SM_MEDVED"] 	 			= "medved",
+		["SM_MONSTER_BOAR"] 		= "monster_boar",
+		["SM_VENDIGO"] 				= "vendigo",
+		["SM_CHICKEN"] 				= "chicken",
+		["SM_POLTER_CORP"] 			= "poltergeist_corporeal",
+}
+monsterTable = {
+	crow = {
+		mutant_part_crow_beak = {
+			"bip01_head",
+		},
+	},
+	bloodsucker = {
+		mutant_part_krovosos_jaw = {
+			{"bone10", "bone20", "bone15", "bone02"},
+		},
+	},
+	burer = {
+		mutant_part_burer_hand = {
+			"left_hand",
+			"right_hand",
+		},
+		mutant_part_brain_burer = {
+			"head",
+		},
+	},
+	chimera = {
+		mutant_part_chimera_claw = {
+			"l_middle_1",
+			"l_index_1",
+			"l_pinky_1",
+			"l_thumb_1",
+			"r_middle_1",
+			"r_index_1",
+			"r_pinky_1",
+			"r_thumb_1",
+
+			"l_toe_middle_1",
+			"l_toe_index_1",
+			"l_toe_pinky_1",
+			"r_toe_middle_1",
+			"r_toe_index_1",
+			"r_toe_pinky_1",
+		},
+	},
+	controller = {
+		mutant_part_controller_glass = {
+			"bip01_head"
+		},
+		mutant_part_controller_hand = {
+			"bip01_l_hand",
+			"bip01_r_hand",
+		},
+	},
+	boar = {
+		mutant_part_boar_leg = {
+			"bip01_l_horselink",
+			"bip01_r_horselink",
+			"bip01_l_forearm",
+			"bip01_r_forearm",
+		},
+		mutant_part_tusk_boar = {
+			"snout",
+		},
+	},
+	dog = {
+		mutant_part_dog_tail = {
+			"bip01_tail1"
+		},
+	},
+	flesh = {
+		mutant_part_flesh_eye = {
+			"bip01_ponytail2",
+		},
+	},
+	gigant = {
+		mutant_part_pseudogigant_hand = {
+			"righttophand",
+			"lefttophand",
+		},
+		mutant_part_pseudogigant_eye = {
+			"lefteye",
+			"righteye",	
+		}
+	},
+	psy_dog = {
+		mutant_part_controller_glass = {
+			"bip01_head",
+		},
+		mutant_part_psevdodog_tail = {
+			"bip01_tail1",
+		},
+		hide_psy_dog = {
+			"bone03",
+		},
+		mutant_part_fang_psevdodog = {
+			"bone02",
+		}
+	},
+	pseudodog = {
+		mutant_part_psevdodog_tail = {
+			"bip01_tail1",
+		},
+		hide_psy_dog = {
+			"bone03",
+		},
+		mutant_part_fang_psevdodog = {
+			"bone02",
+		}
+	},
+	snork = {
+		mutant_part_snork_leg = {
+			"rightfoot",
+			"leftfoot",
+		},
+		mutant_part_snork_hand = {
+			"righthand",
+			"lefthand",
+		},
+		mutant_part_snork_mask = {
+			"bip01_head",
+		},
+	},
+	tushkano = {
+		mutant_part_tushkano_head = {
+			"bip01_head",
+		},
+	},
+	cat = {
+		-- mutant_part_cat_thyroid = {
+
+		-- },
+		mutant_part_cat_tail = {
+			"bip01_tail1",
+		},
+		mutant_part_cat_claw = {
+			"bip01_r_hand",
+			"bip01_l_hand",
+			"bip01_r_toe0",
+			"bip01_l_toe0",
+		},
+	},
+	fracture = {
+		mutant_part_fracture_hand = {
+			"bip01_l_hand",
+			"bip01_r_hand",
+		},
+	},
+	zombie = {
+		mutant_part_zombi_hand = {
+			"bip01_r_hand",
+			"bip01_l_hand",
+		},
+	},
+	lurker = {
+		mutant_part_lurker_eye = {
+			"eye_l",
+			"eye_r",
+		},
+	},
+	psysucker = {
+		mutant_part_psysucker_hand = {
+			"bip01_r_hand",
+			"bip01_l_hand",
+		},
+	},
+	karlik = {
+		mutant_part_controller_glass = {
+			"bip01_head",
+		},
+	},
+
+	-- Dynamic Mutants
+	german_shepherd = {
+		mutant_part_dog_tail = {
+			"bip01_tail",
+		},
+	},
+	fox = {
+		mutant_part_dog_tail = {
+			"bip01_tail",
+		},
+	},
+	volk = {
+		mutant_part_chimera_claw = {
+			"bip01_r_hand",
+			"bip01_l_hand",
+			"bip01_r_foot",
+			"bip01_l_foot",
+		},
+	},
+	tark = {
+		mutant_part_chimera_kogot = {
+			"bip01_r_hand",
+			"bip01_l_hand",
+			"bip01_r_foot",
+			"bip01_l_foot",
+		},
+	},
+	medved = {
+		mutant_part_chimera_claw = {
+			"bip01_r_hand",
+			"bip01_l_hand",
+			"bip01_r_foot",
+			"bip01_l_foot",
+		},
+	},
+	monster_boar = {
+		mutant_part_boar_leg = {
+			"bip01_l_horselink",
+			"bip01_r_horselink",
+			"bip01_l_forearm",
+			"bip01_r_forearm",
+		},
+		mutant_part_tusk_boar = {
+			"bone02",
+		},
+	},
+	vendigo = {
+		mutant_part_chimera_claw = {
+			"r_pinky",
+			"r_middle",
+			"r_index",
+			"l_pinky",
+			"l_middle",
+			"l_index",
+		},
+		mutant_part_chimera_kogot = {
+			"head_boss",
+		},
+	},
+}
+
+function getMutantType(obj_mutant)
+	return kind_to_section[SYS_GetParam(0, obj_mutant:section(), "kind", "")] or clsid_to_section[obj_mutant:clsid()]
+end
+
+function getBoneTable(monster)
+	monster = monster or ""
+	return dup_table(monsterTable[monster] or {})
+end
+
+function getBoneTableName(obj_mutant, name)
+	return "lootBoneTable" .. (name or obj_mutant:name() or "")
+end
+
+function getSeObjData(id)
+	local m_data = alife_storage_manager.get_state()
+	return m_data.se_object[id]
+end
+
+function loadBones(obj_mutant)
+	local seData = getSeObjData(obj_mutant:id())
+	if seData and seData.name ~= obj_mutant:name() then
+		se_save_var(obj_mutant:id(), nil, getBoneTableName(obj_mutant, seData.name), nil)
+		se_save_var(obj_mutant:id(), nil, getBoneTableName(obj_mutant), nil)
+	end
+	local data = se_load_var(obj_mutant:id(), nil, getBoneTableName(obj_mutant)) or getBoneTable(getMutantType(obj_mutant))
+	return data
+end
+
+function saveBones(obj_mutant, data)
+	se_save_var(obj_mutant:id(), nil, getBoneTableName(obj_mutant), data)
+end
+
+function switchBones(obj, bone, visibility)
+	local function _hide(b)
+		obj:set_bone_visible(b, visibility, true)
+	end
+	if type(bone) == "table" then
+		for i, b in ipairs(bone) do
+			_hide(b)
+		end
+	else
+		_hide(bone)
+	end
+end
+
+-- Restore bones on net destroy, otherwise the model is fucked after loading
+function restoreBones()
+	for i = 1, 65534 do
+		local obj = level.object_by_id(i)
+		if obj then
+			local boneTableName = getBoneTableName(obj)
+			if se_load_var(i, nil, boneTableName) then
+				local boneTable = getBoneTable(getMutantType(obj))
+				if is_not_empty(boneTable) then
+					for sec, t in pairs(boneTable) do
+						for i, b in ipairs(t) do
+							switchBones(obj, b, true)
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_net_destroy", restoreBones)
+
+	Loot = ui_mutant_loot.UIMutantLoot.Loot
+	ui_mutant_loot.UIMutantLoot.Loot = function(self, ...)
+		local obj_mutant = level.object_by_id(self.id)
+		if (not obj_mutant) then
+			Loot(self, ...)
+			return
+		end
+
+		local loot_table = dup_table(self.loot)
+		Loot(self, ...)
+
+		local mutantType = getMutantType(obj_mutant)
+		local boneTableName = getBoneTableName(obj_mutant)
+		local boneTable = loadBones(obj_mutant)
+
+		-- printf("looting %s, has boneTable %s", mutantType, is_not_empty(boneTable))
+		-- print_r(boneTable)
+		if is_empty(boneTable) then return end	
+
+		for sec, t in pairs(boneTable) do
+			if loot_table[sec] then
+				local count = loot_table[sec].count - (self.loot[sec] and self.loot[sec].count or 0)
+				local maxCount = #t
+				for i = 1, math.min(count, maxCount) do
+					local pickedBone = table.remove(t, math.random(#t))
+					-- printf("picked bone %s, part %s, mutant %s", type(pickedBone) == "table" and table.concat(pickedBone, ",") or pickedBone, sec, mutantType)
+					switchBones(obj_mutant, pickedBone, false)
+				end
+				if is_empty(t) then
+					boneTable[sec] = nil
+				end
+			end
+		end
+
+		if is_not_empty(boneTable) then
+			saveBones(obj_mutant, boneTable)
+		else
+			saveBones(obj_mutant, nil)
+		end
+	end
+end

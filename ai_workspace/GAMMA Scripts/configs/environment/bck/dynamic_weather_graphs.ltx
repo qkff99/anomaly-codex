@@ -1,0 +1,155 @@
+; AtmosFear 3 by Cromm Cruac
+
+; Tronex
+; 2018/2019
+; Global Weather
+; support for Weather cycles and presets
+
+; Every cycle has presets, those presets represent the weather files (match their names so the script will read them correctly)
+; You can have as much as you want of cycles and presets for them
+
+; Example of weather preset/profile: w_cloudy.ltx
+; Naming rule: w_(cycle preset)_(moon pharse)
+; Directory: environment\weathers\
+
+; cycle preset: a name of your choice, its better to have the cycle name included. like foggy_01 and foggy_02
+; moon pharse: only needed for clear and partly presets, used to detemind the moon pharse for the weather preset
+; NOTE: add your new presets to [dof_kernels] section too, this will help with extra weather effects based on preset parameters (and prevent crashes)
+
+
+;------------------------------------------
+;-- Weather cycles
+;------------------------------------------
+[weather_cycles]
+clear
+partly
+cloudy
+rain
+storm
+foggy
+
+;------------------------------------------
+;-- Presets per cycle
+;------------------------------------------
+[cycle_clear]
+w_clear1
+w_clear2
+
+[cycle_partly]
+w_partly1
+w_partly2
+
+[cycle_cloudy]
+w_cloudy1
+w_cloudy2_dark
+
+[cycle_rain]
+w_rain1
+w_rain2
+w_rain3
+
+[cycle_storm]
+w_storm1
+w_storm2
+
+[cycle_foggy]
+w_foggy1
+w_foggy2
+
+[cycle_pre_blowout] ;-- special, only used before emission/psi-storm event
+w_foggy2
+
+;------------------------------------------
+;-- Brightness color boosts
+;------------------------------------------
+; These are modifiers for weather color parameters, they are picked based on brightness choice from weather settings then applied to weather parameters when game is loaded
+; They will be applied when in-game hour is between (hour_start) and (hour_end)
+
+[brightness_bright]
+hour_start       = 21
+hour_end         = 4
+ambient_color    = 0.002
+hemisphere_color = 0.02
+fog_color        = 0
+rain_color       = 0.2
+sky_color        = 0.1
+sun_color        = 0.02
+
+[brightness_medium]
+hour_start       = 21
+hour_end         = 4
+ambient_color    = 0.001
+hemisphere_color = 0.01
+fog_color        = 0
+rain_color       = 0.1
+sky_color        = 0.05
+sun_color        = 0.01
+
+[brightness_slight] ;-- reference, no modified color
+hour_start       = 21
+hour_end         = 4
+ambient_color    = 0
+hemisphere_color = 0
+fog_color        = 0
+rain_color       = 0
+sky_color        = 0
+sun_color        = 0
+
+[brightness_dark]
+hour_start       = 21
+hour_end         = 4
+ambient_color    = -0.002
+hemisphere_color = -0.01
+fog_color        = 0
+rain_color       = -0.1
+sky_color        = -0.05
+sun_color        = -0.01
+
+;------------------------------------------
+;-- DoF kernals, used for effects
+;------------------------------------------
+[dof_kernels]
+w_clear1 				= 2
+w_clear2 				= 2
+w_partly1				= 2
+w_partly2				= 2
+w_foggy1				= 6
+w_foggy2				= 6
+w_cloudy1				= 3
+w_cloudy2_dark			= 3
+w_rain1					= 8
+w_rain2					= 8
+w_rain3					= 8
+w_storm1 				= 4
+w_storm2 				= 4
+
+;------------------------------------------
+;-- Distant storm sounds
+;------------------------------------------
+[distant_storm_sounds]
+ambient\soundscape\ThunderHeavy_Far_1
+ambient\soundscape\ThunderHeavy_Far_2
+ambient\soundscape\ThunderHeavy_Far_3
+ambient\soundscape\ThunderHeavy_Far_4
+ambient\soundscape\ThunderHeavy_Far_5
+ambient\soundscape\ThunderNorm_Far_1
+ambient\soundscape\ThunderNorm_Far_2
+ambient\soundscape\ThunderNorm_Far_3
+ambient\soundscape\ThunderNorm_Far_4
+ambient\soundscape\ThunderNorm_Far_6
+ambient\soundscape\pre_storm_6
+ambient\soundscape\pre_storm_7
+ambient\soundscape\pre_storm_8
+ambient\soundscape\pre_storm_9
+ambient\soundscape\pre_storm_10
+ambient\soundscape\pre_storm_11
+ambient\soundscape\pre_storm_12
+ambient\soundscape\pre_storm_new_1
+ambient\soundscape\pre_storm_new_2
+ambient\soundscape\pre_storm_new_3
+ambient\soundscape\pre_storm_new_4
+ambient\soundscape\pre_storm_new_5
+ambient\soundscape\pre_storm_new_6
+ambient\soundscape\pre_storm_new_7
+ambient\soundscape\pre_storm_new_8
+ambient\soundscape\pre_storm_new_9

@@ -1,0 +1,11 @@
+op = {
+	id = "extra_level_transitions", sh = true, gr = {
+    	{id = "banner", type = "slide", text = "ui_mcm_extra_level_transitions_title", size = {512, 50}, spacing = 20},
+        {id = "enable_time_advance", type = "check", val = 1, def = false},
+        {id = "delete_level_transitions", type = "check", val = 1, def = false},
+    }
+}
+
+function on_mcm_load()
+    return op
+end

@@ -1,0 +1,315 @@
+--[[
+=======================================================================================
+    DevTools ImGui Panel - Main Entry Point and Window Manager
+    
+    Self-contained ImGui window manager providing:
+    - Window state management (profiler, logs)
+    - ImGui registration and menu integration
+    - Keybind handling
+    - Timed profiling auto-stop logic
+    
+    Actual UI rendering is delegated to:
+    - devtools_ui_profiler: Profiler tab
+    - devtools_ui_logs: Logs tab
+    - devtools_ui_common: Shared colors and helpers
+=======================================================================================
+--]]
+
+local imgui_ready = false
+local warned = false
+
+local init_ui -- forward declaration
+
+-- Reference to common UI module
+local U = devtools_ui_common
+
+-- ============================================================================
+-- IMGUI AVAILABILITY CHECKS
+-- ============================================================================
+
+local function has_groups()
+	if not ImGui or not ImGui.Groups then
+		return false
+	end
+
+	if type(ImGui.Groups.Add) ~= "function" then
+		return false
+	end
+	if not ImGui.Groups.MenuBar or type(ImGui.Groups.MenuBar.Widget) ~= "function" then
+		return false
+	end
+	if not ImGui.Groups.Main or type(ImGui.Groups.Main.Widget) ~= "function" then
+		return false
+	end
+
+	return true
+end
+
+local function safe_register(cb_name, fn)
+	if not RegisterScriptCallback then return false end
+	local ok, err = pcall(RegisterScriptCallback, cb_name, fn)
+	if not ok then
+		if DEVTOOLS_VERBOSE then
+			printf("[DEVTOOLS] RegisterScriptCallback(%s) failed: %s", tostring(cb_name), tostring(err))
+		end
+		return false
+	end
+	return true
+end
+
+local function try_init()
+	if imgui_ready then
+		return true
+	end
+	if not has_groups() then
+		if not warned then
+			if DEVTOOLS_VERBOSE then
+				printf("[DEVTOOLS] ImGui.Groups not ready - deferring devtools_imgui init")
+			end
+			warned = true
+		end
+		return false
+	end
+	if type(init_ui) ~= "function" then
+		return false
+	end
+	init_ui()
+	imgui_ready = true
+	if DEVTOOLS_VERBOSE then
+		printf("[DEVTOOLS] devtools_imgui initialized")
+	end
+	return true
+end
+
+safe_register("on_game_start", function()
+	try_init()
+end)
+
+safe_register("actor_on_update", function()
+	if not imgui_ready then
+		try_init()
+		return
+	end
+	on_actor_update()
+end)
+
+-- ============================================================================
+-- WINDOW STATE
+-- ============================================================================
+
+local show_profiler_window = false
+local show_logs_window = false
+
+-- ============================================================================
+-- WINDOW RENDER FUNCTIONS
+-- ============================================================================
+
+function render_profiler_window()
+	ImGui.SetNextWindowSize(vector2(800, 600), ImGuiCond.FirstUseEver)
+
+	local expanded, visible = ImGui.Begin("DevTools - Profiler", show_profiler_window, ImGuiWindowFlags.None)
+	show_profiler_window = visible
+
+	if expanded then
+		devtools_ui_profiler.render_profiler_tab()
+	end
+
+	ImGui.End()
+end
+
+function render_logs_window()
+	ImGui.SetNextWindowSize(vector2(900, 500), ImGuiCond.FirstUseEver)
+
+	local expanded, visible = ImGui.Begin("DevTools - Logs", show_logs_window, ImGuiWindowFlags.None)
+	show_logs_window = visible
+
+	if expanded then
+		devtools_ui_logs.render_logging_tab()
+	end
+
+	ImGui.End()
+end
+
+-- ============================================================================
+-- WINDOW CONTROL API
+-- ============================================================================
+
+-- Profiler window controls
+function toggle_profiler()
+	show_profiler_window = not show_profiler_window
+end
+
+function show_profiler()
+	show_profiler_window = true
+end
+
+function hide_profiler()
+	show_profiler_window = false
+end
+
+function is_profiler_visible()
+	return show_profiler_window
+end
+
+-- Logs window controls
+function toggle_logs()
+	show_logs_window = not show_logs_window
+end
+
+function show_logs()
+	show_logs_window = true
+end
+
+function hide_logs()
+	show_logs_window = false
+end
+
+function is_logs_visible()
+	return show_logs_window
+end
+
+-- Legacy/convenience functions
+function toggle_window()
+	show_profiler_window = not show_profiler_window
+end
+
+function show()
+	show_profiler_window = true
+end
+
+function hide()
+	show_profiler_window = false
+	show_logs_window = false
+end
+
+function is_visible()
+	return show_profiler_window or show_logs_window
+end
+
+-- ============================================================================
+-- IMGUI REGISTRATION
+-- ============================================================================
+
+init_ui = function()
+	-- Create group (safe even if called once)
+	if not ImGui.Groups.DevTools then
+		ImGui.Groups.Add("DevTools")
+	end
+
+	-- Add menu bar hook (only once)
+	if not _G.__DEVTOOLS_MENU_BAR_HOOKED then
+		ImGui.Groups.MenuBar.Widget(function()
+			if ImGui.BeginMenu("DevTools") then
+				if ImGui.Groups.DevTools and ImGui.Groups.DevTools.Render then
+					ImGui.Groups.DevTools.Render()
+				end
+				ImGui.EndMenu()
+			end
+		end)
+		_G.__DEVTOOLS_MENU_BAR_HOOKED = true
+	end
+
+	-- Register widgets (only once)
+	if not _G.__DEVTOOLS_WIDGETS_HOOKED then
+		ImGui.Groups.DevTools.Widget(function()
+			local _
+			_, show_profiler_window = ImGui.MenuItem("Profiler", nil, show_profiler_window, true)
+			_, show_logs_window = ImGui.MenuItem("Logs", nil, show_logs_window, true)
+		end)
+
+		ImGui.Groups.Main.Widget(function()
+			if show_profiler_window then
+				render_profiler_window()
+			end
+			if show_logs_window then
+				render_logs_window()
+			end
+		end)
+
+		if DEVTOOLS_VERBOSE then
+			printf("[DEVTOOLS] ImGui panel registered. Open via ImGui menu -> DevTools")
+		end
+		_G.__DEVTOOLS_WIDGETS_HOOKED = true
+	end
+end
+
+-- ============================================================================
+-- KEYBIND (Optional - can be customized)
+-- ============================================================================
+
+function on_key_press(key)
+	-- F9 to toggle DevTools window (customizable)
+	if key == DIK_keys.DIK_F9 then
+		toggle_window()
+	end
+end
+
+safe_register("on_key_press", on_key_press)
+
+-- ============================================================================
+-- TIMED PROFILING AUTO-STOP & AUTO-REWRAP
+-- ============================================================================
+
+function on_actor_update()
+	-- Reference to profiler UI state
+	local P = devtools_ui_profiler
+
+	-- Check if timed profiling should auto-stop
+	if P.timed_profiling_enabled and devtools_profiler and devtools_profiler.is_enabled() then
+		local elapsed = (time_global() - P.profiling_start_time) / 1000
+		if elapsed >= P.profiling_duration_sec then
+			devtools_profiler.disable()
+			P.timed_profiling_enabled = false
+			if DEVTOOLS_VERBOSE then
+				printf("[DEVTOOLS] Timed profiling auto-stopped after " .. tostring(P.profiling_duration_sec) .. "s")
+			end
+		end
+	end
+
+	-- Auto rewrap tick (optional)
+	if P.auto_rewrap_enabled and devtools_profiler and type(devtools_profiler.is_enabled) == "function" and devtools_profiler.is_enabled() then
+		local tg = time_global()
+		if (tg - (P.last_rewrap_tg or 0)) >= (P.rewrap_interval_ms or 1000) then
+			if type(devtools_profiler.rewrap_registered_modules) == "function" then
+				if devtools_logging and type(devtools_logging.debug_log) == "function" then
+					devtools_logging.debug_log("PERF", "Auto-rewrap: Scanning for new functions...")
+				end
+				local new_count = devtools_profiler.rewrap_registered_modules()
+				if devtools_logging and type(devtools_logging.info) == "function" then
+					if new_count and new_count > 0 then
+						devtools_logging.info("PERF", string.format("Auto-rewrap: Found %d new functions", new_count))
+					else
+						devtools_logging.debug_log("PERF", "Auto-rewrap: No new functions found")
+					end
+				end
+			end
+			P.last_rewrap_tg = tg
+		end
+	end
+end
+
+-- ============================================================================
+-- MODULE EXPORTS (for API access)
+-- ============================================================================
+
+devtools_imgui = devtools_imgui or {}
+
+-- Window control
+devtools_imgui.toggle_profiler = toggle_profiler
+devtools_imgui.show_profiler = show_profiler
+devtools_imgui.hide_profiler = hide_profiler
+devtools_imgui.is_profiler_visible = is_profiler_visible
+devtools_imgui.toggle_logs = toggle_logs
+devtools_imgui.show_logs = show_logs
+devtools_imgui.hide_logs = hide_logs
+devtools_imgui.is_logs_visible = is_logs_visible
+devtools_imgui.toggle_window = toggle_window
+devtools_imgui.show = show
+devtools_imgui.hide = hide
+devtools_imgui.is_visible = is_visible
+
+-- Re-export color management functions (for preset compatibility)
+devtools_imgui.set_module_color = U.set_module_color
+devtools_imgui.clear_module_color = U.clear_module_color
+devtools_imgui.get_custom_module_colors = U.get_custom_module_colors
+devtools_imgui.set_custom_module_colors = U.set_custom_module_colors

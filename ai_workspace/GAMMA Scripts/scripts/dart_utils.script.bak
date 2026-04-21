@@ -1,0 +1,355 @@
+local Dart   = dart_core
+local Module = dart_module
+
+
+-- GENERAL LIB --
+
+-- callback version of ipairs
+-- `return nil` acts like filter()
+-- `return value` acts like map()
+function ipairscb(tbl, callback)
+  local results
+
+  for index, value in ipairs(tbl) do
+    local rvalue = callback(value, index, tbl)
+
+    if rvalue then
+      if not results then
+        results = {}
+      end
+      table.insert(results, rvalue)
+    end
+  end
+
+  return results
+end
+
+
+-- callback version of pairs
+-- `return nil` acts like filter()
+-- `return key, value` maps to new table
+function pairscb(tbl, callback)
+  local results
+
+  for key, value in pairs(tbl) do
+    local rkey, rvalue = callback(key, value, tbl)
+
+    if rkey ~= nil and rvalue ~= nil then
+      if not results then
+        results = {}
+      end
+      results[rkey] = rvalue
+    end
+  end
+
+  return results
+end
+
+
+-- merge [n] number of indexed tables
+function imerge(...)
+  local args   = {...}
+  local result = {}
+
+  for _, arg in ipairs(args) do
+    for _, value in ipairs(arg) do
+      result[#result + 1] = value
+    end
+  end
+
+  return result
+end
+
+
+-- merge [n] number of keyed tables
+function merge(...)
+  local args   = {...}
+  local result = {}
+
+  for _, arg in ipairs(args) do
+    for key, value in pairs(arg) do
+      result[key] = value
+    end
+  end
+
+  return result
+end
+
+
+-- sort teble by key
+function ksort(tbl)
+  local keys = {}
+  for key in pairs(tbl) do
+    keys[#keys + 1] = key
+  end
+
+  table.sort(keys)
+
+  local sorted = {}
+  for index, key in ipairs(keys) do
+    sorted[index] = tbl[key]
+  end
+
+  return sorted
+end
+
+
+-- index of table value
+function indexof(tbl, value)
+  for i, v in pairs(tbl) do
+    if value == v then
+      return i
+    end
+  end
+end
+
+
+-- find {l, r, t, b} bounds of [n] attributes
+function getBounds(...)
+  local args   = {...}
+  local bounds = {}
+
+  ipairscb(args, function(attrs)
+    if not attrs.x or not attrs.y or not attrs.width or not attrs.height then
+      return
+    end
+
+    local t = attrs.y
+    local l = attrs.x
+    local r = attrs.x + attrs.width
+    local b = attrs.y + attrs.height
+
+    bounds = {
+      t = math.min(bounds.t or t, t),
+      l = math.min(bounds.l or l, l),
+      r = math.max(bounds.r or r, r),
+      b = math.max(bounds.b or b, b),
+    }
+  end)
+
+  return bounds
+end
+
+
+-- reset and flag invalid numeric attributes
+-- guards against crashes from invalid XML attributes
+function validateAttrs(attrs)
+  local toSanitize = {"x", "y", "width", "height"}
+  local errors     = {}
+
+  for _, name in ipairs(toSanitize) do
+    if attrs[name] and not tonumber(attrs[name]) then
+      errors[name] = attrs[name]
+      attrs[name]  = nil
+    end
+  end
+
+  return attrs, #errors == 0 and nil or errors
+end
+
+
+-- SYSTEM LIB --
+
+function isUsing3DPDA()
+  return get_console_cmd(1, "g_3d_pda")
+end
+
+
+function getDeviceResolution()
+  return string.format("%dx%d", device().width, device().height)
+end
+
+
+function getAspectRatio()
+  return device().width / device().height
+end
+
+
+function getAspectRatioVs(otherRatio)
+  return getAspectRatio() / otherRatio
+end
+
+
+function getAspectRatioLabel(aspectRatio)
+  local label = ({
+    [Dart.ratio4x3]  = "4:3",
+    [Dart.ratio16x9] = "16:9",
+    [Dart.ratio21x9] = "21:9",
+    [Dart.ratio32x9] = "32:9",
+  })[aspectRatio]
+
+  if not label then
+    label = string.format("%.2f:1", aspectRatio)
+  end
+
+  return label
+end
+
+
+-- ASPECT RATIO LIB
+
+function correctX(x, targetRatio, settings)
+  settings    = merge(Dart.defaultScaleSettings, settings)
+  local ratio = getAspectRatioVs(targetRatio)
+
+  local anchor, align, bounds, scale, offset, safezone =
+    settings.anchor,
+    settings.align,
+    settings.bounds,
+    settings.scale,
+    settings.offset,
+    settings.safezone
+
+  x = tonumber(x)
+
+  local l, r    = bounds.l, bounds.r
+  local anchor1 = anchor[1]
+
+  -- move the element if settings.align is specified
+  if x and align and align[1] and align[1] ~= anchor1 then
+    if align[1] == "CENTER" then
+      l = Dart.baseWidth / 2 - (r - l) / 2
+      r = Dart.baseWidth / 2 + (r - bounds.l) / 2
+      x = x + (l - bounds.l)
+    else
+      l = Dart.baseWidth - r
+      r = Dart.baseWidth - bounds.l
+      x = x + (l - bounds.l)
+    end
+
+    anchor1 = align[1]
+  end
+
+  local xscreen = ({
+    LEFT   = 0,
+    CENTER = Dart.baseWidth / 2,
+    RIGHT  = Dart.baseWidth,
+  })[anchor1]
+
+  local xanchor = ({
+    LEFT   = xscreen + (l - xscreen) / ratio,
+    CENTER = xscreen + ((l + r) / 2 - xscreen) / ratio,
+    RIGHT  = xscreen + (r - xscreen) / ratio,
+  })[anchor1]
+
+  local xoffset = offset[1]
+  local config  = Module.config()
+
+  if safezone then
+    xoffset = xoffset + ({
+      LEFT   = config.safezone,
+      CENTER = 0,
+      RIGHT  = -config.safezone,
+    })[anchor1]
+  end
+
+  x = xscreen + (x - xscreen) / ratio
+  x = xanchor + (x - xanchor) * scale
+  x = x + xoffset / ratio / (targetRatio / Dart.ratio4x3)
+
+  return x
+end
+
+
+function correctY(y, targetRatio, settings)
+  settings = merge(Dart.defaultScaleSettings, settings)
+
+  local anchor, align, bounds, scale, offset =
+    settings.anchor,
+    settings.align,
+    settings.bounds,
+    settings.scale,
+    settings.offset
+
+  y = tonumber(y)
+
+  local t, b    = bounds.t, bounds.b
+  local anchor2 = anchor[2]
+
+  -- move the element if settings.align is specified
+  if y and align and align[2] and align[2] ~= anchor2 then
+    if align[2] == "CENTER" then
+      t = Dart.baseHeight / 2 - (b - t) / 2
+      b = Dart.baseHeight / 2 + (b - bounds.t) / 2
+      y = y + (t - bounds.t)
+    else
+      t = Dart.baseHeight - b
+      b = Dart.baseHeight - bounds.t
+      y = y + (t - bounds.t)
+    end
+
+    anchor2 = align[2]
+  end
+
+  local yanchor = ({
+    TOP    = t,
+    CENTER = (t + b) / 2,
+    BOTTOM = b,
+  })[anchor2]
+
+  local yoffset = offset[2]
+
+  y = yanchor + (y - yanchor) * scale
+  y = y + yoffset
+
+  return y
+end
+
+
+function correctW(width, targetRatio, settings)
+  settings    = merge(Dart.defaultScaleSettings, settings)
+  local ratio = getAspectRatioVs(targetRatio)
+
+  local scale = settings.scale
+  local width = tonumber(width)
+
+  width = width * scale / ratio
+  return width
+end
+
+
+function correctH(height, targetRatio, settings)
+  settings    = merge(Dart.defaultScaleSettings, settings)
+  local ratio = getAspectRatioVs(targetRatio)
+
+  local scale = settings.scale
+  local height = tonumber(height)
+
+  height = height * scale
+  return height
+end
+
+
+function correctXY(attrs, targetRatio, settings)
+  local x, y = tonumber(attrs.x), tonumber(attrs.y)
+
+  if x then
+    attrs.x = correctX(x, targetRatio, settings)
+  end
+  if y then
+    attrs.y = correctY(y, targetRatio, settings)
+  end
+
+  return attrs
+end
+
+
+function correctWH(attrs, targetRatio, settings)
+  local width, height = tonumber(attrs.width), tonumber(attrs.height)
+
+  if width then
+    attrs.width = correctW(width, targetRatio, settings)
+  end
+  if height then
+    attrs.height = correctH(height, targetRatio, settings)
+  end
+
+  return attrs
+end
+
+
+function correctAttrs(attrs, targetRatio, settings)
+  attrs = correctXY(attrs, targetRatio, settings)
+  attrs = correctWH(attrs, targetRatio, settings)
+  return attrs
+end

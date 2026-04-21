@@ -1,0 +1,245 @@
+-- UTILS
+-- Load the defaults
+local function load_defaults()
+	local t = {}
+	local op = lc_extra_transitions_mcm.op
+	for i, v in ipairs(op.gr) do
+		if v.def ~= nil then
+			t[v.id] = v.def
+		end
+	end
+	return t
+end
+local settings = load_defaults()
+
+local function on_option_change()
+	settings = load_defaults()
+	if ui_mcm then
+		for k, v in pairs(settings) do
+			settings[k] = ui_mcm.get("extra_level_transitions/" .. k)
+		end
+	end
+end
+local function str_coords_to_vector(str)
+	local t = str_explode(str, ",")
+	if #t < 3 then
+		error("str_coords_to_vector, missing %s coords", 3 - #t)
+	end
+	return vector():set(tonumber(t[1]), tonumber(t[2]), tonumber(t[3]))
+end
+
+-- Transitions
+lc_pool = (function()
+	local res = {}
+	ini_sys:section_for_each(function(section)
+		if SYS_GetParam(1, section, "lc_extra_level_transition", false) and SYS_GetParam(0, section, "story_id") then
+			local n = ini_sys:section_exist(section) and ini_sys:line_count(section) or 0
+			if (n > 0) then
+				res[section] = {}
+				for i = 0,n-1 do
+					local _,id,val = ini_sys:r_line(section,i,"","")
+					res[section][id] = val
+				end
+			end
+		end
+	end)
+	return res
+end)()
+
+local saved_spots = {}
+local change_triggered = false
+
+local function find_save_spot(vid, gid)
+	for k, v in pairs(saved_spots) do
+		if	v.vid == vid and
+			v.gid == gid
+		then
+			return v
+		end
+	end
+end
+
+function xr_conditions.is_actor_inside_lc(actor, npc, p)
+	local lc = actor:id() == AC_ID and npc or actor
+	local d = SYS_GetParam(2, lc:section(), "trigger_radius", 6)
+	d = d * d
+	return npc:position():distance_to_sqr(actor:position()) <= d
+end
+
+function actor_on_first_update()
+	on_option_change()
+	if ui_mcm and ui_mcm.get("extra_level_transitions/delete_level_transitions") then
+        ui_mcm.set("extra_level_transitions/delete_level_transitions", false)
+    end
+
+	for sec,v in pairs(lc_pool) do
+		local se = get_story_se_item(sec)
+		local pos = str_coords_to_vector(v.pos)
+		local vid = level.vertex_id(pos)
+		local gid = tonumber(v.gvid)
+
+		if not (se) then
+			se = alife():create(sec,pos,vid,gid)
+		end
+		
+		if (se.position:distance_to_sqr(pos) > 0.1) then
+			TeleportObject(se.id,pos,vid,gid)
+		end
+
+		if saved_spots[se.id] and saved_spots[se.id].spot and level.map_has_object_spot(se.id,saved_spots[se.id].spot) ~= 0 then
+			level.map_remove_object_spot(se.id, saved_spots[se.id].spot)
+		end
+		
+		if (level.map_has_object_spot(se.id,v.spot) == 0) then
+			level.map_add_object_spot_ser(se.id,v.spot,game.translate_string(v.hint))
+		end
+		saved_spots[se.id] = {
+			spot = v.spot,
+			sec = sec,
+			id = se.id,
+			vid = vid,
+			gid = gid,
+		}
+	end
+end
+
+function delete_level_transitions()
+    if ui_mcm and ui_mcm.get("extra_level_transitions/delete_level_transitions") then
+        ui_mcm.set("extra_level_transitions/delete_level_transitions", false)
+        local sim = alife()
+        for i = 1, 65534 do
+            local obj = sim:object(i)
+            if obj then
+                local sec = obj:section_name()
+                if lc_pool[sec] then
+                    sim:release(obj)
+                    if level.map_has_object_spot(obj.id,saved_spots[obj.id].spot) ~= 0 then
+						level.map_remove_object_spot(obj.id, saved_spots[obj.id].spot)
+					end
+                end
+            end
+        end
+        empty_table(saved_spots)
+    end
+end
+
+--global distance calculation
+function get_travel_cost(se_obj)
+	if not se_obj then return end
+
+	local sim = alife()
+	local actor = db.actor
+	local closest_smart_id
+	for name,smart in pairs( SIMBOARD.smarts_by_names ) do
+	    if simulation_objects.is_on_the_same_level(sim:actor(), smart) then
+	        local dist = smart.position:distance_to(actor:position())
+	        local smrt = SIMBOARD.smarts[smart.id]
+	        if (smrt) and (not closest_smart_id or (dist < closest_smart_id[1])) then
+	            closest_smart_id = { dist, smart.id }
+	        end
+	    end
+	end
+	local closest_smart = alife_object(closest_smart_id[2])
+	local dist = math.sqrt(warfare.distance_to_xz_sqr(global_position.from(closest_smart), global_position.from(se_obj)))
+	return dist
+end
+
+function is_gvid_on_the_actor_level(gvid)
+	return game_graph():vertex(alife():actor().m_game_vertex_id):level_id() == game_graph():vertex(gvid):level_id()
+end
+
+function teleport_actor(actor,obj)	
+	local sec = obj and obj:section()
+	local v = sec and lc_pool[sec]
+	
+	if (v and v.to_pos and v.to_gvid and not change_triggered) then
+		local pos = str_coords_to_vector(v.to_pos)
+		local dir = v.dir and str_coords_to_vector(v.dir) or VEC_ZERO
+		local vid = level.vertex_id(pos)
+		local gid = tonumber(v.to_gvid)
+
+		if settings.enable_time_advance then
+			-- local saved_spot = find_save_spot(vid, gid)
+			-- local d = saved_spot and get_travel_cost(alife_object(saved_spot.id)) or 1000
+			local d = math.random(800, 1600)
+			local dist = math.floor(d / SYS_GetParam(2, "actor", "walk_accel", 11.5) * random_float(0.75, 1.25))
+			local hours = math.floor(dist / 60)
+			local minutes = dist % 60
+
+			printf("advance time by %s, %s, distance %s, speed %s", hours, minutes, d, dist)
+			level.change_game_time(0, hours, minutes)
+			surge_manager.get_surge_manager().time_forwarded = true
+			psi_storm_manager.get_psi_storm_manager().time_forwarded = true	
+			level_weathers.get_weather_manager():forced_weather_change()
+		end
+
+		change_triggered = true
+
+		if v.snd then
+			utils_obj.play_sound(v.snd)
+		end
+
+		if v.on_teleport then
+			local condlist = xr_logic.parse_condlist(obj, obj:section(), "on_teleport", v.on_teleport)
+			xr_logic.pick_section_from_condlist(actor, obj, condlist)
+		end
+
+		if is_gvid_on_the_actor_level(gid) then
+			level.add_pp_effector("sleep_fade.ppe", 1313, false)
+
+			CreateTimeEvent(0,"delay_travel",3,function()
+				db.actor:set_actor_position(pos)
+				db.actor:set_actor_direction((dir.y * 180) / math.pi)
+				change_triggered = false
+				return true
+			end)
+			return
+		end
+
+		ChangeLevel(pos,vid,gid,dir,true)
+		-- level.disable_input()
+	end
+end
+
+function handle_nearby_actor(actor, obj)
+	local sec = obj and obj:section()
+	local v = sec and lc_pool[sec]
+
+	if not v then return end
+	if change_triggered then return end
+
+	-- Evaluate precondition before enabling transition
+	if (v.precondition and v.precondition ~= "") then
+		local precond_list = xr_logic.parse_condlist(obj, nil, "precondition", v.precondition)
+		if (precond_list == "false") then
+			return
+		end
+		if (actor and xr_logic.pick_section_from_condlist(actor, obj, precond_list) == "false") then
+			return
+		end
+	end
+
+	if v.disable_dialog then
+		teleport_actor(actor, npc)
+	else
+		local dialog = lc_extra_transitions_ui.create_dialog()
+		dialog:SetObj(obj)
+		dialog:Show()
+	end
+end
+
+function save_state(m_data)
+	m_data.lc_extra_transitions_saved_spots = saved_spots
+end
+
+function load_state(m_data)
+	saved_spots = m_data.lc_extra_transitions_saved_spots or {}
+end
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_first_update",actor_on_first_update)
+	RegisterScriptCallback("on_option_change", on_option_change)
+	RegisterScriptCallback("on_option_change", delete_level_transitions)
+	RegisterScriptCallback("save_state",save_state)
+	RegisterScriptCallback("load_state",load_state)
+end

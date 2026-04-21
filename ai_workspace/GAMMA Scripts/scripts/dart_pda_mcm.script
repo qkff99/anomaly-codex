@@ -1,0 +1,88 @@
+local Dart   = dart_core
+local MCM    = dart_mcm
+
+
+local config = {
+  textScale   = 0,
+  textCeiling = 6
+}
+
+Dart.config.pda = config
+Dart.state.pda  = {}
+
+
+function mcmOnConfig(mcmConfig)
+  local textScale   = ui_mcm.get("dart/dart_pda/textScale")
+  local textCeiling = ui_mcm.get("dart/dart_pda/textCeiling")
+
+  if textScale then
+    mcmConfig.pda.textScale = textScale
+  end
+
+  if textCeiling then
+    mcmConfig.pda.textCeiling = textCeiling
+  end
+end
+
+
+function mcmOnLoad(options)
+  options[7] = {
+    id = "dart_pda",
+    sh = true,
+    gr = {
+      MCM.getTitle(),
+      MCM.getSubtitle({text = "ui_mcm_dart_pda_title"}),
+      MCM.getScaleField({
+        id   = "textScale",
+        hint = "dart_pda_textScale",
+        def  = config.textScale,
+        min  = 0,
+        max  = 3,
+        step = 1,
+        prec = 0,
+      }),
+      {
+        id   = "textCeiling",
+        type = "radio_h",
+        hint = "dart_pda_textCeiling",
+        val  = 2,
+        def  = config.textCeiling,
+        content = {
+          {4, "22px"},
+          {5, "25px"},
+          {6, "32px"},
+          {7, "50px"},
+        }
+      },
+    }
+  }
+end
+
+
+function onPreRefresh()
+  hide_hud_pda()
+	ActorMenu.get_pda_menu():HideDialog()
+
+  ui_pda_contacts_tab.SINGLETON     = null
+  ui_pda_encyclopedia_tab.SINGLETON = null
+  ui_pda_relations_tab.SINGLETON    = null
+  ui_pda_radio_tab.SINGLETON        = null
+  ui_pda_npc_tab.SINGLETON          = null
+
+  if ui_pda_glitched_tab then
+    ui_pda_glitched_tab.SINGLETON = null
+  end
+
+  if ui_pda_taskboard_tab then
+    ui_pda_taskboard_tab.SINGLETON = null
+  end
+
+  if ui_pda_warfare_tab then
+    ui_pda_warfare_tab.SINGLETON = null
+  end
+end
+
+
+RegisterScriptCallback("on_dart_mcm_load", mcmOnLoad)
+RegisterScriptCallback("on_dart_mcm_config", mcmOnConfig)
+RegisterScriptCallback("on_dart_pre_refresh", onPreRefresh)

@@ -1,0 +1,124 @@
+local defaults = {
+    ["lean/l_power"] = 1,
+    ["lean/r_power"] = 1,
+    ["lean/crouch_power"] = 1,
+    ["jumpland/jump_speed"] = 0.65,
+    ["jumpland/jump_power"] = 2,
+    ["jumpland/land_speed"] = 0.65,
+    ["jumpland/land_power"] = 4,
+    ["crouch_jitter/blocket_by_aim"] = false,
+    ["crouch_jitter/speed"] = 0.6,
+    ["crouch_jitter/power"] = 1.5,
+    ["noise/only_for_weapon"] = true,
+    ["noise/speed"] = 0.6,
+    ["noise/power"] = 1,
+    ["breathing/only_for_weapon"] = true,
+    ["breathing/speed_min"] = 0.35,
+    ["breathing/speed_max"] = 1,
+    ["breathing/power_min"] = 0.7,
+    ["breathing/power_max"] = 2,
+    ["look_up/enabled"] = true,
+    ["look_up/trigger_at"] = 0.65,
+    ["look_up/power"] = 1,
+    ["other/device_lean_enable"] = false,
+    ["other/hit_anm_enable"] = true,
+    ["other/crawl_anm_enable"] = false,
+    ["other/crawl_can_shoot"] = 1
+}
+
+local table_crawl_shoot_handle_type = {
+    { 0, "ui_mcm_liz_inex_crawl_shoot_handle_type_all"},
+    { 1, "ui_mcm_liz_inex_crawl_shoot_handle_type_some"},
+    { 2, "ui_mcm_liz_inex_crawl_shoot_handle_type_none"}
+}
+
+
+function get_config(key)
+    if ui_mcm then return ui_mcm.get("liz_inex/"..key) else return defaults[key] end
+end
+
+
+function on_mcm_load()
+    op = {
+        id = "liz_inex",
+        gr = {
+            {
+                id = "lean",
+                sh = true,
+                gr = {
+                    { id = "slide", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_title_liz_inex_lean", size = { 512, 50 }, spacing = 20 },
+                    { id = "l_power", type = "track", val = 2, def = 1, min = 0.0, max = 2, step = 0.05 },
+                    { id = "r_power", type = "track", val = 2, def = 1, min = 0.0, max = 2, step = 0.05 },
+                    { id = "crouch_power", type = "track", val = 2, def = 1, min = 0.0, max = 2, step = 0.05 },
+                }
+            },
+            {
+                id = "jumpland",
+                sh = true,
+                gr = {
+                    { id = "slide", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_title_liz_inex_jumpland", size = { 512, 50 }, spacing = 20 },
+                    { id = "jump_speed", type = "track", val = 2, def = 0.65, min = 0.0, max = 1.3, step = 0.05 },
+                    { id = "jump_power", type = "track", val = 2, def = 2, min = 0.0, max = 4, step = 0.05 },
+                    { id = "line", type = "line" },
+                    { id = "land_speed", type = "track", val = 2, def = 0.65, min = 0.0, max = 1.3, step = 0.05 },
+                    { id = "land_power", type = "track", val = 2, def = 4, min = 0.0, max = 8, step = 0.05 },
+                }
+            },
+            {
+                id = "crouch_jitter",
+                sh = true,
+                gr = {
+                    { id = "slide", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_title_liz_inex_crouch_jitter", size = { 512, 50 }, spacing = 20 },
+                    { id = "blocket_by_aim", type = "check", val = 1, def = false },
+                    { id = "speed", type = "track", val = 2, def = 0.6, min = 0.0, max = 1.2, step = 0.05 },
+                    { id = "power", type = "track", val = 2, def = 1.5, min = 0.0, max = 3, step = 0.05 },
+                }
+            },
+            {
+                id = "noise",
+                sh = true,
+                gr = {
+                    { id = "slide", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_title_liz_inex_noise", size = { 512, 50 }, spacing = 20 },
+                    { id = "only_for_weapon", type = "check", val = 1, def = true },
+                    { id = "speed", type = "track", val = 2, def = 0.6, min = 0.0, max = 1.2, step = 0.05 },
+                    { id = "power", type = "track", val = 2, def = 1, min = 0.0, max = 2, step = 0.05 },
+                }
+            },
+            {
+                id = "breathing",
+                sh = true,
+                gr = {
+                    { id = "slide", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_title_liz_inex_breathing", size = { 512, 50 }, spacing = 20 },
+                    { id = "only_for_weapon", type = "check", val = 1, def = true },
+                    { id = "speed_min", type = "track", val = 2, def = 0.35, min = 0.0, max = 0.7, step = 0.05 },
+                    { id = "power_min", type = "track", val = 2, def = 0.7, min = 0.0, max = 1.4, step = 0.05 },
+                    { id = "speed_max", type = "track", val = 2, def = 1, min = 0.0, max = 2, step = 0.05 },
+                    { id = "power_max", type = "track", val = 2, def = 2, min = 0.0, max = 4, step = 0.05 },
+                }
+            },
+            {
+                id = "look_up",
+                sh = true,
+                gr = {
+                    { id = "slide", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_title_liz_inex_look_up", size = { 512, 50 }, spacing = 20 },
+                    { id = "enabled", type = "check", val = 1, def = true },
+                    { id = "trigger_at", type = "track", val = 2, def = 0.65, min = 0.0, max = 1.45, step = 0.05 },
+                    { id = "power", type = "track", val = 2, def = 1, min = 0.0, max = 2, step = 0.05 },
+                }
+            },
+            {
+                id = "other",
+                sh = true,
+                gr = {
+                    { id = "slide", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_title_liz_inex_other", size = { 512, 50 }, spacing = 20 },
+                    { id = "device_lean_enable", type = "check", val = 1, def = false },
+                    { id = "hit_anm_enable", type = "check", val = 1, def = true },
+                    { id = "line", type = "line" },
+                    { id = "crawl_anm_enable", type = "check", val = 1, def = false },
+                    { id = "crawl_can_shoot", type = "list", val = 2, def = 1, content = table_crawl_shoot_handle_type, no_str = true }
+                }
+            }
+        }
+    }
+    return op
+end

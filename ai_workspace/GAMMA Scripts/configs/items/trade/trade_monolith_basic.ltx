@@ -1,0 +1,231 @@
+#include "presets\trade_discounts.ltx"
+#include "presets\trade_presets.ltx"
+
+[trader]
+buy_condition =  trade_generic_buy
+sell_condition = trade_generic_sell
+buy_supplies = {=actor_goodwill_ge(monolith:800)} supplies_4,  {=heavy_pockets_functor()} supplies_4, {=actor_goodwill_ge(monolith:600)} supplies_3, {=actor_goodwill_ge(monolith:400)} supplies_2,  supplies_1
+buy_item_condition_factor = 0.50
+buy_item_exponent = 2.25
+sell_item_exponent = 0.75
+
+discounts = discount_mechanic
+
+[trade_generic_buy]:merchant
+
+[trade_generic_sell]:merchant
+
+[supplies_1]:common_stock
+;[devices]
+batteries_dead			= 6, 1
+device_flashlight		= 1, 1
+device_torch_dummy		= 1, 1
+wpn_binoc_inv           	= 2, 1
+detector_radio             	= 1, 1
+detector_geiger             	= 1, 1
+device_pda_1			= 1, 1
+itm_basickit			= 1, 0.88
+
+;[food]
+ration_ukr			= 3, 1
+ration_ru			= 2, 1
+mint				= 3, 1
+
+;[drinks]
+mineral_water			= 3, 1
+energy_drink			= 4, 1
+water_drink			= 4, 1
+
+;[drugs]
+drug_booster		= 2, 1
+drug_coagulant		= 1, 1
+drug_antidot		= 1, 1
+drug_radioprotector	= 1, 1
+drug_psy_blockade	= 1, 1
+drug_sleepingpills	= 1, 1
+
+;[supplies]
+kerosene                = 2, 1
+charcoal                = 2, 1
+explo_balon_gas         = 1, 1
+explo_jerrycan_fuel     = 1, 1
+
+bandage				= 4, 1
+survival_kit			= 1, 1
+medkit				= 3, 1
+medkit_army			= 2, 1
+medkit_scientic			= 2, 1
+morphine			= 2, 1
+medkit_ai1			= 4, 1
+medkit_ai2			= 4, 1
+medkit_ai3			= 4, 1
+
+;[tools]
+box_matches			= 4, 1
+
+;[outfits]
+monolith_outfit			= 1, 1
+monolith_trenchcoat_outfit 	= 1, 1
+
+;[headgear]
+helm_rp_bala            	= 1, 1
+helm_cloth_mask			= 1, 1
+helm_respirator_gp5     	= 1, 1
+helm_respirator_old     	= 1, 1
+helm_respirator 		= 1, 1
+helm_ppm88			= 1, 1
+
+;[ammo]
+ammo_9x18_fmj 		= 16, 1
+ammo_9x18_pmm 		= 16, 1
+ammo_9x19_pbp 		= 15, 1
+ammo_9x19_fmj 		= 15, 1
+ammo_11.43x23_fmj 	= 14, 1
+ammo_12x70_buck 	= 10, 1
+ammo_12x76_zhekan 	= 10, 1
+ammo_12x76_dart 	= 10, 1
+ammo_357_hp_mag 	= 13, 1
+ammo_5.45x39_fmj 	= 15, 1
+ammo_5.45x39_ep 	= 15, 1
+ammo_5.56x45_fmj 	= 15, 1
+ammo_5.56x45_ss190 	= 15, 1
+ammo_5.7x28_ss190 	= 15, 1
+ammo_9x39_pab9 		= 15, 1
+ammo_7.62x39_fmj 	= 15, 1
+ammo_7.62x51_fmj 	= 15, 1
+ammo_7.62x25_p 		= 16, 1
+ammo_7.62x25_ps 	= 16, 1
+ammo_7.92x33_fmj 	= 15, 1
+ammo_7.62x54_7h1 	= 10, 1
+ammo_7.62x54_7h14 	= 15, 1
+ammo_magnum_300 	= 10, 1
+ammo_12.7x55_fmj 	= 10, 1
+ammo_vog-25 		= 5, 1
+ammo_m209 		= 5, 1
+ammo_og-7b 		= 3, 1
+ammo_gauss 		= 8, 1
+
+;[pistols]
+wpn_beretta             = 1, 0.50
+wpn_colt1911            = 1, 0.50
+wpn_hpsa                = 1, 0.50
+wpn_sig220              = 1, 0.50
+wpn_usp                 = 1, 0.50
+wpn_walther             = 1, 0.50
+wpn_usp                 = 1, 0.50
+wpn_cz75                = 1, 0.50
+wpn_cz75            	= 1, 0.50
+
+;[rifles]
+wpn_abakan_camo_kobra		= 1, 0.50
+wpn_aek_kobra			= 1, 0.50
+
+
+[supplies_2]:supplies_1
+;[devices]
+device_torch_nv_1		= 1, 1
+af_surge				= 1, 1
+af_frames				= 2, 1
+af_grid					= 2, 1
+af_freon				= 1, 1
+af_cooler				= 1, 1
+af_kevlar				= 2, 1
+af_plates				= 2, 1
+af_camelbak				= 1, 1
+af_iam					= 2, 1
+itm_advancedkit				= 1, 0.40
+
+;[headgear]
+helm_m40				= 1, 1
+helm_hardhat				= 1, 1
+helm_m50				= 1, 1
+
+;[outfits]
+monolith_nbc_outfit     	= 1, 1
+
+
+;[ammo]
+ammo_9x18_ap 		= 16, 1
+ammo_9x19_ap 		= 15, 1
+ammo_11.43x23_hydro 	= 14, 1
+ammo_5.45x39_ap 	= 15, 1
+ammo_5.56x45_ap 	= 15, 1
+ammo_5.7x28_ss195 	= 15, 1
+ammo_9x39_ap 		= 15, 1
+ammo_7.62x39_ap 	= 15, 1
+ammo_7.62x51_ap 	= 15, 1
+ammo_7.92x33_ap 	= 15, 1
+ammo_7.62x54_ap 	= 15, 1
+ammo_12.7x55_ap 	= 10, 1
+ammo_pkm_100 		= 6, 1
+
+;[pistols]
+wpn_colt1911_modern           = 1, 0.50
+
+;[shotguns]
+wpn_saiga12s_kobra		= 1, 0.50
+
+;[rifles]
+wpn_lr300_custom_acog		= 1, 0.50
+wpn_lr300_custom_eot		= 1, 0.50
+
+[supplies_3]:supplies_2
+;[devices]
+device_pda_2			= 1, 1
+itm_expertkit			= 1, 0.25
+
+;[tools]
+equ_small_military_pack 	= 1, 1
+af_freon_up             	= 1, 1
+af_frames_up            	= 1, 1
+af_camelbak_up              	= 1, 1
+
+;[outfits]
+light_monolit_outfit    = 1, 1
+
+;[headgear]
+helm_metro              = 1, 1
+helm_tactic		= 1, 1
+
+;[pistols]
+wpn_colt1911_camo        = 1, 0.50
+
+;[rifles]
+wpn_sig552              = 1, 0.50
+wpn_g36_nimble		= 1, 0.50
+wpn_groza		= 1, 0.50
+
+;[snipers]
+wpn_svu                	= 1, 0.50
+wpn_m24			= 1, 0.50
+wpn_m98b		= 1, 0.50
+
+
+[supplies_4]:supplies_3
+;[devices]
+device_pda_3			= 1, 1
+test_container          	= 1, 1
+detector_elite			= 2, 1
+
+;[outfits]
+monolith_scientific_outfit		= 1, 1
+monolith_scientific_light_outfit 	= 1, 1
+
+;[headgear]
+helm_battle		= 1, 1
+helm_protective		= 1, 1
+helm_exo                = 1, 1
+
+;[shotguns]
+wpn_usas12               = 1, 0.50
+wpn_protecta_custom      = 1, 0.50
+
+;[rifles]
+wpn_m60				= 1, 0.50
+wpn_m249               		= 1, 0.50
+wpn_lr300_custom_ac10632	= 1, 0.50
+wpn_scar_new_ac10632		= 1, 0.50
+	
+;[snipers]
+wpn_gauss			= 1, 1
+ammo_gauss			= 5, 1

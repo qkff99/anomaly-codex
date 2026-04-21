@@ -1,0 +1,484 @@
+local gt = game.translate_string
+local CustomPDAX = pda_inter_gui.CustomPDAX
+local pr = pda_inter_gui.pr
+
+if pda_inter_gui_c_games and pda_inter_gui_c_games.games_amount then
+	pda_inter_gui_c_games.games_amount = pda_inter_gui_c_games.games_amount + 1
+end
+
+pda_rogue_game = {}
+
+function CustomPDAX:BuildGamesUpperChildRogue(xml)		-- xd
+	local xml = self.xml
+
+	self.rogue_launched = false
+	self.rogue_enable_input = true
+
+	self.rogue_debug = false
+
+	self.rogue_grid = {}
+	self.rogue_render = {}
+
+	local game_path = "mid_container_3:game_pda_6:"
+
+	-- trade
+	self.rogue_upgrades = {
+		[1] = { name="max_health",		cost={300, 700, 1500},		upg=0,		add=2 },
+		[2] = { name="range_pwr",		cost={350, 1000, 2000},		upg=0,		add=1 },
+		[3] = { name="evasion",			cost={250, 700, 2000},		upg=0,		add=10 },
+	}
+
+	self:RogueBuildTradeMenu(xml, game_path)
+	-----------------------
+
+
+	-- objects
+	self.cur_level = 1
+	self.rogue_objects = {}
+	------------------------
+
+	-- for level generation
+	self.grid_h = 30
+	self.grid_w = 30
+	-----------------------
+
+	-- game window
+	self.rogue_game_main = xml:InitStatic(game_path .. "rogue_game_main", self.games_menu[6].child_menu)
+
+	-- create 30x30 grid
+	for row = 1, self.grid_h do
+		self.rogue_grid[row] = {}
+		for col = 1, self.grid_w do
+			self.rogue_grid[row][col] = {}
+			self.rogue_grid[row][col].terrain = 0		-- 0 cell, 1 wall, 2 edge
+			self.rogue_grid[row][col].texture = false
+			self.rogue_grid[row][col].texture2 = false
+		end
+	end
+
+
+	-- create 11x11 renderer xd
+	local x_offset, y_offset = 20.25, 27
+	for row = 1, 11 do
+		self.rogue_render[row] = {}
+
+		for col = 1, 11 do
+			self.rogue_render[row][col] = {}
+
+			-- static
+			self.rogue_render[row][col].cell = xml:InitStatic(game_path .. "rogue_game_main:rogue_cell", self.rogue_game_main)
+			self.rogue_render[row][col].cell:SetWndPos(vector2():set(x_offset*(col-1), y_offset*(row-1)))
+			self.rogue_render[row][col].cell2 = xml:InitStatic(game_path .. "rogue_game_main:rogue_cell2", self.rogue_game_main)
+			self.rogue_render[row][col].cell2:SetWndPos(vector2():set(x_offset*(col-1), y_offset*(row-1)))
+
+			-- objects
+			self.rogue_render[row][col].item = xml:InitStatic(game_path .. "rogue_game_main:rogue_item_cell", self.rogue_game_main)
+			self.rogue_render[row][col].item:SetWndPos(vector2():set(x_offset*(col-1), y_offset*(row-1)))
+			self.rogue_render[row][col].body = xml:InitStatic(game_path .. "rogue_game_main:rogue_body_cell", self.rogue_game_main)
+			self.rogue_render[row][col].body:SetWndPos(vector2():set(x_offset*(col-1), y_offset*(row-1)))
+			self.rogue_render[row][col].obj = xml:InitStatic(game_path .. "rogue_game_main:rogue_obj_cell", self.rogue_game_main)
+			self.rogue_render[row][col].obj:SetWndPos(vector2():set(x_offset*(col-1), y_offset*(row-1)))
+		end
+	end
+
+
+	-- HUD
+	self:RogueBuildHUD(xml, game_path)
+
+
+	-- start over btn
+	self.rogue_start_over_btn = xml:Init3tButton(game_path .. "rogue_start_over_btn", self.games_menu[6].child_menu)
+	self:Register(self.rogue_start_over_btn, "rogue_start_over")
+	self.rogue_start_over_btn:Show(false)
+
+
+	-- help window
+	self.rogue_help_window = xml:InitStatic(game_path .. "rogue_help_window", self.games_menu[6].child_menu)
+	self.rogue_help_window:Show(false)
+	self.rogue_help_btn = xml:Init3tButton(game_path .. "rogue_help_btn", self.games_menu[6].child_menu)
+	self:Register(self.rogue_help_btn, "rogue_help")
+
+
+	-- TEST DISPLAY GRID
+	self:BuildTestDisplayGrid(xml)
+	----------------------------
+
+	-- launch on first open
+	self:RogueGenerateNewLevel()
+end
+
+function CustomPDAX:RogueBuildTradeMenu(xml, game_path)
+	self.rogue_trader_main = xml:InitStatic(game_path .. "rogue_trader_main", self.games_menu[6].child_menu)
+	self.rogue_trader_main:Show(false)
+
+	self.rogue_trade_ar = {}
+	for i, t in ipairs(self.rogue_upgrades) do
+		self.rogue_trade_ar[i] = {}
+		self.rogue_trade_ar[i].main = xml:InitStatic(game_path .. "rogue_trader_main:rogue_trader_upg_cont", self.rogue_trader_main)
+		local pos, h = self.rogue_trade_ar[i].main:GetWndPos(), self.rogue_trade_ar[i].main:GetHeight()
+		local new_pos_y = (i == 1 and pos.y) or ( pos.y + (h + 15) * (i-1) )
+		self.rogue_trade_ar[i].main:SetWndPos(vector2():set( pos.x, new_pos_y ))
+
+		self.rogue_trade_ar[i].icon_title = xml:InitStatic(game_path .. "rogue_trader_main:rogue_trader_upg_cont:icon_title", self.rogue_trade_ar[i].main)
+		self.rogue_trade_ar[i].icon = xml:InitStatic(game_path .. "rogue_trader_main:rogue_trader_upg_cont:icon", self.rogue_trade_ar[i].main)
+		self.rogue_trade_ar[i].icon:InitTexture( "rogue_hud_" .. t.name )
+
+		self.rogue_trade_ar[i].cost_title = xml:InitStatic(game_path .. "rogue_trader_main:rogue_trader_upg_cont:cost_title", self.rogue_trade_ar[i].main)
+		self.rogue_trade_ar[i].buy_btn = xml:Init3tButton(game_path .. "rogue_trader_main:rogue_trader_upg_cont:buy_btn", self.rogue_trade_ar[i].main)
+		self:Register(self.rogue_trade_ar[i].buy_btn, "rogue_buy_" .. t.name)
+
+		self.rogue_trade_ar[i].upgrades = xml:InitStatic(game_path .. "rogue_trader_main:rogue_trader_upg_cont:upgrades", self.rogue_trade_ar[i].main)
+		self.rogue_trade_ar[i].els = {}
+		for j = 1, #self.rogue_upgrades[i].cost do
+			self.rogue_trade_ar[i].els[j] = xml:InitStatic(game_path .. "rogue_trader_main:rogue_trader_upg_cont:upgrades:el", self.rogue_trade_ar[i].upgrades)
+			self.rogue_trade_ar[i].els[j]:SetWndPos(vector2():set( (25+5)*(j-1), 0 ))
+		end
+	end
+
+	self.rogue_trader_withdraw_btn = xml:Init3tButton(game_path .. "rogue_trader_main:rogue_withdraw_btn", self.rogue_trader_main)
+	self:Register(self.rogue_trader_withdraw_btn, "rogue_finish_withdraw")
+
+	self.rogue_trader_next_level_btn = xml:Init3tButton(game_path .. "rogue_trader_main:rogue_next_level_btn", self.rogue_trader_main)
+	self:Register(self.rogue_trader_next_level_btn, "rogue_next_level")
+end
+
+function CustomPDAX:InitRogueCallbacks()
+	self:AddCallback("rogue_buy_max_health", ui_events.BUTTON_CLICKED, self.OnClickRogueBuyHealth, self)
+	self:AddCallback("rogue_buy_range_pwr", ui_events.BUTTON_CLICKED, self.OnClickRogueBuyPower, self)
+	self:AddCallback("rogue_buy_evasion", ui_events.BUTTON_CLICKED, self.OnClickRogueBuyEvasion, self)
+	self:AddCallback("rogue_finish_withdraw", ui_events.BUTTON_CLICKED, self.OnClickRogueFinish, self)
+	self:AddCallback("rogue_next_level", ui_events.BUTTON_CLICKED, self.OnClickRogueNextLevel, self)
+	self:AddCallback("rogue_start_over", ui_events.BUTTON_CLICKED, self.OnClickRogueStartOver, self)
+	self:AddCallback("rogue_help", ui_events.BUTTON_CLICKED, self.OnClickRogueHelp, self)
+end
+
+function CustomPDAX:RogueBuildHUD(xml, game_path)
+	self.rogue_hud_main = xml:InitStatic(game_path .. "rogue_hud_main", self.games_menu[6].child_menu)
+	self.rogue_hud_level = xml:InitStatic(game_path .. "rogue_hud_main:rogue_hud_level", self.rogue_hud_main)
+	self.rogue_hud_health = xml:InitStatic(game_path .. "rogue_hud_main:rogue_hud_health", self.rogue_hud_main)
+	self.rogue_hud_health_ar = {}
+	for i = 1, 10 do
+		self.rogue_hud_health_ar[i] = xml:InitStatic(game_path .. "rogue_hud_main:rogue_hud_health:health", self.rogue_hud_health)
+		self.rogue_hud_health_ar[i]:SetWndPos(vector2():set( 13*(i-1), 15 ))
+	end
+
+	self.rogue_hud_ammo = xml:InitStatic(game_path .. "rogue_hud_main:rogue_hud_ammo", self.rogue_hud_main)
+	self.rogue_hud_ammo_ar = {}
+	for i = 1, 20 do
+		self.rogue_hud_ammo_ar[i] = xml:InitStatic(game_path .. "rogue_hud_main:rogue_hud_ammo:ammo", self.rogue_hud_ammo)
+		self.rogue_hud_ammo_ar[i]:SetWndPos(vector2():set( (5+2)*(i-1), 13.5 ))
+	end
+
+	self.rogue_hud_money = xml:InitStatic(game_path .. "rogue_hud_main:rogue_hud_money", self.rogue_hud_main)
+	self.rogue_hud_money_icon = xml:InitStatic(game_path .. "rogue_hud_main:rogue_hud_money:icon", self.rogue_hud_money)
+	self.rogue_hud_money_text = xml:InitStatic(game_path .. "rogue_hud_main:rogue_hud_money:value", self.rogue_hud_money)
+end
+
+function CustomPDAX:OnClickRogueStartOver()
+	self.rogue_start_over_btn:Show(false)
+	self.rogue_enable_input = true
+	self:RogueGenerateNewLevel()
+end
+
+
+function CustomPDAX:RogueGenerateNewLevel(win, debug_set_level)
+	-- reset grid
+	self:RogueResetGrid()
+
+	-- reset upgrades if not win
+	if not win then
+		for i, t in ipairs(self.rogue_upgrades) do
+			t.upg = 0
+		end
+	end
+
+	-- new level sound
+	if win then
+		self:PlaySound("rogue_new_level")
+	end
+
+	-- set level
+	self.cur_level = (debug_set_level) or (win and self.cur_level + 1) or 1
+
+	-- reset and generate level
+	self:RogueGenerateWorld()
+
+	-- reset and generate objects
+	self:RogueGenerateObjects(win)
+
+	-- Grid and Render updates
+	self:RogueGridUpdate(true)
+end
+
+function CustomPDAX:RogueResetGrid()
+	for row = 1, #self.rogue_grid do
+		for col = 1, #self.rogue_grid[row] do
+			self.rogue_grid[row][col].terrain = 0
+			self.rogue_grid[row][col].texture = false
+			self.rogue_grid[row][col].texture2 = false
+			----- test -------
+			if self.rogue_debug then
+				self.rogue_grid[row][col].test_cell:InitTexture("rogue_cell_texture")
+				self.rogue_grid[row][col].test_cell:SetTextureColor( GetARGB(255, 70, 70, 70) )
+			end
+			------------------
+		end
+	end
+end
+
+function CustomPDAX:RogueGridUpdate(start)
+	-- update mutants
+	if not start then
+		self:MutantsUpdate()
+		self:AnomaliesUpdate()
+	end
+
+	-- update render
+	self:RenderUpdate()
+
+	-- hud update
+	self:RogueHUDUpdate()
+
+	-- still test
+	self:TESTTerrainDisplay()
+--	self:TESTDisplaySpawnRadius("gulag")
+	self:TESTObjectsDisplay()
+	------------------
+end
+
+function CustomPDAX:RogueHUDUpdate()
+	self.rogue_hud_level:TextControl():SetText(gt("pda_rogue_level_str") .. ":   " .. tostring(self.cur_level) )
+
+	for i = 1, 10 do
+		local show_cond = i <= self:RogueActor().health
+		self.rogue_hud_health_ar[i]:Show(show_cond)
+	end
+
+	for i = 1, 20 do
+		local show_cond = i <= self:RogueActor().ammo
+		self.rogue_hud_ammo_ar[i]:Show(show_cond)
+	end
+
+	self.rogue_hud_money_text:TextControl():SetText("   " .. tostring(self:RogueActor().money) .. " $")
+end
+
+function CustomPDAX:RenderUpdate()
+	-- reset all render cells
+	for row = 1, #self.rogue_render do
+		for col = 1, #self.rogue_render[row] do
+			self.rogue_render[row][col].cell:InitTexture("rogue_cell_blank")
+			self.rogue_render[row][col].cell2:InitTexture("rogue_cell_blank")
+			self.rogue_render[row][col].item:InitTexture("rogue_cell_blank")
+			self.rogue_render[row][col].body:InitTexture("rogue_cell_blank")
+			self.rogue_render[row][col].obj:InitTexture("rogue_cell_blank")
+		end
+	end
+
+	-- update render
+	local cur_grid_row = self:RogueActor().row - (#self.rogue_render - 1) / 2
+	local cur_grid_col = self:RogueActor().col - (#self.rogue_render - 1) / 2
+
+	for row = 1, #self.rogue_render do
+
+		cur_grid_col = self:RogueActor().col - (#self.rogue_render - 1) / 2
+
+		for col = 1, #self.rogue_render[row] do
+
+			if self.rogue_grid[cur_grid_row] and self.rogue_grid[cur_grid_row][cur_grid_col] then
+
+				-- draw terrain
+				local cell_texture = self.rogue_grid[cur_grid_row][cur_grid_col].texture or "rogue_cell_blank"
+				self.rogue_render[row][col].cell:InitTexture(cell_texture)
+				local cell_texture2 = self.rogue_grid[cur_grid_row][cur_grid_col].texture2 or "rogue_cell_blank"
+				self.rogue_render[row][col].cell2:InitTexture(cell_texture2)
+
+				-- draw objects
+				for idx, t in pairs(self.rogue_objects) do
+					if t.row == cur_grid_row and t.col == cur_grid_col then
+
+						-- actor / mutant
+						if t.typ == "actor" or t.typ == "mutant" then
+							if t.status == "alive" then
+								-- bloodsucker special case
+								if not t.invis then
+									self.rogue_render[row][col].obj:InitTexture(t.texture .. t.dir)
+								end
+							else
+								self.rogue_render[row][col].body:InitTexture("rogue_cell_body")
+							end
+						end
+
+						-- exit / items
+						if t.typ == "exit" or t.status == "world" then
+							self.rogue_render[row][col].item:InitTexture(t.texture)
+						end
+
+						-- anomalies
+						if t.typ == "anomaly" then
+							self.rogue_render[row][col].item:InitTexture(t.texture .. t.anm)
+							self.rogue_objects[idx].anm = self.rogue_objects[idx].anm + 1
+							if self.rogue_objects[idx].anm > t.max_anm then
+								self.rogue_objects[idx].anm = 1
+							end
+						end
+
+					end
+				end
+
+			end
+
+			cur_grid_col = cur_grid_col + 1
+		end
+
+		cur_grid_row = cur_grid_row + 1
+	end
+end
+
+
+------------------------------------------------------------
+-------------------------- Trade ---------------------------
+function CustomPDAX:RogueTradeUpdate()
+	local ac = self:RogueActor()
+	if not ac then return end
+
+	self.rogue_trader_main:Show(true)
+	self.rogue_game_main:Show(false)
+
+	for i, t in ipairs(self.rogue_upgrades) do
+		local evasion_str = t.name == "evasion" and "%" or ""
+		self.rogue_trade_ar[i].icon_title:TextControl():SetText( gt("pda_rogue_trade_" .. t.name) .. " " .. ac[t.name] .. evasion_str)
+		local cost_str = t.cost[t.upg + 1] and (tostring(t.cost[t.upg + 1]) .. " $") or ""
+		self.rogue_trade_ar[i].cost_title:TextControl():SetText(cost_str)
+
+		local btn_cond = t.upg < #t.cost and ac.money >= t.cost[t.upg + 1]
+		self.rogue_trade_ar[i].buy_btn:Enable(btn_cond)
+
+		for j = 1, #t.cost do
+			local upg_cond = j <= t.upg
+			self.rogue_trade_ar[i].els[j]:Show(upg_cond)
+		end
+	end
+end
+
+function CustomPDAX:OnClickRogueBuyHealth()
+	local ac = self:RogueActor()
+
+	for i, t in ipairs(self.rogue_upgrades) do
+		if t.name == "max_health" then
+			ac.money = ac.money - t.cost[t.upg + 1]
+			ac.max_health = ac.max_health + t.add
+			ac.health = ac.max_health
+			self.rogue_upgrades[i].upg = self.rogue_upgrades[i].upg + 1
+		end
+	end
+
+	self:PlaySound("rogue_pda_beep")
+	self:RogueHUDUpdate()
+	self:RogueTradeUpdate()
+end
+
+function CustomPDAX:OnClickRogueBuyPower()
+	local ac = self:RogueActor()
+
+	for i, t in ipairs(self.rogue_upgrades) do
+		if t.name == "range_pwr" then
+			ac.money = ac.money - t.cost[t.upg + 1]
+			ac.range_pwr = ac.range_pwr + t.add
+			self.rogue_upgrades[i].upg = self.rogue_upgrades[i].upg + 1
+		end
+	end
+
+	self:PlaySound("rogue_pda_beep")
+	self:RogueHUDUpdate()
+	self:RogueTradeUpdate()
+end
+
+function CustomPDAX:OnClickRogueBuyEvasion()
+	local ac = self:RogueActor()
+
+	for i, t in ipairs(self.rogue_upgrades) do
+		if t.name == "evasion" then
+			ac.money = ac.money - t.cost[t.upg + 1]
+			ac.evasion = ac.evasion + t.add
+			self.rogue_upgrades[i].upg = self.rogue_upgrades[i].upg + 1
+		end
+	end
+
+	self:PlaySound("rogue_pda_beep")
+	self:RogueHUDUpdate()
+	self:RogueTradeUpdate()
+end
+
+function CustomPDAX:OnClickRogueFinish()
+	local money = math.ceil(self:RogueActor().money / 10)
+	db.actor:give_money(money)
+	self:UpdMoneyText()
+
+	self:PlaySound("rogue_pda_beep")
+	self.rogue_enable_input = true
+	self.rogue_trader_main:Show(false)
+	self.rogue_game_main:Show(true)
+	self:RogueGenerateNewLevel()
+end
+
+function CustomPDAX:OnClickRogueNextLevel()
+	self.rogue_enable_input = true
+	self.rogue_trader_main:Show(false)
+	self.rogue_game_main:Show(true)
+	self:RogueGenerateNewLevel(true)
+end
+
+function CustomPDAX:OnClickRogueHelp()
+	local help_show_cond = not self.rogue_help_window:IsShown()
+	self.rogue_help_window:Show(help_show_cond)
+end
+------------------------------------------------------------
+------------------------------------------------------------
+
+
+function CustomPDAX:ResetGamesRogue()
+	self.rogue_launched = false
+	self:AllowMovement(true)
+end
+
+function CustomPDAX:RogueActorAction(key)
+	if not self.rogue_enable_input then
+		return
+	end
+
+	-- test
+	if key == DIK_keys.DIK_M then
+		self:UpdateTestGrid(true)
+	end
+
+	if key == DIK_keys.DIK_W then
+		self:MoveActor("up")
+	elseif key == DIK_keys.DIK_S then
+		self:MoveActor("down")
+	elseif key == DIK_keys.DIK_A then
+		self:MoveActor("left")
+	elseif key == DIK_keys.DIK_D then
+		self:MoveActor("right")
+	elseif key == DIK_keys.DIK_Q then
+		self:WaitActor()
+	elseif key == DIK_keys.DIK_R then
+		self:ShootActor()
+	end
+end
+
+function on_option_change()
+end
+
+function save_state(m_data)
+    m_data.pda_rogue_game = pda_rogue_game
+end
+
+function load_state(m_data)
+	pda_rogue_game = m_data.pda_rogue_game or {}
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_option_change", on_option_change)
+	RegisterScriptCallback("save_state", save_state)
+	RegisterScriptCallback("load_state", load_state)
+end

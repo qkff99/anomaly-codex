@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="windows-1252"?>
+
+<string_table>
+
+<!--
+F.R.I.T.E.S | Thundard
+Dernière révision : 24 novembre 2025
+-->
+
+<string id="ui_mcm_menu_npe">
+<text>NPE</text>
+</string>
+
+<!-- menu général -->
+<string id="ui_mcm_npe_general">
+<text>Général</text>
+</string>
+<string id="ui_mcm_npe_general_title">
+<text>Paramètres généraux</text>
+</string>
+<string id="ui_mcm_npe_general_desc">
+<text>New Player Experience (NPE) - un framework de tutoriels par Strangerism</text>
+</string>
+<string id="ui_mcm_npe_general_enable">
+<text>Activer</text>
+</string>
+<string id="ui_mcm_npe_general_enable_desc">
+<text>Active/Désactive tous les modules NPE installés et leur contenu</text>
+</string>
+<string id="ui_mcm_npe_general_play_loop">
+<text>Intervalle entre jeux de tutoriels</text>
+</string>
+<string id="ui_mcm_npe_general_play_loop_desc">
+<text>Définit le délai minimum (en secondes) entre l'activation du contexte d'un jeu et l'affichage du dialogue associé. Le même délai s'applique si plusieurs sont en file d'attente</text>
+</string>
+<string id="ui_mcm_npe_general_execution_loop">
+<text>Intervalle entre chaque boucle d'exécution NPE</text>
+</string>
+<string id="ui_mcm_npe_general_execution_loop_desc">
+<text>Fréquence à laquelle le NPC exécute tous les gestionnaires d'événements des contextes pour vérifier si un contexte s'est activé</text>
+</string>
+<string id="ui_mcm_npe_general_actions_execution_loop">
+<text>Intervalle entre chaque boucle d'exécution d'actions NPE</text>
+</string>
+<string id="ui_mcm_npe_general_actions_execution_loop_desc">
+<text>Fréquence à laquelle le NPC exécute toutes les actions émises par un jeu</text>
+</string>
+<string id="ui_mcm_npe_general_sounds_set">
+<text>Sons</text>
+</string>
+<string id="ui_mcm_npe_general_sounds_set_desc">
+<text>Sélectionne le jeu de sons utilisé par la fenêtre de dialogue du jeu</text>
+</string>
+<string id="ui_mcm_npe_general_pause_game">
+<text>Pause du jeu</text>
+</string>
+<string id="ui_mcm_npe_general_pause_game_desc">
+<text>Met le jeu en pause lorsqu'un jeu (ex. tutoriel) est joué. Ceci est un réglage global. Certains modules NPE ont aussi cette option. Toutes les fenêtres de dialogue proposent un bouton pour reprendre/mettre en pause la partie</text>
+</string>
+<string id="ui_mcm_npe_general_disable_dof">
+<text>Désactiver la PdC</text>
+</string>
+<string id="ui_mcm_npe_general_disable_dof_desc">
+<text>Si la profondeur de champ SSS est activée dans l'inventaire, NPE appliquera la même chose à ses fenêtres de dialogue. Ici, tu peux désactiver la PdC pour les dialogues NPE, tout en la gardant dans l'inventaire</text>
+</string>
+<string id="ui_mcm_npe_general_safe_distance_threat">
+<text>Distance max - menace</text>
+</string>
+<string id="ui_mcm_npe_general_safe_distance_threat_desc">
+<text>Définit la distance minimum aux menaces alentours (stalkers/mutants) pour que les tutoriels se lancent</text>
+</string>
+<!-- menu logs -->
+<string id="ui_mcm_npe_logs">
+<text>Logs</text>
+</string>
+<string id="ui_mcm_npe_logs_title">
+<text>Paramètres des logs</text>
+</string>
+<string id="ui_mcm_npe_logs_help1">
+<text>Active les logs uniquement pour développer des modules NPE ou résoudre un problème. Laisse tout désactivé sinon</text>
+</string>
+<string id="ui_mcm_npe_logs_logging_level">
+<text>Niveau de logs</text>
+</string>
+<string id="ui_mcm_npe_logs_logging_level_desc">
+<text>Détermine le niveau de logging dans la console</text>
+</string>
+<string id="ui_mcm_npe_logs_title_cat">
+<text>Catégories de logs</text>
+</string>
+<string id="ui_mcm_npe_logs_help2">
+<text>Choisis quelles catégories de logs afficher</text>
+</string>
+<string id="ui_mcm_npe_logs_conf_logs">
+<text>Logs de configuration</text>
+</string>
+<string id="ui_mcm_npe_logs_overr_logs">
+<text>Logs de surcharge</text>
+</string>
+<string id="ui_mcm_npe_logs_rgstr_logs">
+<text>Logs d'enregistrement</text>
+</string>
+<string id="ui_mcm_npe_logs_pool_logs">
+<text>Logs de files d'attente</text>
+</string>
+<string id="ui_mcm_npe_logs_exec_logs">
+<text>Logs d'exécution contextes</text>
+</string>
+<string id="ui_mcm_npe_logs_activ_logs">
+<text>Logs d'activation</text>
+</string>
+<string id="ui_mcm_npe_logs_queue_logs">
+<text>Logs des files</text>
+</string>
+<string id="ui_mcm_npe_logs_play_logs">
+<text>Logs de lecture</text>
+</string>
+<string id="ui_mcm_npe_logs_event_logs">
+<text>Logs d'exécution d'événements</text>
+</string>
+<string id="ui_mcm_npe_logs_action_logs">
+<text>Logs d'exécution d'actions</text>
+</string>
+<string id="ui_mcm_npe_logs_ui_logs">
+<text>Logs interface</text>
+</string>
+<string id="ui_mcm_npe_logs_ui_exec_logs">
+<text>Logs d'exécution interface</text>
+</string>
+
+<!-- non utilisé, juste un modèle pour modules npe -->
+<string id="ui_mcm_menu_npe_module">
+<text>Modules NPE</text>
+</string>
+<string id="ui_mcm_menu_npe_module_title">
+<text>Modules New Player Experience</text>
+</string>
+<string id="ui_npe_dialog_set_title">
+<text>Titre de la carte</text>
+</string>
+<string id="ui_npe_dialog_card_title">
+<text>Titre du jeu</text>
+</string>
+<string id="ui_npe_dialog_card_description">
+<text>Ipse dixit est un terme latin qui signifie "il l'a dit lui-même."
+Dans le domaine juridique, il désigne une assertion ou déclaration faite par un individu uniquement sur sa propre autorité,
+sans preuve ni justification.
+\n
+\n 1. Ipse dixit est un terme latin qui signifie "il l'a dit lui-même."
+Dans le domaine juridique, il désigne une assertion ou déclaration faite par un individu uniquement sur sa propre autorité,
+sans preuve ni justification.
+\n
+\n 2. Ipse dixit est un terme latin qui signifie "il l'a dit lui-même."
+Dans le domaine juridique, il désigne une assertion ou déclaration faite par un individu uniquement sur sa propre autorité,
+sans preuve ni justification.
+\n
+\n 3. Ipse dixit est un terme latin qui signifie "il l'a dit lui-même."
+Dans le domaine juridique, il désigne une assertion ou déclaration faite par un individu uniquement sur sa propre autorité,
+sans preuve ni justification.
+</text>
+</string>
+<string id="ui_npe_dialog_card_image">
+<text>Image de la carte</text>
+</string>
+<string id="ui_npe_dialog_card_index">
+<text>1/3</text>
+</string>
+<!-- boutons de dialogue par défaut -->
+<string id="ui_npe_dialog_btn_close">
+<text>Fermer</text>
+</string>
+<string id="ui_npe_dialog_btn_pause">
+<text>Pause du jeu</text>
+</string>
+<string id="ui_npe_dialog_btn_resume">
+<text>Jeu en pause</text>
+</string>
+<string id="ui_npe_dialog_btn_next">
+<text>Suivant</text>
+</string>
+<string id="ui_npe_dialog_btn_prev">
+<text>Précédent</text>
+</string>		
+	
+</string_table>

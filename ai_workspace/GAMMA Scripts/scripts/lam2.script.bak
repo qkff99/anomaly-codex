@@ -1,0 +1,706 @@
+----------------------------------------
+-- example
+----------------------------------------
+--- TODO: write an example how to use lam2. it's simple fsm but still
+
+----------------------------------------
+-- variables
+----------------------------------------
+
+cur_slot = nil
+det_active = nil
+snd_obj = nil
+states = { running = 0, success = 1, fail = 2 }
+local b_is_running = false
+local b_is_debug_enable = false
+local current_action = nil
+local current_action_time = 0
+
+----------------------------------------
+-- init
+----------------------------------------
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_before_death", actor_on_before_death)
+end
+
+function actor_on_before_death()
+    abort()
+end
+
+----------------------------------------
+-- monkey patches
+----------------------------------------
+
+--fix. stop lam from trying to reeqiup ur weapons when you try to read npc pda
+local baseUV = ui_pda_npc_tab.use_view
+ui_pda_npc_tab.use_view = function (obj)
+    baseUV(obj)
+    cur_slot = nil
+    det_active = nil
+end
+
+----------------------------------------
+-- action list
+----------------------------------------
+
+local actions_first = 0
+local actions_last = -1
+local actions = {}
+
+local function list_add_action(action) --add action at the end of the list
+    actions_last = actions_last + 1
+    actions[actions_last] = action
+end
+
+local function list_add_action_first(action) --add action at the beginning of the list
+    actions_first = actions_first - 1
+    actions[actions_first] = action
+end
+
+local function list_pop_next_action()
+    if actions_first > actions_last then return nil end --if list empty
+    local val = actions[actions_first]
+    actions[actions_first] = nil
+    actions_first = actions_first + 1
+    return val
+end
+
+local function list_get_next_action()
+    if actions_first > actions_last then return nil end --if list is empty
+    return actions[actions_first]
+end
+
+local function list_actions_count()
+    local count = 0
+    for i, v in pairs(actions) do
+        count = count + 1
+    end
+    return count
+end
+
+local function list_purge_actions(purge_skippable)
+    local new_id = actions_first
+    local new_list = {}
+    for i, a in pairs(actions) do
+        if not purge_skippable and not a.can_skip then
+            new_list[new_id] = a
+            new_id = new_id + 1
+        else
+            if a.on_skip then a:on_skip() end
+        end
+    end
+    actions = new_list
+    actions_last = new_id - 1
+end
+
+----------------------------------------
+-- main
+----------------------------------------
+
+--- Add action in queue
+function add_action(action)
+    log("[CORE] Add action called. Action tag is %s", action.tag or "nil")
+    list_add_action(action)
+    if not b_is_running then
+        b_is_running = true
+        SendCallback("on_anim_queue_start")
+        RegisterScriptCallback("actor_on_update", actor_on_update)
+    end
+end
+
+--- Add action at the beginnig of the queue
+--- could be useful to inject some new action when current action finished
+function add_action_first(action)
+    log("[CORE] Add action first called. Action tag is %s", action.tag or "nil")
+    list_add_action_first(action)
+    if not b_is_running then
+        b_is_running = true
+        SendCallback("on_anim_queue_start")
+        RegisterScriptCallback("actor_on_update", actor_on_update)
+    end
+end
+
+---Push current action back and insert new one
+---old action will be played again after new one is finished
+---never tested this one. Not sure if it even works yet
+function push_action(action)
+    log("[CORE] Push action called. Action tag is %s", action.tag or "nil")
+    if current_action then list_add_action_first(current_action) end
+    list_add_action_first(action)
+    go_to_next_action()
+end
+
+
+--interrupt current action and go to the next one
+function stop_current_action()
+    if b_is_running then
+        if current_action and current_action.can_skip then
+            if current_action.anm then game.stop_hud_motion() end
+            level.remove_cam_effector(2190)
+            if snd_obj then snd_obj:stop() end
+            if current_action.on_skip then current_action:on_skip() end
+            go_to_next_action()
+        end
+    end
+end
+
+---after all actions are stopped it will reequip weapons
+---if they were unequipped previously
+function stop_all_actions()
+    log("[CORE] Stop all actions function called")
+    if b_is_running then
+        if current_action and current_action.can_skip then
+            if current_action.anm then game.stop_hud_motion() end
+            level.remove_cam_effector(2190)
+            if snd_obj then snd_obj:stop() end
+            if current_action.on_skip then current_action:on_skip() end
+            list_purge_actions()
+            go_to_next_action()
+        end
+    end
+end
+
+---stop all actions immediately
+function abort()
+    log("[CORE] Abort function called")
+    if b_is_running then
+        --stop animations and sound
+        if current_action and current_action.anm then game.stop_hud_motion() end
+        level.remove_cam_effector(2190)
+        if snd_obj then snd_obj:stop() end
+        --set current action to nil, set flag to disabled and stop update function
+        UnregisterScriptCallback("actor_on_update", actor_on_update)
+        b_is_running = false
+        SendCallback("on_anim_queue_stop")
+        if current_action and current_action.on_skip then current_action:on_skip() end
+        set_current_action(nil)
+        --clear action list
+        list_purge_actions(true)
+        actions_first = 0
+        actions_last = -1
+        actions = {}
+        --forget any weapon we had active before action started
+        cur_slot = nil
+        det_active = nil
+    end
+end
+
+
+-- various checks that might be usefull
+function is_running()
+    return b_is_running
+end
+
+function get_current_action()
+    return current_action
+end
+
+function get_next_action()
+    return list_get_next_action()
+end
+
+function get_all_actions()
+    return actions_first, actions_last, actions
+end
+
+function pop_next_action()
+    return list_pop_next_action()
+end
+
+function get_action_with_tag(tag)
+    if current_action and current_action.tag and current_action.tag == tag then
+        log("[CORE] Get action with tag called: %s is found", tag)
+        return current_action
+    end
+    for i, a in pairs(actions) do
+        if a.tag and a.tag == tag then
+            log("[CORE] Get action with tag called: %s is found", tag)
+            return a
+        end
+    end
+    log("[CORE] Get action with tag called: %s is nil", tag)
+    return nil
+end
+
+function has_queued_actions()
+    result = list_get_next_action() and true or false
+    return result
+end
+
+----------------------------------------
+-- loop
+----------------------------------------
+
+function set_current_action(new_action)
+    if current_action and current_action.exit then current_action:exit() end
+    current_action = new_action
+    if current_action and current_action.enter then current_action:enter() end
+    current_action_time = 0
+end
+
+
+function go_to_next_action()
+    log("[CORE] Trying to get next action")
+
+    local next_action = list_pop_next_action()
+
+    if next_action then
+        --check if action need free hands to play. maybe refactor it somehow?
+        if next_action.hands then
+            log("[CORE] Action requires free hand: %s", next_action.hands)
+            if is_required_hand_busy(next_action.hands) then
+                log("[CORE] Hands are busy, try to free them")
+                local hands = next_action.hands
+                list_add_action_first(next_action)
+                next_action = get_template_action_hide_items_in_hands(hands)
+            end
+        end
+
+        log("[CORE] Get new action with tag %s, setting it in", next_action.tag and next_action.tag or "nil")
+        set_current_action(next_action)
+    else
+        log("[CORE] No actions left")
+        add_action(get_template_action_show_items_in_hands())
+        add_action(get_template_action_stop_lam2())
+        go_to_next_action()
+    end
+end
+
+
+function actor_on_update(_, delta)
+    log("[CORE] LAM2 Update: Action count %s | Current action tag %s | Current action name %s",
+        list_actions_count(),
+        current_action and current_action.tag and current_action.tag or "none",
+        current_action and current_action.name and current_action.name or "none"
+    )
+
+    current_action_time = current_action_time + delta / 1000
+    if current_action then
+        local result = states.fail
+        if current_action.execute then result = current_action:execute(current_action_time) or states.fail end
+        if result == states.running then return end
+    end
+
+    go_to_next_action()
+end
+
+
+----------------------------------------
+-- debug
+----------------------------------------
+
+function log(message, ...)
+    if b_is_debug_enable then
+        if imgui_liz_log then
+            imgui_liz_log.Log("[LIZ.LAM2] " .. message, ...)
+        else
+            printf("[LIZ.LAM2] " .. message, ...)
+        end
+    end
+end
+
+----------------------------------------
+-- utils
+----------------------------------------
+
+function is_required_hand_busy(hand)
+    if hand == 0 then
+        return is_weapon_active()
+    elseif hand == 1 then
+        return is_detector_active()
+    elseif hand == 2 then
+        return is_weapon_active() or is_detector_active()
+    end
+end
+
+function is_detector_active()
+    return db.actor:active_detector() and true or false
+end
+
+function is_weapon_active()
+    return db.actor:active_slot() ~= 0
+end
+
+----------------------------------------
+-- callbacks
+----------------------------------------
+
+local intercepts = {
+    on_anim_queue_start = {},   -- Params: ()
+    on_anim_queue_stop = {},    -- Params: ()
+}
+
+function AddCallback(name)
+    if (not intercepts[name]) then
+        intercepts[name] = {}
+    end
+end
+
+function Subscribe(name, func_or_userdata)
+    if (func_or_userdata == nil) then
+        callstack()
+        return
+    end
+    if (intercepts[name]) then
+        intercepts[name][func_or_userdata] = true
+    end
+end
+
+function Unsubscribe(name, func_or_userdata)
+    if (intercepts[name]) then
+        intercepts[name][func_or_userdata] = nil
+    end
+end
+
+function SendCallback(name, ...)
+    if (intercepts[name]) then
+        for func_or_userdata, v in pairs(intercepts[name]) do
+            if (type(func_or_userdata) == "function") then
+                func_or_userdata(...)
+            elseif (func_or_userdata[name]) then
+                func_or_userdata[name](func_or_userdata, ...)
+            end
+        end
+    end
+end
+
+----------------------------------------
+-- action templates
+----------------------------------------
+
+-- wait action
+function get_template_action_wait_for_seconds(wait_time)
+    local a = {}
+    a.tag = "wait_for_seconds"
+    a.duration = wait_time
+    a.can_skip = false
+    a.execute = function(self, time)
+        if time > self.duration then
+            return states.success
+        end
+        return states.running
+    end
+    a.exit = function (self)
+        if self.on_exit then self:on_exit() end
+    end
+    return a
+end
+
+
+-- play animation
+function get_template_action_play_animation()
+    local a = {}
+    a.duration = 0
+    a.sec = ""
+    a.anm = "anm_use"
+    a.cam = "cam"
+    a.snd = "snd"
+    a.speed = 1
+    a.hands = 2
+    a.anm_blend = false
+    a.can_skip = false
+    a.only_allow_movekeys = true
+    a.disable_input = false
+    a.enter = function(self)
+        if self.on_init then self:on_init() end
+        --animation
+        self.duration = game.get_motion_length(self.sec, self.anm, self.speed) / 1000
+        game.play_hud_motion(self.hands, self.sec, self.anm, self.anm_blend, self.speed)
+        --camera
+        local cam = ini_sys:r_string_ex(self.sec, self.cam)
+        if cam then level.add_cam_effector(cam, 2190, false, "", 0, false) end
+        --sound
+        local snd = ini_sys:r_string_ex(self.sec, self.snd)
+        if snd then
+            lam2.snd_obj = sound_object(snd)
+            lam2.snd_obj:play(db.actor, 0, sound_object.s2d)
+            -- lam2.snd_obj.frequency = self.speed
+        end
+        --fov
+        local fov = ini_sys:r_float_ex(self.sec, "hud_fov")
+        if fov then lam_fov_manager.set_fov(fov) end
+        --movement
+        -- if self.can_walk then
+        --     game.only_allow_movekeys(true)
+        --     game.set_actor_allow_ladder(false)
+        -- else
+        --     level.disable_input()
+        -- end
+        if self.disable_input then level.disable_input() end
+        if self.only_allow_movekeys then
+            -- game.only_allow_movekeys(true)
+            liz_fdda_input_manager.is_input_disabled = true
+            -- liz_fdda_input_manager.disable()
+            game.set_actor_allow_ladder(false)
+        end
+        --callback
+        if self.on_enter then self:on_enter() end
+    end
+    a.execute = function(self, time)
+        local result = states.running
+        if time > self.duration then
+            log("[CORE] Play animation state update: animation time %s | duration %s", time, self.duration)
+            result = states.success
+        end
+        if self.on_execute then
+            local callback_result = self:on_execute(time)
+            if callback_result then result = callback_result end
+        end
+        return result
+    end
+    a.exit = function (self)
+        --fov
+        local fov = ini_sys:r_float_ex(self.sec, "hud_fov")
+        if fov then lam_fov_manager.restore_fov() end
+        --movement
+        -- if self.can_walk then
+        --     game.only_allow_movekeys(false)
+        --     game.set_actor_allow_ladder(true)
+        -- else
+        --     level.enable_input()
+        -- end
+        if self.disable_input then level.enable_input() end
+        if self.only_allow_movekeys then
+            -- game.only_allow_movekeys(false)
+            liz_fdda_input_manager.is_input_disabled = false
+            -- liz_fdda_input_manager.enable()
+            game.set_actor_allow_ladder(true)
+        end
+        --callback
+        if self.on_exit then self:on_exit() end
+    end
+    return a
+end
+
+
+-- hide items in hands
+function get_template_action_hide_items_in_hands(animated_hand)
+    local a = {}
+    a.tag = "wpn_hide"
+    a.hand = animated_hand
+    a.enter = function (self)
+        log("[CORE] Hide weapons state: on enter")
+        local wpn = db.actor:active_slot()
+        local det = db.actor:active_detector() or nil
+        cur_slot = wpn
+        det_active = det  
+        -- don't free hand that is not required for the animatioin
+        if self.hand == 1 then cur_slot = nil end
+        if self.hand == 0 then det_active = nil end
+        -- detector
+        if det_active then
+            if uni_anim_detectors then uni_anim_detectors.force_quick = true end
+            db.actor:hide_detector(wpn and wpn ~= 0)
+            log("[CORE] Hide weapons state: on enter: hide detector")
+        end
+        -- weapon
+        if cur_slot and cur_slot ~= 0 then
+            db.actor:activate_slot(0)
+            log("[CORE] Hide weapons state: on enter: hide weapon")
+        end
+        log("[CORE] Hide weapons state: on enter result: cur_slot %s | det_active %s | self.hand %s", cur_slot, det_active, self.hand)
+    end
+    a.execute = function (self, time)
+        local wpn = db.actor:active_slot()
+        local det = db.actor:active_detector() or nil
+        log("[CORE] On execute: wpn %s | det %s | self.hand %s", wpn, det, self.hand)
+        if self.hand == 0 then
+            if wpn == 0 then return states.success end
+        elseif self.hand == 1 then
+            if not det then return states.success end
+        elseif self.hand == 2 then
+            if wpn == 0 and not det then return states.success end
+        end
+        if time > 10 then return states.fail end --something gone wrong, skip this action
+        return states.running
+    end
+    return a
+end
+
+-- show items in hands
+function get_template_action_show_items_in_hands()
+    local a = {}
+    a.tag = "show_items_in_hands"
+    a.execute = function (self, time)
+        log("[CORE] Restore weapons state")
+        if time > 0.1 then
+            --if inventory looting ui is open, then get obj and try start looting
+            local inv_gui = ui_inventory.GUI
+            if inv_gui and inv_gui:IsShown() and inv_gui.mode == "loot" and inv_gui.npc_id then
+                log("[CORE] Restore weapons state: restore body search: inventory gui npc id is %s", inv_gui.npc_id)
+                local obj = level.object_by_id(inv_gui.npc_id)
+                if obj and liz_fdda_redone_body_search then
+                    liz_fdda_redone_body_search.start_body_search(obj)
+                    return states.success
+                end
+            end
+            --if inventory ui is open, then open backpack and don't draw weapons
+            if inv_gui and inv_gui:IsShown() and inv_gui.mode == "inventory" then
+                log("[CORE] Restore weapons state: try open backpack")
+                liz_fdda_redone_backpack.try_open_backpack()
+                return states.success
+            end
+            --if inventory ui is not open, draw weapons that were previously in hands
+            if det_active then
+                log("[CORE] Restore weapons state: show detector")
+                local wpn = db.actor:active_slot()
+                db.actor:show_detector(wpn and wpn ~= 0)
+                det_active = nil
+            end
+            if not is_weapon_active() and cur_slot and cur_slot ~= 0 then
+                log("[CORE] Restore weapons state: show weapon")
+                db.actor:activate_slot(cur_slot)
+                cur_slot = nil
+            end
+            return states.success
+        end
+        return states.running
+    end
+    return a
+end
+
+--stop lam2
+function get_template_action_stop_lam2()
+    local a = {}
+    a.tag = "stop_lam2"
+    a.enter = function (self)
+        if not has_queued_actions() then
+            log("[CORE] Stop LAM2 State: on actions left, shutting down...")
+            set_current_action(nil)
+            b_is_running = false
+            SendCallback("on_anim_queue_stop")
+            UnregisterScriptCallback("actor_on_update", actor_on_update)
+        end
+        return states.success
+    end
+    return a
+end
+
+--composite action (sequence)
+--action succeeds when all sub-actions return success
+-- function get_template_action_composite()
+--     local a = {}
+--     a.actions = {}
+--     a.count = 0
+--     a.index = 0 --current action index
+--     a.time_current = 0
+--     a.time_last = 0
+--     a.add = function (self, action)
+--         self.actions[self.count] = action
+--         self.count = self.count + 1
+--     end
+--     a.enter = function(self)
+--       if self.count == 0 then return end
+--       if self.actions[self.index].enter then self.actions[self.index]:enter() end
+--     end
+--     a.execute = function (self, time)
+--         --fail if no states
+--         if self.count == 0 then
+--             return states.fail
+--         end
+--         --calc time
+--         self.time_current = self.time_current + (time - self.time_last)
+--         self.time_last = time
+--         --update
+--         local result = states.fail
+--         if self.actions[self.index].execute then
+--           result = self.actions[self.index]:execute(self.time_current) or states.fail
+--         end
+--         --
+--         if result == states.fail or result == states.running then
+--             return result
+--         end
+--         --go to next state
+--         if result == states.success then
+--             if self.actions[self.index].exit then self.actions[self.index]:exit() end
+--             self.time_current = 0
+--             self.index = self.index + 1
+--             if self.index >= self.count then
+--                 return states.success
+--             end
+--             if self.actions[self.index].enter then self.actions[self.index]:enter() end
+--             return states.running
+--         end
+--     end
+--     a.on_skip = function (self)
+--         for i = self.index, self.count-1 do
+--             if self.actions[i].on_skip then self.actions[i]:on_skip() end
+--         end
+--     end
+--     return a
+-- end
+
+--complex action
+--ight. not sure why i need this
+--u add actions to this complex action (state machine) and then add transitions between them
+--triggers are just booleans that will automatically reset to 'false' when transitioning from action to action
+function get_template_action_complex()
+    local a = {}
+    a.triggers = {}
+    a.actions = {}
+    a.transitions = {}
+    a.time_current = 0
+    a.time_last = 0
+    a.state = states.running
+    a.set_trigger = function (self, name)
+        self.triggers[name] = true
+    end
+    a.get_trigger = function (self, name)
+        return self.triggers[name]
+    end
+    a.add_action = function (self, name, action)
+        self.actions[name] = action
+    end
+    a.set_default_action = function (self, name)
+        self.default_state = name
+    end
+    a.add_transition = function (self, from, to, predicate)
+        if self.transitions[from] == nil then
+            self.transitions[from] = {}
+        end
+        table.insert(self.transitions[from], { predicate = predicate, to = to })
+    end
+    a.change_action = function (self, to)
+        if self.current_state then
+            if self.current_state.exit then self.current_state:exit() end
+        end
+        self.time_current = 0
+        self.current_state = self.actions[to]
+        self.current_transitions = self.transitions[to] or {}
+        if self.current_state and self.current_state.enter then self.current_state:enter() end
+        --reset triggers
+        for n,v in pairs(self.triggers) do
+            self.triggers[n] = false
+        end
+    end
+
+    a.enter = function (self)
+        self.time_current = 0
+        self.time_last = 0
+        self.state = states.running
+        self:change_action(self.default_state)
+    end
+    a.execute = function (self,time)
+        self.time_current = self.time_current + (time - self.time_last)
+        self.time_last = time
+        --handle transitions
+        for _, t in pairs(self.current_transitions) do
+            if t.predicate(self, self.current_state) then
+                self:change_action(t.to)
+                return states.running
+            end
+        end
+        --update state
+        -- local result = states.running
+        -- if self.current_state and self.current_state.execute then
+        --     result = self.current_state:execute(self.time_current) or states.running
+        -- end
+        if self.current_state and self.current_state.execute then
+            self.current_state:execute(self.time_current)
+        end
+
+        return self.state
+    end
+    return a
+end

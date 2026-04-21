@@ -1,0 +1,85 @@
+local active_slot, hud_fov, det_active_id
+
+function can_play_anim()
+	return db.actor:active_slot() == 0 and not db.actor:active_detector()
+end
+
+function play_guitar_anim(guitar)
+	hide_hud_inventory()
+	game.only_allow_movekeys(true)
+
+	hud_fov = ui_options.get("video/basic/hud_fov")
+	exec_console_cmd("hud_fov 0.55")
+
+	active_slot = db.actor:active_slot()
+
+	local det_active = db.actor:active_detector()
+	if det_active then
+		det_active:switch_state(2)
+		det_active_id = det_active:id()
+	end
+
+	db.actor:activate_slot(0)
+
+	CreateTimeEvent("guitar_anm_a", "guitar_anm_v", 1, function()
+		if can_play_anim() then
+			draw_guitar()
+			return true
+		end
+		return false
+	end)
+end
+
+function draw_guitar()
+	
+	game.play_hud_motion(2, "item_guit_anm_1_hud", "anm_guitar_holster", false, 1.25)
+	CreateTimeEvent("guitar_draw_play_a", "guitar_draw_play_v", 3.075, function()
+		if can_play_anim() then
+			play_guitar()
+			return true
+		end
+		return false
+	end)
+end
+
+function play_guitar()
+	level.disable_input()
+	local rnd = math.random(28)
+	local snd = sound_object("music\\guitar_" .. tostring(rnd))
+	local length = snd:length() / 1000
+	snd:play_no_feedback(db.actor, 0, 0, db.actor:position(), 1.0, 1.0)
+
+	game.play_hud_motion(2, "item_guit_anm_1_hud", "anm_guitar_show", false, 1)
+
+	CreateTimeEvent("guitar_holster_a", "guitar_holster_v", length, function()
+		if can_play_anim() then
+			holster_guitar(item_guit_anm_1_hud)
+			return true
+			end
+		return false
+	end)
+end
+
+function holster_guitar(item_guit_anm_1_hud)
+
+	game.play_hud_motion(2, "item_guit_anm_1_hud", "anm_guitar_holster", false, -1.25)
+	CreateTimeEvent("guitar_holster_restore_a", "guitar_holster_restore_v", 3, function()
+		restore()
+		return true
+	end)
+end
+
+function restore()
+	game.stop_hud_motion()
+	game.only_allow_movekeys(false)
+	level.enable_input()
+
+	exec_console_cmd("hud_fov " .. hud_fov)
+
+	db.actor:activate_slot(active_slot or 0)
+
+	local det_active = det_active_id and level.object_by_id(det_active_id)
+	if det_active then
+		det_active:switch_state(1)
+	end
+end

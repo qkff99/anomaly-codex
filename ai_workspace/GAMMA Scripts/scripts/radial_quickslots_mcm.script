@@ -1,0 +1,52 @@
+---==================================================================================================================---
+---                                                                                                                  ---
+---    Original Author(s) : RavenAscendant                                                                           ---
+---    Edited : NLTP_ASHES                                                                                           ---
+---    Date : 06/12/2023                                                                                             ---
+---    License : Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)           ---
+---                                                                                                                  ---
+---    Script used to define the options in MCM.                                                                     ---
+---                                                                                                                  ---
+---    If you do not have MCM installed, you can directly modify the values in the 'defaults' table just bellow.     ---
+---    Note that editing that table will require you to reload your save before changes can take effect.             ---
+---                                                                                                                  ---
+---==================================================================================================================---
+
+-- If you don't use MCM, change your defaults from here.
+local defaults = {
+    ["slow_motion"] = false,
+    ["slow_motion_factor"] = 0.5,
+    ["open_menu_key"] = DIK_keys.DIK_V,
+    ["debug_mode"] = false,
+}
+
+--- Function used to get a given setting defined in MCM.
+--- If MCM isn't installed, it will default back to a value in defaults table.
+--- @param key string
+--- @return any
+function get_config(key)
+    if ui_mcm then return ui_mcm.get("radial_quickslots/"..key) else return defaults[key] end
+end
+
+--- MCM UI definition.
+--- @return table
+function on_mcm_load()
+    op = {
+        id="radial_quickslots",
+        sh=true,
+        gr={
+            {                               type="slide",       text="ui_mcm_radial_quickslots_title",    link="ui_options_slider_gameplay_diff",    spacing=20,    size={512,50} },
+            {                               type="title",       text="ui_mcm_radial_quickslots_general_title"                                                                     },
+            { id="slow_motion",             type="check",       val=1,    def=false                                                                                               },
+            { id="slow_motion_factor",      type="track",       val=2,    def=0.5,    min=0.1,     max=0.9,    step=0.1                                                           },
+            {                               type="line"                                                                                                                           },
+            {                               type="title",       text="ui_mcm_radial_quickslots_keybindings_title"                                                                 },
+            { id="open_menu_key",           type="key_bind",    val=2,    def=DIK_keys.DIK_V                                                                                      },
+            {                               type="line"                                                                                                                           },
+            {                               type="title",       text="ui_mcm_radial_quickslots_technical_settings_title"                                                          },
+            { id="debug_mode",              type="check",       val=1,    def=false                                                                                               },
+        }
+    }
+
+    return op
+end

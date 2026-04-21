@@ -1,0 +1,318 @@
+------------------------------- VARIABLES -------------------------------
+local helmet_slot_id = 12
+local no_helmet = -1
+
+local ini_blacklist = {}
+
+local equipped_helmet = no_helmet
+enable_animations = false
+
+local headgear_hud_fov
+local cur_slot
+local det_active
+
+local is_deleyed_logic_handler_running = false
+local item_to_equip = nil
+local item_to_unequip = nil
+
+------------------------------- MONKEY PATCH TEST (plz don't blow up) -------------------------------
+local originalPIF = actor_effects.play_item_fx
+function actor_effects.play_item_fx(item)
+	if item == "helm" then return end
+	originalPIF(item)
+end
+
+
+------------------------------- CALLBACKS REGISTRATION -------------------------------
+function on_game_start()
+	RegisterScriptCallback("on_game_load", on_game_load)
+	RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+
+	RegisterScriptCallback("actor_item_to_slot", on_item_to_slot)
+	RegisterScriptCallback("actor_item_to_ruck", on_item_to_ruck)
+	RegisterScriptCallback("actor_on_item_drop", on_item_drop)
+end
+
+
+------------------------------- CALLBACKS  -------------------------------
+function on_game_load()
+	ini_blacklist = ini_file("items\\items\\headgear_blacklist.ltx")
+end
+
+
+function actor_on_first_update()
+	local helm = db.actor:item_in_slot(helmet_slot_id)
+	equipped_helmet = helm and helm:id() or no_helmet
+	Invoke("actor_on_first_update_te", 3, function() enable_animations = true end)
+end
+
+
+function on_item_to_slot(obj)
+	if IsHeadgear(obj) and obj:id() ~= equipped_helmet then
+		equipped_helmet = obj:id()
+
+		if not db.actor:alive() then return end
+		if not enable_animations then return end
+		if ini_blacklist:section_exist(obj:section()) then return end
+		if has_alife_info("bar_arena_fight") then return end
+		
+		item_to_equip = get_section_name(obj)
+		if not is_deleyed_logic_handler_running then
+			Invoke("on_item_to_slot_te", .1, deleyed_logic_handler)
+			is_deleyed_logic_handler_running = true
+			switch_mask_hud()
+		end
+	end
+end
+
+
+function on_item_to_ruck(obj)
+	if IsHeadgear(obj) and equipped_helmet == obj:id() then
+		equipped_helmet = no_helmet
+		
+		if not db.actor:alive() then return end
+		if not enable_animations then return end
+		if ini_blacklist:section_exist(obj:section()) then return end
+		if has_alife_info("bar_arena_fight") then return end
+
+		item_to_unequip = get_section_name(obj)
+		if not is_deleyed_logic_handler_running then
+			Invoke("on_item_to_ruck_te", .1, deleyed_logic_handler)
+			is_deleyed_logic_handler_running = true
+			switch_mask_hud()
+		end
+	end
+end
+
+
+function on_item_drop(obj)
+	if IsHeadgear(obj) and equipped_helmet == obj:id() then
+		equipped_helmet = no_helmet
+
+		if not db.actor:alive() then return end
+		if not enable_animations then return end
+		if ini_blacklist:section_exist(obj:section()) then return end
+		if has_alife_info("bar_arena_fight") then return end
+
+		item_to_unequip = get_section_name(obj)
+		if not is_deleyed_logic_handler_running then
+			Invoke("on_item_drop_te", .1, deleyed_logic_handler)
+			is_deleyed_logic_handler_running = true
+			switch_mask_hud()
+		end
+	end
+end
+
+
+------------------------------- PUBLIC METHODS USED BY HOTKEY TOGGLE SCRIPT  -------------------------------
+-- boy I don't like this code. I need to refactor it somehow
+function on_toggle_equip(obj)
+	if ini_blacklist:section_exist(obj:section()) then return end
+	if enable_animations then
+		play_mask_animation(get_section_name(obj), true, nil, function()
+			enable_animations = false
+			db.actor:move_to_slot(obj, 12)
+			Invoke("on_toggle_equip_te0", 0.1, function() enable_animations = true end)
+		end)
+	else
+		enable_animations = false
+		db.actor:move_to_slot(obj, 12)
+		Invoke("on_toggle_equip_te1", 0.1, function() enable_animations = true end)
+	end
+end
+
+
+function on_toggle_unequip(obj)
+	if ini_blacklist:section_exist(obj:section()) then return end
+	if enable_animations then
+		play_mask_animation(get_section_name(obj), false, switch_mask_hud, function()
+			enable_animations = false
+			db.actor:move_to_ruck(obj)
+			Invoke("on_toggle_unequip_te1", 0.1, function() enable_animations = true end)
+			Invoke("on_toggle_unequip_te2", 0.1, switch_mask_hud)
+		end)
+	else
+		enable_animations = false
+		db.actor:move_to_ruck(obj)
+		Invoke("on_toggle_unequip_te3", 0.1, function() enable_animations = true end)
+	end
+end
+
+
+------------------------------- MAIN -------------------------------
+function deleyed_logic_handler()
+	if item_to_unequip and item_to_equip then
+		play_mask_animation(item_to_unequip, false, nil, function()
+			-- Invoke("deleyed_logic_handler_te", 0.01, function()
+				play_mask_animation(item_to_equip, true, nil, switch_mask_hud)
+				item_to_equip = nil
+				item_to_unequip = nil
+				is_deleyed_logic_handler_running = false
+			-- end)
+		end)
+	elseif item_to_unequip and not item_to_equip then
+		play_mask_animation(item_to_unequip, false, nil, switch_mask_hud)
+		item_to_equip = nil
+		item_to_unequip = nil
+		is_deleyed_logic_handler_running = false
+	elseif not item_to_unequip and item_to_equip then
+		play_mask_animation(item_to_equip, true, nil, switch_mask_hud)
+		item_to_equip = nil
+		item_to_unequip = nil
+		is_deleyed_logic_handler_running = false
+	end
+end
+
+
+function play_mask_animation(m_section, is_equip, on_start_callback, on_end_callback)
+	prepare_for_animation(m_section)
+	Invoke("play_mask_animation_te0", 0.1, function()
+		wait_for_free_hands(function()
+			local ini_params = get_ini_params(m_section, is_equip)
+			local anm_length = get_animation_length(ini_params.section_name, ini_params.anim_type)
+			if ini_params.fade_use then
+				Invoke("play_mask_animation_te1", ini_params.fade_start, function() level.add_pp_effector("deimos_short.ppe", 4288, false) end)
+				Invoke("play_mask_animation_te2", ini_params.fade_end, function() level.remove_pp_effector(4288) end)
+			end
+			Invoke("play_mask_animation_te3", ini_params.anim_delay, function()
+				if on_start_callback then on_start_callback() end
+				xr_effects.play_snd(db.actor, nil, {[1] = ini_params.snd})
+				level.add_cam_effector(ini_params.cam, 1300, false, "")
+				game.play_hud_motion(2, ini_params.section_name, ini_params.anim_type, false, 1)
+			end)
+			Invoke("play_mask_animation_te4", anm_length + ini_params.anim_delay + 0.25, function()
+				restore_after_animation()
+				if on_end_callback then on_end_callback() end
+			end)
+		end)
+	end)
+end
+
+
+------------------------------- HELPER FUNCTIONS -------------------------------
+function prepare_for_animation(m_section)
+	enable_animations = false
+	hide_hud_inventory()
+	game.only_allow_movekeys(true)
+	set_hud_fov(m_section)
+	cur_slot = db.actor:active_slot()
+	det_active = db.actor:active_detector() or nil
+	if det_active then 
+		if uni_anim_detectors then
+			uni_anim_detectors.force_quick = true
+		end
+		det_active:switch_state(2) 
+	end
+	db.actor:activate_slot(0)
+end
+
+
+function restore_after_animation()
+	enable_animations = true
+	game.only_allow_movekeys(false)
+	restore_hud_fov()
+	db.actor:activate_slot(cur_slot or 0)
+	if det_active then det_active:switch_state(1) end
+end
+
+
+function set_hud_fov(m_section)
+	local m_hud_fov = ini_sys:r_float_ex(m_section, "headgear_fov")
+	if m_hud_fov == nil then
+		headgear_hud_fov = nil
+	else
+		headgear_hud_fov = ui_options.get("video/basic/hud_fov")
+		exec_console_cmd("hud_fov " .. m_hud_fov)
+	end
+end
+
+
+function restore_hud_fov()
+	if headgear_hud_fov == nil then return end
+	exec_console_cmd("hud_fov " .. headgear_hud_fov)
+end
+
+
+function wait_for_free_hands(action_to_perform)
+	local force_timer = 0
+	CreateTimeEvent("headgear_animations", "wait_for_free_hands_te", 0, function()
+		if
+			(
+				db.actor:active_slot() == 0
+				and not db.actor:active_detector()
+				and (not enhanced_animations or not enhanced_animations.used_item)
+			)
+			or (force_timer > 5)
+		then
+			Invoke("waint_for_free_hands_te", 0, action_to_perform) --i don understan y this works (ノへ￣、)
+			-- action_to_perform()
+			return true
+		else
+			-- force_timer = force_timer + 0.25
+			force_timer = force_timer + (device().time_delta/1000)
+			--printf("LIZ: %s", force_timer)
+		end
+		return false
+	end)
+end
+
+
+function switch_mask_hud()
+	if ui_options.get("video/player/mask_hud") then
+		actor_effects.switch_helm()
+		actor_effects.Update_Mask(db.actor)
+	end
+end
+
+
+function get_animation_length(section, animation_name)
+	local length = 0
+	length = length + game.get_motion_length(section, animation_name, 1) / 1000
+	return length
+end
+
+
+function get_section_name(obj)
+	local m_section
+	m_section = obj:section() .. "_headgear_hud"
+	return m_section
+end
+
+
+function get_ini_params(section, is_equip)
+	local m_section = ini_sys:section_exist(section) and section or "gasmask_headgear_hud"
+	local ini_params
+	if is_equip then
+		ini_params = {
+			section_name = m_section,
+			anim_type = "anm_equip",
+			anim_delay = 0,
+			cam = ini_sys:r_string_ex(m_section, "cam_equip"),
+			fade_use = ini_sys:r_bool_ex(m_section, "fade_use"),
+			fade_start = ini_sys:r_float_ex(m_section, "fade_equip_start"),
+			fade_end = ini_sys:r_float_ex(m_section, "fade_equip_end"),
+			snd = ini_sys:r_string_ex(m_section, "snd_equip"),
+		}
+	else
+		ini_params = {
+			section_name = m_section,
+			anim_type = "anm_unequip",
+			anim_delay = 0.4,
+			cam = ini_sys:r_string_ex(m_section, "cam_unequip"),
+			fade_use = ini_sys:r_bool_ex(m_section, "fade_use"),
+			fade_start = ini_sys:r_float_ex(m_section, "fade_unequip_start"),
+			fade_end = ini_sys:r_float_ex(m_section, "fade_unequip_end"),
+			snd = ini_sys:r_string_ex(m_section, "snd_unequip"),
+		}
+	end
+	return ini_params
+end
+
+
+function Invoke(name, time, action)
+	CreateTimeEvent("headgear_animations", name, time, function()
+		action()
+		return true
+	end)
+end
+

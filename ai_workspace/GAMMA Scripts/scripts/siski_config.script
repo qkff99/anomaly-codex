@@ -1,0 +1,979 @@
+siski = siski or {}
+
+local type = _G.type
+local pcall = _G.pcall
+local require = _G.require
+local setmetatable = _G.setmetatable
+local tonumber = _G.tonumber
+local tostring = _G.tostring
+local ini_file = _G.ini_file
+local time_global = _G.time_global
+
+local MCM_NIL = {}
+local LTX_NIL = {}
+
+local function ensure_class()
+    local type = type
+    if type(siski.class) == "function" then
+        local ok, probe = pcall(siski.class, "_probe")
+        if ok and type(probe) == "table" then
+            return
+        end
+    end
+
+    if require then
+        pcall(require, "siski_oop")
+    end
+
+    local function define()
+        function siski.class(name)
+            local cls = {}
+            cls.__index = cls
+            cls.__name = name or "class"
+            function cls.new(...)
+                local self = setmetatable({}, cls)
+                if self.__init then
+                    self:__init(...)
+                end
+                return self
+            end
+            return cls
+        end
+    end
+
+    if type(siski.class) ~= "function" then
+        define()
+        return
+    end
+
+    local ok2, probe2 = pcall(siski.class, "_probe")
+    if not (ok2 and type(probe2) == "table") then
+        define()
+    end
+end
+
+ensure_class()
+
+local Config = siski.class("Config")
+Config.__index = Config
+
+function Config:__init()
+    self.ini = nil
+    self.ini_path = "siski_settings.ltx"
+    self.blacklists_ini = nil
+    self.blacklists_ini_path = "siski_smart_blacklists.ltx"
+    self.smart_task_ini = nil
+    self.smart_task_ini_path = "siski_smart_tasklist.ltx"
+    self.last_mcm_read_tg = 0
+    self.mcm_cache_ms = 400
+    self.mcm_cache = {}
+    self.mcm_path_cache = {}
+    self.value_cache_ms = 500
+    self.value_cache = {}
+    self.line_cache = {}
+    self.line_cache_ms = 5000
+    self.section_cache = {}
+    self.section_cache_ms = 5000
+    self.section_kv_cache = {}
+    self.section_kv_cache_ms = 5000
+    self.smart_blacklists_cache_ms = 5000
+    self.smart_blacklists_cache = {
+        tg = 0,
+        levels = {},
+        global_set = nil,
+        faction_levels = {},
+        faction_smarts = {},
+        section_levels = {},
+        section_smarts = {},
+    }
+    self.smart_task_cache = {
+        tasktype_by_smart = nil,
+        allowed_tokens_by_tasktype = {},
+        mode_by_tasktype_smart = {},
+        whitelist_tokens_by_tasktype_smart = {},
+        blacklist_tokens_by_tasktype_smart = {},
+    }
+    self.runtime_overrides = {}
+    self.bool_keys = {
+        enabled = true,
+        debug_hud_enabled = true,
+        explore_enabled = true,
+        smart_tasks_enabled = true,
+        smart_tasks_control_enabled = true,
+        story_events_enabled = true,
+        story_events_north_migration_enabled = true,
+        story_psy_watchdog_enabled = true,
+        mutant_sim_enabled = true,
+        mutant_explore_enabled = true,
+        mutant_hunt_enabled = true,
+        artefact_enabled = true,
+        populate_enabled = true,
+        base_camping_enabled = true,
+        base_filler_enabled = true,
+        patrol_enabled = true,
+        mutant_patrol_enabled = true,
+        trade_enabled = true,
+        loot_enabled = true,
+        loot_disable_near_actor_limit = true,
+        loot_unlock_corpses = true,
+        loot_collect_during_surge = true,
+        loot_protect_quest_corpses_enabled = true,
+        loot_items_enabled = true,
+        loot_items_allow_unseen = true,
+        night_rest_enabled = true,
+        target_sync_enabled = true,
+        online_intent_enforce_enabled = true,
+        log_filter_active_level_only = true,
+        log_filter_active_level_drop_unknown = true,
+        trade_axr_buy_all_enabled = true,
+        npc_faction_override_enabled = true,
+    }
+end
+
+function Config:_get_mcm_path(key)
+    if type(key) ~= "string" or key == "" then
+        return nil
+    end
+    if self.mcm_path_cache[key] ~= nil then
+        return self.mcm_path_cache[key] or nil
+    end
+
+    local schema = siski and siski.mcm_schema or nil
+    if not (type(schema) == "table" and type(schema.get_path) == "function") and require then
+        pcall(require, "siski_mcm_schema")
+        schema = siski and siski.mcm_schema or nil
+    end
+
+    local path = nil
+    if type(schema) == "table" and type(schema.get_path) == "function" then
+        local ok, res = pcall(schema.get_path, key)
+        if ok and type(res) == "string" and res ~= "" then
+            path = res
+        end
+    end
+
+    self.mcm_path_cache[key] = path or false
+    return path
+end
+
+function Config:_tg()
+    return (time_global and time_global()) or 0
+end
+
+function Config:_get_ini()
+    if self.ini then return self.ini end
+    if ini_file then
+        local ok, res = pcall(function() return ini_file(self.ini_path) end)
+        if ok then self.ini = res end
+    end
+    return self.ini
+end
+
+function Config:_get_blacklists_ini()
+    if self.blacklists_ini then return self.blacklists_ini end
+    if ini_file then
+        local ok, res = pcall(function() return ini_file(self.blacklists_ini_path) end)
+        if ok then self.blacklists_ini = res end
+    end
+    return self.blacklists_ini
+end
+
+function Config:_get_smart_task_ini()
+    if self.smart_task_ini then return self.smart_task_ini end
+    if ini_file then
+        local ok, res = pcall(function() return ini_file(self.smart_task_ini_path) end)
+        if ok then self.smart_task_ini = res end
+    end
+    return self.smart_task_ini
+end
+
+function Config:_read_ltx_raw(key)
+    local i = self:_get_ini()
+    if not i then return nil end
+    local ok, res = pcall(function()
+        if i:line_exist("siski", key) then
+            return i:r_string("siski", key)
+        end
+        return nil
+    end)
+    if not ok or res == nil then return nil end
+
+    if res == "true" then return true end
+    if res == "false" then return false end
+    local n = tonumber(res)
+    if n ~= nil then return n end
+    return res
+end
+
+function Config:_read_ltx(key, default)
+    local value = self:_read_ltx_raw(key)
+    if value == nil then
+        return default
+    end
+    return value
+end
+
+function Config:_read_mcm(key)
+    if not (ui_mcm and ui_mcm.get) then return nil end
+    local now = self:_tg()
+    if now > self.last_mcm_read_tg + self.mcm_cache_ms then
+        self.mcm_cache = {}
+        self.last_mcm_read_tg = now
+    end
+    if self.mcm_cache[key] ~= nil then
+        if self.mcm_cache[key] == MCM_NIL then
+            return nil
+        end
+        return self.mcm_cache[key]
+    end
+    local string_sub = string.sub
+
+    local function normalize(v)
+        if v == nil then return nil end
+        if type(v) == "string" then
+            if v == "true" then return true end
+            if v == "false" then return false end
+            local n = tonumber(v)
+            if n ~= nil then v = n end
+        end
+        if (key == "enabled") or (type(key) == "string" and string_sub(key, -8) == "_enabled") or (self.bool_keys and self.bool_keys[key]) then
+            if v == true or v == false then return v end
+            if type(v) == "number" then
+                if v == 0 then return false end
+                if v == 1 then return true end
+            end
+        end
+        return v
+    end
+
+    local res = nil
+    local full = self:_get_mcm_path(key)
+    if full then
+        local ok1, r1 = pcall(function() return ui_mcm.get(full) end)
+        if ok1 and r1 ~= nil then
+            res = r1
+        end
+    end
+
+    if res ~= nil then
+        res = normalize(res)
+        self.mcm_cache[key] = res
+        return res
+    end
+    self.mcm_cache[key] = MCM_NIL
+    return nil
+end
+
+function Config:_parse_csv(s)
+    if type(s) ~= "string" then return {} end
+    local string_gmatch = string.gmatch
+    local string_gsub = string.gsub
+    local out = {}
+    local n = 0
+    for token in string_gmatch(s, "([^,]+)") do
+        local t = string_gsub(token, "^%s*(.-)%s*$", "%1")
+        if t ~= "" then
+            n = n + 1
+            out[n] = t
+        end
+    end
+    return out
+end
+
+function Config:_get_ltx_cached(key, default)
+    if type(key) ~= "string" or key == "" then return default end
+
+    local now = self:_tg()
+    local cached = self.value_cache[key]
+    if cached and cached.tg and (now < (cached.tg + self.value_cache_ms)) then
+        if cached.value == LTX_NIL then
+            return default
+        end
+        return cached.value
+    end
+
+    local value = self:_read_ltx_raw(key)
+    if value == nil then
+        self.value_cache[key] = { tg = now, value = LTX_NIL }
+        return default
+    end
+
+    self.value_cache[key] = { tg = now, value = value }
+    return value
+end
+
+function Config:_read_line_csv(section_name, key)
+    local i = self:_get_ini()
+    if not (i and section_name and key) then return {} end
+    local ok, res = pcall(function()
+        if i:line_exist(section_name, key) then
+            return i:r_string(section_name, key)
+        end
+        return nil
+    end)
+    if not (ok and res) then return {} end
+    return self:_parse_csv(res)
+end
+
+function Config:_get_line_csv(section_name, key)
+    if not (type(section_name) == "string" and section_name ~= "" and type(key) == "string" and key ~= "") then
+        return {}
+    end
+
+    local cache_key = section_name .. "|" .. key
+    local now = self:_tg()
+    local cached = self.line_cache[cache_key]
+    if cached and cached.tg and (now < (cached.tg + self.line_cache_ms)) and cached.list ~= nil then
+        return cached.list
+    end
+
+    local list = self:_read_line_csv(section_name, key)
+    self.line_cache[cache_key] = { tg = now, list = list }
+    return list
+end
+
+function Config:_read_section_list(section)
+    local i = self:_get_ini()
+    if not (i and section) then return {} end
+    local string_sub = string.sub
+    local string_gsub = string.gsub
+    local ok_exist, exist = pcall(function() return i:section_exist(section) end)
+    if not (ok_exist and exist) then return {} end
+
+    local ok_cnt, cnt = pcall(function() return i:line_count(section) end)
+    cnt = ok_cnt and tonumber(cnt) or nil
+    if not cnt or cnt <= 0 then return {} end
+
+    local out = {}
+    local n = 0
+    for idx = 0, cnt - 1 do
+        local ok_line, k, v = pcall(function() return i:r_line(section, idx) end)
+        if ok_line then
+            local name = nil
+            if type(k) == "string" and k ~= "" then
+                name = k
+            elseif type(v) == "string" and v ~= "" then
+                name = v
+            end
+            if name then
+                name = string_gsub(name, "^%s*(.-)%s*$", "%1")
+                if name ~= "" and string_sub(name, 1, 1) ~= ";" then
+                    n = n + 1
+                    out[n] = name
+                end
+            end
+        end
+    end
+    return out
+end
+
+function Config:_get_section_list(section)
+    if type(section) ~= "string" or section == "" then return {} end
+    local now = self:_tg()
+    local c = self.section_cache[section]
+    if c and c.tg and (now < (c.tg + self.section_cache_ms)) and c.list ~= nil then
+        return c.list
+    end
+
+    local list = self:_read_section_list(section)
+    if not list or #list == 0 then
+        self.section_cache[section] = { tg = now, list = {}, set = nil }
+        return {}
+    end
+
+    self.section_cache[section] = { tg = now, list = list, set = nil }
+    return list
+end
+
+function Config:_read_section_kv_map(section)
+    local i = self:_get_ini()
+    if not (i and type(section) == "string" and section ~= "") then return {} end
+
+    local ok_exist, exist = pcall(function() return i:section_exist(section) end)
+    if not (ok_exist and exist) then return {} end
+
+    local ok_cnt, cnt = pcall(function() return i:line_count(section) end)
+    cnt = ok_cnt and tonumber(cnt) or nil
+    if not cnt or cnt <= 0 then return {} end
+
+    local string_gsub = string.gsub
+    local out = {}
+    for idx = 0, cnt - 1 do
+        local ok_line, result, k, v = pcall(function() return i:r_line(section, idx) end)
+        if ok_line and result then
+            local key = type(k) == "string" and string_gsub(k, "^%s*(.-)%s*$", "%1") or ""
+            local value = type(v) == "string" and string_gsub(v, "^%s*(.-)%s*$", "%1") or ""
+            if key ~= "" and string_gsub(key, "^%s*;.*$", "") ~= "" then
+                value = string_gsub(value, "%s*;.*$", "")
+                value = string_gsub(value, "^%s*(.-)%s*$", "%1")
+                if value ~= "" then
+                    out[key] = value
+                end
+            end
+        end
+    end
+    return out
+end
+
+function Config:_get_section_kv_map(section)
+    if type(section) ~= "string" or section == "" then return {} end
+    local now = self:_tg()
+    local c = self.section_kv_cache[section]
+    if c and c.tg and (now < (c.tg + self.section_kv_cache_ms)) and c.map ~= nil then
+        return c.map
+    end
+
+    local map = self:_read_section_kv_map(section)
+    self.section_kv_cache[section] = { tg = now, map = map or {} }
+    return map or {}
+end
+
+function Config:_get_section_set(section)
+    if type(section) ~= "string" or section == "" then return nil end
+    local now = self:_tg()
+    local c = self.section_cache[section]
+    if c and c.tg and (now < (c.tg + self.section_cache_ms)) and c.set ~= nil then
+        return c.set
+    end
+
+    local list = self:_get_section_list(section)
+    if not list or #list == 0 then
+        self.section_cache[section] = { tg = now, list = {}, set = nil }
+        return nil
+    end
+
+    local set = {}
+    for i = 1, #list do
+        set[list[i]] = true
+    end
+    self.section_cache[section] = { tg = now, list = list, set = set }
+    return set
+end
+
+function Config:_get(key, default)
+    if key == nil then return default end
+    if self.runtime_overrides and self.runtime_overrides[key] ~= nil then
+        return self.runtime_overrides[key]
+    end
+    local m = self:_read_mcm(key)
+    if m ~= nil then return m end
+    return self:_get_ltx_cached(key, default)
+end
+
+function Config:_set_runtime_override(key, value)
+    if key == nil then return end
+    self.runtime_overrides = self.runtime_overrides or {}
+    self.runtime_overrides[key] = value
+    self.value_cache = {}
+end
+
+function Config:_clear_runtime_override(key)
+    if not self.runtime_overrides then return end
+    if key == nil then
+        self.runtime_overrides = {}
+        self.value_cache = {}
+        return
+    end
+    self.runtime_overrides[key] = nil
+    self.value_cache = {}
+end
+
+function Config:_clear_mcm_cache()
+    self.mcm_cache = {}
+    self.last_mcm_read_tg = 0
+    self.value_cache = {}
+    self.smart_task_cache = {
+        tasktype_by_smart = nil,
+        allowed_tokens_by_tasktype = {},
+        mode_by_tasktype_smart = {},
+        whitelist_tokens_by_tasktype_smart = {},
+        blacklist_tokens_by_tasktype_smart = {},
+    }
+end
+
+function Config:_get_anomaly_smarts(level_name)
+    return self:_get_line_csv("anomaly_smarts", level_name)
+end
+
+function Config:_get_level_bases(level_name)
+    return self:_get_line_csv("level_bases", level_name)
+end
+
+function Config:_get_level_bases_levels()
+    return self:_get_section_list("level_bases")
+end
+
+function Config:_get_trade_smarts(level_name)
+    return self:_get_line_csv("trade_smarts", level_name)
+end
+
+function Config:_read_smart_task_section_list(section)
+    local i = self:_get_smart_task_ini()
+    if not (i and section) then return {} end
+    local string_sub = string.sub
+    local string_gsub = string.gsub
+    local ok_exist, exist = pcall(function() return i:section_exist(section) end)
+    if not (ok_exist and exist) then return {} end
+
+    local ok_cnt, cnt = pcall(function() return i:line_count(section) end)
+    cnt = ok_cnt and tonumber(cnt) or nil
+    if not cnt or cnt <= 0 then return {} end
+
+    local out = {}
+    local seen = {}
+    local n = 0
+    for idx = 0, cnt - 1 do
+        local ok_line, k, v = pcall(function() return i:r_line(section, idx) end)
+        if ok_line then
+            local name = nil
+            if type(k) == "string" and k ~= "" then
+                name = k
+            elseif type(v) == "string" and v ~= "" then
+                name = v
+            end
+            if name then
+                name = string_gsub(name, "%s*;.*$", "")
+                name = string_gsub(name, "^%s*(.-)%s*$", "%1")
+                if name ~= "" and string_sub(name, 1, 1) ~= ";" then
+                    local lower_name = string.lower(name)
+                    if seen[lower_name] ~= true then
+                        seen[lower_name] = true
+                        n = n + 1
+                        out[n] = lower_name
+                    end
+                end
+            end
+        end
+    end
+    return out
+end
+
+function Config:_read_smart_task_section_kv_map(section)
+    local i = self:_get_smart_task_ini()
+    if not (i and type(section) == "string" and section ~= "") then return {} end
+
+    local ok_exist, exist = pcall(function() return i:section_exist(section) end)
+    if not (ok_exist and exist) then return {} end
+
+    local ok_cnt, cnt = pcall(function() return i:line_count(section) end)
+    cnt = ok_cnt and tonumber(cnt) or nil
+    if not cnt or cnt <= 0 then return {} end
+
+    local string_gsub = string.gsub
+    local string_lower = string.lower
+    local out = {}
+    for idx = 0, cnt - 1 do
+        local ok_line, result, k, v = pcall(function() return i:r_line(section, idx) end)
+        if ok_line and result then
+            local key = type(k) == "string" and string_gsub(k, "^%s*(.-)%s*$", "%1") or ""
+            local value = type(v) == "string" and string_gsub(v, "^%s*(.-)%s*$", "%1") or ""
+            if key ~= "" and string_gsub(key, "^%s*;.*$", "") ~= "" then
+                key = string_lower(key)
+                value = string_gsub(value, "%s*;.*$", "")
+                value = string_gsub(value, "^%s*(.-)%s*$", "%1")
+                if value ~= "" then
+                    out[key] = string_lower(value)
+                end
+            end
+        end
+    end
+    return out
+end
+
+function Config:_read_smart_task_line_csv(section_name, key)
+    local i = self:_get_smart_task_ini()
+    if not (i and section_name and key) then return {} end
+    local ok, res = pcall(function()
+        if i:line_exist(section_name, key) then
+            return i:r_string(section_name, key)
+        end
+        return nil
+    end)
+    if not (ok and res) then return {} end
+    local list = self:_parse_csv(res)
+    if not list or #list == 0 then
+        return {}
+    end
+
+    local out = {}
+    local seen = {}
+    local string_gsub = string.gsub
+    local string_lower = string.lower
+    local n = 0
+    for idx = 1, #list do
+        local token = list[idx]
+        if type(token) == "string" then
+            token = string_gsub(token, "%s*;.*$", "")
+            token = string_lower(string_gsub(token, "^%s*(.-)%s*$", "%1"))
+            if token ~= "" and seen[token] ~= true then
+                seen[token] = true
+                n = n + 1
+                out[n] = token
+            end
+        end
+    end
+    return out
+end
+
+function Config:_read_smart_task_kv(section_name, key)
+    local i = self:_get_smart_task_ini()
+    if not (i and section_name and key) then return nil end
+    local ok, res = pcall(function()
+        if i:line_exist(section_name, key) then
+            return i:r_string(section_name, key)
+        end
+        return nil
+    end)
+    if not (ok and type(res) == "string") then
+        return nil
+    end
+    local value = string.lower((string.gsub(res, "^%s*(.-)%s*$", "%1")))
+    if value == "" then
+        return nil
+    end
+    return value
+end
+
+function Config:_get_smart_task_map()
+    local cache = self.smart_task_cache
+    if type(cache.tasktype_by_smart) == "table" then
+        return cache.tasktype_by_smart
+    end
+    local map = self:_read_smart_task_section_kv_map("siski_smart_tasks")
+    cache.tasktype_by_smart = map or {}
+    return cache.tasktype_by_smart
+end
+
+function Config:_get_smart_task_type(smart_name)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return nil
+    end
+    local map = self:_get_smart_task_map()
+    local key = string.lower((string.gsub(smart_name, "^%s*(.-)%s*$", "%1")))
+    local tasktype = map and map[key] or nil
+    if type(tasktype) == "string" and tasktype ~= "" then
+        return tasktype
+    end
+    return nil
+end
+
+function Config:_get_smart_task_allowed_tokens(tasktype)
+    if type(tasktype) ~= "string" or tasktype == "" then
+        return {}
+    end
+    local key = string.lower((string.gsub(tasktype, "^%s*(.-)%s*$", "%1")))
+    local cache = self.smart_task_cache.allowed_tokens_by_tasktype
+    if cache[key] ~= nil then
+        return cache[key]
+    end
+    local list = self:_read_smart_task_section_list("siski_smart_task_" .. key)
+    cache[key] = list or {}
+    return cache[key]
+end
+
+function Config:_get_smart_task_mode(tasktype, smart_name)
+    if type(tasktype) ~= "string" or tasktype == "" then
+        return nil
+    end
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return nil
+    end
+    local task_key = string.lower((string.gsub(tasktype, "^%s*(.-)%s*$", "%1")))
+    local smart_key = string.lower((string.gsub(smart_name, "^%s*(.-)%s*$", "%1")))
+    local cache_key = task_key .. "|" .. smart_key
+    local cache = self.smart_task_cache.mode_by_tasktype_smart
+    if cache[cache_key] ~= nil then
+        return cache[cache_key] or nil
+    end
+    local value = self:_read_smart_task_kv("siski_smart_task_" .. task_key .. "_mode", smart_key)
+    cache[cache_key] = value or false
+    return cache[cache_key] or nil
+end
+
+function Config:_get_smart_task_blacklist_tokens(tasktype, smart_name)
+    if type(tasktype) ~= "string" or tasktype == "" then
+        return {}
+    end
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return {}
+    end
+    local task_key = string.lower((string.gsub(tasktype, "^%s*(.-)%s*$", "%1")))
+    local smart_key = string.lower((string.gsub(smart_name, "^%s*(.-)%s*$", "%1")))
+    local cache_key = task_key .. "|" .. smart_key
+    local cache = self.smart_task_cache.blacklist_tokens_by_tasktype_smart
+    if cache[cache_key] ~= nil then
+        return cache[cache_key]
+    end
+    local list = self:_read_smart_task_line_csv("siski_smart_task_" .. task_key .. "_blacklist", smart_key)
+    cache[cache_key] = list or {}
+    return cache[cache_key]
+end
+
+function Config:_get_smart_task_whitelist_tokens(tasktype, smart_name)
+    if type(tasktype) ~= "string" or tasktype == "" then
+        return {}
+    end
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return {}
+    end
+    local task_key = string.lower((string.gsub(tasktype, "^%s*(.-)%s*$", "%1")))
+    local smart_key = string.lower((string.gsub(smart_name, "^%s*(.-)%s*$", "%1")))
+    local cache_key = task_key .. "|" .. smart_key
+    local cache = self.smart_task_cache.whitelist_tokens_by_tasktype_smart
+    if cache[cache_key] ~= nil then
+        return cache[cache_key]
+    end
+    local list = self:_read_smart_task_line_csv("siski_smart_task_" .. task_key .. "_whitelist", smart_key)
+    cache[cache_key] = list or {}
+    return cache[cache_key]
+end
+
+function Config:_read_section_kv(section, key)
+    if not (section and key) then return nil end
+    local bl = self:_get_blacklists_ini()
+    if bl then
+        local ok, res = pcall(function()
+            if bl:line_exist(section, key) then
+                return bl:r_string(section, key)
+            end
+            return nil
+        end)
+        if ok and res ~= nil then
+            return res
+        end
+    end
+
+    local i = self:_get_ini()
+    if not i then return nil end
+    local ok, res = pcall(function()
+        if i:line_exist(section, key) then
+            return i:r_string(section, key)
+        end
+        return nil
+    end)
+    return ok and res or nil
+end
+
+function Config:_blacklists_cache_touch()
+    local now = self:_tg()
+    local c = self.smart_blacklists_cache
+    if type(c) ~= "table" or type(c.tg) ~= "number" or now > (c.tg + self.smart_blacklists_cache_ms) then
+        self.smart_blacklists_cache = {
+            tg = now,
+            levels = {},
+            global_set = nil,
+            global_levels = {},
+            faction_levels = {},
+            faction_smarts = {},
+            section_levels = {},
+            section_smarts = {},
+        }
+        return self.smart_blacklists_cache
+    end
+    return c
+end
+
+function Config:_normalize_faction_key(name)
+    if type(name) ~= "string" then return nil end
+    local string_gsub = string.gsub
+    local string_lower = string.lower
+    local key = string_lower(string_gsub(name, "^%s*(.-)%s*$", "%1"))
+    if key == "" then return nil end
+    if key == "mutant" or key == "mutants" or key == "monsters" then
+        key = "monster"
+    end
+
+    local alias = self:_get_faction_alias(key)
+    if type(alias) == "string" and alias ~= "" then
+        alias = string_lower(string_gsub(alias, "^%s*(.-)%s*$", "%1"))
+        if alias ~= "" then
+            key = alias
+        end
+    end
+    if key == "mutant" or key == "mutants" or key == "monsters" then
+        key = "monster"
+    end
+    return key
+end
+
+function Config:_normalize_section_key(name)
+    if type(name) ~= "string" then return nil end
+    local string_gsub = string.gsub
+    local string_lower = string.lower
+    local key = string_lower(string_gsub(name, "^%s*(.-)%s*$", "%1"))
+    if key == "" then return nil end
+    return key
+end
+
+function Config:_parse_blacklist_value(raw)
+    if type(raw) ~= "string" then return nil end
+    local string_gsub = string.gsub
+    local string_lower = string.lower
+    raw = string_gsub(raw, "%s*;.*$", "")
+    raw = string_gsub(raw, "^%s*(.-)%s*$", "%1")
+    if raw == "" then return nil end
+    if string_lower(raw) == "all" then
+        return { all = true }
+    end
+    local list = self:_parse_csv(raw)
+    if not list or #list == 0 then
+        return nil
+    end
+    local set = {}
+    for i = 1, #list do
+        set[list[i]] = true
+    end
+    return { set = set }
+end
+
+function Config:_get_smart_blacklists_rule(level_name)
+    if type(level_name) ~= "string" or level_name == "" then return nil end
+    local c = self:_blacklists_cache_touch()
+    if c.levels[level_name] ~= nil then
+        return c.levels[level_name] or nil
+    end
+    local raw = self:_read_section_kv("siski_smart_blacklists", level_name)
+    local parsed = self:_parse_blacklist_value(raw)
+    c.levels[level_name] = parsed or false
+    return parsed
+end
+
+function Config:_get_smart_blacklists_global_set()
+    local c = self:_blacklists_cache_touch()
+    if c.global_set ~= nil then
+        return c.global_set or nil
+    end
+    local raw = self:_read_section_kv("siski_smart_blacklists", "*") or self:_read_section_kv("siski_smart_blacklists", "global")
+    local parsed = self:_parse_blacklist_value(raw)
+    local set = parsed and parsed.set or nil
+    c.global_set = set or false
+    return set
+end
+
+function Config:_is_level_globally_blacklisted(level_name)
+    if type(level_name) ~= "string" or level_name == "" then return false end
+    local c = self:_blacklists_cache_touch()
+    if c.global_levels[level_name] ~= nil then
+        return c.global_levels[level_name] == true
+    end
+
+    local raw = self:_read_section_kv("siski_global_level_blacklists", level_name)
+    local blocked = false
+    if type(raw) == "string" then
+        local string_gsub = string.gsub
+        local string_lower = string.lower
+        raw = string_gsub(raw, "%s*;.*$", "")
+        raw = string_lower(string_gsub(raw, "^%s*(.-)%s*$", "%1"))
+        blocked = raw ~= "" and raw ~= "0" and raw ~= "false" and raw ~= "off" and raw ~= "no"
+    end
+    c.global_levels[level_name] = blocked == true
+    return blocked == true
+end
+
+function Config:_get_faction_level_blacklist_rule(faction)
+    local key = self:_normalize_faction_key(faction)
+    if not key then return nil end
+
+    local c = self:_blacklists_cache_touch()
+    if c.faction_levels[key] ~= nil then
+        return c.faction_levels[key] or nil
+    end
+
+    local raw = self:_read_section_kv("siski_faction_level_blacklists", key)
+    local parsed = self:_parse_blacklist_value(raw)
+    c.faction_levels[key] = parsed or false
+    return parsed
+end
+
+function Config:_get_faction_smart_blacklist_rule(faction)
+    local key = self:_normalize_faction_key(faction)
+    if not key then return nil end
+
+    local c = self:_blacklists_cache_touch()
+    if c.faction_smarts[key] ~= nil then
+        return c.faction_smarts[key] or nil
+    end
+
+    local raw = self:_read_section_kv("siski_faction_smart_blacklists", key)
+    local parsed = self:_parse_blacklist_value(raw)
+    c.faction_smarts[key] = parsed or false
+    return parsed
+end
+
+function Config:_get_section_level_blacklist_rule(section_name)
+    local key = self:_normalize_section_key(section_name)
+    if not key then return nil end
+
+    local c = self:_blacklists_cache_touch()
+    if c.section_levels[key] ~= nil then
+        return c.section_levels[key] or nil
+    end
+
+    local raw = self:_read_section_kv("siski_section_level_blacklists", key)
+    local parsed = self:_parse_blacklist_value(raw)
+    c.section_levels[key] = parsed or false
+    return parsed
+end
+
+function Config:_get_section_smart_blacklist_rule(section_name)
+    local key = self:_normalize_section_key(section_name)
+    if not key then return nil end
+
+    local c = self:_blacklists_cache_touch()
+    if c.section_smarts[key] ~= nil then
+        return c.section_smarts[key] or nil
+    end
+
+    local raw = self:_read_section_kv("siski_section_smart_blacklists", key)
+    local parsed = self:_parse_blacklist_value(raw)
+    c.section_smarts[key] = parsed or false
+    return parsed
+end
+
+function Config:_get_faction_alias(name)
+    local i = self:_get_ini()
+    if not (i and name) then return nil end
+    local ok, res = pcall(function()
+        if i:line_exist("faction_aliases", name) then
+            return i:r_string("faction_aliases", name)
+        end
+        return nil
+    end)
+    if ok and res and res ~= "" then return res end
+    return nil
+end
+
+local inst = Config.new and Config.new() or setmetatable({}, Config)
+if not inst.ini_path then
+    Config.__init(inst)
+end
+
+inst.get = function(key, default) return inst:_get(key, default) end
+inst.get_anomaly_smarts = function(level_name) return inst:_get_anomaly_smarts(level_name) end
+inst.get_level_bases = function(level_name) return inst:_get_level_bases(level_name) end
+inst.get_level_bases_levels = function() return inst:_get_level_bases_levels() end
+inst.get_trade_smarts = function(level_name) return inst:_get_trade_smarts(level_name) end
+inst.get_smart_task_map = function() return inst:_get_smart_task_map() end
+inst.get_smart_task_type = function(smart_name) return inst:_get_smart_task_type(smart_name) end
+inst.get_smart_task_allowed_tokens = function(tasktype) return inst:_get_smart_task_allowed_tokens(tasktype) end
+inst.get_smart_task_mode = function(tasktype, smart_name) return inst:_get_smart_task_mode(tasktype, smart_name) end
+inst.get_smart_task_whitelist_tokens = function(tasktype, smart_name) return inst:_get_smart_task_whitelist_tokens(tasktype, smart_name) end
+inst.get_smart_task_blacklist_tokens = function(tasktype, smart_name) return inst:_get_smart_task_blacklist_tokens(tasktype, smart_name) end
+inst.get_section_list = function(section) return inst:_get_section_list(section) end
+inst.get_section_kv_map = function(section) return inst:_get_section_kv_map(section) end
+inst.get_section_set = function(section) return inst:_get_section_set(section) end
+inst.get_level_smarts = function(level_name) return inst:_get_section_list("level_smarts_" .. tostring(level_name)) end
+inst.get_faction_alias = function(name) return inst:_get_faction_alias(name) end
+inst.get_smart_blacklists_rule = function(level_name) return inst:_get_smart_blacklists_rule(level_name) end
+inst.get_smart_blacklists_global_set = function() return inst:_get_smart_blacklists_global_set() end
+inst.is_level_globally_blacklisted = function(level_name) return inst:_is_level_globally_blacklisted(level_name) end
+inst.get_faction_level_blacklist_rule = function(faction) return inst:_get_faction_level_blacklist_rule(faction) end
+inst.get_faction_smart_blacklist_rule = function(faction) return inst:_get_faction_smart_blacklist_rule(faction) end
+inst.get_section_level_blacklist_rule = function(section_name) return inst:_get_section_level_blacklist_rule(section_name) end
+inst.get_section_smart_blacklist_rule = function(section_name) return inst:_get_section_smart_blacklist_rule(section_name) end
+inst.set_runtime_override = function(key, value) return inst:_set_runtime_override(key, value) end
+inst.clear_runtime_override = function(key) return inst:_clear_runtime_override(key) end
+inst.clear_mcm_cache = function() return inst:_clear_mcm_cache() end
+inst.get_mcm_path = function(key) return inst:_get_mcm_path(key) end
+
+siski.config = inst

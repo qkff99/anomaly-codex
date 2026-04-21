@@ -1,0 +1,636 @@
+siski = siski or {}
+
+local type = _G.type
+local pcall = _G.pcall
+local require = _G.require
+local setmetatable = _G.setmetatable
+local tonumber = _G.tonumber
+local tostring = _G.tostring
+local alife = _G.alife
+local game_graph = _G.game_graph
+
+local function ensure_class()
+    local cls = siski.class
+    if type(cls) == "function" then
+        local ok, probe = pcall(cls, "_probe")
+        if ok and type(probe) == "table" then
+            return
+        end
+    end
+
+    if require then
+        pcall(require, "siski_oop")
+    end
+
+    local function define()
+        function siski.class(name)
+            local c = {}
+            c.__index = c
+            c.__name = name or "class"
+            function c.new(...)
+                local self = setmetatable({}, c)
+                if self.__init then
+                    self:__init(...)
+                end
+                return self
+            end
+            return c
+        end
+    end
+
+    if type(siski.class) ~= "function" then
+        define()
+        return
+    end
+
+    local ok2, probe2 = pcall(siski.class, "_probe")
+    if not (ok2 and type(probe2) == "table") then
+        define()
+    end
+end
+
+ensure_class()
+
+local Core = siski.class("Core")
+Core.__index = Core
+
+local function can_run(name)
+    local sw = siski.switches
+    if not sw then return false end
+    if sw.core ~= true then return false end
+    if name == nil then return true end
+    return sw[name] == true
+end
+
+local function safe_call(tag, fn, ...)
+    local safe = siski.safe
+    if safe and safe.safe_call then
+        return safe.safe_call(tag, fn, ...)
+    end
+    local ok, res = pcall(fn, ...)
+    return ok, res
+end
+
+local function master_enabled_now()
+    local cfg = siski.config
+    if not (cfg and cfg.get) then
+        return true
+    end
+    local ok, enabled = safe_call("siski.config.get(enabled)", cfg.get, "enabled", true)
+    if not ok then
+        return true
+    end
+    return enabled == true
+end
+
+local function runtime_enabled_now()
+    local core = siski and siski.core
+    if core and core.is_enabled then
+        local ok, enabled = pcall(core.is_enabled)
+        if ok then
+            return enabled == true
+        end
+    end
+    return master_enabled_now() == true
+end
+
+local function now_level_name_by_gvid(gvid)
+    if not (gvid and alife and game_graph) then
+        return nil
+    end
+    local ok, res = pcall(function()
+        local gg = game_graph()
+        if not gg then
+            return nil
+        end
+        local gv = gg:vertex(gvid)
+        if not gv then
+            return nil
+        end
+        local sim = alife()
+        if not sim then
+            return nil
+        end
+        return sim:level_name(gv:level_id())
+    end)
+    if ok and type(res) == "string" and res ~= "" then
+        return res
+    end
+    return nil
+end
+
+local function current_actor_level_name()
+    if not alife then
+        return nil
+    end
+    local ok, res = pcall(function()
+        local sim = alife()
+        local actor = sim and sim:actor() or nil
+        if not actor then
+            return nil
+        end
+        return now_level_name_by_gvid(tonumber(actor.m_game_vertex_id) or 0)
+    end)
+    if ok and type(res) == "string" and res ~= "" then
+        return res
+    end
+    return nil
+end
+
+local function get_offlevel_squad_update_skip_count()
+    local cfg = siski.config
+    if not (cfg and cfg.get) then
+        return 0
+    end
+    local ok, value = safe_call(
+        "siski.config.get(offlevel_squad_update_skip_count)",
+        cfg.get,
+        "offlevel_squad_update_skip_count",
+        0
+    )
+    if not ok then
+        return 0
+    end
+    value = tonumber(value) or 0
+    if value < 0 then
+        return 0
+    end
+    if value > 10 then
+        return 10
+    end
+    return value
+end
+
+local function publish_bus_event(name, ...)
+    if not (siski.bus and siski.bus.publish) then
+        return
+    end
+    local argc = select("#", ...)
+    local args = {}
+    for i = 1, argc do
+        args[i] = select(i, ...)
+    end
+    safe_call("siski.bus.publish(" .. tostring(name) .. ")", siski.bus.publish, name, {
+        event = name,
+        argc = argc,
+        args = args,
+    })
+end
+
+local function make_callback_forwarder(name)
+    return function(...)
+        if runtime_enabled_now() ~= true then
+            return
+        end
+        publish_bus_event(name, ...)
+    end
+end
+
+local PREVALIDATED_CTX = { prevalidated = true }
+
+local function update_memory_snapshot(squad, source)
+    if not (squad and siski.memory) then
+        return nil
+    end
+    local sid = tonumber(squad.id) or nil
+    if not sid then
+        return nil
+    end
+    if siski.memory.upsert_snapshot then
+        local ok_upsert, entry = safe_call("siski.memory.upsert_snapshot(" .. tostring(source or "callback") .. ")", siski.memory.upsert_snapshot, squad, source or "callback")
+        if ok_upsert then
+            return entry
+        end
+    end
+    if siski.memory.update_squad_snapshot_verified then
+        safe_call("siski.memory.update_squad_snapshot_verified(" .. tostring(source or "callback") .. ")", siski.memory.update_squad_snapshot_verified, squad, sid)
+    elseif siski.memory.update_squad_snapshot then
+        safe_call("siski.memory.update_squad_snapshot(" .. tostring(source or "callback") .. ")", siski.memory.update_squad_snapshot, squad)
+    end
+    return siski.memory.get_squad_entry and siski.memory.get_squad_entry(sid) or nil
+end
+
+local function dispatch_direct_squad_fsm(squad, source)
+    if squad and siski.memory and siski.memory.is_protected_squad then
+        local ok_protected, protected = safe_call(
+            "siski.memory.is_protected_squad(" .. tostring(source or "callback") .. ")",
+            siski.memory.is_protected_squad,
+            squad
+        )
+        if ok_protected and protected == true then
+            return false
+        end
+    end
+    local entry = update_memory_snapshot(squad, source)
+    if type(entry) ~= "table" then
+        return false
+    end
+    if can_run("story_events") and siski.story_events and siski.story_events.update_squad_tasks then
+        local ok_story, handled = safe_call(
+            "siski.story_events.update_squad_tasks(" .. tostring(source or "callback") .. ")",
+            siski.story_events.update_squad_tasks,
+            squad,
+            PREVALIDATED_CTX
+        )
+        if ok_story and handled == true then
+            return true
+        end
+    end
+    if can_run("smart_tasks") and siski.smart_tasks and siski.smart_tasks.update_squad_tasks then
+        local ok_smart, handled = safe_call(
+            "siski.smart_tasks.update_squad_tasks(" .. tostring(source or "callback") .. ")",
+            siski.smart_tasks.update_squad_tasks,
+            squad,
+            PREVALIDATED_CTX
+        )
+        if ok_smart and handled == true then
+            return true
+        end
+    end
+    if entry.npc_kind == "mutant" then
+        if siski.mutants and siski.mutants.update_squad_tasks then
+            safe_call("siski.mutants.update_squad_tasks(" .. tostring(source or "callback") .. ")", siski.mutants.update_squad_tasks, squad, PREVALIDATED_CTX)
+            return true
+        end
+        if siski.tasks and siski.tasks.update_squad_tasks then
+            safe_call("siski.tasks.update_squad_tasks(" .. tostring(source or "callback") .. ")", siski.tasks.update_squad_tasks, squad, PREVALIDATED_CTX)
+            return true
+        end
+        return false
+    end
+    if siski.tasks and siski.tasks.update_squad_tasks then
+        safe_call("siski.tasks.update_squad_tasks(" .. tostring(source or "callback") .. ")", siski.tasks.update_squad_tasks, squad, PREVALIDATED_CTX)
+        return true
+    end
+    return false
+end
+
+local function debug_hud_enabled()
+    if runtime_enabled_now() ~= true then
+        return false
+    end
+    if not (siski.config and siski.config.get) then return false end
+    local ok, enabled = safe_call("siski.config.get(debug_hud_enabled)", siski.config.get, "debug_hud_enabled", false)
+    if ok then return enabled == true end
+    return false
+end
+
+local function apply_runtime_fixes()
+    if smart_terrain and smart_terrain.smart_terrain and smart_terrain.smart_terrain.smart_terrain_squad_count then
+        local original_count_func = smart_terrain.smart_terrain.smart_terrain_squad_count
+
+        smart_terrain.smart_terrain.smart_terrain_squad_count = function(self, squad)
+            if not squad then return 0 end
+            if not squad.get_script_target then
+                return 0
+            end
+            return original_count_func(self, squad)
+        end
+        if siski.log and siski.log.info then
+            siski.log.info("CORE", "Applied runtime patch: smart_terrain_squad_count (Safety Wrapper)")
+        end
+    end
+end
+
+function Core:__init()
+    self.config_refresh_tg = 0
+    self.offlevel_skip_counter_by_sid = {}
+    self.master_enabled_prev = nil
+end
+
+function Core:_reset_offlevel_skip_counters()
+    self.offlevel_skip_counter_by_sid = {}
+end
+
+function Core:_forget_offlevel_skip_counter(squad_id)
+    if not self.offlevel_skip_counter_by_sid then
+        return
+    end
+    local sid = tonumber(squad_id) or nil
+    if not sid then
+        return
+    end
+    self.offlevel_skip_counter_by_sid[sid] = nil
+end
+
+function Core:_should_skip_offlevel_squad_update(squad)
+    local skip_count = get_offlevel_squad_update_skip_count()
+    if skip_count <= 0 or not squad then
+        return false
+    end
+
+    local sid = tonumber(squad.id) or nil
+    if not sid then
+        return false
+    end
+
+    local actor_level = current_actor_level_name()
+    local squad_level = now_level_name_by_gvid(tonumber(squad.m_game_vertex_id) or 0)
+    if type(actor_level) ~= "string" or actor_level == "" or type(squad_level) ~= "string" or squad_level == "" then
+        self:_forget_offlevel_skip_counter(sid)
+        return false
+    end
+
+    if actor_level == squad_level then
+        self:_forget_offlevel_skip_counter(sid)
+        return false
+    end
+
+    local counters = self.offlevel_skip_counter_by_sid
+    local current = (counters and tonumber(counters[sid])) or 0
+    local next_count = current + 1
+    if next_count <= skip_count then
+        counters[sid] = next_count
+        return true
+    end
+
+    counters[sid] = nil
+    return false
+end
+
+function Core:_sync_log_level()
+    if can_run("config") and siski.config and siski.config.get and siski.log and siski.log.set_level then
+        local ok_lvl, lvl = safe_call("siski.config.get(log_level)", siski.config.get, "log_level", siski.log.LEVEL_OFF)
+        if ok_lvl and tonumber(lvl) then
+            siski.log.set_level(tonumber(lvl))
+        end
+    end
+end
+
+function Core:_is_enabled()
+    if self.master_enabled_prev == nil then
+        self.master_enabled_prev = master_enabled_now() == true
+    end
+    return self.master_enabled_prev == true
+end
+
+function Core:_bootstrap_enabled_runtime(source)
+    apply_runtime_fixes()
+
+    if siski.xr_conditions_patch and siski.xr_conditions_patch.apply then
+        safe_call("siski.xr_conditions_patch.apply(" .. tostring(source or "bootstrap") .. ")", siski.xr_conditions_patch.apply)
+    end
+
+    if siski.tasks and siski.tasks.on_first_update then
+        safe_call("siski.tasks.on_first_update", siski.tasks.on_first_update)
+    end
+    if can_run("dynamic_bases") then
+        if siski.dynamic_bases and siski.dynamic_bases.on_first_update then
+            safe_call("siski.dynamic_bases.on_first_update", siski.dynamic_bases.on_first_update)
+        elseif siski.log and siski.log.warn then
+            siski.log.warn("CORE", "DYNAMIC_BASES_UNAVAILABLE stage=%s", tostring(source or "bootstrap"))
+        end
+    end
+    if can_run("base_filler") then
+        if siski.base_filler and siski.base_filler.on_first_update then
+            safe_call("siski.base_filler.on_first_update", siski.base_filler.on_first_update)
+        elseif siski.log and siski.log.warn then
+            siski.log.warn("CORE", "BASE_FILLER_UNAVAILABLE stage=%s", tostring(source or "bootstrap"))
+        end
+    end
+    if can_run("service_filler") then
+        if siski.service_filler and siski.service_filler.on_first_update then
+            safe_call("siski.service_filler.on_first_update", siski.service_filler.on_first_update)
+        elseif siski.log and siski.log.warn then
+            siski.log.warn("CORE", "SERVICE_FILLER_UNAVAILABLE stage=%s", tostring(source or "bootstrap"))
+        end
+    end
+    if can_run("axr_task_patch") then
+        if siski.axr_task_patch and siski.axr_task_patch.apply then
+            safe_call("siski.axr_task_patch.apply", siski.axr_task_patch.apply)
+        elseif siski.log and siski.log.warn then
+            siski.log.warn("CORE", "AXR_TASK_PATCH_UNAVAILABLE stage=%s", tostring(source or "bootstrap"))
+        end
+    end
+    if siski.loot_patch and siski.loot_patch.apply then
+        safe_call("siski.loot_patch.apply", siski.loot_patch.apply)
+    end
+
+    publish_bus_event("actor_on_first_update", nil)
+end
+
+function Core:_on_game_start()
+    if not can_run("core") then return end
+
+    if RegisterScriptCallback then
+        RegisterScriptCallback("actor_on_first_update", siski.core.on_first_update)
+        RegisterScriptCallback("on_option_change", siski.core.on_option_change)
+        RegisterScriptCallback("server_entity_on_register", make_callback_forwarder("server_entity_on_register"))
+        RegisterScriptCallback("server_entity_on_unregister", siski.core.on_server_entity_unregister)
+        RegisterScriptCallback("squad_on_first_update", siski.core.on_squad_first_update)
+        RegisterScriptCallback("squad_on_update", siski.core.on_squad_update)
+        RegisterScriptCallback("squad_on_npc_creation", make_callback_forwarder("squad_on_npc_creation"))
+        RegisterScriptCallback("save_state", siski.core.save_state)
+        RegisterScriptCallback("load_state", siski.core.load_state)
+        RegisterScriptCallback("squad_on_enter_smart", siski.core.on_squad_enter_smart)
+        RegisterScriptCallback("squad_on_leave_smart", siski.core.on_squad_leave_smart)
+        RegisterScriptCallback("squad_on_after_level_change", siski.core.on_squad_after_level_change)
+        RegisterScriptCallback("smart_terrain_on_update", make_callback_forwarder("smart_terrain_on_update"))
+        RegisterScriptCallback("on_try_respawn", make_callback_forwarder("on_try_respawn"))
+        RegisterScriptCallback("npc_on_net_spawn", make_callback_forwarder("npc_on_net_spawn"))
+        RegisterScriptCallback("npc_on_net_destroy", make_callback_forwarder("npc_on_net_destroy"))
+        RegisterScriptCallback("npc_on_update", make_callback_forwarder("npc_on_update"))
+        RegisterScriptCallback("npc_on_item_take", make_callback_forwarder("npc_on_item_take"))
+        RegisterScriptCallback("npc_on_item_drop", make_callback_forwarder("npc_on_item_drop"))
+        RegisterScriptCallback("npc_on_death_callback", make_callback_forwarder("npc_on_death_callback"))
+        RegisterScriptCallback("actor_on_item_drop", make_callback_forwarder("actor_on_item_drop"))
+        RegisterScriptCallback("squad_on_npc_death", siski.core.on_squad_npc_death)
+    end
+end
+
+function Core:_on_first_update()
+    if not can_run("core") then return end
+
+    self:_reset_offlevel_skip_counters()
+    self:_sync_log_level()
+
+    local enabled = self:_is_enabled()
+    self.master_enabled_prev = enabled
+
+    if siski.log and siski.log.info then
+        siski.log.info("CORE", "SISKI %s started enabled=%s", tostring(siski.version), tostring(enabled))
+    end
+    if enabled ~= true then
+        return
+    end
+
+    self:_bootstrap_enabled_runtime("first_update")
+end
+
+function Core:_on_option_change()
+    if not can_run("core") then return end
+
+    if can_run("config") and siski.config and siski.config.clear_mcm_cache then
+        safe_call("siski.config.clear_mcm_cache", siski.config.clear_mcm_cache)
+    end
+    self:_reset_offlevel_skip_counters()
+    self:_sync_log_level()
+
+    local prev_enabled = self.master_enabled_prev == true
+    local enabled = self:_is_enabled()
+    self.master_enabled_prev = enabled
+
+    if enabled == true and prev_enabled ~= true then
+        self:_bootstrap_enabled_runtime("option_enable")
+    end
+
+    if siski.bus and siski.bus.publish then
+        safe_call("siski.bus.publish(on_option_change)", siski.bus.publish, "on_option_change", { source = "engine" })
+    end
+
+    if siski.log and siski.log.info then
+        siski.log.info("CORE", "OPTION_CHANGE_RELOADED enabled=%s prev=%s", tostring(enabled), tostring(prev_enabled))
+    end
+end
+
+function Core:_save_state(m_data)
+    if can_run("board_index") and siski.board_index and siski.board_index.save_state then
+        safe_call("siski.board_index.save_state", siski.board_index.save_state, m_data)
+    end
+    if can_run("debug_hud") and debug_hud_enabled() and siski.debug_hud and siski.debug_hud.on_save_state then
+        safe_call("siski.debug_hud.on_save_state", siski.debug_hud.on_save_state)
+    end
+    if can_run("memory") and siski.memory and siski.memory.save_state then
+        safe_call("siski.memory.save_state", siski.memory.save_state, m_data)
+    end
+    if can_run("dynamic_bases") and siski.dynamic_bases and siski.dynamic_bases.save_state then
+        safe_call("siski.dynamic_bases.save_state", siski.dynamic_bases.save_state, m_data)
+    end
+    if can_run("base_filler") and siski.base_filler and siski.base_filler.save_state then
+        safe_call("siski.base_filler.save_state", siski.base_filler.save_state, m_data)
+    end
+    if can_run("service_filler") and siski.service_filler and siski.service_filler.save_state then
+        safe_call("siski.service_filler.save_state", siski.service_filler.save_state, m_data)
+    end
+
+    publish_bus_event("save_state", m_data)
+end
+
+function Core:_load_state(m_data)
+    self:_reset_offlevel_skip_counters()
+    self:_sync_log_level()
+    self.master_enabled_prev = self:_is_enabled()
+    if can_run("board_index") and siski.board_index and siski.board_index.load_state then
+        safe_call("siski.board_index.load_state", siski.board_index.load_state, m_data)
+    end
+    if can_run("memory") and siski.memory and siski.memory.load_state then
+        safe_call("siski.memory.load_state", siski.memory.load_state, m_data)
+    end
+    if can_run("dynamic_bases") and siski.dynamic_bases and siski.dynamic_bases.load_state then
+        safe_call("siski.dynamic_bases.load_state", siski.dynamic_bases.load_state, m_data)
+    end
+    if can_run("base_filler") and siski.base_filler and siski.base_filler.load_state then
+        safe_call("siski.base_filler.load_state", siski.base_filler.load_state, m_data)
+    end
+    if can_run("service_filler") and siski.service_filler and siski.service_filler.load_state then
+        safe_call("siski.service_filler.load_state", siski.service_filler.load_state, m_data)
+    end
+    if can_run("debug_hud") and debug_hud_enabled() and siski.debug_hud and siski.debug_hud.on_load_state then
+        safe_call("siski.debug_hud.on_load_state", siski.debug_hud.on_load_state)
+    end
+
+    publish_bus_event("load_state", m_data)
+end
+
+function Core:_on_squad_npc_death(squad, npc, killer_npc, killer_squad)
+    if self:_is_enabled() ~= true then
+        return
+    end
+    publish_bus_event("squad_on_npc_death", squad, npc, killer_npc, killer_squad)
+end
+
+function Core:_on_squad_first_update(squad)
+    if self:_is_enabled() ~= true then
+        return
+    end
+    if can_run("memory") then
+        update_memory_snapshot(squad, "squad_on_first_update")
+    end
+    publish_bus_event("squad_on_first_update", squad)
+end
+
+function Core:_on_squad_update(squad)
+    if self:_is_enabled() ~= true then
+        return
+    end
+    if can_run("memory") then
+        if not self:_should_skip_offlevel_squad_update(squad) then
+            dispatch_direct_squad_fsm(squad, "squad_on_update")
+        end
+    end
+    publish_bus_event("squad_on_update", squad)
+end
+
+function Core:_on_squad_enter_smart(squad, smart)
+    if self:_is_enabled() ~= true then
+        return
+    end
+    if can_run("memory") then
+        local entry = update_memory_snapshot(squad, "squad_on_enter_smart")
+        if entry and siski.memory and siski.memory.mark_arrived_to_target then
+            safe_call("siski.memory.mark_arrived_to_target", siski.memory.mark_arrived_to_target, squad and squad.id, smart, "squad_on_enter_smart")
+        end
+    end
+    publish_bus_event("squad_on_enter_smart", squad, smart)
+end
+
+function Core:_on_squad_leave_smart(squad, smart)
+    if self:_is_enabled() ~= true then
+        return
+    end
+    if can_run("memory") then
+        local entry = update_memory_snapshot(squad, "squad_on_leave_smart")
+        if entry and siski.memory and siski.memory.mark_left_target then
+            safe_call("siski.memory.mark_left_target", siski.memory.mark_left_target, squad and squad.id, smart, "squad_on_leave_smart")
+        end
+    end
+    publish_bus_event("squad_on_leave_smart", squad, smart)
+end
+
+function Core:_on_squad_after_level_change(squad, old_level, new_level)
+    if self:_is_enabled() ~= true then
+        return
+    end
+    if can_run("memory") then
+        local entry = update_memory_snapshot(squad, "squad_on_after_level_change")
+        if entry and siski.memory and siski.memory.mark_level_changed then
+            safe_call("siski.memory.mark_level_changed", siski.memory.mark_level_changed, squad and squad.id, old_level, new_level, "squad_on_after_level_change")
+        end
+    end
+    publish_bus_event("squad_on_after_level_change", squad, old_level, new_level)
+end
+
+function Core:_on_server_entity_unregister(se_obj, type_name)
+    if type(type_name) == "string" and type_name == "sim_squad_scripted" then
+        self:_forget_offlevel_skip_counter(se_obj and se_obj.id or nil)
+    end
+    if self:_is_enabled() ~= true then
+        return
+    end
+    if can_run("memory") and type(type_name) == "string" and type_name == "sim_squad_scripted" and se_obj and se_obj.id and siski.memory and siski.memory.purge_squad_entry then
+        safe_call("siski.memory.purge_squad_entry(server_unregister)", siski.memory.purge_squad_entry, se_obj.id, "server_unregister", type_name)
+    end
+    publish_bus_event("server_entity_on_unregister", se_obj, type_name)
+end
+
+local inst = Core.new and Core.new() or setmetatable({}, Core)
+if not inst.config_refresh_tg then
+    Core.__init(inst)
+end
+
+inst.can_run = can_run
+inst.is_enabled = function() return inst:_is_enabled() end
+inst.on_game_start = function() return inst:_on_game_start() end
+inst.on_first_update = function() return inst:_on_first_update() end
+inst.on_option_change = function() return inst:_on_option_change() end
+inst.save_state = function(m_data) return inst:_save_state(m_data) end
+inst.load_state = function(m_data) return inst:_load_state(m_data) end
+inst.on_squad_npc_death = function(squad, npc, killer_npc, killer_squad) return inst:_on_squad_npc_death(squad, npc, killer_npc, killer_squad) end
+inst.on_squad_first_update = function(squad) return inst:_on_squad_first_update(squad) end
+inst.on_squad_update = function(squad) return inst:_on_squad_update(squad) end
+inst.on_squad_enter_smart = function(squad, smart) return inst:_on_squad_enter_smart(squad, smart) end
+inst.on_squad_leave_smart = function(squad, smart) return inst:_on_squad_leave_smart(squad, smart) end
+inst.on_squad_after_level_change = function(squad, old_level, new_level) return inst:_on_squad_after_level_change(squad, old_level, new_level) end
+inst.on_server_entity_unregister = function(se_obj, type_name) return inst:_on_server_entity_unregister(se_obj, type_name) end
+
+siski.core = inst

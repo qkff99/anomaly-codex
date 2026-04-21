@@ -1,0 +1,59 @@
+local slots = {
+    [1] = true,
+    [2] = true,
+    [3] = true,
+    [5] = true
+}
+
+local custom_favorited_ammos = {}
+
+local get_ammo = utils_item.get_ammo -- (section, id, by_key)
+local set_favorite = zzz_rax_sortingplus_mcm.set_favorite -- (sec, state)
+
+local addons = {
+    ["scopes_sect"] = true,
+    ["silencer_name"] = true,
+    ["grenade_launcher_name"] = true
+}
+
+function manage_ammo_favorites()
+    for k, ammo in pairs(custom_favorited_ammos) do
+        set_favorite(ammo, false)
+        custom_favorited_ammos[k] = nil
+    end
+    for slot, _ in pairs(slots) do
+        local wpn = db.actor:item_in_slot(slot)
+        if wpn and not (IsItem("fake_ammo_wpn",wpn:section())) then
+            local sec = wpn:section()
+            local ammo_list = get_ammo(nil, wpn:id(), true)
+            for ammo, _ in pairs(ammo_list) do
+                set_favorite(ammo, true)
+                custom_favorited_ammos[#custom_favorited_ammos + 1] = ammo
+            end
+            local scopes = {}
+            local scopes = SYS_GetParam(0, sec, "scopes")
+            if (scopes) then
+                scopes = str_explode(scopes, ",")
+                for _, v in pairs(scopes) do
+                    if v ~= "none" then
+                        set_favorite(v, true)
+                        custom_favorited_ammos[#custom_favorited_ammos + 1] = v
+                    end
+                end
+            end
+            for param, _ in pairs(addons) do
+                local addon = utils_item.get_wpn_param(wpn, sec, param)
+                if addon then
+                    custom_favorited_ammos[#custom_favorited_ammos + 1] = addon
+                    set_favorite(addon, true)
+                end
+            end
+        end
+    end
+end
+
+function on_game_start()
+    RegisterScriptCallback("actor_item_to_ruck", manage_ammo_favorites)
+    RegisterScriptCallback("actor_item_to_slot", manage_ammo_favorites)
+    RegisterScriptCallback("actor_on_item_drop", manage_ammo_favorites)
+end

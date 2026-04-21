@@ -1,0 +1,302 @@
+<w>
+
+	<!-- 1920/1.875 = 1024;		1080/1.4 = 768 -->
+
+	<!-- main background -->
+	<bg x="128" y="0" width="768" height="768" stretch="1">
+	<!--	<texture r="40" g="40" b="40" a="255">none.dds</texture>	-->
+		<texture>talents_main_bg</texture>
+
+
+		<!-- PICK CLASS MENU -->
+		<!-- main "pick class" container -->
+		<main_pick x="22" y="33" width="726" height="705" stretch="1">
+			<texture r="190" g="0" b="190" a="0">none.dds</texture>
+
+			<!-- left pick container -->
+			<left x="0" y="0" width="436" height="705" stretch="1">
+
+				<!-- pick class container -->
+				<pick_class_cont x="0" y="0" width="256" height="243" stretch="1">
+					<texture>pick_class_bg</texture>
+
+					<!-- "pick class" title -->
+					<class_title x="0" y="0" width="256" height="60" stretch="1">
+						<text complex_mode="1" align="c" vert_align="c" font="letterica18">pick_class_pick_text</text>
+					</class_title>
+
+					<!-- "pick class" classes -->
+					<classes_cont x="0" y="60" width="256" height="183" stretch="1">
+
+						<sniper_cont x="34" y="0" width="46" height="61" stretch="1">
+							<sniper_icon x="0" y="0" width="46" height="61" stretch="1">
+								<texture>sniper_pick_icon</texture>
+							</sniper_icon>
+							<sniper_btn x="0" y="0" width="46" height="61" stretch="1">
+								<texture>pick_class_btn</texture>
+							</sniper_btn>
+						</sniper_cont>
+
+						<trooper_cont x="106" y="0" width="46" height="61" stretch="1">
+							<trooper_icon x="0" y="0" width="46" height="61" stretch="1">
+								<texture>trooper_pick_icon</texture>
+							</trooper_icon>
+							<trooper_btn x="0" y="0" width="46" height="61" stretch="1">
+								<texture>pick_class_btn</texture>
+							</trooper_btn>
+						</trooper_cont>
+
+						<jugger_cont x="178" y="0" width="46" height="61" stretch="1">
+							<jugger_icon x="0" y="0" width="46" height="61" stretch="1">
+								<texture>jugger_pick_icon</texture>
+							</jugger_icon>
+							<jugger_btn x="0" y="0" width="46" height="61" stretch="1">
+								<texture>pick_class_btn</texture>
+							</jugger_btn>
+						</jugger_cont>
+
+						<monster_hunter_cont x="34" y="91" width="46" height="61" stretch="1">
+							<monster_hunter_icon x="0" y="0" width="46" height="61" stretch="1">
+								<texture>monster_hunter_pick_icon</texture>
+							</monster_hunter_icon>
+							<monster_hunter_btn x="0" y="0" width="46" height="61" stretch="1">
+								<texture>pick_class_btn</texture>
+							</monster_hunter_btn>
+						</monster_hunter_cont>
+
+						<merc_cont x="106" y="91" width="46" height="61" stretch="1">
+							<merc_icon x="0" y="0" width="46" height="61" stretch="1">
+								<texture>merc_pick_icon</texture>
+							</merc_icon>
+							<merc_btn x="0" y="0" width="46" height="61" stretch="1">
+								<texture>pick_class_btn</texture>
+							</merc_btn>
+						</merc_cont>
+
+						<assassin_cont x="178" y="91" width="46" height="61" stretch="1">
+							<assassin_icon x="0" y="0" width="46" height="61" stretch="1">
+								<texture>assassin_pick_icon</texture>
+							</assassin_icon>
+							<assassin_btn x="0" y="0" width="46" height="61" stretch="1">
+								<texture>pick_class_btn</texture>
+							</assassin_btn>
+						</assassin_cont>
+
+					</classes_cont>
+
+				</pick_class_cont>
+
+				<!-- pick class description -->
+				<pick_class_descr_cont x="0" y="0" width="356" height="260" stretch="1">
+					<texture>pick_stats_bg</texture>
+
+					<descr_text x="15" y="20" width="326" height="220" stretch="1">
+						<text complex_mode="1" align="c" vert_align="t" font="letterica18"></text>
+					</descr_text>
+
+				</pick_class_descr_cont>
+
+			</left>
+
+
+			<!-- right container -->
+			<right x="436" y="0" width="291" height="705" stretch="1">
+				<texture>pick_stats_bg</texture>
+
+
+				<!-- descr main container -->
+				<descr_cont x="22" y="20" width="248" height="648" stretch="1">
+					<texture r="50" g="50" b="50" a="0">none.dds</texture>
+
+					<!-- "pick class" stats container -->
+					<pick_stats_cont x="0" y="0" width="248" height="606" stretch="1">
+						<stat_title x="0" y="0" width="248" height="30" stretch="1">
+							<text complex_mode="1" align="c" vert_align="c" font="letterica18"></text>
+						</stat_title>
+						<stat_str x="47" y="0" width="156" height="16" stretch="1">
+							<text complex_mode="1" align="l" vert_align="c" font="letterica16"></text>
+						</stat_str>
+						<stat_bar x="0" y="0" width="40" height="16" stretch="1">
+						</stat_bar>
+					</pick_stats_cont>
+
+					<!-- "pick class" descr btn -->
+					<pick_accept_btn x="75" y="615" width="97" height="32" stretch="1">
+						<texture>pick_class_btn</texture>
+						<text complex_mode="1" align="c" vert_align="c" font="letterica18">pick_class_pick</text>
+					</pick_accept_btn>
+
+				</descr_cont>
+
+			</right>
+
+		</main_pick>
+
+
+		<!-- TALENTS MENU -->
+		<!-- main container -->
+		<main_talent x="22" y="33" width="726" height="705" stretch="1">
+
+			<!-- left container -->
+			<left x="0" y="0" width="436" height="705" stretch="1">
+				<texture r="10" g="10" b="10" a="255">none.dds</texture>
+
+				<!-- talent background -->
+				<talent_background x="0" y="0" width="436" height="705" stretch="1">
+					<texture r="255" g="255" b="255" a="50">none.dds</texture>
+				</talent_background>
+
+				<!-- talent container -->
+				<talent_container x="80" y="36" width="277" height="634" stretch="1">
+
+					<icon x="0" y="0" width="40" height="53" stretch="1">
+						<texture>none.dds</texture>
+					</icon>
+
+					<btn x="0" y="0" width="40" height="53" stretch="1">
+						<texture>pick_tal_btn</texture>
+					</btn>
+
+					<levels x="0" y="0" width="30" height="15" stretch="1">
+						<text complex_mode="1" align="c" vert_align="c" font="arial_14"></text>
+					</levels>
+
+					<link x="0" y="0" width="4" height="5" stretch="1">
+						<texture></texture>
+					</link>
+
+				</talent_container>
+
+			</left>
+
+
+			<!-- right container -->
+			<right x="436" y="0" width="291" height="705" stretch="1">
+
+				<!-- descr main container -->
+				<descr_cont x="22" y="30" width="248" height="648" stretch="1">
+
+
+					<!-- tree -->
+					<tree_container x="0" y="0" width="248" height="89" stretch="1">
+						<texture>trees_bg</texture>
+						<icon_cont x="12" y="15" width="46" height="61" stretch="1">
+							<icon x="0" y="0" width="46" height="61" stretch="1">
+							</icon>
+							<btn x="0" y="0" width="46" height="61" stretch="1">
+								<texture>pick_class_btn</texture>
+							</btn>
+						</icon_cont>
+
+						<title x="97" y="14" width="99" height="28" stretch="1">
+							<text complex_mode="1" align="c" vert_align="c" font="letterica18"></text>
+						</title>
+
+						<title_level x="200" y="14" width="27" height="28" stretch="1">
+							<text complex_mode="1" align="c" vert_align="c" font="letterica18"></text>
+						</title_level>
+
+						<bar_cont x="66" y="42" width="161" height="15" stretch="1">
+							<texture>bar_cont_frame</texture>
+							<bar x="0" y="0" width="161" height="15" stretch="1" horz="1" min="0" max="1" pos="0">
+								<progress stretch="1">
+									<texture a="255" r="150" g="0" b="230">none.dds</texture>
+								</progress>
+							</bar>
+							<bar_text x="0" y="0" width="161" height="15" stretch="1">
+								<text complex_mode="1" align="c" vert_align="c" font="arial_14"></text>
+							</bar_text>
+						</bar_cont>
+
+						<points x="66" y="62" width="110" height="15" stretch="1">
+							<text complex_mode="1" align="l" vert_align="c" font="arial_14"></text>
+						</points>
+					</tree_container>
+
+
+					<!-- stats -->
+					<stat_container x="0" y="380" width="248" height="245" stretch="1">
+						<texture>trees_stats_bg</texture>
+
+						<title x="0" y="5" width="248" height="30" stretch="1">
+							<text complex_mode="1" r="80" g="255" b="0" align="c" vert_align="c" font="letterica18">talents_stats_text</text>
+						</title>
+
+						<sum_1_title x="122" y="35" width="63" height="22" stretch="1">
+							<text complex_mode="1" align="c" vert_align="c" font="letterica16"></text>
+						</sum_1_title>
+						<sum_2_title x="185" y="35" width="63" height="22" stretch="1">
+							<text complex_mode="1" align="c" vert_align="c" font="letterica16"></text>
+						</sum_2_title>
+
+						<name x="15" y="60" width="107" height="22" stretch="1">
+							<text complex_mode="1" align="l" vert_align="c" font="arial_14"></text>
+						</name>
+						<val1 x="122" y="60" width="63" height="22" stretch="1">
+							<text complex_mode="1" align="c" vert_align="c" font="arial_14"></text>
+						</val1>
+						<val2 x="185" y="60" width="63" height="22" stretch="1">
+							<text complex_mode="1" align="c" vert_align="c" font="arial_14"></text>
+						</val2>
+
+					</stat_container>
+
+
+					<!-- respec button -->
+					<respec_btn x="208" y="630" width="40" height="18" stretch="1">
+						<texture>pick_class_btn</texture>
+						<text complex_mode="1" align="c" vert_align="c" font="letterica16">talents_respec</text>
+					</respec_btn>
+
+
+					<!-- respec verification container -->
+					<respec_cont x="0" y="0" width="248" height="284" stretch="1">
+						<texture r="25" g="25" b="25" a="240">none.dds</texture>
+
+						<respec_text x="20" y="0" width="208" height="85" stretch="1">
+							<text complex_mode="1" align="c" vert_align="c" font="letterica18"></text>
+						</respec_text>
+
+						<respec_btn_yes x="32" y="205" width="71" height="46" stretch="1">
+							<texture>pick_class_btn</texture>
+							<text complex_mode="1" align="c" vert_align="c" font="letterica18">talents_respec_yes</text>
+						</respec_btn_yes>
+
+						<respec_btn_no x="144" y="205" width="71" height="46" stretch="1">
+							<texture>pick_class_btn</texture>
+							<text complex_mode="1" align="c" vert_align="c" font="letterica18">talents_respec_no</text>
+						</respec_btn_no>
+
+					</respec_cont>
+
+				</descr_cont>
+
+				<!-- talent tooltip -->
+				<talent_tooltip x="0" y="0" width="200" height="200" stretch="1">
+					<texture>tooltip_bg</texture>
+
+					<name x="15" y="0" width="155" height="35" stretch="1">
+						<text complex_mode="1" r="255" g="160" b="0" align="l" vert_align="c" font="letterica18"></text>
+					</name>
+
+					<levels x="155" y="0" width="30" height="35" stretch="1">
+						<text complex_mode="1" r="255" g="160" b="0" align="r" vert_align="c" font="letterica18"></text>
+					</levels>
+
+					<req x="15" y="35" width="170" height="20" stretch="1">
+						<text complex_mode="1" r="255" g="40" b="20" align="l" vert_align="c" font="arial_14"></text>
+					</req>
+
+					<descr x="15" y="70" width="170" height="130" stretch="1">
+						<text complex_mode="1" align="l" vert_align="t" font="letterica16"></text>
+					</descr>
+				</talent_tooltip>
+
+			</right>
+
+		</main_talent>
+
+	</bg>
+
+
+</w>

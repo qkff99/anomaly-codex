@@ -1,0 +1,107 @@
+
+-- supply tables
+
+local trade_table = {
+	{ -- isg, freedom, owl
+		[2] = {
+			["wpn_g36"] = 1,
+			["wpn_g36_camo"] = 1,
+			["wpn_g36k"] = 1
+		},
+	},
+	{ -- clearsky
+		[5] = {
+			["wpn_g36"] = 1,
+			["wpn_g36_camo"] = 1,
+			["wpn_g36k"] = 1
+		},
+	},
+	{ -- sid
+		[3] = {
+			["wpn_g36"] = 1,
+			["wpn_g36_camo"] = 1,
+			["wpn_g36k"] = 1
+		},
+	},
+	{ -- loris
+		[4] = {
+			["wpn_g36"] = 1,
+			["wpn_g36_camo"] = 1,
+			["wpn_g36k"] = 1
+		},
+	},
+	{ -- mercs
+		[2] = {
+			["wpn_g36"] = 1
+		},
+		[3] = {
+			["wpn_g36_camo"] = 1,
+			["wpn_g36k"] = 1
+		},
+	},
+	{ -- monolith
+		[1] = {
+			["wpn_g36"] = 1
+		},
+		[2] = {
+			["wpn_g36_camo"] = 1
+		},
+		[3] = {
+			["wpn_g36k"] = 1
+		},
+	},
+}
+
+-- spawning guns
+
+function spawn_g36pack(npc)
+	local is_trader = trader_autoinject.get_trader_type(npc) == trader_autoinject.SUPPLIER
+		if not is_trader then
+			return
+		end
+	local loot_table
+		if string.find(npc:section(),"zat_b30_owl_stalker_trader") or string.find(npc:section(),"jup_depo_isg_tech") or string.find(npc:section(),"mil_smart_terrain_7_10_freedom_trader_stalker") or string.find(npc:section(),"jup_a6_freedom_trader_ashot") then
+			loot_table = trade_table[1]
+		elseif string.find(npc:section(),"mar_base_owl_stalker_trader") then
+			local spawn_chance = 50
+			if (spawn_chance >= math.random(100)) then
+				loot_table = trade_table[2]
+			else
+				return
+			end		
+		elseif (npc:name() == "esc_m_trader") then
+			local spawn_chance = 30
+			if (spawn_chance >= math.random(100)) then
+				loot_table = trade_table[3]
+			else
+				return
+			end		
+		elseif string.find(npc:section(),"esc_main_base_trader_mlr") then
+			local spawn_chance = 50
+			if (spawn_chance >= math.random(100)) then
+				loot_table = trade_table[4]
+			else
+				return
+			end		
+		elseif string.find(npc:section(),"cit_killers_merc_trader_stalker") then
+			loot_table = trade_table[5]				
+		elseif string.find(npc:section(),"pri_monolith_monolith_trader_stalker") then
+			loot_table = trade_table[6]
+		else
+			return
+		end
+	local supply_level = clamp(trader_autoinject.supply_level(npc, true) or 0, 0, 5)
+	for k,v in pairs(loot_table) do
+		if supply_level >= k then
+			trader_autoinject.spawn_items(npc, loot_table[k], true)
+		end
+	end
+end
+
+
+TraderAuto = trader_autoinject.update
+function trader_autoinject.update(npc)
+    TraderAuto(npc)
+    spawn_g36pack(npc)
+end
+

@@ -1,0 +1,276 @@
+siski = siski or {}
+
+local type = _G.type
+local pcall = _G.pcall
+local require = _G.require
+local setmetatable = _G.setmetatable
+local tonumber = _G.tonumber
+local tostring = _G.tostring
+local io = _G.io
+local time_global = _G.time_global
+local level = _G.level
+local string_match = string.match
+
+local function ensure_class()
+    local type = type
+    if type(siski.class) == "function" then
+        local ok, probe = pcall(siski.class, "_probe")
+        if ok and type(probe) == "table" then
+            return
+        end
+    end
+
+    if require then
+        pcall(require, "siski_oop")
+    end
+
+    local function define()
+        function siski.class(name)
+            local cls = {}
+            cls.__index = cls
+            cls.__name = name or "class"
+            function cls.new(...)
+                local self = setmetatable({}, cls)
+                if self.__init then
+                    self:__init(...)
+                end
+                return self
+            end
+            return cls
+        end
+    end
+
+    if type(siski.class) ~= "function" then
+        define()
+        return
+    end
+
+    local ok2, probe2 = pcall(siski.class, "_probe")
+    if not (ok2 and type(probe2) == "table") then
+        define()
+    end
+end
+
+ensure_class()
+
+local Logger = siski.class("Logger")
+Logger.__index = Logger
+
+local LEVEL_OFF = 0
+local LEVEL_ERROR = 1
+local LEVEL_WARN = 2
+local LEVEL_INFO = 3
+local LEVEL_DEBUG = 4
+local LEVEL_TRACE = 5
+
+local string_format = string.format
+
+local function now_tg()
+    return (time_global and time_global()) or 0
+end
+
+local function level_name(lvl)
+    if lvl == LEVEL_ERROR then return "ERROR" end
+    if lvl == LEVEL_WARN then return "WARN" end
+    if lvl == LEVEL_INFO then return "INFO" end
+    if lvl == LEVEL_DEBUG then return "DEBUG" end
+    if lvl == LEVEL_TRACE then return "TRACE" end
+    return "OFF"
+end
+
+local function truncate_file(path)
+    if not (io and io.open and type(path) == "string" and path ~= "") then
+        return false
+    end
+    local f = io.open(path, "w")
+    if not f then
+        return false
+    end
+    f:close()
+    return true
+end
+
+function Logger:__init()
+    self.current_level = LEVEL_OFF
+    self.log_file = "siski.log"
+    self.buffer = {}
+    self.buffer_len = 0
+    self.last_flush_tg = 0
+    self.flush_interval_ms = 1500
+    self.flush_size = 64
+    self.filter_active_level_only = false
+    self.filter_drop_unknown_level = false
+    self.filter_cfg_next_tg = 0
+    truncate_file(self.log_file)
+end
+
+function Logger:_set_level(lvl)
+    local v = tonumber(lvl)
+    if not v then return end
+    if v < LEVEL_OFF then v = LEVEL_OFF end
+    if v > LEVEL_TRACE then v = LEVEL_TRACE end
+    self.current_level = v
+    if v == LEVEL_OFF then
+        self.buffer = {}
+        self.buffer_len = 0
+    end
+end
+
+function Logger:_get_level()
+    return self.current_level
+end
+
+function Logger:_set_file(filename)
+    if type(filename) ~= "string" or filename == "" then return end
+    self.log_file = filename
+end
+
+function Logger:_flush()
+    if self.buffer_len == 0 then return end
+    local f = io and io.open and io.open(self.log_file, "a") or nil
+    if not f then
+        self.buffer = {}
+        self.buffer_len = 0
+        return
+    end
+    for i = 1, self.buffer_len do
+        f:write(self.buffer[i])
+    end
+    f:close()
+    self.buffer = {}
+    self.buffer_len = 0
+end
+
+function Logger:_flush_public()
+    if siski and siski.timers and siski.timers.cancel then
+        pcall(siski.timers.cancel, "siski_log", "flush")
+    end
+    pcall(self._flush, self)
+end
+
+function Logger:_schedule_flush()
+    if not (siski and siski.timers and siski.timers.schedule) then
+        return
+    end
+    if siski.timers.has and siski.timers.has("siski_log", "flush") then
+        return
+    end
+    local delay = tonumber(self.flush_interval_ms) or 0
+    if delay < 0 then delay = 0 end
+    pcall(siski.timers.schedule, "siski_log", "flush", delay, function()
+        self.last_flush_tg = now_tg()
+        self:_flush_public()
+        return true
+    end)
+end
+
+function Logger:_emit(module, lvl, fmt, ...)
+    if self.current_level == LEVEL_OFF then return end
+    if lvl > self.current_level then return end
+
+    local tg = now_tg()
+    if tg >= (tonumber(self.filter_cfg_next_tg) or 0) then
+        self.filter_cfg_next_tg = tg + 500
+        local cfg = siski and siski.config and siski.config.get or nil
+        if type(cfg) == "function" then
+            self.filter_active_level_only = cfg("log_filter_active_level_only", false) == true
+            self.filter_drop_unknown_level = cfg("log_filter_active_level_drop_unknown", false) == true
+        else
+            self.filter_active_level_only = false
+            self.filter_drop_unknown_level = false
+        end
+    end
+
+    local line = nil
+    if fmt == nil then
+        line = ""
+    elseif select("#", ...) > 0 then
+        local ok, res = pcall(string_format, fmt, ...)
+        line = ok and res or tostring(fmt)
+    else
+        line = tostring(fmt)
+    end
+
+    if self.filter_active_level_only then
+        local active = nil
+        if level and type(level.name) == "function" then
+            local ok, res = pcall(function() return level.name() end)
+            if ok and type(res) == "string" and res ~= "" then
+                active = res
+            end
+        end
+        if active then
+            local lvl_s = nil
+            lvl_s = string_match(line, "level=([%w_]+)") or lvl_s
+            lvl_s = string_match(line, "target_level=([%w_]+)") or lvl_s
+            lvl_s = string_match(line, "cur_level=([%w_]+)") or lvl_s
+            lvl_s = string_match(line, "level_name=([%w_]+)") or lvl_s
+            lvl_s = string_match(line, " lvl=([%w_]+)") or lvl_s
+            if lvl_s then
+                if lvl_s ~= active then
+                    return
+                end
+            elseif self.filter_drop_unknown_level then
+                return
+            end
+        end
+    end
+
+    local prefix = string_format("[%d][%s][%s] ", tg, level_name(lvl), tostring(module or "SISKI"))
+    self.buffer_len = self.buffer_len + 1
+    self.buffer[self.buffer_len] = prefix .. line .. "\n"
+
+    if self.buffer_len >= self.flush_size then
+        self.last_flush_tg = tg
+        pcall(self._flush, self)
+        if siski and siski.timers and siski.timers.cancel then
+            pcall(siski.timers.cancel, "siski_log", "flush")
+        end
+    else
+        self:_schedule_flush()
+    end
+end
+
+function Logger:_error(module, fmt, ...)
+    self:_emit(module, LEVEL_ERROR, fmt, ...)
+end
+
+function Logger:_warn(module, fmt, ...)
+    self:_emit(module, LEVEL_WARN, fmt, ...)
+end
+
+function Logger:_info(module, fmt, ...)
+    self:_emit(module, LEVEL_INFO, fmt, ...)
+end
+
+function Logger:_debug(module, fmt, ...)
+    self:_emit(module, LEVEL_DEBUG, fmt, ...)
+end
+
+function Logger:_trace(module, fmt, ...)
+    self:_emit(module, LEVEL_TRACE, fmt, ...)
+end
+
+local inst = Logger.new and Logger.new() or setmetatable({}, Logger)
+if not inst.current_level then
+    Logger.__init(inst)
+end
+
+inst.LEVEL_OFF = LEVEL_OFF
+inst.LEVEL_ERROR = LEVEL_ERROR
+inst.LEVEL_WARN = LEVEL_WARN
+inst.LEVEL_INFO = LEVEL_INFO
+inst.LEVEL_DEBUG = LEVEL_DEBUG
+inst.LEVEL_TRACE = LEVEL_TRACE
+
+inst.set_level = function(lvl) return inst:_set_level(lvl) end
+inst.get_level = function() return inst:_get_level() end
+inst.set_file = function(filename) return inst:_set_file(filename) end
+inst.flush = function() return inst:_flush_public() end
+inst.error = function(module, fmt, ...) return inst:_error(module, fmt, ...) end
+inst.warn = function(module, fmt, ...) return inst:_warn(module, fmt, ...) end
+inst.info = function(module, fmt, ...) return inst:_info(module, fmt, ...) end
+inst.debug = function(module, fmt, ...) return inst:_debug(module, fmt, ...) end
+inst.trace = function(module, fmt, ...) return inst:_trace(module, fmt, ...) end
+
+siski.log = inst

@@ -1,0 +1,7 @@
+function on_mcm_load()
+  return { id="ammo", sh=true, gr={   
+      { id="header", type="slide", link="ui_options_slider_economy_diff", text="ui_mcm_dph_loot_cond_ammo", size= {512,50}, spacing=20 },
+      { id="factor", type="track", val=2, min=1, max=20, step=1, def=1 },
+      { id="disable_bad", type="check", val=1, def=false},
+  }}, "dph_loot_cond"
+end

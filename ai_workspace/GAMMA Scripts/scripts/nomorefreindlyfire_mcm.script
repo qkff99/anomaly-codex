@@ -1,0 +1,59 @@
+
+
+NPCprotect = true --Give options a default value.
+ACProtect = true
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_first_update",actor_on_first_update )
+	
+	RegisterScriptCallback("npc_on_before_hit",npc_on_before_hit )
+	RegisterScriptCallback("actor_on_before_hit",actor_on_before_hit )
+	RegisterScriptCallback("on_option_change", loadsettings)  --MCM sends the same callback as ui_options 
+	loadsettings()
+end
+
+
+function actor_on_first_update()
+	if companions_dont_die and companions_dont_die.CB_npc_on_before_hit then
+		UnregisterScriptCallback("npc_on_before_hit", companions_dont_die.CB_npc_on_before_hit)
+	end
+end
+
+
+function npc_on_before_hit(npc, shit, boneid, flags)
+	--printf(tostring(NPCprotect)..tostring(npc:has_info("npcx_is_companion")).. shit.draftsman:name())
+	if NPCprotect and npc:has_info("npcx_is_companion") and shit and shit.draftsman and (shit.draftsman:id() == 0 or shit.draftsman:has_info("npcx_is_companion")) then
+		flags.ret_value = false
+		return
+	end
+	if companions_dont_die and companions_dont_die.CB_npc_on_before_hit then
+		companions_dont_die.CB_npc_on_before_hit(npc, shit, boneid, flags)
+	end
+
+end
+
+function actor_on_before_hit( shit, bone, flags)
+	if ACprotect and shit and shit.draftsman and shit.draftsman:has_info("npcx_is_companion") then
+		flags.ret_value = false
+		return
+	end
+end
+
+function loadsettings()
+	if ui_mcm then -- here we test to make sure ui_mcm exists before trying to call it's get function.
+		NPCprotect = ui_mcm.get("nomorefriendlyfire/npcprotect")
+		ACprotect = ui_mcm.get("nomorefriendlyfire/acprotect")
+	end
+end
+
+function on_mcm_load()
+		op = { id= "nomorefriendlyfire"      	 	,sh=true ,gr={
+				{ id= "friendlyfire"				 ,type= "slide"	  ,link= "ui_options_slider_disguise"	 ,text= "ui_mcm_title_nomorefriendlyfire"		,size= {512,50}		,spacing= 20 },
+				{id = "npcprotect", type = "check", val = 1, def = true},
+				{id = "acprotect", type = "check", val = 1, def = true},
+				}
+			}
+			
+		return op
+end
+

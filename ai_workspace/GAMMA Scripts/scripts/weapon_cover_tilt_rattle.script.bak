@@ -1,0 +1,97 @@
+-- Weapon cover tilt rattle script
+-- Utilizing callbacks from weapon_cover_tilt.script
+-- Written by demonized
+local wct = weapon_cover_tilt
+
+local tilting_state = false
+local sounds = {}
+local sound_dirs = {
+	"wct\\rattle\\raise\\",
+	"wct\\rattle\\lower\\",
+}
+local sound
+
+local get_safe_sound_object = xr_sound.get_safe_sound_object
+local function play_sound_on_actor(snd, volume, frequency)
+	if not snd then
+		printf("snd is nil")
+		return
+	end
+	local actor = db.actor
+	local snd = get_safe_sound_object(snd)
+	if snd then
+		snd:play(actor, 0, sound_object.s2d)
+		snd.volume = volume or 1
+		snd.frequency = frequency or 1
+		return snd
+	end
+end
+
+function get_sounds(dir)
+	if sounds[dir] then return end
+	sounds[dir] = {}
+	local f = getFS()
+	local list = f:file_list_open("$game_sounds$", dir, bit_or(FS.FS_ListFiles, FS.FS_RootOnly))
+	local count = list:Size()
+	for	i = 0, count - 1 do
+		local file_name = list:GetAt(i)
+		file_name = file_name:sub(1, -5)
+		table.insert(sounds[dir], file_name)
+	end
+end
+
+function play_sound(dir, wpn, coeff)
+	if not wct.get_setting("tilt_rattle") then return end
+	
+	get_sounds(dir)
+	if sound and sound:playing() then
+		sound:stop()
+	end
+	local normal_weight = 4
+	local weight = wct.get_weapon_weight(wpn)
+	local frequency = 1
+	if weight < normal_weight then
+		frequency = 1.5 - 0.125 * weight
+	else
+		frequency = math.max(0.5, 1.25 - 0.0625 * weight)
+	end
+	local sounds = sounds[dir]
+
+	-- Choose one of two below functions
+	-- The one with sound = ... will restrict sounds to only one instance playing
+	play_sound_on_actor(dir .. sounds[math.random(#sounds)], 1, frequency)
+	-- sound = play_sound_on_actor(dir .. sounds[math.random(#sounds)], 1, frequency)
+end
+
+function actor_on_weapon_tilting(wpn, coeff)
+	if not tilting_state then
+		tilting_state = true
+
+		-- Play sound
+		play_sound("wct\\rattle\\raise\\", wpn, coeff)	
+	end
+end
+
+function actor_on_weapon_tilting_back(wpn, coeff)
+	if tilting_state then
+		tilting_state = false
+
+		-- Play sound
+		play_sound("wct\\rattle\\lower\\", wpn, coeff)
+	end
+end
+
+function on_game_start()
+	if not (
+		wct
+	and wct.add_callback
+	and wct.callback
+	) then return end
+
+	for k, v in pairs(sound_dirs) do
+		get_sounds(v)
+	end
+
+	wct.add_callback("actor_on_weapon_tilting", actor_on_weapon_tilting)
+	wct.add_callback("actor_on_weapon_tilting_back", actor_on_weapon_tilting_back)
+end

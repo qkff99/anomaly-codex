@@ -1,0 +1,164 @@
+stealth_nvg_ps = {}
+local particles_t = {}
+local allow_upd = false
+local nvg_dbg = false
+local nvg_val = 0.15
+
+local nvg_rank_chance = {
+	["novice"] = 0,
+	["trainee"] = 0,
+	["experienced"] = 0.2,
+	["professional"] = 0.2,
+	["veteran"] = 0.5,
+	["expert"] = 0.5,
+	["master"] = 0.85,
+	["legend"] = 1.0,
+}
+
+function actor_on_update()
+	if not allow_upd then return end
+
+	local hrs = level.get_time_hours() + level.get_time_minutes() / 60
+	local is_night = (hrs > 21 or hrs < 5)
+
+	for npc_id, _ in pairs(stealth_nvg_ps) do
+
+		-- manage particles
+		if not (particles_t[npc_id]) then
+			particles_t[npc_id] = particles_object("stealth_nvg\\nvg_dot")
+		end
+
+		local npc = level.object_by_id(npc_id)
+		local npc_is_stalker = npc and IsStalker(npc)
+		-- play or move if stealth mcm, npc exist and night
+		if nvg_val > 0 and npc_is_stalker and is_night then
+			play_or_move_particles(npc, particles_t[npc_id])
+		-- stop playing if not stealth mcm or not night
+		elseif (nvg_val <= 0 or (not is_night)) then
+			stop_if_playing(particles_t[npc_id])
+		-- stop playing if not npc and remove key
+		elseif (not npc_is_stalker) then
+			stop_if_playing(particles_t[npc_id])
+			stealth_nvg_ps[npc_id] = nil
+			particles_t[npc_id] = nil
+		end
+
+	end
+
+end
+
+function play_or_move_particles(npc, particle_obj)
+	local eye_bone_pos = vector():set(npc:bone_position("eyelid_1"))
+	local npc_dir = vector():set(npc:direction())
+	local eye_pos = eye_bone_pos:add(npc_dir:mul(0.1))
+	eye_pos = vector():set(eye_pos.x, eye_pos.y + 0.05, eye_pos.z)
+	-- play particle
+	if not (particle_obj:playing()) then
+		particle_obj:play_at_pos(eye_pos)
+	-- move particle
+	else
+		particle_obj:move_to(eye_pos, VEC_ZERO)
+	end
+
+end
+
+function stop_if_playing(particle_obj)
+	if not particle_obj:playing() then return end
+	particle_obj:stop()
+end
+
+-----------------------------------------
+scuffed_sr_light_patch = sr_light.check_light
+function sr_light.check_light(npc)
+	local hrs = level.get_time_hours() + level.get_time_minutes() / 60
+	local is_night = (hrs > 21 or hrs < 5)
+
+	if not (nvg_val > 0 and stealth_nvg_ps[npc:id()] and is_night) then
+		return scuffed_sr_light_patch(npc)
+	end
+
+	local st = db.storage[npc:id()]
+	local tg = time_global()
+	if not (st) then pr("- blyat nvg") end
+
+	if (st and st.srlight_timer and tg < st.srlight_timer) then
+		return
+	end
+	st.srlight_timer = tg + 2000 + math.random(100)
+
+	local torch = npc:object("device_torch")
+	if (torch and torch:attachable_item_enabled()) then
+		torch:enable_attachable_item(false)
+	end
+
+end
+
+function npc_on_net_spawn(npc, se_obj)
+	if not (string.find(se_obj:section_name(), "sim_default")) then return end
+
+	CreateTimeEvent("nvg_spawn_delay_e_" .. se_obj.id, "nvg_spawn_delay_a_" .. se_obj.id, 1, function()
+		local se_obj_rank_name = ranks.get_se_obj_rank_name(se_obj)
+		local rank_val = se_obj_rank_name and nvg_rank_chance[se_obj_rank_name]
+		if (not (stealth_nvg_ps[se_obj.id])) and (rank_val and math.random() <= rank_val) then
+			stealth_nvg_ps[se_obj.id] = true
+		end
+		return true
+	end)
+
+end
+
+function actor_on_first_update()		-- scared that keys will be removed from storage coz wont find game objects
+	local correct_game_ver = GAME_VERSION and string.find(GAME_VERSION, "1.5.2")
+	if (not correct_game_ver) or (nvg_val <= 0) then
+		empty_table(stealth_nvg_ps)
+		return
+	end
+
+	for id, v in pairs(stealth_nvg_ps) do
+		if type(v) ~= "boolean" then
+			stealth_nvg_ps[id] = true
+		end
+	end
+
+	CreateTimeEvent("delay_for_game_objects_e", "delay_for_game_objects_a", 1, function()
+		allow_upd = true
+		return true
+	end)
+end
+
+function npc_on_death_callback(npc)
+	-- remove keys if npc died
+	if stealth_nvg_ps[npc:id()] then
+		stealth_nvg_ps[npc:id()] = nil
+	end
+
+	if particles_t[npc:id()] then
+		if particles_t[npc:id()]:playing() then
+			particles_t[npc:id()]:stop()
+		end
+		particles_t[npc:id()] = nil
+	end
+
+end
+
+function save_state(m_data)
+	m_data.stealth_nvg_ps = stealth_nvg_ps
+end
+
+function load_state(m_data)
+	stealth_nvg_ps = m_data.stealth_nvg_ps or {}
+end
+
+function pr(...)
+	if not nvg_dbg then return end
+	printf(...)
+end
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_update", actor_on_update)
+	RegisterScriptCallback("npc_on_net_spawn", npc_on_net_spawn)
+	RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+	RegisterScriptCallback("npc_on_death_callback", npc_on_death_callback)
+	RegisterScriptCallback("save_state", save_state)
+	RegisterScriptCallback("load_state", load_state)
+end

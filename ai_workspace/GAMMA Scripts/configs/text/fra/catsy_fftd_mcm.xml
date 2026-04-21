@@ -1,0 +1,783 @@
+<?xml version="1.0" encoding="Windows-1252"?>
+
+<string_table>
+
+<!--
+F.R.I.T.E.S | Thundard
+Dernière révision : 24 novembre 2025
+-->
+
+<!--
+Auteur : Catspaw (CatspawMods @ ModDB)
+Addon : Fast Travel Equitable
+Source : https ://www.moddb.com/mods/stalker-anomaly/addons/fair-fast-travel-duration-for-anomaly-151
+Permission accordée pour la traduction dans toute langue.
+-->
+
+<string id="ui_mcm_menu_fftd">
+<text>Fast Travel Equitable</text>
+</string>
+
+<string id="st_fftd_mapspot_estdur">
+<text>au moins</text>
+</string>
+
+<string id="st_fftd_mapspot_meters">
+<text>m</text>
+</string>
+
+<string id="ui_mcm_menu_gen">
+<text>Général</text>
+</string>
+
+<string id="ui_mcm_menu_ftcfg">
+<text>Fast Travel</text>
+</string>
+
+<string id="ui_mcm_menu_bpcfg">
+<text>Voyage sac à dos</text>
+</string>
+
+<string id="st_pda_backpack_travel_to">
+<text>Voyager vers sac à dos</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_skillsystem_enabled">
+<text>Activer l'intégration au Haruka Skill System</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_haruka_enabled_desc">
+<text>Si le mod Skill System de Haruka est installé et cette option activée, FFTD prendra en compte le multiplicateur de vitesse de déplacement issu de ta compétence Endurance et réglera les temps de voyage en conséquence, par exemple un multiplicateur de 1.15 réduit les temps de fast travel d'environ 15%.\n \nSi Skill System n'est pas installé, ce réglage n'a aucun effet.</text>
+</string>
+
+<string id="ui_mcm_fftd_usedisguisefix">
+<text>Activer le correctif du système de déguisement</text>
+</string>
+
+<string id="ui_mcm_fftd_useoldcalcs">
+<text>Utiliser les calculs de distance par défaut d'Anomaly (mauvais)</text>
+</string>
+
+<string id="ui_mcm_fftd_mpm">
+<text>Minutes de jeu écoulées par 100 mètres parcourus</text>
+</string>
+
+<string id="ui_mcm_fftd_rnd_enabled">
+<text>Délai aléatoire activé pour la durée du voyage ?</text>
+</string>
+
+<string id="ui_mcm_fftd_rnd_hours_min">
+<text>Si activé, heures minimales ajoutées</text>
+</string>
+
+<string id="ui_mcm_fftd_rnd_hours_max">
+<text>Si activé, heures maximales ajoutées</text>
+</string>
+
+<string id="ui_mcm_fftd_rnd_minutes_min">
+<text>Si activé, minutes minimales ajoutées</text>
+</string>
+
+<string id="ui_mcm_fftd_rnd_minutes_max">
+<text>Si activé, minutes maximales ajoutées</text>
+</string>
+
+<string id="ui_mcm_header_loc_travel">
+<text>Voyage sur la même carte</text>
+</string>
+
+<string id="ui_mcm_header_map_travel">
+<text>Voyage vers une autre carte</text>
+</string>
+
+<string id="st_currency_rub">
+<text>RU</text>
+</string>
+
+<string id="st_fftd_toopoor">
+<text>Tu n'as pas assez pour payer le voyage</text>
+</string>
+
+<string id="st_fftd_mapspot_guideto">
+<text>Louer un guide vers</text>
+</string>
+
+<string id="st_fftd_farepaid_guide">
+<text>Tu as appelé un guide vétéran proche et payé %s pour t'amener à ta destination.</text>
+</string>
+
+<string id="st_fftd_guides_ignored">
+<text>Aucun guide n'accepte de venir dans ce genre d'endroit juste pour te récupérer</text>
+</string>
+
+<string id="ui_mcm_menu_gtcfg">
+<text>Voyage avec guide</text>
+</string>
+
+<string id="ui_mcm_fftd_cost_coef">
+<text>Coût en roubles par mètre parcouru</text>
+</string>
+
+<string id="ui_mcm_fftd_pause_stats">
+<text>Mettre en pause les stats de survie pendant le voyage ?</text>
+</string>
+
+<string id="st_fftd_notyet">
+<text>%s indisponible pour encore %s</text>
+</string>
+
+<string id="st_fft_hour">
+<text>heure</text>
+</string>
+<string id="st_fft_hours">
+<text>heures</text>
+</string>
+<string id="st_fft_minute">
+<text>minute</text>
+</string>
+<string id="st_fft_minutes">
+<text>minutes</text>
+</string>
+<string id="st_fft_second">
+<text>seconde</text>
+</string>
+<string id="st_fft_seconds">
+<text>secondes</text>
+</string>
+
+<string id="st_fftd_travelname_ft">
+<text>fast travel</text>
+</string>
+
+<string id="st_fftd_travelname_bp">
+<text>voyage sac à dos</text>
+</string>
+
+<string id="st_fftd_travelname_gt">
+<text>voyage avec guide</text>
+</string>
+
+<string id="st_fftd_ftsystem">
+<text>Système Fast Travel</text>
+</string>
+
+<string id="st_fftd_guides_far">
+<text>Aucun guide n'est assez proche pour répondre</text>
+</string>
+
+<string id="st_fftd_enemy_guides">
+<text>Les seuls guides ici sont des ennemis de ta faction actuelle</text>
+</string>
+
+<string id="st_fftd_guides_none">
+<text>Aucun guide ne répond à tes messages</text>
+</string>
+
+<string id="ui_mcm_fftd_rnd_enabled_desc">
+<text>Si activé pour ce type de voyage, un délai aléatoire peut s'ajouter à chaque trajet selon les réglages ci-dessous. 0-2 heures et 0-59 minutes reproduisent le comportement vanilla d'Anomaly si souhaité.</text>
+</string>
+
+<string id="ui_mcm_fftd_pause_stats_desc">
+<text>Si activé, la plupart des stats de survie (faim, soif) seront figées pendant ce trajet.</text>
+</string>
+
+<string id="ui_mcm_fftd_gtcfg_enabled">
+<text>Louer des guides fast travel depuis la carte PDA</text>
+</string>
+
+<string id="ui_mcm_fftd_ftcfg_travel_cooldown">
+<text>Délai de recharge du fast travel</text>
+</string>
+
+<string id="ui_mcm_fftd_bpcfg_travel_cooldown">
+<text>Délai de recharge voyage sac à dos</text>
+</string>
+
+<string id="ui_mcm_fftd_gtcfg_travel_cooldown">
+<text>Délai de recharge voyage avec guide</text>
+</string>
+
+<string id="ui_mcm_fftd_ftcfg_travel_cooldown_desc">
+<text>Tu dois attendre ce nombre de secondes réelles entre chaque voyage fast travel. Mets zéro pour désactiver la limite.</text>
+</string>
+
+<string id="ui_mcm_fftd_bpcfg_travel_cooldown_desc">
+<text>Tu dois attendre ce nombre de secondes réelles entre chaque voyage sac à dos. Mets zéro pour désactiver la limite.</text>
+</string>
+
+<string id="ui_mcm_fftd_gtcfg_travel_cooldown_desc">
+<text>Tu dois attendre ce nombre de secondes réelles entre chaque voyage avec guide. Mets zéro pour désactiver la limite.</text>
+</string>
+
+<string id="ui_mcm_fftd_gtcfg_add_travel_time">
+<text>Le guide met du temps à te rejoindre</text>
+</string>
+
+<string id="ui_mcm_fftd_gtcfg_add_travel_time_desc">
+<text>Si activé, la durée totale inclura le temps nécessaire au guide pour venir de son point d'origine jusqu'à toi.</text>
+</string>
+
+<string id="ui_mcm_fftd_gtcfg_local_only">
+<text>Guides strictement locaux</text>
+</string>
+
+<string id="ui_mcm_fftd_gtcfg_local_only_desc">
+<text>Si activé, il n'y aura de guide dispo que si l'un d'eux est basé sur la carte actuelle.</text>
+</string>
+
+<string id="ui_mcm_fftd_gtcfg_guides_loyal">
+<text>Guides loyaux à leur faction</text>
+</string>
+
+<string id="ui_mcm_fftd_gtcfg_guides_loyal_desc">
+<text>Si activé, les guides refusent d'aider les membres ennemis de leur faction. Mais ils ignoreront ça si tu es bien déguisé.</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_shared_cooldown">
+<text>Tous les types de voyages partagent le déclencheur de cooldown</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_shared_cooldown_desc">
+<text>Si activé, les temps de recharge de tous les modes sont liés : déclencher l'un les lance tous. Par exemple, voyager vers un sac à dos active aussi les cooldowns du fast travel et du voyage guidé, si appliqués.\n \nDésactivé : chaque type gère son délai séparément, si besoin.</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_debuglogs_enabled">
+<text>Activer les logs de debug</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_allow_debug_travel">
+<text>Permettre le voyage vers les marqueurs debug</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_allow_debug_travel_desc">
+<text>En mode debug, Anomaly vanilla autorise le fast travel vers les stalkers et autres points de la carte non prévus normalement comme destinations. Cela peut être gênant (marqueurs qui bloquent d'autres voyages, téléportations erronées, etc). Par défaut, FFT les filtre.\n \nActiver ce réglage revient au comportement vanilla. A n'utiliser qu'en cas de test ou pour se débloquer d'une carte. Il est recommandé de laisser désactivé.</text>
+</string>
+
+<string id="ui_mcm_header_ft">
+<text>Réglages Fast Travel classique</text>
+</string>
+
+<string id="ui_mcm_header_ftsub">
+<text>Il s'agit de la forme classique de fast travel, gérée par tous les réglages fast travel d'Anomaly. Si l'option dit "fast travel" plutôt que "sac à dos" ou "guide", c'est ce menu qui s'applique.</text>
+</string>
+
+<string id="ui_mcm_header_bp">
+<text>Réglages Fast Travel sac à dos</text>
+</string>
+
+<string id="ui_mcm_header_bpsub">
+<text>Le voyage sac à dos permet le fast travel vers les caches/planques placées, géré aussi par les paramètres d'Anomaly pour ce mode. Les noms de caches créés après FFT seront correctement affichés.</text>
+</string>
+
+<string id="ui_mcm_header_gt">
+<text>Réglages guides PDA</text>
+</string>
+
+<string id="ui_mcm_header_gtsub">
+<text>Le voyage avec guide est spécifique à FFT et permet d'embaucher un vétéran pour t'escorter jusqu'à la destination. Tu dois payer, mais les guides gèrent les provisions (tes stats de survie sont alors en pause, selon réglage), et ils viendront même si tu es blessé ou surchargé. Par contre, il y a certains lieux où ils refuseront d'aller.</text>
+</string>
+
+<string id="ui_mcm_fftd_allow_pin_travel">
+<text>Permettre le voyage vers les marqueurs Quick Pin ? (PAW requis)</text>
+</string>
+
+<string id="ui_mcm_fftd_allow_pin_travel_desc">
+<text>Si activé pour ce mode de voyage, les marqueurs Quick Pin pourront servir de destination fast travel. Pin Travel requiert l'addon Personal Adjustable Waypoint, ce réglage n'a aucun effet sans lui.\n \nOn limite cela aux Quick Pins car ils sont toujours posés dans des endroits accessibles au joueur.</text>
+</string>
+
+<string id="ui_mcm_fftd_getpaw">
+<text>La fonction Pin Travel requiert l'addon Personal Adjustable Waypoint :\nhttps ://www.moddb.com/mods/stalker-anomaly/addons/personal-adjustable-waypoint-for-anomaly-151-152-and-gamma</text>
+</string>
+
+<string id="ui_mcm_fftd_usedisguisefix_desc">
+<text>Un bug vanilla Anomaly perce les déguisements si tu voyages près d'un PNJ avec passage du temps activé. Ce réglage corrige le bug en désactivant la suspicion liée au temps jusqu'à la fin du voyage. Ne le désactive que pour dépannage/test.</text>
+</string>
+
+<string id="ui_mcm_fftd_useoldcalcs_desc">
+<text>Dans Anomaly vanilla, le calcul de distance ne fonctionne correctement que sur la même carte. Pour changer de carte, il produit souvent des résultats incohérents. FFT remplace la méthode vanilla par un calcul global.\n \nLa méthode vanilla est mauvaise, n'active ça que si une compatibilité spéciale l'exige, sinon laisse-ta désactivée.</text>
+</string>
+
+<string id="ui_mcm_fftd_cost_coef_desc">
+<text>Par défaut, seul le voyage avec guide a un coût. Tu peux appliquer un tarif aux autres modes aussi : toute valeur supérieure à zéro applique le même calcul que pour les guides.</text>
+</string>
+
+<string id="st_fftd_farepaid_noguide">
+<text>Frais de fast travel payés : %s</text>
+</string>
+
+<string id="ui_mcm_fftd_gtcfg_ignore_status">
+<text>Les guides ignorent l'état "blessé" ou "surchargé"</text>
+</string>
+
+<string id="ui_mcm_fftd_gtcfg_ignore_status_desc">
+<text>Si activé, le voyage guidé ignore les restrictions dues au saignement, irradiation ou surcharge, pour représenter que les guides font le nécessaire (pansement, aide...).</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_combat_dist">
+<text>Distance combat PNJ</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_combat_dist_desc">
+<text>Distance maximale à laquelle le joueur est considéré en "combat" et empêché de voyager.</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_combat_timeout">
+<text>Délai avant fin de combat PNJ</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_combat_timeout_desc">
+<text>Si un ennemi ne t'a pas vu depuis le nombre de secondes indiqué, il ne bloque plus le voyage rapide.</text>
+</string>
+
+<!-- Ajouté en 2.3 -->
+
+<string id="ui_mcm_fftd_gen_use_warfare_fix">
+<text>Utiliser le correctif Warfare Alife Overhaul</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_use_warfare_fix_desc">
+<text>Si activé et que le Mode Warfare est actif, FFT ignorera l'ajout d'icônes de fast travel sur la carte. Si les icônes ou menus de carte dysfonctionnent avec Warfare Alife Overhaul, essaye d'activer ceci.</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_allow_open_bp">
+<text>Autoriser l'ouverture des sacs à dos depuis la carte</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_allow_open_bp_desc">
+<text>Activer cette option réactive la fonction vanilla qui permet d'ouvrir n'importe quel sac à dos depuis la même carte. Pour équilibrage, c'est désactivé par défaut.</text>
+</string>
+
+<string id="ui_mcm_fftd_gear_dmg_factor">
+<text>Multiplicateur de dégâts d'état de l'équipement</text>
+</string>
+
+<string id="ui_mcm_fftd_gear_dmg_factor_desc">
+<text>Ajuste le multiplicateur des dégâts d'état infligés à tout équipement équipé lors des fast travels. Plus tu voyages loin, plus ça use le matos.\n \nDes valeurs comme 1 ou 2 sont le "normal", 11 est un surcroit de casse extrême. Mettre à zéro désactive cette option pour ce mode de voyage.</text>
+</string>
+
+<!-- Ajouté en 2.3.1 -->
+
+<string id="ui_mcm_fftd_gen_cond_dmg_mode">
+<text>Type d'usure sur l'équipement</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_cond_dmg_mode_desc">
+<text>
+Tous : l'usure touche tous les équipements portés\n
+Aléatoire : l'usure touche un objet équipé au hasard\n
+Armure : l'usure n'affecte que l'armure et le casque\n
+Armes : seules les armes équipées s'usent\n
+Désactivé : aucune usure d'équipement, peu importe les autres réglages.\n
+</text>
+</string>
+
+<string id="ui_mcm_lst_fft_dmg_disabled">
+<text>Désactivé</text>
+</string>
+
+<string id="ui_mcm_lst_fft_dmg_all">
+<text>Tous</text>
+</string>
+
+<string id="ui_mcm_lst_fft_dmg_random">
+<text>Aléatoire</text>
+</string>
+
+<string id="ui_mcm_lst_fft_dmg_armor">
+<text>Armure</text>
+</string>
+
+<string id="ui_mcm_lst_fft_dmg_weapons">
+<text>Armes</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_minimum_health">
+<text>Santé minimale pour voyager</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_minimum_health_desc">
+<text>Si tu es bloqué par la radioactivité ou le saignement, tu seras aussi bloqué si ta santé passe sous ce pourcentage. Zéro désactive la fonction.</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_minimum_satiety">
+<text>Satiété minimale pour voyager</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_minimum_satiety_desc">
+<text>Si tu es bloqué par la radioactivité ou le saignement, tu seras aussi bloqué si ta satiété (faim/soif) passe sous ce seuil (en %). Mettre à zéro le désactive.</text>
+</string>
+
+<!-- Ajouté en 2.4 -->
+
+<string id="ui_mcm_fftd_ftcfg_enabled">
+<text>Autoriser le fast travel normal</text>
+</string>
+
+<!-- Ajouté en 2.5 -->
+
+<string id="ui_mcm_fftd_gtcfg_npc_guides_too">
+<text>Certains réglages s'appliquent aussi aux guides PNJ</text>
+</string>
+
+<!-- Ajouté en 2.6 -->
+
+<string id="st_fftd_farepaid_npcguide">
+<text>Tu as payé %s à un guide pour t'amener à destination.</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_progressive_cost">
+<text>Prix évolutifs selon le rang du joueur</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_progressive_cost_desc">
+<text>Si activé, tous les coûts de fast travel augmenteront progressivement selon ton rang. L'augmentation est lente au début puis atteint son maximum avec le multiplicateur ci-dessous.</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_prog_coef_max">
+<text>Multiplicateur de coût au rang max</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_prog_coef_max_desc">
+<text>Quand le joueur atteint le rang max défini ci-dessous, tous les coûts de voyage sont augmentés de ce multiplicateur. En dessous, le multiplicateur progresse selon une courbe de zéro à la valeur fixée. [Courbe : 1 - cos((x * pi) / 2)]</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_prog_rank_cap">
+<text>Rang maximum pris en compte</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_prog_rank_cap_desc">
+<text>Si le réglage progressif est activé, c'est le rang où les prix cessent d'augmenter.</text>
+</string>
+
+<string id="ui_mcm_fftd_gtcfg_npc_cost_coef">
+<text>Coût pour engager les guides PNJ via dialogue</text>
+</string>
+
+<string id="ui_mcm_fftd_gtcfg_npc_cost_coef_desc">
+<text>Quand tu engages un guide PNJ en dialogue, ce tarif au mètre s'applique au lieu de la valeur normale.</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_force_vanilla_fares">
+<text>Forcer les tarifs vanilla pour les guides PNJ</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_force_vanilla_fares_desc">
+<text>Si activé, les prix vanilla sont utilisés quand tu engages un guide PNJ en face à face, au lieu des calculs FFT.</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_nice_round_numbers">
+<text>Arrondir les prix générés à la centaine</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_nice_round_numbers_desc">
+<text>Si activé, FFT arrondit ses tarifs à la centaine inférieure pour ressembler aux prix vanilla.</text>
+</string>
+
+<!-- Ajouté en 2.7 -->
+
+<string id="st_fftd_mapspot_kilometers">
+<text>km</text>
+</string>
+
+<string id="st_fft_travel_psyblocked">
+<text>Un champ psy puissant bloque le voyage vers cette destination</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_northgate">
+<text>Le Lobotomisateur bloque les voyages</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_northgate_desc">
+<text>Si activé, le champ psy du Lobotomisateur bloque tous les voyages rapides entre le nord et le sud de la carte tant qu'il n'a pas été désactivé, même pour les guides. Cette option n'a aucun effet hors mode histoire.</text>
+</string>
+
+<string id="ui_mcm_header_gameplay">
+<text>Réglages gameplay &amp; équilibrage</text>
+</string>
+
+<string id="ui_mcm_header_ui">
+<text>Réglages interface &amp; apparence</text>
+</string>
+
+<string id="ui_mcm_header_debug">
+<text>Dépannage et compatibilité</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_show_distdur">
+<text>Afficher la distance et la durée dans le menu contextuel</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_show_distdur_desc">
+<text>Si activé, toutes les options de fast travel affichent distance et durée estimées dans le menu du PDA. Si désactivé, cette info disparait et l'UI ressemble au vanilla.</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_verbose_enabled">
+<text>Logs de debug verbeux</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_verbose_enabled_desc">
+<text>"Verbeux", pour les programmeurs, ça veut dire "ça va flooder les logs". Met le maximum d'infos, à activer pour signaler un bug.</text>
+</string>
+
+<string id="pol_smart_terrain_1_1">
+<text>Carrefour des Prés</text>
+</string>
+
+<string id="pol_smart_terrain_1_3">
+<text>Camp bandit (Prés)</text>
+</string>
+
+<!-- Ajouté en 2.8 -->
+
+<string id="st_fft_travel_zoneblocked_1">
+<text>Tu ne peux initier %s que depuis des bases tenues par une faction amie</text>
+</string>
+
+<string id="st_fft_travel_zoneblocked_2">
+<text>Tu ne peux initier %s que depuis une base de ta propre faction</text>
+</string>
+
+<string id="ui_mcm_fft_zone_mode">
+<text>Voyage possible seulement depuis les bases de faction</text>
+</string>
+
+<string id="ui_mcm_fft_zone_mode_desc">
+<text>Optionnellement, tu peux restreindre l'initiation du voyage :\n
+Désactivé : voyage possible depuis partout (vanilla).\n
+Ami : voyage uniquement si tu es dans une base amie. Recommandé pour la plupart des joueurs.\n
+Faction propre : voyage possible uniquement dans les bases de ta propre faction. Aura plus d'impact sur certaines factions que d'autres.
+</text>
+</string>
+
+<string id="ui_mcm_lst_fft_zonetravel_any">
+<text>Désactivé</text>
+</string>
+
+<string id="ui_mcm_lst_fft_zonetravel_friend">
+<text>Ami</text>
+</string>
+
+<string id="ui_mcm_lst_fft_zonetravel_ally">
+<text>Faction propre</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_zones_use_disguises">
+<text>Permet de voyager depuis une base ennemie si déguisé</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_zones_use_disguises_desc">
+<text>Si tu actives l'option "voyage limité aux bases", activer ceci te permet aussi, si tu es correctement déguisé, d'utiliser les bases de factions hostiles. Sans ce réglage, se déguiser n'a aucun effet sur le fast travel.</text>
+</string>
+
+<!-- Ajouté en 2.9 -->
+
+<string id="st_fft_costfree">
+<text>Gratuit</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_show_zone_status_icon">
+<text>Afficher une icône de statut en zone de voyage</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_show_zone_status_icon_desc">
+<text>Si activé, une icône spéciale apparaît dans la zone standard d'état tant que tu es dans une zone de fast travel valide. Ce réglage est inutile si tu ne restreins pas le voyage aux bases ou feux de camp.\n
+Trois styles au choix : vanilla et deux pour Alticons (NB ou couleur).</text>
+</string>
+
+<string id="ui_mcm_fft_campfire_base">
+<text>Feux de camp assimilés à des bases de faction</text>
+</string>
+
+<string id="ui_mcm_fft_campfire_base_desc">
+<text>Si activé, être à moins de 5 m d'un feu de camp allumé compte comme être dans une base pour le fast travel.</text>
+</string>
+
+<string id="ui_mcm_lst_fft_travelicon_disabled">
+<text>Désactivé</text>
+</string>
+
+<string id="ui_mcm_lst_fft_travelicon_vanilla">
+<text>Vanilla</text>
+</string>
+
+<string id="ui_mcm_lst_fft_travelicon_altbw">
+<text>Alticons NB</text>
+</string>
+
+<string id="ui_mcm_lst_fft_travelicon_altcolor">
+<text>Alticons Couleur</text>
+</string>
+
+<string id="ui_mcm_fft_camp_mode">
+<text>Les feux de camp sont des destinations fast travel</text>
+</string>
+
+<string id="ui_mcm_fft_camp_mode_desc">
+<text>Si activé, tu pourras utiliser les feux de camp comme destinations fast travel :\n
+Tous : tout feu de camp connu est valide.\n
+Allumé : le feu doit être allumé pour voyager.\n
+Les feux n'apparaissent pas sur la carte vanilla, donc il faut un addon genre "Display Campfires on Map" de Haruka (inclus dans GAMMA) :\n
+https ://www.moddb.com/mods/stalker-anomaly/addons/displaycampfiresonmap
+</text>
+</string>
+
+<string id="ui_mcm_lst_fft_campmode_dis">
+<text>Désactivé</text>
+</string>
+
+<string id="ui_mcm_lst_fft_campmode_any">
+<text>Tous</text>
+</string>
+
+<string id="ui_mcm_lst_fft_campmode_lit">
+<text>Allumé</text>
+</string>
+
+<string id="st_fft_campfire">
+<text>un feu de camp</text>
+</string>
+
+<!-- Ajouté en 2.10 -->
+
+<string id="ui_mcm_fftd_gen_squad_local_travel">
+<text>Téléporter les compagnons lors des trajets locaux</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_squad_local_travel_desc">
+<text>Vanilla Anomaly laisse tes compagnons sur place lors des voyages sur la même carte. Si tu actives cette option, Fast Travel Equitable essaie de les téléporter avec toi. Attention, à cause de limites techniques du moteur, ce n'est pas toujours fiable.</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_squad_tp_bind">
+<text>Téléporter l'escouade à la position du joueur</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_squad_tp_bind_desc">
+<text>FFT essaiera de ramener tous tes compagnons sur ta position. C'est fait automatiquement pour les trajets locaux si tu as activé l'option, mais tu peux aussi forcer la téléportation. Les otages non secourus ou compagnons en mode "attendre" ne sont pas déplacés.</text>
+</string>
+
+<!-- Ajouté en 2.14 -->
+
+<string id="ui_mcm_fftd_gen_psyblock_mapspots">
+<text>Les destinations bloquées utilisent une icône différente</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_psyblock_mapspots_desc">
+<text>Si le voyage rapide est bloqué (par le Lobotomisateur ou autre), l'icône de la destination sur la carte change pour le signaler.</text>
+</string>
+
+<!-- Ajouté en 2.15 -->
+
+<string id="encyclopedia_addons">
+<text>Addons</text>
+</string>
+
+<string id="encyclopedia_addons_fair_fast_travel">
+<text>Fast Travel Equitable : aperçu de l'addon</text>
+</string>
+
+<string id="encyclopedia_addons_fair_fast_travel_text">
+<text>
+%c[pda_white]Aperçu : %c[255,0,200,220]https ://www.youtube.com/watch ?v=lzywMbXErVo\n
+%c[ui_gray_1]
+\n%c[pda_yellow]Fast Travel Equitable%c[ui_gray_1] est une refonte complète des systèmes de fast travel et voyage sac à dos d'Anomaly. Elle te donne un contrôle total du comportement des voyages : rends-les aussi difficiles ou permissifs que tu veux.\n 
+
+\nTout est personnalisable dans le MCM. Tu veux supprimer tous les coûts ? Mets à zéro. Ne voyager que via feux de camp allumés ? Possible. %c[pda_white]Si un truc ne te va pas, vérifie d'abord le MCM !\n
+
+\n%c[pda_white]Dans %c[pda_yellow]MCM > Fast Travel Equitable%c[pda_white] :\n
+%c[pda_yellow]Général%c[pda_white] : options de l'UI, ou qui s'appliquent à tous les types de voyage\n
+%c[pda_yellow]Fast Travel%c[pda_white] : réglages du mode "fast travel" uniquement\n
+%c[pda_yellow]Voyage sac à dos%c[pda_white] : paramètres pour les trajets "cache sac à dos"\n
+%c[pda_yellow]Voyage avec guide%c[pda_white] : paramètres réservés au voyage via guides PNJ, que ce soit PDA ou (via Guide Travel Overhaul) en chair et en os.\n \n
+
+%c[pda_red]Un souci ? Fais défiler vers le dépannage.\n
+%c[ui_gray_1]
+\n%c[pda_green]FONCTIONNALITES\n
+%c[pda_yellow]@ Meilleures durées de trajet%c[ui_gray_1]
+\nPar défaut, voyager sur la même carte prend 10 minutes par 100m (réglable dans MCM), et contrairement au vanilla il n'y a pas d'aléatoire. Ça équivaut au temps de marche du perso en jeu, sans sprint ou gros détour. Entre maps, même calcul (possibilité de personnaliser).\n \n
+
+%c[pda_yellow]@ Meilleur menu contextuel%c[ui_gray_1]
+\nLe clic droit sur une icône de la carte affiche la distance, la durée estimée et (si applicable) le prix.\n \n
+
+%c[pda_yellow]@ Guides sur la carte PDA%c[ui_gray_1]
+\nIl y a partout dans la Zone des guides de toute faction, prêts à t'aider (pour un prix). Recrute-les depuis la carte, sur n'importe quel point de voyage valable. Ils apportent provisions, stats survie gelées, et ignorent "blessure"/"surcharge".\n \n
+
+%c[pda_yellow]@ Guides PNJ réformés en dialogue%c[ui_gray_1]
+\nSi tu as coché l'option, les guides PNJ suivent aussi tout le système FFT : coût, délai, stats...\n \n
+
+%c[pda_yellow]@ Usure optionnelle de l'équipement%c[ui_gray_1]
+\nBalle perdue, fatigue, tout trajet laisse ses traces ! FFT permet de simuler ça : applique une usure paramétrable à tes objets équipés, séparément pour chaque type de voyage. Zéro désactive. Tous ces réglages sont dans le MCM.\n \n
+
+%c[pda_yellow]@ Cooldown réglable%c[ui_gray_1]
+\nChacun des trois types de voyage peut avoir un temps d'attente (jusqu'à 2h) avant réutilisation. Toujours visible dans le menu contextuel. Chaque type peut garder son temps, ou tu peux tous les lier.\n \n
+
+%c[pda_yellow]@ Restriction aux bases amies%c[ui_gray_1]
+\nFonction optionnelle : tu peux demander que chaque type de voyage ne puisse s'initier que depuis une base amie. Ça empêche les téléports faciles hors de zones à anomalie, mais conserve la QoL. Même les déguisements adaptés peuvent tromper la restriction (paramétrage possible).\n \n
+
+%c[pda_yellow]@ Feux de camp en destination, indicateur de voyage%c[ui_gray_1]
+\nLes feux de camp peuvent, si tu veux, servir de destination. Par défaut, c'est réservé au voyage guidé. Si tu restreins les voyages aux bases, tu peux aussi considérer les feux allumés comme base. Si activé, un statut indique quand tu es en zone valide.\n \n
+
+%c[pda_yellow]@ Blocage nord par scénario%c[ui_gray_1]
+\nEn mode histoire, tant que le Lobotomisateur n'est pas coupé, certains trajets restent bloqués. Comme d'habitude, tu peux désactiver cela dans MCM.\n \n
+
+%c[pda_yellow]@ Filtrage des points debug%c[ui_gray_1]
+\nBeaucoup utilisent le Mode Debug, qui autorise le voyage sur n'importe quel marqueur (souvent au mauvais endroit). Par défaut, FFT filtre tout ça, mais tu peux réactiver au besoin dans MCM.\n \n
+
+%c[pda_yellow]@ Détection de combat améliorée%c[ui_gray_1]
+\nFFT utilise la liste des PNJ hostiles d'Anomaly, mais ignore ceux à plus de 100 m ou qui ne t'ont pas vu depuis 10 secondes.\n \n
+
+%c[pda_yellow]@ Intégration Skill System%c[ui_gray_1]
+\nSi tu possèdes %c[pda_white]Skill System%c[ui_gray_1] de Haruka (ou mods affiliés), tu peux demander à FFT d'adapter tous les temps de voyage selon l'Endurance.\n \n
+
+%c[pda_yellow]@ Pin Travel (Personal Adjustable Waypoint)%c[ui_gray_1]
+\nAvec l'addon %c[pda_white]Personal Adjustable Waypoint%c[ui_gray_1], active le voyage vers tes PSQR Quick Pins créés partout où tu peux aller à pied !\n \n
+
+%c[pda_yellow]@ Support Western Goods%c[ui_gray_1]
+\nLa dernière version de %c[pda_white]Western Goods%c[ui_gray_1] ajoute un système de guides dynamiques. FFT s'y adapte nativement, aucun réglage requis.\n \n
+
+%c[pda_yellow]@ Correction bug déguisement%c[ui_gray_1]
+\nFFT corrige le bug vanilla qui perce les déguisements si tu voyages devant des PNJ sous la suspicion temporelle.\n \n
+
+--------------------------------------------------------------------------------\n \n
+
+%c[pda_red]Q : %c[pda_white]Pourquoi un message sur un "champ psy puissant" en cliquant sur certains lieux ?\n
+%c[pda_green]A : %c[pda_white]Tu joues en mode histoire avec le Lobotomisateur actif. Tu peux désactiver cette option dans MCM : %c[pda_yellow]Fast Travel Equitable > Général > Le Lobotomisateur bloque les voyages\n \n
+
+%c[pda_red]Q : %c[pda_white]Je ne peux pas voyager vers un Quick Pin PAW créé ?\n
+%c[pda_green]A : %c[pda_white]Seuls les Quick Pins sont valides, et seulement si Pin Travel est activé en MCM.\n \n
+
+%c[pda_red]@@@ IMPORTANT : Pour bug ou souci, fais ABSOLUMENT ceci : @@@\n \n
+%c[pda_white]1. Va dans %c[pda_yellow]MCM > Fast Travel Equitable > Général\n
+%c[pda_white]2. Active %c[pda_yellow]Debug logging%c[pda_white] + %c[pda_yellow]Verbose logging\n
+%c[pda_white]3. Relance le jeu\n
+%c[pda_white]4. Reproduis le problème simplement\n
+%c[pda_white]5. Récupère le log dans %c[pda_yellow](Ton dossier Anomaly)\appdata\logs%c[pda_white] et poste-le en ligne\n \n
+
+%c[ui_gray_1]Sinon le log risque de ne pas suffire à corriger quoi que ce soit.\n
+
+\nJe ne reçois pas les commentaires Moddb. Le plus rapide : Discord GAMMA, salon FFT. DM non sollicités ignorés.\n
+</text>
+</string>
+
+<!-- Ajouté en 2.16 -->
+
+<string id="encyclopedia_addons_fair_fast_travel_psyblocked">
+<text>Fast Travel bloqué par champ psy</text>
+</string>
+
+<string id="encyclopedia_addons_fair_fast_travel_psyblocked_text">
+<text>%c[ui_gray_1]Si tu joues en %c[pda_yellow]Mode Histoire%c[ui_gray_1] et que tu n'as pas encore désactivé le %c[pda_yellow]Lobotomisateur%c[ui_gray_1], l'addon %c[pda_yellow]Fast Travel Equitable%c[ui_gray_1] comprend une fonction qui empêche tout trajet passant par la zone psy. Ces destinations deviennent inaccessibles et arborent une icône spéciale, comme ci-dessus.\n
+
+\n%c[pda_white]Pour retrouver l'accès, progresse dans l'histoire ou désactive la fonction dans le Mod Configuration Menu :\n \n
+%c[pda_yellow]MCM > Fast Travel Equitable > Général > Le Lobotomisateur bloque les voyages
+</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_use_map_hazard_coef">
+<text>Adapter les coûts selon la dangerosité de la carte</text>
+</string>
+
+<string id="ui_mcm_fftd_gen_use_map_hazard_coef_desc">
+<text>Si activé, le coût du fast travel dépendra du niveau de "menace" le plus élevé entre carte de départ et d'arrivée. Résumé : voyager dans la Cordon/les Marais coûte moins, alors qu'aller à Pripyat ou plus au sud sera plus cher.</text>
+</string>
+
+</string_table>

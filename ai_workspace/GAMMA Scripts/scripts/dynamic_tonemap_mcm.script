@@ -1,0 +1,51 @@
+function on_mcm_load()
+    op = {id = "dynamic_tonemap_extended", sh = true, gr = {
+	    	{id = "banner", type = "slide", text = "ui_mcm_dynamic_tonemap_extended_title", size= {512,50}, spacing = 20},
+
+	    	{id = "enable_dynamic_tonemap", type = "check", val = 1, def = true},
+	    	{id = "line", type = "line"},
+
+			{id = "adaptation", type = "track", val = 2, min = 0, max = 10, step = 0.1, def = 3},
+			{id = "line", type = "line"},
+
+			{id = "k_amount", type = "track", val = 2, min = 0, max = 0.5, step = 0.01, def = 0.1},
+			{id = "min_amount", type = "track", val = 2, min = 0, max = 1, step = 0.05, def = 0.3},
+			{id = "max_amount", type = "track", val = 2, min = 0, max = 1, step = 0.05, def = 1},
+			{id = "rain_amount_addition", type = "track", val = 2, min = 0, max = 1, step = 0.05, def = 0.25},
+			{id = "storm_amount_addition", type = "track", val = 2, min = 0, max = 1, step = 0.05, def = 0.3},
+			{id = "line", type = "line"},
+
+			{id = "k_lowlum", type = "track", val = 2, min = 0, max = 0.5, step = 0.01, def = 0.1},
+			{id = "min_clear_lowlum", type = "track", val = 2, min = 0, max = 1, step = 0.05, def = 0.5},
+			{id = "min_not_clear_lowlum", type = "track", val = 2, min = 0, max = 1, step = 0.05, def = 0.25},
+			{id = "max_lowlum", type = "track", val = 2, min = 0, max = 1, step = 0.05, def = 0.6},
+			{id = "rain_lowlum_reduction_coeff", type = "track", val = 2, min = 0, max = 1, step = 0.05, def = 0.8},
+			{id = "storm_lowlum_reduction_coeff", type = "track", val = 2, min = 0, max = 1, step = 0.05, def = 0.8},
+			{id = "line", type = "line"},
+
+			{id = "k_middle", type = "track", val = 2, min = 0, max = 0.5, step = 0.01, def = 0.05},
+			{id = "min_middle_gray", type = "track", val = 2, min = 0, max = 2, step = 0.05, def = 1.3},
+			{id = "max_middle_gray", type = "track", val = 2, min = 0, max = 2, step = 0.05, def = 1.6},
+			{id = "line", type = "line"},
+
+			{id = "k_lumscale_amb", type = "track", val = 2, min = 0, max = 0.5, step = 0.01, def = 0.05},
+			{id = "k_lumscale_amb_addition", type = "track", val = 2, min = 0, max = 0.25, step = 0.01, def = 0.07},
+			{id = "min_lumscale_amb", type = "track", val = 2, min = 0, max = 3, step = 0.05, def = 0.35},
+			{id = "max_lumscale_amb", type = "track", val = 2, min = 0, max = 3, step = 0.05, def = 1.4},
+			{id = "not_clear_amb_reduction_coeff", type = "track", val = 2, min = 0, max = 2, step = 0.05, def = 0.9},
+			{id = "rain_amb_reduction_coeff", type = "track", val = 2, min = 0, max = 2, step = 0.05, def = 0.8},
+			{id = "storm_amb_reduction_coeff", type = "track", val = 2, min = 0, max = 2, step = 0.05, def = 0.75},
+			{id = "line", type = "line"},
+
+			{id = "k_lumscale_hemi", type = "track", val = 2, min = 0, max = 0.25, step = 0.01, def = 0.01},
+			{id = "k_lumscale_hemi_addition", type = "track", val = 2, min = 0, max = 0.25, step = 0.01, def = 0.05},
+			{id = "min_lumscale_hemi", type = "track", val = 2, min = 0, max = 3, step = 0.05, def = 0.95},
+			{id = "max_lumscale_hemi", type = "track", val = 2, min = 0, max = 3, step = 0.05, def = 1.15},
+			{id = "not_clear_hemi_reduction_coeff", type = "track", val = 2, min = 0, max = 2, step = 0.05, def = 1},
+			{id = "rain_hemi_reduction_coeff", type = "track", val = 2, min = 0, max = 2, step = 0.05, def = 0.9},
+			{id = "storm_hemi_reduction_coeff", type = "track", val = 2, min = 0, max = 2, step = 0.05, def = 0.9},
+			{id = "line", type = "line"},
+		}
+	}
+    return op
+end

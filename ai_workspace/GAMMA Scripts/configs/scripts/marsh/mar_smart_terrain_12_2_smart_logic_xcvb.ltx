@@ -1,0 +1,175 @@
+[beh@general]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+gather_items_enabled = false
+help_wounded_enabled = false
+corpse_detection_enabled = false
+meet = no_meet
+wounded = wounded@ignore
+use_camp = false
+
+[meet@general]
+close_anim 		= nil
+close_victim 	= nil
+far_anim 		= nil
+far_victim 		= nil
+close_distance  = 0
+far_distance 	= 0
+use = {=actor_enemy} false, {=dist_to_actor_le(3)} true, false
+snd_on_use = {!dist_to_actor_le(3)} nil
+meet_on_talking = false
+
+[wounded@ignore]
+hp_state        = 0|wounded_heavy@help_heavy
+hp_state_see    = 0|wounded_heavy@help_heavy
+hp_victim       = 0|nil
+hp_fight        = 0|false
+hp_cover        = 0|false
+
+; =======================
+; ------------- DAY ---------------
+; =======================
+; guard east
+[logic@mar_12_2_xcvb_day_1]
+active = beh@day_1
+suitable = {!surge_started !is_night} true
+prior = 59
+
+[beh@day_1]:beh@general
+pt1 = 40000, guard | 		pos: 609.7, 4.1147, 427.7 	 	 look: 613.0648, 2.7196, 423.6296 
+path_end = loop
+gather_items_enabled = true
+help_wounded_enabled = true
+corpse_detection_enabled = true
+meet = meet@general
+
+
+; patrol north-south
+[logic@mar_12_2_xcvb_day_2]
+active = beh@day_2
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[beh@day_2]:beh@general
+pt1 = 30000, guard | 		pos: 592.2, 3.6976, 438.9 	 	 look: 591.9373, 2.6448, 442.8214 
+pt2 = 30000, guard | 		pos: 591.5, 3.9576, 424.9 	 	 look: 590.3548, 2.9413, 420.9118 
+path_end = loop
+gather_items_enabled = true
+help_wounded_enabled = true
+corpse_detection_enabled = true
+meet = meet@general
+wait_anim = guard
+walk_anim = patrol
+
+; guard west
+;[logic@mar_12_2_xcvb_day_2]
+;active = beh@day_2
+;suitable = {!surge_started !is_night} true
+;prior = 58
+
+;[beh@day_2]:beh@general
+;pt1 = 40000, guard | 		pos: 599.2, 4.4711, 435.4 	 	 look: 594.1348, 2.7135, 437.7435 
+;path_end = loop
+;gather_items_enabled = true
+;help_wounded_enabled = true
+;corpse_detection_enabled = true
+;meet = meet@general
+
+
+; guard south
+;[logic@mar_12_2_xcvb_day_3]
+;active = beh@day_3
+;suitable = {!surge_started !is_night} true
+;prior = 58
+
+;[beh@day_3]:beh@general
+;pt1 = 40000, guard | 		pos: 593.6, 4.0593, 419.3 	 	 look: 587.5345, 2.8664, 414.1022 
+;path_end = loop
+;gather_items_enabled = true
+;help_wounded_enabled = true
+;corpse_detection_enabled = true
+;meet = meet@general
+
+
+; =======================
+; ------------ NIGHT -------------
+; =======================
+; patrol
+[logic@mar_12_2_xcvb_night_1]
+active = beh@night_1
+suitable = {!surge_started =is_night} true
+prior = 59
+
+[beh@night_1]:beh@general
+pt1 = 30000, guard | 		pos: 592.2, 3.6976, 438.9 	 	 look: 591.9373, 2.6448, 442.8214 
+pt2 = 30000, guard | 		pos: 591.5, 3.9576, 424.9 	 	 look: 590.3548, 2.9413, 420.9118 
+path_end = loop
+gather_items_enabled = true
+help_wounded_enabled = true
+corpse_detection_enabled = true
+meet = meet@general
+wait_anim = guard
+walk_anim = patrol
+
+
+; commander guard
+[logic@mar_12_2_xcvb_night_2]
+active = beh@night_2
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[beh@night_2]:beh@general
+pt1 = 30000, guard | 		pos: 602, 4.5319, 434.7 	 	 look: 602.085, 3.1788, 430.4655 
+path_end = loop
+gather_items_enabled = true
+help_wounded_enabled = true
+corpse_detection_enabled = true
+meet = meet@general
+wait_anim = guard
+walk_anim = patrol
+
+
+; sleep 1
+[logic@mar_12_2_xcvb_night_3]
+active = beh@night_3
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[beh@night_3]:beh@general
+pt1 = 30000, sleep | 		pos: 622.3, 4.1835, 434.7 	 	 look: 622.3245, 3.22, 432.3022 
+path_end = loop
+turn_on_campfire = true
+
+
+; sleep 2
+[logic@mar_12_2_xcvb_night_4]
+active = beh@night_4
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[beh@night_4]:beh@general
+pt1 = 30000, drunk_sit_ass | 		pos: 619.5, 4.2665, 435.4 	 	 look: 616.538, 3.3648, 433.6892 
+path_end = loop
+meet = meet@general
+turn_on_campfire = true
+
+
+; sleep 3
+[logic@mar_12_2_xcvb_night_5]
+active = beh@night_5
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[beh@night_5]:beh@general
+pt1 = 30000, sleep | 		pos: 622.3, 4.1928, 433.3 	 	 look: 622.3598, 3.1958, 435.2321 
+path_end = loop
+meet = meet@general
+turn_on_campfire = true

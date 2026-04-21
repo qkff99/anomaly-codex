@@ -1,0 +1,212 @@
+
+HUD = nil
+
+function activate_hud(gui)
+
+	-- open with inventory only
+	if gui ~= "UIInventory" then
+		return
+	end
+
+	-- check for inventory gui
+	if not (ui_inventory and ui_inventory.GUI) then
+		return
+	end
+
+	-- disable inventory power bar
+	if ui_inventory.GUI.stat and ui_inventory.GUI.stat["power"] and ui_inventory.GUI.stat["power"].base then
+		ui_inventory.GUI.stat["power"].base:Show(false)
+	end
+
+	-- show hud
+	if HUD == nil then
+		HUD = hts_tooltips()
+		get_hud():AddDialogToRender(HUD)
+		HUD:Update_Bars(true)
+	end
+
+end
+
+function deactivate_hud(gui)
+--	if gui ~= "UIInventory" then return end
+
+	if HUD ~= nil then
+		get_hud():RemoveDialogToRender(HUD)
+		HUD = nil
+	end
+
+end
+
+class "hts_tooltips" (CUIScriptWnd)
+function hts_tooltips:__init() super()
+	self:InitControls()
+end
+
+function hts_tooltips:InitControls()
+	self:SetWndRect(Frect():set(0,0,1024,768))
+	self:SetAutoDelete(true)
+
+	self.xml = CScriptXmlInit()
+	local xml = self.xml
+	xml:ParseFile("ui_new_bars.xml")
+
+	self.hts_t = {
+		[1] = { "satiety", get_satiety_val },
+		[2] = { "thirst", get_thirst_val },
+		[3] = { "sleep", get_sleep_val },
+	}
+
+	-- timer
+	self.tmr = 0
+
+	-- build elements
+	self.elems = self.elems or {}
+
+	for i = 1, 3 do
+
+		self.elems[i] = self.elems[i] or {}
+
+		-- bars
+		self.elems[i].bar_wnd = xml:InitStatic(self.hts_t[i][1] .. "_wnd", self)
+		self.elems[i].bar = xml:InitStatic(self.hts_t[i][1] .. "_wnd:bar", self.elems[i].bar_wnd)
+
+		-- default bar width, height
+		self.elems[i].width = self.elems[i].bar:GetWidth()
+		self.elems[i].height = self.elems[i].bar:GetHeight()
+
+		-- default bar texture rect (full bar = x2 - x1)
+		self.elems[i].rect_x1 = self.elems[i].bar:GetTextureRect().x1
+		self.elems[i].rect_y1 = self.elems[i].bar:GetTextureRect().y1
+		self.elems[i].rect_x2 = self.elems[i].bar:GetTextureRect().x2
+		self.elems[i].rect_y2 = self.elems[i].bar:GetTextureRect().y2
+
+		-- tooltip
+		self.elems[i].tooltip = xml:InitStatic(self.hts_t[i][1] .. "_wnd:tooltip", self.elems[i].bar_wnd)
+
+	end
+
+end
+
+function hts_tooltips:Update()
+	CUIScriptWnd.Update(self)
+
+	-- disable bars when in picker window
+	local picker_enabled = ui_inventory.GUI and ui_inventory.GUI.CC and ui_inventory.GUI.CC["picker"] and ui_inventory.GUI.CC["picker"]:IsShown()
+	for i = 1, #self.elems do
+		self.elems[i].bar_wnd:Show( (not picker_enabled) )
+	end
+
+	local tg = time_global()
+	if (tg < self.tmr) then return end
+	self.tmr = tg + 50
+
+	self:Update_Bars()
+
+end
+
+function hts_tooltips:Update_Bars()
+
+	local pos = GetCursorPosition()
+
+	for i = 1, #self.elems do
+
+		local elem = self.elems[i]
+
+		-- update bars
+		if elem.bar then
+			-- set new x2 rect
+			local x1 = elem.rect_x1
+			local x2 = x1 + ( (elem.rect_x2 - x1) * self.hts_t[i][2]())
+			self.elems[i].bar:SetTextureRect(Frect():set( x1, elem.rect_y1, x2, elem.rect_y2 ))
+
+			-- set new width
+			local width = elem.width * self.hts_t[i][2]()
+			self.elems[i].bar:SetWndSize(vector2():set( width, elem.height ))
+		end
+
+		-- update tooltip
+		self.elems[i].tooltip:Show(false)
+		if elem.tooltip then
+			local p, w, h = elem.bar_wnd:GetWndPos(), elem.bar_wnd:GetWidth(), elem.bar_wnd:GetHeight()
+			local pos_true = pos.x > p.x and pos.y > p.y and pos.x < (p.x + w) and pos.y < (p.y + h)
+			if pos_true then
+				self.elems[i].tooltip:Show(true)
+				self.elems[i].tooltip:TextControl():SetText( math.ceil(self.hts_t[i][2]() * 100) .. " %" )
+			end
+		end
+
+	end
+
+end
+
+function hts_tooltips:__finalize()
+end
+
+-------------------------- misc --------------------------
+function get_red_thirst()
+	local max_thirst = get_local_val([[gamedata\scripts\actor_status_thirst.script]], "actor_status_thirst", "local start_blur_4") or 5760
+	return max_thirst
+end
+
+function get_red_sleep()
+	local max_sleep = get_local_val([[gamedata\scripts\actor_status_sleep.script]], "actor_status_sleep", "local start_blur_4") or 8750
+	return max_sleep
+end
+
+function get_local_val(path, script_name, str_to_find)
+	if _G[script_name] then
+
+		if not file_exists(path) then
+			return
+		end
+
+		for line in io.lines(path) do
+			if string.find(line, str_to_find) then
+				_,_, loc_val = string.find(line, "start_blur_4%s*=%s*(%d+)")
+				if type(tonumber(loc_val)) == "number" then
+					return loc_val
+				end
+			end
+		end
+	end
+
+end
+
+function file_exists(name)
+	local f = io.open(name, "r")
+	if f ~= nil then
+		io.close(f)
+		return true
+	else
+		return false
+	end
+end
+
+function get_satiety_val()
+	local conditions = db.actor:cast_Actor():conditions()
+	local satiety = conditions:GetSatiety()
+	local red_icon_satiety = conditions:SatietyCritical() * 0.5
+	satiety = normalize(satiety, red_icon_satiety, 1)
+	return satiety
+end
+
+function get_thirst_val()
+	local thirst = 1 - actor_status_thirst.get_water_deprivation()
+	local red_icon_thirst = get_red_thirst()
+	red_icon_thirst = 1 - normalize(red_icon_thirst, 0, 10000)
+	thirst = normalize(thirst, red_icon_thirst, 1)
+	return thirst
+end
+
+function get_sleep_val()
+	local sleep = 1 - actor_status_sleep.get_sleep_deprivation()
+	local red_icon_sleep = get_red_sleep()
+	red_icon_sleep = 1 - normalize(red_icon_sleep, 0, 10000)
+	sleep = normalize(sleep, red_icon_sleep, 1)
+	return sleep
+end
+
+function on_game_start()
+	RegisterScriptCallback("GUI_on_show", activate_hud)
+	RegisterScriptCallback("GUI_on_hide", deactivate_hud)
+end

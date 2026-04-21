@@ -1,0 +1,69 @@
+ini_icons = nil
+x_offset, y_offset, seperator = 0
+
+function on_game_start()
+	rax_icon_layers.register("dyneq_armortype", dyneq_armortype)
+	rax_icon_layers.register("dyneq_armorfaction", dyneq_armorfaction)
+	ini_icons = ini_file("plugins\\eq_icons_settings.ltx")
+	x_offset = ini_icons:r_float("positioning", "x_offset")
+	y_offset = ini_icons:r_float("positioning", "y_offset")
+	seperator = ini_icons:r_float("positioning", "seperator")
+end
+
+armor_kinds = {
+	["o_light"] = true,
+	["o_medium"] = true,
+	["o_heavy"] = true,
+	["o_sci"] = true,
+}
+
+function dyneq_armortype(cell, obj, sec)
+	if not z_item_icon_info.settings.armor_info.show_helmet_type and SYS_GetParam(0, sec, "kind", "") == "o_helmet" then return end
+	if not z_item_icon_info.settings.armor_info.show_armor_type and armor_kinds[SYS_GetParam(0, sec, "kind", "")] then return end
+
+    local texture_table = get_repair_to_texture_table(sec)
+    if not texture_table then return end
+
+    local texture_width = texture_table[2]
+    local texture_height = texture_table[3]
+    local axis = utils_xml.get_item_axis(sec)
+    return {texture = texture_table[1], x = (axis.w - texture_width + x_offset), y = (axis.h - texture_height + y_offset), w = texture_width, h = texture_height}
+end
+
+function dyneq_armorfaction(cell, obj, sec)
+	if not z_item_icon_info.settings.armor_info.show_patch then return end
+
+    local texture_table = get_comm_to_texture(sec)
+    if not texture_table then return end
+
+	repair_type_h = 0
+	if z_item_icon_info.settings.armor_info.show_armor_type then
+		local repair_table = get_repair_to_texture_table(sec)
+		if repair_table then
+			repair_type_h = repair_table[3] + seperator
+		end
+	end
+
+    local texture_width = texture_table[2]
+    local texture_height = texture_table[3]
+    local axis = utils_xml.get_item_axis(sec)
+    return {texture = texture_table[1], x = (axis.w - texture_width + x_offset), y = (axis.h - texture_height + y_offset - repair_type_h), w = texture_width, h = texture_height}
+end
+
+function get_repair_to_texture_table(sec)
+	local repair_type = SYS_GetParam(0, sec, "repair_type")
+	local tx_table = repair_type and ini_icons:r_string_ex("repair_to_texture", repair_type) or ini_icons:r_string_ex("section_to_texture", sec)
+	if not tx_table then return end
+
+	tx_table = str_explode(tx_table, ",")
+	return tx_table
+end
+
+function get_comm_to_texture(sec)
+    local comm = SYS_GetParam(0, sec, "community")
+	local tx_table = comm and ini_icons:r_string_ex("comm_to_texture", comm)
+	if not tx_table then return end
+
+	tx_table = str_explode(tx_table, ",")
+	return tx_table
+end

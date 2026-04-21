@@ -1,0 +1,181 @@
+siski = siski or {}
+siski.safe = siski.safe or {}
+
+local tostring = _G.tostring
+local tonumber = _G.tonumber
+local pcall = _G.pcall
+local xpcall = _G.xpcall
+local time_global = _G.time_global
+
+local safe = siski.safe
+
+local debug_traceback = (debug and debug.traceback) and debug.traceback or nil
+
+local RUNTIME = {
+    last_cfg_tg = 0,
+    warn_ms = 350,
+}
+
+local function now_tg()
+    return (time_global and time_global()) or 0
+end
+
+local function is_valid_server_id(id)
+    id = tonumber(id) or 0
+    return id > 0 and id ~= 65535
+end
+
+function safe.safe_call(tag, fn, ...)
+    if fn == nil then
+        return false, "nil_fn"
+    end
+
+    local function handler(err)
+        local tostring = tostring
+        if siski and siski.log and siski.log.error then
+            siski.log.error("SAFE", "%s: %s", tostring(tag), tostring(err))
+        end
+        if debug_traceback then
+            return debug_traceback(tostring(err), 2)
+        end
+        return tostring(err)
+    end
+
+    local start_tg = now_tg()
+
+    local ok, a, b, c, d = xpcall(fn, handler, ...)
+    local dt = now_tg() - start_tg
+    if dt > RUNTIME.warn_ms then
+        if siski and siski.log and siski.log.warn then
+            siski.log.warn("SAFE", "Slow call %s: %d ms", tostring(tag), tonumber(dt) or 0)
+        end
+    end
+    return ok, a, b, c, d
+end
+
+function safe.safe_id(obj)
+    if not obj then return nil end
+    local ok, res = pcall(function() return obj:id() end)
+    return ok and res or nil
+end
+
+function safe.safe_name(obj)
+    if not obj then return nil end
+    local ok, res = pcall(function() return obj:name() end)
+    return ok and res or nil
+end
+
+function safe.safe_section(obj)
+    if not obj then return nil end
+    local ok, res = pcall(function() return obj:section() end)
+    if ok and res then return res end
+    ok, res = pcall(function() return obj:section_name() end)
+    return ok and res or nil
+end
+
+function safe.safe_position(obj)
+    if not obj then return nil end
+    local ok, res = pcall(function() return obj:position() end)
+    if ok and res then
+        return res
+    end
+    ok, res = pcall(function() return obj.position end)
+    return ok and res or nil
+end
+
+function safe.safe_level_vertex_id(obj)
+    if not obj then return nil end
+    local ok, res = pcall(function() return obj:level_vertex_id() end)
+    return ok and res or nil
+end
+
+function safe.safe_game_vertex_id(obj)
+    if not obj then return nil end
+    local ok, res = pcall(function() return obj:game_vertex_id() end)
+    return ok and res or nil
+end
+
+function safe.is_alive(obj)
+    if not obj then return false end
+
+    local ok_id, id = pcall(function() return obj:id() end)
+    if not ok_id then return false end
+
+    if is_valid_server_id(id) and alife then
+        local ok_se, se_obj = pcall(function() return alife():object(id) end)
+        if ok_se and not se_obj then
+            local ok_lvl, lvl_obj = pcall(function()
+                return level and level.object_by_id and level.object_by_id(id)
+            end)
+            if not (ok_lvl and lvl_obj) then
+                return false
+            end
+        end
+    end
+
+    local is_valid_type = false
+    pcall(function()
+        if IsStalker and IsStalker(obj) then is_valid_type = true end
+        if IsMonster and IsMonster(obj) then is_valid_type = true end
+        if obj.clsid and obj:clsid() == clsid.script_actor then is_valid_type = true end
+    end)
+    if not is_valid_type then return false end
+
+    local ok, res = pcall(function() return obj:alive() end)
+    return ok and res and true or false
+end
+
+function safe.safe_community(se_obj)
+    if not se_obj then return nil end
+    local ok, res = pcall(function() return se_obj:community() end)
+    return ok and res or nil
+end
+
+function safe.safe_squad_community(se_squad)
+    if not (se_squad and alife) then return nil end
+    local ok_cid, cid = pcall(function() return se_squad:commander_id() end)
+    cid = ok_cid and tonumber(cid) or nil
+    if cid and cid > 0 and cid ~= 65535 then
+        local se_commander = nil
+        local storage = db and db.storage and db.storage[cid] or nil
+        if storage and storage.object then
+            se_commander = storage.object
+        elseif level and level.object_by_id then
+            local ok_online, online_obj = pcall(function() return level.object_by_id(cid) end)
+            if ok_online and online_obj then
+                se_commander = online_obj
+            end
+        end
+
+        if not se_commander then
+            local ok_server, server_obj = pcall(function() return alife():object(cid) end)
+            if ok_server and server_obj then
+                se_commander = server_obj
+            end
+        end
+
+        if se_commander then
+            local community = safe.safe_community(se_commander)
+            if type(community) == "string" and community ~= "" then
+                return community
+            end
+        end
+    end
+
+    local ok_pid, pid = pcall(function() return se_squad.player_id end)
+    if ok_pid and type(pid) == "string" and pid ~= "" then
+        return pid
+    end
+
+    local ok_faction, faction = pcall(function() return se_squad.faction end)
+    if ok_faction and type(faction) == "string" and faction ~= "" then
+        return faction
+    end
+
+    ok_faction, faction = pcall(function() return se_squad:faction() end)
+    if ok_faction and type(faction) == "string" and faction ~= "" then
+        return faction
+    end
+
+    return nil
+end

@@ -1,0 +1,175 @@
+<!-- 
+	Anomaly Modconfiguration Menu strings
+	
+-->
+
+<string_table>
+
+	<string id="ui_mcm_beef_nvg_title">
+		<text>Configuración de la visión nocturna de Beef</text>
+	</string>	
+	
+	<string id="ui_mcm_beef_nvg_title_2">
+		<text>Compatibilidad con Shader Based 2d Scopes</text>
+	</string>	
+	
+	<string id="ui_mcm_menu_beef_nvg">
+		<text>Visión nocturna de Beef</text>
+	</string>
+
+
+	<string id="ui_mcm_beef_nvg_nvg_gain_max_mcm">
+		<text>Ganancia máxima que se puede aplicar a las gafas de visión nocturna</text>
+	</string>
+	<string id="ui_mcm_beef_nvg_nvg_gain_max_mcm_desc">
+		<text>Los valores más altos se traducen en un mayor «brillo», aunque con el tiempo se limitará. Se recomienda configurar este tiempo basado en cloudy_dark_2 a medianoche.</text>
+	</string>
+	
+	<string id="ui_mcm_beef_nvg_nvg_gain_min_mcm">
+		<text>Ganancia mínima que se puede aplicar a las gafas de visión nocturna</text>
+	</string>
+	
+	<string id="ui_mcm_beef_nvg_nvg_gain_min_mcm_desc">
+		<text>Los valores más bajos te permiten bajar más la intensidad de las gafas de visión nocturna; los valores muy bajos te permitirán incluso utilizar la visión nocturna a plena luz del día.</text>
+	</string>
+	
+	<string id="ui_mcm_beef_nvg_nvg_gain_offset_mcm">
+		<text>Compensación aplicada al brillo del mundo</text>
+	</string>
+	
+	<string id="ui_mcm_beef_nvg_nvg_gain_offset_mcm_desc">
+		<text>1,0 deja el brillo del mundo como está, valores mayores multiplican el brillo del mundo (pero no las fuentes de luz).</text>
+	</string>
+
+
+	<string id="ui_mcm_beef_nvg_nvg_washout_thresh_mcm">
+		<text>Umbral para el desteñido de la fuente de luz</text>
+	</string>
+	
+	<string id="ui_mcm_beef_nvg_nvg_washout_thresh_mcm_desc">
+		<text>Se recomienda dejarlo en 0,1, pero se puede aumentar para reducir ligeramente el desteñido de las fuentes de luz. Este valor escala con la ganancia de la visión nocturna, de modo que las ganancias más altas tienen más desteñido y las ganancias más bajas tienen menos desteñido.</text>
+	</string>
+	
+	
+	<string id="ui_mcm_beef_nvg_nvg_view_through_scope_mcm">
+		<text>Se puede usar la visión nocturna al apuntar:</text>
+	</string>
+	
+	<string id="ui_mcm_beef_nvg_nvg_view_through_scope_mcm_desc">
+		<text>Si se marca esta casilla, podrás dejarte las gafas de visión nocturna puestas al apuntar. Si no se marca, tu personaje se quitará las gafas de visión nocturna al alzar el arma.</text>
+	</string>
+	
+	<string id="ui_mcm_beef_nvg_nvg_stays_pda_mcm">
+		<text>La visión nocturna se mantiene al consultar la PDA:</text>
+	</string>
+	
+	<string id="ui_mcm_beef_nvg_nvg_stays_pda_mcm_desc">
+		<text>Si no se marca esta casilla, las gafas de visión nocturna se quitarán automáticamente al ver la PDA.</text>
+	</string>
+	
+	<string id="ui_mcm_beef_nvg_nvg_gen1_tubes_mcm">
+		<text>Configuración de tubos de 1.ª generación: (Un solo tubo centrado por defecto)</text>
+	</string>
+	
+	<string id="ui_mcm_beef_nvg_nvg_gen1_tubes_mcm_desc">
+		<text>Elige la cantidad de tubos para las gafas de visión nocturna de primera generación.</text>
+	</string>
+
+	<string id="ui_mcm_beef_nvg_nvg_gen2_tubes_mcm">
+		<text>Configuración de tubos de 2.ª generación: (Dos tubos centrados por defecto)</text>
+	</string>
+	
+	<string id="ui_mcm_beef_nvg_nvg_gen2_tubes_mcm_desc">
+		<text>Elige la cantidad de tubos para las gafas de visión nocturna de segunda generación.</text>
+	</string>
+	
+	<string id="ui_mcm_beef_nvg_nvg_gen3_tubes_mcm">
+		<text>Configuración de tubos de 3.ª generación: (Cuatro tubos centrados por defecto)</text>
+	</string>
+	
+	<string id="ui_mcm_beef_nvg_nvg_gen3_tubes_mcm_desc">
+		<text>Elige la cantidad de tubos para las gafas de visión nocturna de tercera generación.</text>
+	</string>
+
+	
+	<string id="ui_mcm_lst_single_centered">
+		<text>Un tubo centrado</text>
+	</string>
+	
+	<string id="ui_mcm_lst_single_left">
+		<text>Un tubo a la izquierda</text>
+	</string>
+	
+	<string id="ui_mcm_lst_single_right">
+		<text>Un tubo a la derecha</text>
+	</string>
+	
+	<string id="ui_mcm_lst_dual_centered">
+		<text>Dos tubos centrados</text>
+	</string>
+	
+	<string id="ui_mcm_lst_quad_centered">
+		<text>Cuatro tubos centrados</text>
+	</string>
+	
+	
+	
+	<string id="ui_mcm_beef_nvg_nvg_gen1_mode_mcm">
+		<text>Fondo superpuesto de 1.ª generación: (Sin fondo por defecto)</text>
+	</string>
+	
+	<string id="ui_mcm_beef_nvg_nvg_gen1_mode_mcm_desc">
+		<text>Elige el fondo superpuesto que quieras.</text>
+	</string>
+
+	<string id="ui_mcm_beef_nvg_nvg_gen2_mode_mcm">
+		<text>Fondo superpuesto de 2.ª generación: (Borroso por defecto)</text>
+	</string>
+	
+	<string id="ui_mcm_beef_nvg_nvg_gen2_mode_mcm_desc">
+		<text>Elige el fondo superpuesto que quieras.</text>
+	</string>
+	
+	<string id="ui_mcm_beef_nvg_nvg_gen3_mode_mcm">
+		<text>Fondo superpuesto de 3.ª generación: (Borroso por defecto)</text>
+	</string>
+	
+	<string id="ui_mcm_beef_nvg_nvg_gen3_mode_mcm_desc">
+		<text>Elige el fondo superpuesto que quieras.</text>
+	</string>
+	
+	
+	<string id="ui_mcm_lst_blurred_background">
+		<text>Fondo borroso</text>
+	</string>
+	
+	<string id="ui_mcm_lst_black_background">
+		<text>Fondo negro</text>
+	</string>
+	
+	<string id="ui_mcm_lst_image_overlay">
+		<text>(Sin implementar) Fondo de imagen</text>
+	</string>
+	
+	<string id="ui_mcm_lst_clear_vision">
+		<text>Sin fondo (visión clara)</text>
+	</string>
+	
+	
+	<string id="ui_mcm_beef_nvg_shader_scope_compat">
+		<text>Si tienes Shader Based 2d Scopes, marca esta casilla.</text>
+	</string>
+	
+	<string id="ui_mcm_beef_nvg_shader_scope_compat_desc">
+		<text>Básicamente, debido a la magia de los sombreadores, si tienes Shader Based 2d Scopes, tienes que marcar esta casilla. Si no, no la marques.</text>
+	</string>
+	
+	<string id="ui_mcm_menu_nvm_keys">
+        <text>Miras de visión nocturna</text>
+    </string>
+
+    <string id="ui_mcm_nvm_keys_ui_keybind">
+        <text>Alternar miras de visión nocturna</text>
+    </string>
+	
+</string_table>

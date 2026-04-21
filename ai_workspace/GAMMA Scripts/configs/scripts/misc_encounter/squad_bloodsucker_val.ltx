@@ -1,0 +1,130 @@
+[section@squad]
+target@base = val_smart_terrain_1_2
+
+[section@logic]
+logic@krov_a_1
+logic@krov_a_2
+logic@krov_a_3
+logic@krov_a_4
+logic@krov_a_5
+logic@krov_a_6
+logic@krov_b_1
+logic@krov_b_2
+logic@krov_b_3
+logic@krov_b_4
+logic@krov_b_5
+logic@krov_b_6
+logic@krov_c_1
+logic@krov_c_2
+logic@krov_c_3
+logic@krov_c_4
+logic@krov_c_5
+logic@krov_c_6
+
+;------------------------------
+; Logic
+;------------------------------
+[logic@base]
+net_spawn = pt1
+
+[logic@krov_a_1]:logic@base
+active = mob_home@krov_a_1
+[logic@krov_a_2]:logic@base
+active = mob_home@krov_a_2
+[logic@krov_a_3]:logic@base
+active = mob_home@krov_a_3
+[logic@krov_a_4]:logic@base
+active = mob_home@krov_a_4
+[logic@krov_a_5]:logic@base
+active = mob_home@krov_a_5
+[logic@krov_a_6]:logic@base
+active = mob_home@krov_a_6
+
+[logic@krov_b_1]:logic@base
+active = mob_home@krov_b_1
+[logic@krov_b_2]:logic@base
+active = mob_home@krov_b_2
+[logic@krov_b_3]:logic@base
+active = mob_home@krov_b_3
+[logic@krov_b_4]:logic@base
+active = mob_home@krov_b_4
+[logic@krov_b_5]:logic@base
+active = mob_home@krov_b_5
+[logic@krov_b_6]:logic@base
+active = mob_home@krov_b_6
+
+[logic@krov_c_1]:logic@base
+active = mob_home@krov_c_1
+[logic@krov_c_2]:logic@base
+active = mob_home@krov_c_2
+[logic@krov_c_3]:logic@base
+active = mob_home@krov_c_3
+[logic@krov_c_4]:logic@base
+active = mob_home@krov_c_4
+[logic@krov_c_5]:logic@base
+active = mob_home@krov_c_5
+[logic@krov_c_6]:logic@base
+active = mob_home@krov_c_6
+
+;------------------------------
+; Scheme
+;------------------------------
+[mob_home@base]
+target				= %=mutant_path()%
+move_animation		= walk
+wait_animation		= {-me_misc_bloodsucker_val_aggro} bloodsucker_sleep, stand
+combat_ignore_cond	= {-me_misc_bloodsucker_val_aggro} true
+enemy_ignore_cond	= {-me_misc_bloodsucker_val_aggro} true
+
+on_sound1 = actor|WPN_shoot|10|0|	{-me_misc_bloodsucker_val_aggro} %+me_misc_bloodsucker_val_aggro%
+on_sound2 = actor|WPN_hit|5|0|		{-me_misc_bloodsucker_val_aggro} %+me_misc_bloodsucker_val_aggro%
+on_sound3 = actor|WPN_empty|5|0|	{-me_misc_bloodsucker_val_aggro} %+me_misc_bloodsucker_val_aggro%
+on_sound4 = actor|WPN_reload|5|0|	{-me_misc_bloodsucker_val_aggro} %+me_misc_bloodsucker_val_aggro%
+on_sound5 = actor|MST_damage|10|0|	{-me_misc_bloodsucker_val_aggro} %+me_misc_bloodsucker_val_aggro%
+on_sound6 = actor|MST_die|10|0|		{-me_misc_bloodsucker_val_aggro} %+me_misc_bloodsucker_val_aggro%
+
+on_info1 = {-me_misc_bloodsucker_val_aggro =dist_to_actor_le(5) =script(gameplay_misc_encounter:actor_sprint) !script(gameplay_misc_encounter:ray_cast_to_actor_le:5)} %+me_misc_bloodsucker_val_aggro%
+
+
+
+
+[mob_home@krov_a_1]:mob_home@base
+pt1 = pos:172.2,0.10,-273.7 dir:0
+[mob_home@krov_a_2]:mob_home@base
+pt1 = pos:172.9,0.10,-272.3 dir:45
+[mob_home@krov_a_3]:mob_home@base
+pt1 = pos:171.5,0.10,-271.6 dir:-90
+[mob_home@krov_a_4]:mob_home@base
+pt1 = pos:172.2,0.10,-270.2 dir:-135
+[mob_home@krov_a_5]:mob_home@base
+pt1 = pos:171.5,0.10,-268.8 dir:90
+[mob_home@krov_a_6]:mob_home@base
+pt1 = pos:172.9,0.10,-268.1 dir:45
+
+[mob_home@krov_b_1]:mob_home@base
+pt1 = pos:172.9,0.10,-264.6 dir:180
+[mob_home@krov_b_2]:mob_home@base
+pt1 = pos:175.0,0.10,-264.6 dir:180
+[mob_home@krov_b_3]:mob_home@base
+pt1 = pos:175.7,0.10,-266.0 dir:90
+[mob_home@krov_b_4]:mob_home@base
+pt1 = pos:174.3,0.10,-268.8 dir:0
+[mob_home@krov_b_5]:mob_home@base
+pt1 = pos:174.3,0.10,-271.6 dir:135
+[mob_home@krov_b_6]:mob_home@base
+pt1 = pos:175.7,0.10,-273.7 dir:90
+
+[mob_home@krov_c_1]:mob_home@base
+pt1 = pos:171.5,0.10,-277.9 dir:-45
+[mob_home@krov_c_2]:mob_home@base
+pt1 = pos:172.9,0.10,-278.6 dir:90
+[mob_home@krov_c_3]:mob_home@base
+pt1 = pos:174.3,0.10,-278.6 dir:0
+[mob_home@krov_c_4]:mob_home@base
+pt1 = pos:175.7,0.10,-277.2 dir:0
+[mob_home@krov_c_5]:mob_home@base
+pt1 = pos:175.0,0.10,-275.8 dir:0
+[mob_home@krov_c_6]:mob_home@base
+pt1 = pos:172.9,0.10,-276.5 dir:180
+
+

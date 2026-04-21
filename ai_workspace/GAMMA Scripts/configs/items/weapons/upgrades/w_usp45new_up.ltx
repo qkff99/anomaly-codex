@@ -1,0 +1,129 @@
+
+[up_sect_firsta_uspnew]
+cost                                     = 1570
+value                                    = +10
+rpm                                      = +20
+inv_weight                               = +0.07
+
+[up_sect_firstc_uspnew]
+cost                                     = 2820
+value                                    = -10
+cam_dispersion                           = -0.118 
+cam_dispersion_inc                       = 0.0 ;-0.126 
+cam_step_angle_horz                      = -0.10 
+inv_weight                               = +0.09
+
+[up_sect_firstd_uspnew]
+cost                                     = 1960
+value                                    = +20
+bullet_speed                             = +60
+fire_distance                            = +35
+fire_dispersion_base                     = -0.05
+inv_weight                               = +0.12
+
+[up_sect_firste_uspnew]
+cost                                     = 2860
+value                                    = "9x19"
+ammo_class                  = ammo_9x19_fmj, ammo_9x19_fmj_bad, ammo_9x19_fmj_verybad, ammo_9x19_pbp, ammo_9x19_pbp_bad, ammo_9x19_pbp_verybad, ammo_9x19_ap, ammo_9x19_ap_bad, ammo_9x19_ap_verybad
+ammo_elapsed                = +3
+ammo_mag_size               = +3
+
+rpm                                      = +20
+
+fire_distance               = +50
+bullet_speed                = +40
+
+hit_power                                = 0.46, 0.46, 0.46, 0.46
+		
+shell_particles	 			= weapons\9x19
+
+cam_dispersion                           = -0.35
+zoom_cam_dispersion					= -0.18
+cam_dispersion_inc                       = -0.06
+inv_weight                               = -0.06
+
+snd_shoot               = wpn_glock_snd_shoot
+
+;----------------------------------------------------------------------------------------------------------------------
+[up_firsta_uspnew]
+scheme_index                             = 0, 0
+known                                    = 1
+effects                                  = up_gr_firstcd_uspnew
+section                                  = up_sect_firsta_uspnew
+property                                 = prop_rpm
+precondition_functor                     = inventory_upgrades.precondition_functor_a
+precondition_parameter                   = a & b
+effect_functor                           = inventory_upgrades.effect_functor_a
+effect_parameter                         = on_weapon_upgrade_something_here
+
+prereq_functor                           = inventory_upgrades.prereq_functor_a
+prereq_tooltip_functor                   = inventory_upgrades.prereq_tooltip_functor_a
+prereq_params                            =
+name                                     = st_up_zatp_a1_name
+description                              = st_up_zatp_a1_descr
+icon                                     = ui_inGame2_upgrade_UDP_compact_1
+
+
+[up_firstc_uspnew]
+scheme_index                             = 1, 0
+known                                    = 1
+effects                                  = up_gr_firstef_uspnew
+section                                  = up_sect_firstc_uspnew
+property                                 = prop_recoil
+precondition_functor                     = inventory_upgrades.precondition_functor_a
+precondition_parameter                   = a & b
+effect_functor                           = inventory_upgrades.effect_functor_a
+effect_parameter                         = something_here
+
+prereq_functor                           = inventory_upgrades.prereq_functor_a
+prereq_tooltip_functor                   = inventory_upgrades.prereq_tooltip_functor_a
+prereq_params                            =
+name                                     = st_up_zatp_b6_name
+description                              = st_up_zatp_b6_descr
+icon                                     = ui_inGame2_upgrade_UDP_compact_2
+
+[up_firstd_uspnew]
+scheme_index                             = 1, 1
+known                                    = 1
+effects                                  = up_gr_firstef_uspnew
+section                                  = up_sect_firstd_uspnew
+property                                 = prop_bullet_speed
+precondition_functor                     = inventory_upgrades.precondition_functor_a
+precondition_parameter                   = a & b
+effect_functor                           = inventory_upgrades.effect_functor_a
+effect_parameter                         = something_here
+prereq_functor                           = inventory_upgrades.prereq_functor_a
+prereq_tooltip_functor                   = inventory_upgrades.prereq_tooltip_functor_a
+prereq_params                            =
+name                                     = st_up_zatp_b8_name
+description                              = st_up_zatp_b8_descr
+icon                                     = ui_inGame2_upgrade_UDP_compact_3
+
+[up_firste_uspnew]
+scheme_index                             = 2, 0
+known                                    = 1
+effects                                  =
+section                                  = up_sect_firste_uspnew
+property                                 = prop_calibre
+
+precondition_functor                     = inventory_upgrades.precondition_functor_a
+precondition_parameter                   = a & b
+effect_functor                           = inventory_upgrades.effect_functor_a
+effect_parameter                         = something_here
+
+prereq_functor                           = inventory_upgrades.prereq_functor_a
+prereq_tooltip_functor                   = inventory_upgrades.prereq_tooltip_functor_a
+prereq_params                            =
+name                                     = st_up_add_b4_name
+description                              = st_up_add_b4_descr
+icon                                     = ui_inGame2_upgrade_Marta_15
+
+;----------------------------------------------------------------------------------------------------------------------
+[up_gr_firstab_uspnew]
+elements                                 = up_firsta_uspnew
+
+[up_gr_firstcd_uspnew]
+elements                                 = up_firstc_uspnew, up_firstd_uspnew
+
+[up_gr_firstef_uspnew]
+elements                                 = up_firste_uspnew

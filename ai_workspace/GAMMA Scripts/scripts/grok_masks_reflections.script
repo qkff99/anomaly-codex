@@ -1,0 +1,122 @@
+
+--[[
+Navs Masks, an exersize in extracting a mod from a core game script using monkey patching.
+16/11/2020
+Unless superceeded by an existing license on Anomaly's actor_effects.script this work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License
+This is 90+% just a chopped down actor_effects.script by Tronex, but the chopping and small additions were made by:
+Author: RavenAscendant
+--]]
+
+
+-- copies of the relevant local constants used in local in actor_effects they as long as i havn't missed anything they are all static so if we derive them the same way we should be golden
+cam_dist = 0
+
+local RENDERER = get_console_cmd(0,"renderer")
+local STATIC_LIGHT = 'renderer_r1'
+local IS_R1 = (RENDERER == STATIC_LIGHT)
+local STATIC_VINGETTE = false -- for +R2 - if true, it will draw vingette instead of relying on r2_mask_control
+local STATIC_MASK = true -- For R1 - if true, it will ignore distortion shader and use old mask overlay
+local helm_r1_vingette = "hud_vingette"
+local ini_eff = ini_file("plugins\\actor_effects.ltx")
+local ini_reflect = ini_file("plugins\\grok_effects.ltx")
+
+
+local opt = {}  -- The functions that build out this version of the opt table are asking for optimization, any entry that isn't used in this script should be culled
+
+function init_settings()
+	local n = 0
+	local tbl = {}
+
+	opt.cam_dist = ini_eff:r_float_ex("settings","cam_dist") or 4
+
+
+
+	opt.helmets = {}
+	n = ini_eff:line_count("settings_helm")
+	for i=0,n-1 do
+		local result, id, value	= ini_eff:r_line_ex("settings_helm",i,"","")
+		if id and value then
+			empty_table(tbl)
+			tbl = parse_list(ini_eff,"settings_helm",id)
+
+			opt.helmets[id] = {}
+			opt.helmets[id].hud = tbl[1] or "hud_gas"
+		end
+	end
+
+
+	opt.helmets_reflect = {}
+-- first we grab from Groks ltx this covers vanila game huds, and will allow Groks Reflections to be conflict free at the script and ltx level.
+	n = ini_reflect:line_count("settings_helm_reflection")
+	for i=0,n-1 do
+		local result, id, value	= ini_reflect:r_line_ex("settings_helm_reflection",i,"","")
+		if id then
+			opt.helmets_reflect[id] = true
+		end
+	end
+-- next we grab from actor_effects.ltx to get any huds added by other mods, such as Nav's Masks.
+	n = ini_eff:line_count("settings_helm_reflection")
+	for i=0,n-1 do
+		local result, id, value	= ini_eff:r_line_ex("settings_helm_reflection",i,"","")
+		if id then
+			opt.helmets_reflect[id] = true
+		end
+	end
+
+	
+end
+function init_main_settings()
+	opt.enable_mask_hud            = ui_options.get("video/player/mask_hud")
+	opt.enable_breathing_fog       = ui_options.get("video/player/breathing_fog")
+	opt.enable_visor_reflection    = ui_options.get("video/player/visor_reflection")
+end
+
+
+
+
+--actor_effects.helm_off is local so we can't read it.
+--actor_effects.switch_helm() is the only way that value is changed.
+--by patching in the same logic to be applied to the helm_off in this script every time 
+--actor_effects.switch_helm() is called we ensure that the two values are always the same
+helm_off = false
+original_switch_helm = actor_effects.switch_helm
+function actor_effects.switch_helm() 
+	helm_off = not helm_off
+	original_switch_helm()
+end
+
+
+
+local antirecycle = false
+function on_console_execute(name, h)
+	if not h then return end
+	h1,h2,h3,h4 = unpack(str_explode(h,","))
+	actor = db.actor
+	if name == "r2_mask_control" and not antirecycle and h3 and (h3 == "0.0" or h3 == "0") then -- looking for a particualr console command, the antirecycle flag and check that h3 is 0.0 should keep us out of infinite loops, both with our self and a similar callback
+		local helmet = actor:alive() and (actor:item_in_slot(12) or actor:get_current_outfit()) --reimplement the logic leading up to setting h3 from actor_effects.Update_Mask but only that which is necessary for setting h3
+		if helmet and (not helm_off) then
+			local sec = helmet:section()
+			helm_hud_pre = STATIC_MASK and opt.helmets[sec] and opt.helmets[sec].hud or "hud_gas" --This is odd, hud_gass is in the actor_effects.ltx but not hud_gas effectively making this a nil index but it looks like a typo.
+			if opt.helmets[sec] then
+				h3 = opt.enable_visor_reflection and opt.helmets_reflect[helm_hud_pre] and "1.0" or "0.0"
+			end
+			antirecycle = true
+			exec_console_cmd("r2_mask_control " .. h1 .. "," .. h2 .. "," .. h3 .. "," .. h4)
+			antirecycle = false --setting this to false after exec_console_cmd sucesfuly returns should keep us out of infinite loops with other similar callbacks. while other points might keep us out of cycles with our selves, they might let us cycle with other similar callbacks. 
+
+		end
+	end
+end
+function actor_on_first_update()
+	actor_effects.Update_Mask(db.actor)
+end
+
+
+function on_game_start()
+	init_settings()
+	RegisterScriptCallback("actor_on_first_update",init_main_settings)
+	RegisterScriptCallback("on_console_execute",on_console_execute)
+	RegisterScriptCallback("on_option_change",init_main_settings)
+	RegisterScriptCallback("actor_on_first_update",actor_on_first_update)
+
+end

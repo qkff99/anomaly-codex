@@ -1,0 +1,50 @@
+artefactsOffset = 0
+
+function refreshArtefacts()
+	local artefacts = {}
+
+	local function iterateArtefacts(owner, obj)
+		artefacts[#artefacts + 1] = obj
+	end
+
+	local function sortArtefactsFunc(a, b)
+		return a:name() < b:name()
+	end
+
+	db.actor:iterate_belt(iterateArtefacts)
+	if #artefacts > 1 then
+		table.sort(artefacts, sortArtefactsFunc)
+	end
+
+	if #artefacts <= 5 then
+		artefactsOffset = 0
+	else
+		artefactsOffset = clamp(artefactsOffset, 0, #artefacts - 5)
+	end
+
+	return artefacts, artefactsOffset
+end
+
+-- function updateHud()
+-- 	if ui_inventory.GUI then
+-- 		ui_inventory.GUI:UpdateBelt()
+-- 	end
+	
+-- 	if item_artefact.HUD then
+-- 		item_artefact.HUD:Refresh()
+-- 	end
+-- end
+
+-- function k(dik)
+-- 	if dik == DIK_keys.DIK_LEFT then
+-- 		artefactsOffset = artefactsOffset - 1
+-- 		updateHud()
+-- 	elseif dik == DIK_keys.DIK_RIGHT then
+-- 		artefactsOffset = artefactsOffset + 1
+-- 		updateHud()
+-- 	end
+-- end
+
+-- function on_game_start()
+-- 	RegisterScriptCallback("on_key_press", k)
+-- end

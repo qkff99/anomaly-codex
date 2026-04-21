@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+
+    <!-- MCM Menu Title -->
+    <string id="ui_mcm_fair_autocomplete_title">
+        <text>Честное Автозавершение</text>
+    </string>
+    
+    <string id="ui_mcm_menu_fair_autocomplete">
+        <text>Честное Автозавершение</text>
+    </string>
+    
+    <!-- General Settings -->
+    <string id="ui_mcm_fair_autocomplete_enable">
+        <text>Включить автозавершение</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_enable_desc">
+        <text>Включает основную логику автозавершения. Задания будут завершаться только если ВЫ убили цели.</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_pda_check">
+        <text>Проверка КПК</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_pda_check_desc">
+        <text>Автозавершение работает только если у игрока есть КПК</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_require_player_kill">
+        <text>Требовать убийства игроком/напарником</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_require_player_kill_desc">
+        <text>Задания завершаются только если вы или ваши напарники убили цели</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_companion_kills_count">
+        <text>Убийства напарников засчитываются</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_companion_kills_count_desc">
+        <text>Убийства, совершённые вашими напарниками, засчитываются для выполнения задания</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_count_assists">
+        <text>Засчитывать попадания</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_count_assists_desc">
+        <text>Если вы или ваши напарники попали по цели до её смерти, засчитывать убийство даже если добил кто-то другой</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_max_kill_distance">
+        <text>Макс. дистанция убийства (0=выкл)</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_max_kill_distance_desc">
+        <text>Максимальная дистанция от игрока до цели в момент смерти. 0 = проверка отключена. По умолчанию: 0</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_require_same_level">
+        <text>Требовать тот же уровень</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_require_same_level_desc">
+        <text>Цель должна умереть на том же уровне, что и игрок, чтобы убийство засчиталось</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_cancel_if_stolen">
+        <text>Отменять украденные задания</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_cancel_if_stolen_desc">
+        <text>Отменять задания без штрафа, если кто-то другой убил вашу цель</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_check_interval">
+        <text>Интервал проверки (секунды)</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_check_interval_desc">
+        <text>Как часто проверять завершение заданий. Меньше = быстрее реакция, но чуть больше нагрузка на CPU</text>
+    </string>
+    
+    <!-- Task Types Headers -->
+    <string id="ui_mcm_fair_autocomplete_task_types_header">
+        <text>--- Общие типы заданий ---</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_special_tasks_header">
+        <text>--- Специальные задания ---</text>
+    </string>
+    
+    <!-- General Task Types -->
+    <string id="ui_mcm_fair_autocomplete_assault">
+        <text>Штурм лагеря</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_assault_desc">
+        <text>Уничтожить мутантов или враждебных сталкеров в локации</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_bounty">
+        <text>Задания на убийство</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_bounty_desc">
+        <text>Уничтожить конкретного сталкера</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_mutant_hunt">
+        <text>Охота на мутантов</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_mutant_hunt_desc">
+        <text>Выследить и уничтожить мутантов (задания Охотника)</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_hostage">
+        <text>Спасение заложников</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_hostage_desc">
+        <text>Уничтожить враждебных сталкеров и спасти заложника</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_spy_extract">
+        <text>Эвакуация агента</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_spy_extract_desc">
+        <text>Уничтожить вражеский отряд и эвакуировать агента</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_fate">
+        <text>Задания "Судьба"</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_fate_desc">
+        <text>"Потерянный сигнал", "Расследовать местонахождение разведчиков", "Отследить аварийный сигнал" и "Найти пропавшего долговца"</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_scripted">
+        <text>Скриптовые задания</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_scripted_desc">
+        <text>"Найти груз Сидоровича" и "Найти прототип детектора"</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_retrieve">
+        <text>Задания на поиск</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_retrieve_desc">
+        <text>Обыскать указанный тайник и вернуть определённый предмет</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_measurements">
+        <text>Задания на измерения</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_measurements_desc">
+        <text>Провести измерения в аномальном поле</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_scanner">
+        <text>Задания на установку сканера</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_scanner_desc">
+        <text>"Сканирующее поле" и "Установить сканер у аномалии Симбионт"</text>
+    </string>
+    
+    <!-- Special Task Types -->
+    <string id="ui_mcm_fair_autocomplete_snitch">
+        <text>Задание "Топперы"</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_snitch_desc">
+        <text>Убить высокоранговых сталкеров из списков фракций</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_spring_clean">
+        <text>Задание "Защитить базу"</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_spring_clean_desc">
+        <text>Очистить базу фракции от мутантов</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_defense">
+        <text>Задание "Защитить насосную станцию"</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_defense_desc">
+        <text>Задания на оборону от Петренко</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_destroy_btrs">
+        <text>Задание "Почему у нас не может быть хороших вещей"</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_destroy_btrs_desc">
+        <text>Уничтожить военную технику</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_research_hunt">
+        <text>Задание "Исследовательская охота Семёнова"</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_research_hunt_desc">
+        <text>Охотиться на определённых мутантов для исследований Семёнова</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_recover_tracker">
+        <text>Задание "Вернуть трекер"</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_recover_tracker_desc">
+        <text>Убить мутантов с прикреплёнными трекерами</text>
+    </string>
+    
+    <!-- Kill Requirement -->
+    <string id="ui_mcm_fair_autocomplete_kill_requirement">
+        <text>Требование убийств для штурма</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_kill_requirement_desc">
+        <text>Сколько врагов нужно убить для автозавершения заданий на штурм</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_kill_req_one">
+        <text>Хотя бы одного врага</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_kill_req_half">
+        <text>Хотя бы половину</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_kill_req_all">
+        <text>Всех врагов</text>
+    </string>
+    
+    <!-- Rewards -->
+    <string id="ui_mcm_fair_autocomplete_compensate_item_rewards">
+        <text>Заменять предметы деньгами</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_compensate_item_rewards_desc">
+        <text>Если включено, предметы-награды из автозавершённых заданий будут удалены из инвентаря и заменены деньгами. Если отключено, вы получите предметы как обычно.</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_compensation_coefficient">
+        <text>Коэффициент компенсации</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_compensation_coefficient_desc">
+        <text>1.0 = Базовая стоимость предмета. Меньшие значения дают меньше денег.</text>
+    </string>
+    
+    <!-- UI Options -->
+    <string id="ui_mcm_fair_autocomplete_show_target_info">
+        <text>Показывать расширенную информацию о цели</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_show_target_info_desc">
+        <text>Отображать подробную информацию о целях задания при его принятии</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_show_stolen_message">
+        <text>Показывать сообщение о краже задания</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_show_stolen_message_desc">
+        <text>Показывать сообщение в КПК когда задание отменено из-за того, что кто-то другой убил вашу цель</text>
+    </string>
+    
+    <!-- Advanced -->
+    <string id="ui_mcm_fair_autocomplete_whitelist">
+        <text>Белый список</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_whitelist_desc">
+        <text>ID заданий через запятую, которые всегда будут автозавершаться (например "task_id_1,task_id_2")</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_blacklist">
+        <text>Чёрный список</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_blacklist_desc">
+        <text>ID заданий через запятую, которые никогда не будут автозавершаться</text>
+    </string>
+    
+    <string id="ui_mcm_fair_autocomplete_debug">
+        <text>Включить отладочные логи</text>
+    </string>
+    <string id="ui_mcm_fair_autocomplete_debug_desc">
+        <text>Только для моддеров. Выводит подробную информацию в консоль.</text>
+    </string>
+    
+    <!-- In-game Messages -->
+    <string id="st_fa_task_stolen_msg_1">
+        <text>Кто-то постарался за тебя, ничего личного.</text>
+    </string>
+    
+    <string id="st_fa_task_stolen_msg_2">
+        <text>Задание выполнил кто-то другой... что ж, бывает.</text>
+    </string>
+    
+    <string id="st_fa_task_stolen_msg_3">
+        <text>Зона дала, Зона взяла. Приходи в другой раз!</text>
+    </string>
+    
+    <string id="st_fa_task_autocomplete_msg">
+        <text>Задание выполнено автоматически.</text>
+    </string>
+    
+    <string id="st_fa_target_info">
+        <text>Информация о цели</text>
+    </string>
+
+</string_table>

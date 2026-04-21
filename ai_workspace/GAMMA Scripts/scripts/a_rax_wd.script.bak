@@ -1,0 +1,272 @@
+--[[
+Watch Dog script or Busy Hands Detection and Blame
+25FEB2024
+This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License
+Author: RavenAscendant
+
+Watch Dog timers to detect hangs in the the actor update callback and timed event queue the 2 major causes of the "Busy Hands" bug in anomaly.
+--]]
+
+
+
+
+
+
+
+local crash_on_error = true -- setting to false will not crash the game on first error. allowing you to keep playing, not a good idea.
+local crash_on_all = false -- setting to true will crash on all detections not just the major hangs
+local hang_time = 0.5 --time in seconds callback/event system is allowed to hang
+local lag_protection = 5 --time is seconds to not check for hangs around save or inventory opening to avoid false positives. 
+
+
+
+local watch_list = {--actor and global callbacks set to false, set to true for NPC and mutant callbacks or any callback that can be sent from multiple sources. don't use for dxml callbacks 
+	actor_on_update = false,
+	actor_on_first_update = false,
+	--npc_on_update = true,
+}
+
+
+local registred_callbacks = {}
+local running_callbacks = {}
+
+
+base_calback_set = axr_main.callback_set
+function axr_main.callback_set(name,func_or_userdata)
+	if not (watch_list[name] ~= nil) then
+		base_calback_set(name,func_or_userdata)
+	else --only register it here if it is one of ours
+		if (func_or_userdata == nil) then 
+			printf("![axr_main callback_set] trying to set callback %s to nil function!",name)
+			callstack()
+			return
+		end
+		running_callbacks[name] = running_callbacks[name] or {}
+		registred_callbacks[name] = registred_callbacks[name] or {}
+		registred_callbacks[name][func_or_userdata] = true
+	end
+end
+base_callback_unset = axr_main.callback_unset
+function axr_main.callback_unset(name,func_or_userdata)
+	if (watch_list[name] ~= nil) then
+		registred_callbacks[name][func_or_userdata] = nil
+	end
+	base_callback_unset(name,func_or_userdata) --unregister in both just in case someting snuck thru
+end
+
+base_make_callback = axr_main.make_callback
+function axr_main.make_callback(name,...)
+	if (watch_list[name] ~= nil) then
+		make_callback_watcher(name,...)
+	end
+	base_make_callback(name,...)--send in both just in case someting snuck thru
+	
+end
+
+
+
+function make_callback_watcher(name,...)
+	if (registred_callbacks[name]) then
+		local npc_id = false
+		if watch_list[name]  then
+			local t = {...}
+			if not t[1] or type(t[1]) ~= "userdata" then
+				npc_id = "error no npc/mutant id"
+			elseif type(t[1].id) == "function" then
+				npc_id = {t[1]:id(), t[1]:section()}
+			elseif type(t[1].id) == "number" then
+				npc_id = {t[1].id, t[1].section_name and t[1]:section_name()}
+			end
+		end
+		for func_or_userdata,v in pairs(registred_callbacks[name]) do 
+			if (type(func_or_userdata) == "function" ) then 
+				running_callbacks[name][npc_id] = {tmr = time_global() + hang_time * 1000, func = func_or_userdata}
+				func_or_userdata(...)
+				running_callbacks[name][npc_id] = nil
+			elseif (func_or_userdata[name] ) then
+				running_callbacks[name][npc_id] = {tmr = time_global() + hang_time * 1000, func = func_or_userdata[name]}
+				func_or_userdata[name](func_or_userdata,...)
+				running_callbacks[name][npc_id] = nil
+			end
+		end
+	else
+		printf("! [RAX WD] can't make callback to non existing intercept %s! how did we get here?!?!?",name)
+		callstack()
+	end
+end
+
+
+
+
+--these lines can be entered one at a time in the debug lua console to validate this script for type 1 busyhands (note this cannot detect type 1 busyhands when type 2 is occuring)
+
+--RegisterScriptCallback("actor_on_update", function() printf("cat") end ) --makes the timed event system spam the log with 'cat' so you can see when it stops working
+
+--RegisterScriptCallback("actor_on_update", function() db.actor:give_game_news("cat") end ) --causes a busy hands type 1 hang
+
+--a_rax_wd.lag_test()
+--these lines can be entered one at a time in the debug lua console to validate this script for type 2 busyhands
+
+
+--CreateTimeEvent("foo", "foo1",0, function() printf("dog") end) --makes the timed event system spam the log with 'dog' so you can see when it stops working
+
+--
+
+
+--RegisterScriptCallback("npc_on_update", function(npc) printf("%s says: quack", npc:character_name()) end ) --makes the npc_on_update callback spam the log with 'quack' so you can see when it stops working
+
+--RegisterScriptCallback("npc_on_update", function(npc) if npc:section() == "sim_default_csky_1" then db.actor:give_game_news("quack") end end ) --causes a busy hands type 3 hang
+
+
+
+
+
+local tmr2
+function lag_test()
+	RegisterScriptCallback("actor_on_update", function() if tmr2 then return end tmr2 = os.time() + 1 while os.time() < tmr2 do printf(  os.time()) flush() end end ) --causes a busy hands type 1 hang that clears during the save lockout
+end
+
+
+local ev_queue = {}
+local last_event = {}
+function _G.CreateTimeEvent(ev_id,act_id,timer,f,...)
+	if not (ev_queue[ev_id]) then
+		ev_queue[ev_id] = {}
+		ev_queue[ev_id].__size = 0
+	end
+
+	if not (ev_queue[ev_id][act_id]) then
+		ev_queue[ev_id][act_id] = {}
+		ev_queue[ev_id][act_id].timer = time_global() + timer*1000
+		ev_queue[ev_id][act_id].f = f
+		ev_queue[ev_id][act_id].p = {...}
+		ev_queue[ev_id].__size = ev_queue[ev_id].__size + 1
+	end
+end
+function _G.RemoveTimeEvent(ev_id,act_id)
+	if (ev_queue[ev_id] and ev_queue[ev_id][act_id]) then
+		ev_queue[ev_id][act_id] = nil
+		ev_queue[ev_id].__size = ev_queue[ev_id].__size - 1
+	end
+end
+function _G.ResetTimeEvent(ev_id,act_id,timer)
+	if (ev_queue[ev_id] and ev_queue[ev_id][act_id]) then
+		ev_queue[ev_id][act_id].timer = time_global() + timer*1000
+	end
+end
+function _G.ProcessEventQueue(force)
+	if has_alife_info("sleep_active") then
+		return false
+	end
+	
+	for event_id,actions in pairs(ev_queue) do
+		for action_id,act in pairs(actions) do
+			if (action_id ~= "__size") then
+				if (force) or (time_global() >= act.timer) then
+					-- utils_data.debug_write(strformat("event_queue: event_id=%s action_id=%s",event_id,action_id))
+					last_event = {event_id = event_id, action_id= action_id, funct = act.f, tmr = time_global() + hang_time * 1000}
+					if (act.f(unpack(act.p)) == true) then
+						ev_queue[event_id][action_id] = nil
+						ev_queue[event_id].__size = ev_queue[event_id].__size - 1
+					end
+					last_event = {}
+				end
+			end
+		end
+
+		if (ev_queue[event_id].__size == 0) then
+			ev_queue[event_id] = nil
+		end
+	end
+	
+	return false
+end
+function _G.ProcessEventQueueState(m_data,save)
+	if (save) then
+		m_data.event_queue = ev_queue
+	else
+		ev_queue = m_data.event_queue or ev_queue
+	end
+end
+
+local save_detected = false
+
+local saved = false
+
+local timer = 0
+function watcher()
+	if save_detected then return end
+	if timer > time_global() then return end
+	timer = time_global() + hang_time * 1000
+	for name, tbl in pairs(running_callbacks) do
+		for npc_id, info in pairs(tbl) do
+			if info.tmr and info.tmr < time_global() then
+				printf("! [RAX WD] Callback %s hung for > %s milliseconds!", name , time_global() -info.tmr )
+				local dbug = info.func and debug.getinfo(info.func,"S")
+				printf("! [RAX WD] Offending callback at line: %s of script:%s",dbug and dbug.linedefined, dbug and dbug.short_src)
+				if npc_id then
+					if type(npc_id) == "string" then
+						printf("! [RAX WD] Callback should be called on object but was not")
+					else
+						local se_obj = npc_id[1] and alife_object(npc_id[1])
+						local obj = se_obj and get_object_by_id( npc_id[1])
+						printf("! [RAX WD] Callback called on object. ID: %s Sec: %s, game object %s, server object %s", npc_id[1], npc_id[2], obj and "found" or "not found", se_obj and "found" or "not found")
+					end
+				end
+				local crash = crash_on_all or crash_on_error and (name == "actor_on_update" or name == "actor_on_first_update")
+				if crash and not saved then
+					printf("! [RAX WD] Saving game.")
+					exec_console_cmd("save busy hands crash save" )
+					saved = true
+					return
+				end
+				assert(not (crash_on_error and (name == "actor_on_update" or name == "actor_on_first_update")), 'The Actor Update system has crashed. Known as "Busy Hands" type 1, caused by script: '.. (dbug and dbug.short_src or "") .. ' | line: '.. (dbug and dbug.linedefined or "" ))
+				assert(not crash_on_all, 'The '..name and name or "missing?" ..'callback has crashed. Known as "Busy Hands" type 3, caused by script: '.. (dbug and dbug.short_src or "") .. ' | line: '.. (dbug and dbug.linedefined or "" ))
+			end
+		end
+	end
+	if last_event.tmr and last_event.tmr < time_global() then
+	
+		printf("! [RAX WD] Event %s, %s hung for > %s milliseconds!", last_event.event_id,last_event.action_id, time_global() - last_event.tmr)
+		local info = last_event.func and debug.getinfo(last_event.func,"S")
+		printf("! [RAX WD] Offending event at line: %s of script:%s",info and info.linedefined, info and info.short_src)
+		if crash_on_error and not saved then
+			printf("! [RAX WD] Saving game.")
+			exec_console_cmd("save busy hands crash save" )
+			saved = true
+			return 
+		end
+		
+		assert(not crash_on_error,'The Timed Event system has crashed. Known as "Busy Hands" type 2, caused by script: '.. (info and info.short_src or "") .. ' | line: '.. (info and info.linedefined or "" ))
+	end
+	if saved then
+		printf("! [RAX WD] Hang cleared during save. Resetting tracking.")
+		saved = false
+	end
+end
+
+
+
+function on_game_start()
+	RegisterScriptCallback("save_state", save_state)
+	RegisterScriptCallback("ActorMenu_on_mode_changed", ActorMenu_on_mode_changed)
+	AddUniqueCall(watcher)
+end
+
+function ActorMenu_on_mode_changed(mode)
+	if mode ~= 0 then save_state() end --block WD when opening inventory.
+end
+
+function save_state()-- when saving set a flag for 5 seconds that prevents the WD functions from going off.
+	save_detected = true
+	--printf("save detected")
+	local tmr = time_global() + lag_protection * 1000
+	AddUniqueCall(
+		function()
+			if tmr > time_global() then return false end
+			save_detected = false
+			--printf("save detected removed")
+			return true
+		end
+	)
+end

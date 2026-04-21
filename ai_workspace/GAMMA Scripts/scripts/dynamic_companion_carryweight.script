@@ -1,0 +1,179 @@
+--[[
+Companion carryweight and looting rework
+14 Dec 2021
+This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License
+Authors: Sneakydud, RavenAscendant
+--]]
+
+axrbase = axr_companions.is_overweight
+ini_death = ini_file_ex("items\\settings\\death_outfits.ltx")
+ini_override = ini_file_ex("misc\\story_npc_carryweights.ltx")
+local allow_exo_backpack = false
+local weight_setting
+
+function axr_companions.is_overweight(npc, npc_id,comp_weight)
+	flag, copy_curr_weight, copy_max_weight = axrbase(npc, npc_id, comp_weight)
+	npc = npc or get_object_by_id(npc_id)
+	if (not npc) then
+		return
+	end
+	weight_setting = game_difficulties.get_game_factor("weight") or 30
+
+	local extra_weight = sk_get_extra_carry_weight(npc)
+	local max_weight = weight_setting + extra_weight
+	max_weight = math.floor(max_weight * 10) / 10
+
+	if comp_weight then
+		return comp_weight > (max_weight - copy_curr_weight)
+	end
+	return copy_curr_weight > max_weight, copy_curr_weight, max_weight
+end
+
+local bkpk_weights = {}
+local attach_weights = {}
+
+function get_backpacks(snk,item)
+local itm_sec = item:section()
+local is_backpack = item and SYS_GetParam(0, itm_sec, "kind") == "i_backpack"
+local is_container = SYS_GetParam(0, itm_sec, "kind") == "i_arty_cont" or SYS_GetParam(0, itm_sec, "kind") == "i_attach"
+	if is_backpack then
+		bkpk_weights[#bkpk_weights + 1] = ini_sys:r_float_ex(itm_sec,"additional_inventory_weight")
+	end
+
+	if is_container and ini_sys:r_float_ex(itm_sec,"additional_inventory_weight") then
+		attach_weights[#attach_weights + 1] = ini_sys:r_float_ex(itm_sec,"additional_inventory_weight")
+	end
+end
+
+function sk_get_extra_carry_weight(npc)
+local vis = npc:get_visual_name()
+local npc_sec = npc:section()
+local outfit = nil
+local helm = nil
+local extra_carry = nil
+local attach_carry = 0
+npc:iterate_inventory(get_backpacks,snk)
+	if vis then
+		vis_path_list = str_explode(vis, "\\")
+		vis_name_list = vis_path_list and str_explode(vis_path_list[#vis_path_list], "%.")
+		local vis_list = ini_death:r_string_ex("outfit_by_visual", vis_name_list[1])
+		outfit, helm = vis_list and unpack(str_explode(vis_list, ","))
+	end
+
+local story_npc = get_object_story_id(npc:id())
+
+local story_value = npc_sec and ini_override:r_float_ex("carryweights_override", npc_sec)
+local story_default = (story_npc and (not outfit)) and ini_override:r_float_ex("carryweights_override", "default")
+local story_carry = story_value or story_default or 0
+
+local outfit_carry = outfit and ini_sys:r_float_ex(outfit,"additional_inventory_weight") or 7
+
+local attach_slots = outfit and ini_sys:r_float_ex(outfit,"artefact_count")
+attach_slots = attach_slots and (attach_slots > 1) and math.floor(attach_slots) or 1
+
+table.sort(attach_weights, function(a,b) return a > b end)
+	if (#attach_weights > 0) then
+		for j = 1, attach_slots do
+		attach_carry = attach_weights[j] and (attach_carry + attach_weights[j]) or attach_carry
+		end
+	end
+
+local best_bkpk_carry = (#bkpk_weights > 0) and math.max(unpack(bkpk_weights)) or 0
+local is_exo = outfit and (not story_npc) and SYS_GetParam(0, outfit, "repair_type") == "outfit_exo"
+
+	if is_exo and (not allow_exo_backpack) then
+		extra_carry = outfit_carry
+	else extra_carry = outfit_carry + best_bkpk_carry + story_carry + attach_carry
+	end
+bkpk_weights = {}
+attach_weights = {}
+return extra_carry
+end
+
+temp = ui_inventory.UIInventory.UpdateWeight
+function ui_inventory.UIInventory:UpdateWeight()
+	temp(self)
+	npc = self:GetPartner()
+	if not npc then return end
+	over,cur,snkweight = axr_companions.is_overweight(npc)
+	self.npc_weight_max:SetText( strformat("(max %s %s)", snkweight, game.translate_string("st_kg")) )
+end
+
+local function actor_on_item_before_move(flags, npc_id, obj, mode, bag_from)
+	if (bag_from ~= EDDListType.iActorBag) then return end
+	if not (npc_id and se_load_var(npc_id, nil, "companion")) then return end
+	if not obj then return end
+
+	local rad_level = ini_sys:r_float_ex(obj:section(),"radiation_restore_speed")
+	if rad_level and (rad_level > 0) then
+		flags.ret_value = false
+	end
+end
+
+--[[local function npc_on_get_all_from_corpse(npcx, corpse_npc, itemm, allow)
+	if not(npcx and corpse_npc and itemm) then return end
+	local rad_level_two = ini_sys:r_float_ex(itemm:section(),"radiation_restore_speed")
+
+	if rad_level_two and (rad_level_two > 0) and not IsMonster(corpse_npc) then
+		CreateTimeEvent("snk_transfer_back", "transferring_back", 0.2, move_item_back_to_corpse(npcx, corpse_npc, itemm))
+	end
+end
+
+function move_item_back_to_corpse(npcx, corpse_npc, itemm)
+	npcx:transfer_item(itemm, corpse_npc)
+	return true
+end]]--
+
+local function npc_on_item_take(npcx,itm)
+	if not (itm and npcx and IsArtefact(itm)) then return end
+	local sect = itm:section()
+	local is_arft = (ini_sys:r_string_ex(sect,"kind") == "i_arty_junk") or (ini_sys:r_string_ex(sect,"kind") == "i_arty")
+	local radioactive = ini_sys:r_float_ex(sect,"radiation_restore_speed") > 0
+	if is_arft and radioactive then
+		alife_release(itm)
+		local new_sec = sect .. "_lead_box"
+		local spawning = ini_sys:section_exist(new_sec) and alife_create_item(new_sec, npcx)
+	end
+end
+
+function check_stalkers()
+	for i = 1,#db.OnlineStalkers do
+	local id = db.OnlineStalkers[i]
+	local npcc = db.storage[id] and db.storage[id].object or level.object_by_id(id)
+		if npcc and (npcc:character_community() ~= "zombied") then
+		local is_companion = npcc:has_info("npcx_is_companion")
+		local loot_on = npcc:has_info("npcx_beh_loot_corpses")
+			if is_companion and not loot_on then
+				npcc:take_items_enabled(false)
+			else
+				npcc:take_items_enabled(true)
+			end
+		end
+	end
+end
+
+local function actor_on_first_update()
+	check_stalkers()
+end
+
+local function on_key_release(key)
+	local bind = dik_to_bind(key)
+	if (bind == key_bindings.kCUSTOM5) then
+		check_stalkers()
+	end
+end
+
+local function GUI_on_hide(name)
+	if name == "UIWheelCompanion" or name == "Dialog" then
+	check_stalkers()
+	end
+end
+
+function on_game_start()
+	RegisterScriptCallback("GUI_on_hide", GUI_on_hide)
+	RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+	RegisterScriptCallback("on_key_release", on_key_release)
+	RegisterScriptCallback("ActorMenu_on_item_before_move", actor_on_item_before_move)
+--	RegisterScriptCallback("npc_on_get_all_from_corpse", npc_on_get_all_from_corpse)
+	RegisterScriptCallback("npc_on_item_take", npc_on_item_take)
+end

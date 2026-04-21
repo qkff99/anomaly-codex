@@ -1,0 +1,1165 @@
+pmain = pda_inter_gui
+local gt = game.translate_string
+local CustomPDAX = pda_inter_gui.CustomPDAX
+local pr = pda_inter_gui.pr
+
+games_amount = 5
+
+puzzle_reward = pda_inter_mcm.get_config("puzzle_reward")
+slots_bet = pda_inter_mcm.get_config("slots_bet")
+sudoku_reward = pda_inter_mcm.get_config("sudoku_reward")
+sudoku_diff = pda_inter_mcm.get_config("sudoku_diff")
+
+function CustomPDAX:BuildGamesUpperMenu()		-- xd
+	local xml = self.xml
+
+	self.cur_left_btn_games = 0		-- similar to self.cur_tree (set to 0 on reset)
+
+	-- left side menus
+	self.games_menu = self.games_menu or {}
+
+	self.left_list_games = xml:InitStatic("mid_container_3:games_btn_list", self.pda_t[3].mid_cont)
+
+	for i = 1, games_amount do
+		-- buttons
+		self.games_menu[i] = self.games_menu[i] or {}
+		self.games_menu[i].btn = xml:Init3tButton("mid_container_3:games_btn_list:left_btn_" .. i, self.left_list_games)
+		self:Register(self.games_menu[i].btn, "games_left_btn_" .. i)
+
+		-- child menus
+		self.games_menu[i].child_menu = xml:InitStatic("mid_container_3:game_pda_" .. i, self.pda_t[3].mid_cont)
+	end
+
+	-- arrow
+	self.game_arrow = xml:InitStatic("mid_container_3:games_btn_list:arrow_r", self.left_list_games)
+	self.game_arrow:Show(false)
+
+
+	-- Build childs
+	self:BuildGamesUpperChildPuzzle(xml)
+	self:BuildGamesUpperChildSlots(xml)
+	self:BuildGamesUpperChildSnake(xml)
+	self:BuildGamesUpperChildBlackjack(xml)
+	self:BuildGamesUpperChildSudoku(xml)
+	self:BuildGamesUpperChildRogue(xml)
+
+end
+
+
+------------------------------------------------------------
+-------------------------- Puzzle --------------------------
+function CustomPDAX:BuildGamesUpperChildPuzzle(xml)
+	self.puzzle = self.puzzle or {}
+
+	self.puzzle_win_pos = {
+		{0,0}, {55,0}, {110,0}, {165,0},
+		{0,55}, {55,55}, {110,55}, {165,55},
+		{0,110}, {55,110}, {110,110}, {165,110},
+		{0,165}, {55,165}, {110,165}, {165, 165},
+	}
+
+	self.puzzle_win = nil
+
+	for i = 1, 16 do		-- 16 will be empty
+		self.puzzle[i] = self.puzzle[i] or {}
+
+		self.puzzle[i].btn = xml:Init3tButton("mid_container_3:game_pda_1:puzzle_btn_" .. i, self.games_menu[1].child_menu)
+		self:Register(self.puzzle[i].btn, "puzzle_btn_" .. i)
+
+	end
+
+	-- puzzle winning text
+	self.puzzle_winning_text = xml:InitTextWnd("mid_container_3:game_pda_1:puzzle_winning_text", self.games_menu[1].child_menu)
+	self.puzzle_winning_text:Show(false)
+
+end
+
+function CustomPDAX:OnClickGamesPuzzleBtn(num)
+	if not self.puzzle_win then
+
+		-- find pos of empty cell and clicked btn
+		local e_p = vector2():set(self.puzzle[16].btn:GetWndPos())
+		local c_p = vector2():set(self.puzzle[num].btn:GetWndPos())
+
+		-- check if piece can be moved and swap them
+		local cond_h = ((e_p.x - c_p.x) == 55 or (e_p.x - c_p.x) == -55) and (e_p.y == c_p.y)
+		local cond_v = ((e_p.y - c_p.y) == 55 or (e_p.y - c_p.y) == -55) and (e_p.x == c_p.x)
+		if cond_h or cond_v then
+			self.puzzle[num].btn:SetWndPos(vector2():set(e_p))
+			self.puzzle[16].btn:SetWndPos(vector2():set(c_p))
+		end
+
+		-- check if won and give prize
+		local cells_fit = 0
+		local win_t = {
+			{0,0}, {55,0}, {110,0}, {165,0},
+			{0,55}, {55,55}, {110,55}, {165,55},
+			{0,110}, {55,110}, {110,110}, {165,110},
+			{0,165}, {55,165}, {110,165}, {165, 165},
+		}
+
+		for i = 1, #self.puzzle do
+			local pos = vector2():set(self.puzzle[i].btn:GetWndPos())
+			if pos.x == win_t[i][1] and pos.y == win_t[i][2] then
+				cells_fit = cells_fit + 1
+			end
+		end
+
+		if cells_fit >= #self.puzzle then
+			self.puzzle_win = true
+			self.puzzle_winning_text:Show(true)
+			db.actor:give_money(puzzle_reward)
+			self:UpdMoneyText()
+		end
+
+	end
+
+end
+
+function CustomPDAX:ResetGamesPuzzle()
+	self.puzzle_win = nil
+
+	self.puzzle_winning_text:Show(false)
+
+	-- reset position to winning combination
+	for i = 1, #self.puzzle do
+		local og_pos = self.puzzle_win_pos[i]
+		self.puzzle[i].btn:SetWndPos(vector2():set(og_pos[1], og_pos[2]))
+	end
+
+	-- shuffle
+	repeat
+		local adj_idx = 1
+		for i = 1, 30 do
+
+			-- get adjacent to 16 pieces
+			local adj_t = {}
+			for j = 1, 15 do
+				local e_p = vector2():set(self.puzzle[16].btn:GetWndPos())
+				local c_p = vector2():set(self.puzzle[j].btn:GetWndPos())
+				local is_adj_h = ((e_p.x - c_p.x) == 55 or (e_p.x - c_p.x) == -55) and (e_p.y == c_p.y)
+				local is_adj_w = ((e_p.y - c_p.y) == 55 or (e_p.y - c_p.y) == -55) and (e_p.x == c_p.x)
+				if adj_idx ~= j and (is_adj_h or is_adj_w) then
+					table.insert(adj_t, j)
+				end
+			end
+
+			-- pick random available adjacent index and update adj_idx
+			adj_idx = adj_t[math.random(1, #adj_t)]
+
+			-- switch 16 and adjacent piece
+			local e_p2 = vector2():set(self.puzzle[16].btn:GetWndPos())
+			local c_p2 = vector2():set(self.puzzle[adj_idx].btn:GetWndPos())
+			self.puzzle[adj_idx].btn:SetWndPos(vector2():set(e_p2))
+			self.puzzle[16].btn:SetWndPos(vector2():set(c_p2))
+
+		end
+	until vector2():set(self.puzzle[16].btn:GetWndPos()).x ~= 165 and vector2():set(self.puzzle[16].btn:GetWndPos()).y ~=165
+end
+
+
+----------------------------------------------------------
+-------------------------- Slots --------------------------
+function CustomPDAX:BuildGamesUpperChildSlots(xml)
+	self.slot_machine = self.slot_machine or {}
+
+	self.slots_spin = false
+
+	-- slots
+	for i = 1, 3 do
+		self.slot_machine[i] = self.slot_machine[i] or {}
+
+		self.slot_machine[i].slot = xml:InitStatic("mid_container_3:game_pda_2:slot_" .. i, self.games_menu[2].child_menu)
+
+		self.slot_machine[i].spinning = 0
+
+		self.slot_machine[i].pos = 200
+
+		self.slot_machine[i].slot:SetTextureRect(Frect():set(0, self.slot_machine[i].pos, 100, self.slot_machine[i].pos + 100))		-- change only y1 y2
+
+	end
+
+	-- description
+	self.slot_descr_coin = xml:InitStatic("mid_container_3:game_pda_2:slot_descr_coin1", self.games_menu[2].child_menu)
+	self.slot_descr_coin2 = xml:InitStatic("mid_container_3:game_pda_2:slot_descr_coin2", self.games_menu[2].child_menu)
+	self.slot_descr_seven = xml:InitStatic("mid_container_3:game_pda_2:slot_descr_seven", self.games_menu[2].child_menu)
+
+	-- launch button
+	self.slot_launch = xml:Init3tButton("mid_container_3:game_pda_2:slot_launch", self.games_menu[2].child_menu)
+	self:Register(self.slot_launch, "slot_launch")
+
+	-- add bet text
+	local str = self.slot_launch:TextControl():GetText()
+	self.slot_launch:TextControl():SetText(str .. ": " .. slots_bet .. " RU")
+
+end
+
+function CustomPDAX:OnClickGamesSlotLaunch()
+	printf("slots launch")
+	if db.actor:money() >= slots_bet then
+
+		-- take money
+		db.actor:give_money(-slots_bet)
+
+		-- update money text
+		self:UpdMoneyText()
+
+		-- disable button
+		self.slot_launch:Enable(false)
+
+		-- set each slot to spinning
+		for i = 1, 3 do
+			self.slot_machine[i].spinning = 1
+		end
+
+		-- stop spinning after some time and round frect to nearest 100
+		local function stop_spin(i)
+			self.slot_machine[i].spinning = 0
+			local stopped_pos = self.slot_machine[i].slot:GetTextureRect()
+			local round = math.floor((stopped_pos.y1 / 100) + 0.5) * 100
+			round = round >= 500 and 0 or round
+			self.slot_machine[i].slot:SetTextureRect(Frect():set(0, round, 100 , round + 100))
+
+			-- if all of slots have stopped then launch reward/finish function
+			local amnt = 0
+			for j = 1, #self.slot_machine do
+				if self.slot_machine[j].spinning == 0 then
+					amnt = amnt + 1
+				end
+			end
+
+			if amnt >= 3 then
+				self:SlotsEnd()
+			end
+
+			return true
+		end
+
+		for i = 1, 3 do
+			CreateTimeEvent("slot_stop_spin_e_" .. i, "slot_stop_spin_a_" .. i, math.random(40, 70) / 10, stop_spin, i)
+		end
+
+		-- launch spin
+		self.slots_spin = true
+
+	end
+
+end
+
+function CustomPDAX:ResetGamesSlots()
+	-- stop spinning
+	self.slots_spin = false
+
+	-- reset slots position
+	for i = 1, 3 do
+		self.slot_machine[i].spinning = 0
+		self.slot_machine[i].pos = 200
+		self.slot_machine[i].slot:SetTextureRect(Frect():set(0, self.slot_machine[i].pos, 100, self.slot_machine[i].pos + 100))
+	end
+
+	-- enable button (just in case)
+	self.slot_launch:Enable(true)
+end
+
+function CustomPDAX:SlotsEnd()
+	-- get stopped cells value, y1:(0 = seven; 100 = grape; 200 = bell; 300 = melon; 400 = coin)
+	local coin = 0
+	local seven = 0
+	for i = 1, #self.slot_machine do
+		local r = self.slot_machine[i].slot:GetTextureRect()
+		if r.y1 == 300 then
+			coin = coin + 1
+		elseif r.y1 == 0 then
+			seven = seven + 1
+		end
+	end
+
+	-- check for reward
+	-- need some kind of sound
+	if coin == 2 then								-- 2 coins, x5 money
+		db.actor:give_money(slots_bet * 5)
+	elseif coin == 3 then							-- 3 coins, x20 money
+		db.actor:give_money(slots_bet * 20)
+	elseif seven == 3 then						--	3 sevens, x100 money
+		db.actor:give_money(slots_bet * 100)
+	end
+
+	-- update money
+	self:UpdMoneyText()
+
+	pr("coin: %s || seven: %s", coin, seven) 
+
+	-- reset and enable button again
+	self.slots_spin = false
+	self.slot_launch:Enable(true)
+
+end
+
+function CustomPDAX:SlotsOnUpdate()
+	if self.slots_spin then
+		for i = 1, #self.slot_machine do
+
+			-- if this slot is spinning then change its position
+			if self.slot_machine[i].spinning == 1 then
+
+				self.slot_machine[i].pos = self.slot_machine[i].pos - (math.random(3, 10))
+
+				-- change pos
+				local s = self.slot_machine[i].pos
+				self.slot_machine[i].slot:SetTextureRect(Frect():set(0, s, 100, s + 100))
+
+				-- loop
+				local new_frect = self.slot_machine[i].slot:GetTextureRect()
+				if new_frect.y1 <= 0 then
+					self.slot_machine[i].pos = 400
+
+					local s2 = self.slot_machine[i].pos
+					self.slot_machine[i].slot:SetTextureRect(Frect():set(0, s2, 100, s2 + 100))
+				end
+
+			end
+		end
+	end
+end
+
+
+------------------------------------------------------------
+-------------------------- Snake --------------------------
+local snake_tmr
+function CustomPDAX:BuildGamesUpperChildSnake(xml)
+	self.snake_launch = false
+	self.snake_length = self.snake_length or 0
+	self.snake_body = self.snake_body or {}
+	self.snake_step = 8
+	self.snake_dir = self.snake_dir or "u"
+	self.snake_start_speed = 150
+	self.snake_speed_inc = 2
+
+	self.snake_cur_score = 0
+	self.snake_bet = 15
+
+	-- grid / border
+	self.snake_grid = xml:InitStatic("mid_container_3:game_pda_3:snake_grid", self.games_menu[3].child_menu)
+	self.snake_border = xml:InitStatic("mid_container_3:game_pda_3:snake_border", self.games_menu[3].child_menu)
+
+	-- head
+	self.snake_head = xml:InitStatic("mid_container_3:game_pda_3:snake_head", self.games_menu[3].child_menu)
+
+	-- food
+	self.snake_food = xml:InitStatic("mid_container_3:game_pda_3:snake_food", self.games_menu[3].child_menu)
+	self.snake_food:SetWndPos(vector2():set(7 * self.snake_step, 12 * self.snake_step))
+
+	-- score
+	self.snake_score_text = xml:InitTextWnd("mid_container_3:game_pda_3:snake_score", self.games_menu[3].child_menu)
+	self.snake_score_text:SetText(gt("pda_snake_score")..self.snake_cur_score)
+
+	-- launch button
+	self.snake_launch_btn = xml:Init3tButton("mid_container_3:game_pda_3:snake_launch_btn", self.games_menu[3].child_menu)
+	self:Register(self.snake_launch_btn, "snake_launch_btn")
+	--pmain.align_element(self, self.snake_launch_btn, self.games_menu[3].child_menu, "c", "c")
+	self.snake_launch_btn:Show(true)
+
+	self.snake_launch_btn:TextControl():SetText(gt("pda_games_menu_play") .. ": " .. self.snake_bet .. " RU")
+
+end
+
+function CustomPDAX:ResetGamesSnake()
+	self:AllowMovement(true)
+	self.snake_launch = false
+	self.snake_dir = "r"
+	self.snake_length = 0
+
+	-- reset body
+	for i = 1, #self.snake_body do
+		self.snake_body[i]:Show(false)
+	end
+	self.snake_body = {}
+
+	self.snake_start_speed = 150
+	self.snake_speed_inc = 2
+	self.snake_cur_score = 0
+	self.snake_score_text:SetText(gt("pda_snake_score")..self.snake_cur_score)
+	self.snake_head:SetWndPos(vector2():set(24 + 5 * self.snake_step, 24 + 12 * self.snake_step))
+	self.snake_food:SetWndPos(vector2():set(24 + 15 * self.snake_step, 24 + 12  * self.snake_step))
+	self.snake_launch_btn:Show(true)
+	self.snake_launch_btn:TextControl():SetText(gt("pda_games_menu_play") .. ": " .. self.snake_bet .. " RU")
+
+	self:UpdMoneyText()
+
+end
+
+function CustomPDAX:OnClickGamesSnakeLaunch()
+	if db.actor:money() >= self.snake_bet then
+
+		-- take money and update money display
+		db.actor:give_money(-(self.snake_bet))
+		self:UpdMoneyText()
+
+		-- launch game and hide button
+		self.snake_launch = true
+		self.snake_launch_btn:Show(false)
+
+	end
+
+end
+
+function CustomPDAX:SnakeOnUpdate()
+	if self.snake_launch then
+
+		self:AllowMovement(false)
+
+		local tg = time_global()
+		if (snake_tmr and tg < snake_tmr) then return end
+		snake_tmr = tg + self.snake_start_speed
+
+		local step = self.snake_step
+
+		-- move snake
+		local dir = self.snake_dir
+		local pos1 = vector2():set(self.snake_head:GetWndPos())
+		local old_size = self.snake_length
+
+		-- move head
+		if dir == "u" then
+			self.snake_head:SetWndPos(vector2():set(pos1.x, pos1.y - step))
+		elseif dir == "l" then
+			self.snake_head:SetWndPos(vector2():set(pos1.x - step, pos1.y))
+		elseif dir == "r" then
+			self.snake_head:SetWndPos(vector2():set(pos1.x + step, pos1.y))
+		elseif dir == "d" then
+			self.snake_head:SetWndPos(vector2():set(pos1.x, pos1.y + step))
+		end
+
+		-- move body
+		local last_old_pos
+		for i = old_size, 1, -1 do
+			-- save last pos
+			if i == old_size then
+				last_old_pos = vector2():set(self.snake_body[i]:GetWndPos())
+			end
+			-- others take pos of i - 1
+			if i ~= 1 then
+				local body_block_pos = vector2():set(self.snake_body[i - 1]:GetWndPos())
+				self.snake_body[i]:SetWndPos(vector2():set(body_block_pos.x, body_block_pos.y))
+			-- first takes previous head pos
+			else
+				self.snake_body[i]:SetWndPos(vector2():set(pos1.x, pos1.y))
+			end
+		end
+
+		-- check if head collides into body
+		local pos2 = vector2():set(self.snake_head:GetWndPos())
+		for i = 1, #self.snake_body do
+			local body_block_pos = vector2():set(self.snake_body[i]:GetWndPos())
+			if pos2.x == body_block_pos.x and pos2.y == body_block_pos.y then
+				-- reward player
+				local reward = db.actor:give_money(self.snake_cur_score)
+
+				-- game over
+				self:ResetGamesSnake()
+				break
+			end
+		end
+
+		-- check if head collides into border
+		if pos2.x < 28 or pos2.x > 188 or pos2.y < 28 or pos2.y > 268 then
+			-- reward player
+			local reward = db.actor:give_money(self.snake_cur_score)
+
+			-- game over
+			self:ResetGamesSnake()
+		end
+
+		-- ate food (grow)
+		local food_pos = vector2():set(self.snake_food:GetWndPos())
+		if pos2.x == food_pos.x and pos2.y == food_pos.y then
+			self.snake_length = self.snake_length + 1
+		end
+
+		-- check new size
+		if old_size < self.snake_length then
+			-- new block
+			self.snake_body[self.snake_length] = self.xml:InitStatic("mid_container_3:game_pda_3:snake_block", self.games_menu[3].child_menu)
+			-- place at the end
+			if last_old_pos then
+				self.snake_body[self.snake_length]:SetWndPos(vector2():set(last_old_pos.x, last_old_pos.y))
+			else
+				self.snake_body[self.snake_length]:SetWndPos(vector2():set(pos1.x, pos1.y))
+			end
+
+			-- repos food to not spawn on body (19, 29)
+			local food_new_pos
+			repeat
+				food_new_pos = vector2():set(24 + math.random(1, 19) * step, 24 + math.random(1, 29) * step)
+				-- head
+				if (food_new_pos.x == pos2.x and food_new_pos.y == pos2.y) then
+					food_new_pos = false
+				end
+				-- body
+				for i = 1, #self.snake_body do
+					local bp = vector2():set(self.snake_body[i]:GetWndPos())
+					if food_new_pos and (food_new_pos.x == bp.x and food_new_pos.y == bp.y) then
+						food_new_pos = false
+						break
+					end
+				end
+			until food_new_pos
+			self.snake_food:SetWndPos(food_new_pos)
+
+			-- increase speed
+			self.snake_start_speed = self.snake_start_speed - self.snake_speed_inc
+
+			-- increase score
+			self.snake_cur_score = self.snake_cur_score + 1
+			self.snake_score_text:SetText(gt("pda_snake_score")..self.snake_cur_score)
+		end
+
+	end
+end
+
+
+------------------------------------------------------------
+-------------------------- Blackjack --------------------------
+function CustomPDAX:BuildGamesUpperChildBlackjack(xml)
+	self.cards_deck = {
+		[1] = { 2, 3, 4, 6, 7, 8, 9, 10, 11 },
+		[2] = { 2, 3, 4, 6, 7, 8, 9, 10, 11 },
+		[3] = { 2, 3, 4, 6, 7, 8, 9, 10, 11 },
+		[4] = { 2, 3, 4, 6, 7, 8, 9, 10, 11 },
+	}
+
+	self.cards_current_deck = dup_table(self.cards_deck)
+	self.cards_player = self.cards_player or {}
+	self.cards_enemy = self.cards_enemy or {}
+	self.cards_enemy_fake = self.cards_enemy_fake or {}
+
+	self.cards_bet_step = 50
+	self.cards_bet = self.cards_bet_step
+
+	-- player hand statics
+	for i = 1, 6 do
+		self.cards_player[i] = xml:InitStatic("mid_container_3:game_pda_4:cards_player_" .. i, self.games_menu[4].child_menu)
+		self.cards_player[i]:Show(false)
+	end
+
+	-- enemy hand statics
+	for i = 1, 6 do
+		self.cards_enemy[i] = xml:InitStatic("mid_container_3:game_pda_4:cards_enemy_" .. i, self.games_menu[4].child_menu)
+		self.cards_enemy[i]:Show(false)
+	end
+
+	-- enemy fake hand statics
+	for i = 1, 6 do
+		self.cards_enemy_fake[i] = xml:InitStatic("mid_container_3:game_pda_4:cards_enemy_fake_" .. i, self.games_menu[4].child_menu)
+		self.cards_enemy_fake[i]:Show(false)
+	end
+
+	-- buttons
+	self.cards_deck_texture = xml:InitStatic("mid_container_3:game_pda_4:cards_deck_texture", self.games_menu[4].child_menu)
+
+	-- play button
+	self.cards_launch_btn = xml:Init3tButton("mid_container_3:game_pda_4:cards_launch_btn", self.games_menu[4].child_menu)
+	self:Register(self.cards_launch_btn, "cards_launch_btn")
+
+	-- bet text and buttons
+	self.cards_bet_text = xml:InitTextWnd("mid_container_3:game_pda_4:cards_bet_text", self.games_menu[4].child_menu)
+	self.cards_bet_text:SetText(self.cards_bet)
+
+	self.cards_bet_less_btn = xml:Init3tButton("mid_container_3:game_pda_4:cards_bet_less_btn", self.games_menu[4].child_menu)
+	self:Register(self.cards_bet_less_btn, "cards_bet_less_btn")
+	self.cards_bet_less_btn:TextControl():SetText("-")
+
+	self.cards_bet_more_btn = xml:Init3tButton("mid_container_3:game_pda_4:cards_bet_more_btn", self.games_menu[4].child_menu)
+	self:Register(self.cards_bet_more_btn, "cards_bet_more_btn")
+	self.cards_bet_more_btn:TextControl():SetText("+")
+
+	-- score and score text
+	self.cards_player_score = 0
+	self.cards_player_score_text = xml:InitTextWnd("mid_container_3:game_pda_4:cards_player_score_text", self.games_menu[4].child_menu)
+	self.cards_player_score_text:SetText(gt("pda_blackjack_player_score") .. " " .. self.cards_player_score)
+
+	self.cards_enemy_score = 0
+--	self.cards_enemy_score_text = xml:InitTextWnd("mid_container_3:game_pda_4:cards_enemy_score_text", self.games_menu[4].child_menu)
+--	self.cards_enemy_score_text:SetText(gt("pda_blackjack_enemy_score") .. " " .. self.cards_enemy_score)
+
+	-- take button
+	self.cards_take_btn = xml:Init3tButton("mid_container_3:game_pda_4:cards_take_btn", self.games_menu[4].child_menu)
+	self:Register(self.cards_take_btn, "cards_take_btn")
+	self.cards_take_btn:Show(false)
+
+	-- stop button
+	self.cards_stop_btn = xml:Init3tButton("mid_container_3:game_pda_4:cards_stop_btn", self.games_menu[4].child_menu)
+	self:Register(self.cards_stop_btn, "cards_stop_btn")
+	self.cards_stop_btn:Show(false)
+
+	-- result message
+	self.cards_result_text = xml:InitTextWnd("mid_container_3:game_pda_4:cards_result_text", self.games_menu[4].child_menu)
+	self.cards_result_text:Show(false)
+
+	-- ok button
+	self.cards_ok_btn = xml:Init3tButton("mid_container_3:game_pda_4:cards_ok_btn", self.games_menu[4].child_menu)
+	self:Register(self.cards_ok_btn, "cards_ok_btn")
+	self.cards_ok_btn:Show(false)
+
+end
+
+function CustomPDAX:ResetGamesBlackjack()
+	self.cards_bet = self.cards_bet_step
+
+	self.cards_launch_btn:Show(true)
+
+	self.cards_bet_text:SetText(self.cards_bet)
+	self.cards_bet_less_btn:Show(true)
+	self.cards_bet_more_btn:Show(true)
+
+	self.cards_player_score = 0
+	self.cards_player_score_text:SetText(gt("pda_blackjack_player_score") .. " " .. self.cards_player_score)
+	for i = 1, #self.cards_player do
+		self.cards_player[i]:Show(false)
+	end
+
+	self.cards_enemy_score = 0
+--	self.cards_enemy_score_text:SetText(gt("pda_blackjack_enemy_score") .. " " .. self.cards_enemy_score)
+	for i = 1, #self.cards_enemy do
+		self.cards_enemy[i]:Show(false)
+	end
+
+	for i = 1, #self.cards_enemy_fake do
+		self.cards_enemy_fake[i]:Show(false)
+	end
+
+	self.cards_take_btn:Show(false)
+	self.cards_stop_btn:Show(false)
+
+	self.cards_result_text:Show(false)
+	self.cards_ok_btn:Show(false)
+
+	self:UpdMoneyText()
+
+end
+
+function CustomPDAX:OnClickGamesBlackjackLaunch()
+	-- check money
+	if db.actor:money() >= self.cards_bet then
+
+		-- shuffle cards deck first
+		empty_table(self.cards_current_deck)
+		self.cards_current_deck = dup_table(self.cards_deck)
+
+		-- hide stuff we dont want to see
+		self.cards_launch_btn:Show(false)
+		self.cards_bet_less_btn:Show(false)
+		self.cards_bet_more_btn:Show(false)
+
+		self.cards_take_btn:Show(true)
+		self.cards_stop_btn:Show(true)
+
+		-- remove bet money
+		db.actor:give_money(-self.cards_bet)
+
+		-- update money
+		self:UpdMoneyText()
+
+	end
+
+end
+
+function CustomPDAX:OnClickGamesBlackjackTake()
+
+	-- pick a card for player and remove it from current deck
+	local rnd_suit_idx = math.random(1, #self.cards_current_deck)
+	local rnd_suit = self.cards_current_deck[rnd_suit_idx]
+	local rnd_card_idx = math.random(1, #rnd_suit)
+	local rnd_card_value = rnd_suit[rnd_card_idx]
+	table.remove(self.cards_current_deck[rnd_suit_idx], rnd_card_idx)
+
+	-- give card to player and increase score
+	for i = 1, #self.cards_player do
+		if not (self.cards_player[i]:IsShown()) then
+			self.cards_player_score = self.cards_player_score + rnd_card_value
+			self.cards_player_score_text:SetText(gt("pda_blackjack_player_score") .. " " .. self.cards_player_score)
+			self.cards_player[i]:InitTexture("ui_card_" .. rnd_suit_idx .. "_" .. rnd_card_value)
+			self.cards_player[i]:Show(true)
+			break
+		end
+	end
+
+	-- pick a card for enemy (if less than 14-16) and remove it from current deck
+	if self.cards_enemy_score < (math.random(14, 16)) then
+
+		local rnd_suit_idx_e = math.random(1, #self.cards_current_deck)
+		local rnd_suit_e = self.cards_current_deck[rnd_suit_idx_e]
+		local rnd_card_idx_e = math.random(1, #rnd_suit_e)
+		local rnd_card_value_e = rnd_suit_e[rnd_card_idx_e]
+		table.remove(self.cards_current_deck[rnd_suit_idx_e], rnd_card_idx_e)
+
+		-- give card to enemy and increase score
+		for i = 1, #self.cards_enemy do
+			if not (self.cards_enemy[i]:IsShown()) then
+				self.cards_enemy_score = self.cards_enemy_score + rnd_card_value_e
+		--		self.cards_enemy_score_text:SetText(gt("pda_blackjack_enemy_score") .. " " .. self.cards_enemy_score)
+				self.cards_enemy[i]:InitTexture("ui_card_".. rnd_suit_idx_e .. "_" .. rnd_card_value_e)
+				self.cards_enemy[i]:Show(true)
+				break
+			end
+		end
+
+		-- draw fake enemy cards above enemys
+		for i = 1, #self.cards_enemy do
+			if self.cards_enemy[i]:IsShown() then
+				self.cards_enemy_fake[i]:Show(true)
+			end
+		end
+
+	end
+
+	-- count shown player cards
+	local shown_player_cards = 0
+	for i = 1, #self.cards_player do
+		if self.cards_player[i]:IsShown() then
+			shown_player_cards = shown_player_cards + 1
+		end
+	end
+
+	-- end game if player has 6 cards or if player or enemy has 21 or more
+	local cond_one = shown_player_cards >= 6
+	local cond_two = (self.cards_player_score >= 21) or (self.cards_enemy_score > 21)
+	if cond_one or cond_two then
+		self:OnClickGamesBlackjackStop()
+	end
+
+end
+
+function CustomPDAX:OnClickGamesBlackjackStop()
+	-- simulate enemy turns further if still below 14
+	for idx = 1, 10 do
+		if self.cards_enemy_score < 14 then
+
+			local rnd_suit_idx_e = math.random(1, #self.cards_current_deck)
+			local rnd_suit_e = self.cards_current_deck[rnd_suit_idx_e]
+			local rnd_card_idx_e = math.random(1, #rnd_suit_e)
+			local rnd_card_value_e = rnd_suit_e[rnd_card_idx_e]
+			table.remove(self.cards_current_deck[rnd_suit_idx_e], rnd_card_idx_e)
+
+			-- give card to enemy and increase score
+			for i = 1, #self.cards_enemy do
+				if not (self.cards_enemy[i]:IsShown()) then
+					self.cards_enemy_score = self.cards_enemy_score + rnd_card_value_e
+			--		self.cards_enemy_score_text:SetText(gt("pda_blackjack_enemy_score") .. " " .. self.cards_enemy_score)
+					self.cards_enemy[i]:InitTexture("ui_card_".. rnd_suit_idx_e .. "_" .. rnd_card_value_e)
+					self.cards_enemy[i]:Show(true)
+					break
+				end
+			end
+
+			-- draw fake enemy cards above enemys
+			for i = 1, #self.cards_enemy do
+				if self.cards_enemy[i]:IsShown() then
+					self.cards_enemy_fake[i]:Show(true)
+				end
+			end
+
+		end
+	end
+
+	-- show enemy cards
+	for i = 1, #self.cards_enemy_fake do
+		if self.cards_enemy_fake[i]:IsShown() then
+			self.cards_enemy_fake[i]:Show(false)
+		end
+	end
+
+	-- show message and calculate conditions
+	self.cards_result_text:Show(true)
+
+	local result = ""
+	local p_sc = self.cards_player_score
+	local en_sc = self.cards_enemy_score
+
+	-- enemy > 21
+	if en_sc > 21 then
+		result = p_sc <= 21 and "won" or "draw"
+	-- enemy <= 21
+	else
+		if p_sc > 21 then
+			result = "lost"
+		else
+			result = (p_sc > en_sc and "won") or (p_sc == en_sc and "draw") or (p_sc < en_sc and "lost")
+		end
+	end
+
+	self.cards_result_text:SetText(gt("pda_blackjack_" .. result) .. " \\n" .. gt("pda_blackjack_player_score") .. " " .. self.cards_player_score .. " \\n" .. gt("pda_blackjack_enemy_score") .. " " .. self.cards_enemy_score)
+
+	-- hide take and stop buttons
+	self.cards_take_btn:Show(false)
+	self.cards_stop_btn:Show(false)
+
+	-- show ok button
+	self.cards_ok_btn:Show(true)
+
+	-- reward double bet
+	if result == "won" then
+		db.actor:give_money(self.cards_bet * 2)
+	elseif result == "draw" then
+		db.actor:give_money(self.cards_bet)
+	end
+
+	-- update money
+	self:UpdMoneyText()
+
+end
+
+function CustomPDAX:OnClickGamesBlackjackOk()
+
+	-- disable result window
+	self.cards_result_text:Show(false)
+	-- reset blackjack game
+	self:ResetGamesBlackjack()
+
+end
+
+
+------------------------------------------------------------
+-------------------------- Sudoku --------------------------
+function CustomPDAX:BuildGamesUpperChildSudoku(xml)
+	self.sudoku_grid = {}
+
+	self.sudoku_opened_cells = {}
+	self.sudoku_win = false
+
+	-- winning text
+	self.sudoku_winning_text = xml:InitTextWnd("mid_container_3:game_pda_5:sudoku_winning_text", self.games_menu[5].child_menu)
+	self.sudoku_winning_text:Show(false)
+
+	-- create grid
+	for i = 1, 9 do
+		self.sudoku_grid[i] = {}
+		for j = 1, 9 do
+			self.sudoku_grid[i][j] = {}
+			self.sudoku_grid[i][j].elem = xml:InitStatic("mid_container_3:game_pda_5:sudoku_cell", self.games_menu[5].child_menu)
+			local pos_x = (i - 1) * 29
+			local pos_y = (j - 1) * 29
+			self.sudoku_grid[i][j].elem:SetWndPos(vector2():set(pos_x, pos_y))
+			self.sudoku_grid[i][j].val = 0
+
+			-- assign to box
+			if j < 4 then
+				self.sudoku_grid[i][j].box = (i < 4 and 1) or (i < 7 and 2) or (i < 10 and 3)
+			elseif j < 7 then
+				self.sudoku_grid[i][j].box = (i < 4 and 4) or (i < 7 and 5) or (i < 10 and 6)
+			elseif j < 10 then
+				self.sudoku_grid[i][j].box = (i < 4 and 7) or (i < 7 and 8) or (i < 10 and 9)
+			end
+
+		end
+	end
+
+	-- draw lighter grid in lazy mode
+	self.sudoku_grid_vert = {}
+	for i = 1, 2 do
+		self.sudoku_grid_vert[i] = {}
+		for j = 1, 9 do
+			local pos_x = i * 29 * 3
+			local pos_y = (j - 1) * 29
+			self.sudoku_grid_vert[i][j] = xml:InitStatic("mid_container_3:game_pda_5:sudoku_v", self.games_menu[5].child_menu)
+			self.sudoku_grid_vert[i][j]:SetWndPos(vector2():set(pos_x, pos_y))
+		end
+	end
+
+	self.sudoku_grid_hor = {}
+	for i = 1, 2 do
+		self.sudoku_grid_hor[i] = {}
+		for j = 1, 9 do
+			local pos_x = (j - 1) * 29
+			local pos_y = i * 29 * 3
+			self.sudoku_grid_hor[i][j] = xml:InitStatic("mid_container_3:game_pda_5:sudoku_h", self.games_menu[5].child_menu)
+			self.sudoku_grid_hor[i][j]:SetWndPos(vector2():set(pos_x, pos_y))
+		end
+	end
+
+end
+
+function CustomPDAX:ResetGamesSudoku()
+	local root_solution = {
+		[1] = { 1, 2, 3, 4, 5, 6, 7, 8, 9 },
+		[2] = { 4, 5, 6, 7, 8, 9, 1, 2, 3 },
+		[3] = { 7, 8, 9, 1, 2, 3, 4, 5, 6 },
+		[4] = { 2, 3, 4, 5, 6, 7, 8, 9, 1 },
+		[5] = { 5, 6, 7, 8, 9, 1, 2, 3, 4 },
+		[6] = { 8, 9, 1, 2, 3, 4, 5, 6, 7 },
+		[7] = { 3, 4, 5, 6, 7, 8, 9, 1, 2 },
+		[8] = { 6, 7, 8, 9, 1, 2, 3, 4, 5 },
+		[9] = { 9, 1, 2, 3, 4, 5, 6, 7, 8 },
+	}
+
+	self.sudoku_win = false
+
+	self.sudoku_winning_text:Show(false)
+
+	empty_table(self.sudoku_opened_cells)
+
+	-- set root solution and reset colors
+	for i = 1, #self.sudoku_grid do
+		for j = 1, #self.sudoku_grid[i] do
+			self.sudoku_grid[i][j].val = root_solution[i][j]
+			self.sudoku_grid[i][j].elem:TextControl():SetText(self.sudoku_grid[i][j].val)
+			self.sudoku_grid[i][j].elem:TextControl():SetTextColor(GetARGB(255, 190, 190, 190))
+		end
+	end
+
+	-- shuffle
+	for i = 1, 30 do
+		local n1 = math.random(9)
+		local n2
+		repeat n2 = math.random(9) until n1 ~= n2
+
+		for i = 1, #self.sudoku_grid do
+			for j = 1, #self.sudoku_grid[i] do
+				if self.sudoku_grid[i][j].val == n1 then
+					self.sudoku_grid[i][j].val = n2
+				elseif self.sudoku_grid[i][j].val == n2 then
+					self.sudoku_grid[i][j].val = n1
+				end
+				self.sudoku_grid[i][j].elem:TextControl():SetText(self.sudoku_grid[i][j].val)
+			end
+		end
+
+	end
+
+	-- hide some cells
+	local hid_amount = (sudoku_diff == 3 and 5) or (sudoku_diff == 2 and 4) or (sudoku_diff == 1 and 3) or 4
+
+	for box_num = 1, 9 do
+		local hidden_cells = 0
+
+		repeat
+			local col = math.random(9)
+			local row = math.random(9)
+
+			if (self.sudoku_grid[col][row].box == box_num) and (tostring(self.sudoku_grid[col][row].elem:TextControl():GetText()) ~= "") then
+				self.sudoku_grid[col][row].elem:TextControl():SetText("")
+				hidden_cells = hidden_cells + 1
+			end
+		until hidden_cells >= hid_amount
+
+	end
+
+	-- highlight and store opened cells
+	for i = 1, #self.sudoku_grid do
+		for j = 1, #self.sudoku_grid[i] do
+			if tostring(self.sudoku_grid[i][j].elem:TextControl():GetText()) ~= "" then
+				self.sudoku_opened_cells[i] = self.sudoku_opened_cells[i] or {}
+				self.sudoku_opened_cells[i][j] = true
+				self.sudoku_grid[i][j].elem:TextControl():SetTextColor(GetARGB(255, 90, 200, 200))
+			end
+		end
+	end
+
+end
+
+function CustomPDAX:OnPressGamesSudoku(key)
+	key = key - 1
+
+	-- draw pressed number
+	for i = 1, #self.sudoku_grid do
+		for j = 1, #self.sudoku_grid[i] do
+			local cursor_on_wnd = self.sudoku_grid[i][j].elem:IsCursorOverWindow()
+			local not_highlighted = not (self.sudoku_opened_cells[i] and self.sudoku_opened_cells[i][j])
+			if cursor_on_wnd and not_highlighted then
+				if key == 10 then		-- zero pressed (remove text)
+					self.sudoku_grid[i][j].elem:TextControl():SetText("")
+				else
+					self.sudoku_grid[i][j].elem:TextControl():SetText(key)
+				end
+			end
+		end
+	end
+
+	-- check if columns are ok
+	for col = 1, #self.sudoku_grid do
+		for row = 1, #self.sudoku_grid[col] do
+			local cell = self.sudoku_grid[col][row]
+
+			-- check if cell value is number
+			local num_cell = tonumber(cell.elem:TextControl():GetText())
+			if not num_cell then
+				return
+			end
+
+			-- check if current value is already repeated in this column
+			for idx, val in ipairs(self.sudoku_grid[col]) do
+				local compare_num_cell = tonumber(val.elem:TextControl():GetText())
+				if not compare_num_cell then return end
+		--		printf("comparing our_val: %s in %s-%s to val: %s in %s-%s", num_cell, col, row, compare_num_cell, col, idx)
+
+				if idx ~= row and compare_num_cell == num_cell then
+		--			printf("! Col: %s, compare_cell: %s == num_cell: %s, in row: %s", col, compare_num_cell, num_cell, idx)
+					return
+				end
+			end
+
+		end
+	end
+
+	-- check if rows are ok
+	local rows_ar = pmain.invert_array(self, self.sudoku_grid)
+	for row = 1, #rows_ar do
+		for col = 1, #rows_ar[row] do
+			local cell = rows_ar[row][col]
+
+			-- check if cell value is number
+			local num_cell = tonumber(cell.elem:TextControl():GetText())
+			if not num_cell then
+				return
+			end
+
+			-- check if current value is already repeated in this row
+			for idx, val in ipairs(rows_ar[row]) do
+				local compare_num_cell = tonumber(val.elem:TextControl():GetText())
+				if not compare_num_cell then return end
+
+				if idx ~= col and compare_num_cell == num_cell then
+		--			printf("! Row: %s, compare_cell: %s == num_cell: %s, in col: %s", row, compare_num_cell, num_cell, idx)
+					return
+				end
+			end
+
+		end
+	end
+
+	-- sudoku won
+	self.sudoku_win = true
+	db.actor:give_money(sudoku_reward)
+	self.sudoku_winning_text:Show(true)
+	self:UpdMoneyText()
+
+end
+
+
+------------------------------------------------------------
+-------------------------- Rogue --------------------------
+function CustomPDAX:BuildGamesUpperChildRogue(xml)
+end
+
+function CustomPDAX:ResetGamesRogue()
+end
+
+function CustomPDAX:InitRogueCallbacks()
+end
+
+------------------------------------------------------------
+-------------------------- General --------------------------
+function CustomPDAX:InitGamesCallbacks()
+	for i = 1, games_amount do
+		CustomPDAX["OnClickGamesMenu_".. i] = function(self)
+			self:OnClickGamesMenu(i)
+		end
+		self:AddCallback("games_left_btn_" .. i, ui_events.BUTTON_CLICKED, self["OnClickGamesMenu_" .. i], self)
+	end
+
+		-- puzzle
+	for i = 1, 15 do
+		CustomPDAX["OnClickGamesPuzzleBtn_".. i] = function(self)
+			self:OnClickGamesPuzzleBtn(i)
+		end
+		self:AddCallback("puzzle_btn_" .. i, ui_events.BUTTON_CLICKED, self["OnClickGamesPuzzleBtn_".. i], self)
+	end
+
+		-- slot
+	self:AddCallback("slot_launch", ui_events.BUTTON_CLICKED, self.OnClickGamesSlotLaunch, self)
+
+		-- snake
+	self:AddCallback("snake_launch_btn", ui_events.BUTTON_CLICKED, self.OnClickGamesSnakeLaunch, self)
+
+		-- blackjack
+	self:AddCallback("cards_launch_btn", ui_events.BUTTON_CLICKED, self.OnClickGamesBlackjackLaunch, self)
+
+	self:AddCallback("cards_bet_less_btn", ui_events.BUTTON_CLICKED, function()
+		if self.cards_bet > self.cards_bet_step then
+			self.cards_bet = self.cards_bet - self.cards_bet_step
+			self.cards_bet_text:SetText(self.cards_bet)
+		end
+	end, self)
+
+	self:AddCallback("cards_bet_more_btn", ui_events.BUTTON_CLICKED, function()
+		if self.cards_bet < 1000 then
+			self.cards_bet = self.cards_bet + self.cards_bet_step
+			self.cards_bet_text:SetText(self.cards_bet)
+		end
+	end, self)
+
+	self:AddCallback("cards_take_btn", ui_events.BUTTON_CLICKED, self.OnClickGamesBlackjackTake, self)
+	self:AddCallback("cards_stop_btn", ui_events.BUTTON_CLICKED, self.OnClickGamesBlackjackStop, self)
+	self:AddCallback("cards_ok_btn", ui_events.BUTTON_CLICKED, self.OnClickGamesBlackjackOk, self)
+
+	-- rogue
+	self:InitRogueCallbacks()
+end
+
+function CustomPDAX:ResetGamesMenu()
+	self.cur_left_btn_games = 0
+
+	-- hide child menu arrow
+	self.game_arrow:Show(false)
+
+	-- hide all child menus
+	for i = 1, #self.games_menu do
+		self.games_menu[i].child_menu:Show(false)
+	end
+
+	-- Reset All child menus
+	self:ResetGamesPuzzle()
+	self:ResetGamesSlots()
+	self:ResetGamesSnake()
+	self:ResetGamesBlackjack()
+	self:ResetGamesSudoku()
+	self:ResetGamesRogue()
+
+end
+
+function CustomPDAX:OnClickGamesMenu(num)
+
+	if self.cur_left_btn_games ~= num then
+
+		-- reset all child menus
+		self:ResetGamesMenu()
+
+		-- set pressed child menu button
+		self.cur_left_btn_games = num
+
+		-- show and repos child menu arrow
+		self.game_arrow:Show(true)
+		local arrow_pos = self.game_arrow:GetWndPos()
+		local arrow_pos_y = (num - 1) * 50
+		self.game_arrow:SetWndPos(vector2():set(arrow_pos.x, arrow_pos_y))
+
+		-- show clicked child menu
+		self.games_menu[num].child_menu:Show(true)		-- right side container
+
+		-- start rogue game
+		if num == 6 then
+			self.rogue_launched = true
+			self:AllowMovement(false)
+		end
+
+	end
+
+end
+
+--------------------- on_update ---------------------
+function CustomPDAX:GamesUpdate()
+	self:SlotsOnUpdate()
+	self:SnakeOnUpdate()
+end
+
+
+function on_option_change()
+	puzzle_reward = pda_inter_mcm.get_config("puzzle_reward")
+	slots_bet = pda_inter_mcm.get_config("slots_bet")
+	sudoku_reward = pda_inter_mcm.get_config("sudoku_reward")
+	sudoku_diff = pda_inter_mcm.get_config("sudoku_diff")
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_option_change", on_option_change)
+end

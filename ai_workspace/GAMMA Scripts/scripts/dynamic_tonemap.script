@@ -1,0 +1,310 @@
+local enable_dynamic_tonemap = true
+
+local adaptation = 3
+
+local k_amount = 0.1
+local min_amount = 0.3
+local max_amount = 1 
+local rain_amount_addition = 0.25
+local storm_amount_addition = 0.5
+
+local k_lowlum = 0.1
+local min_clear_lowlum = 0.5
+local min_not_clear_lowlum = 0.25
+local max_lowlum = 0.7
+local rain_lowlum_reduction_coeff = 0.75
+local storm_lowlum_reduction_coeff = 0.5
+
+local k_middle = 0.05
+local min_middle_gray = 1.5
+local max_middle_gray = 1.75
+
+local k_lumscale_amb = 0.07
+local k_lumscale_amb_addition = 0.03
+local min_lumscale_amb = 0.1
+local max_lumscale_amb = 0.85
+local not_clear_amb_reduction_coeff = 0.85
+local rain_amb_reduction_coeff = 0.75
+local storm_amb_reduction_coeff = 0.5
+
+local k_lumscale_hemi = 0.06
+local k_lumscale_hemi_addition = 0.01
+local min_lumscale_hemi = 1.3
+local max_lumscale_hemi = 2
+local not_clear_hemi_reduction_coeff = 1
+local rain_hemi_reduction_coeff = 0.9
+local storm_hemi_reduction_coeff = 0.8
+
+local timer = 60
+
+local function load_settings()
+	if ui_mcm then
+		enable_dynamic_tonemap = ui_mcm.get("dynamic_tonemap_extended/enable_dynamic_tonemap")
+
+		adaptation = ui_mcm.get("dynamic_tonemap_extended/adaptation")
+
+		k_amount = ui_mcm.get("dynamic_tonemap_extended/k_amount")
+		min_amount = ui_mcm.get("dynamic_tonemap_extended/min_amount")
+		max_amount = ui_mcm.get("dynamic_tonemap_extended/max_amount")
+		rain_amount_addition = ui_mcm.get("dynamic_tonemap_extended/rain_amount_addition")
+		storm_amount_addition = ui_mcm.get("dynamic_tonemap_extended/storm_amount_addition")
+
+		k_lowlum = ui_mcm.get("dynamic_tonemap_extended/k_lowlum")
+		min_clear_lowlum = ui_mcm.get("dynamic_tonemap_extended/min_clear_lowlum")
+		min_not_clear_lowlum = ui_mcm.get("dynamic_tonemap_extended/min_not_clear_lowlum")
+		max_lowlum = ui_mcm.get("dynamic_tonemap_extended/max_lowlum")
+		rain_lowlum_reduction_coeff = ui_mcm.get("dynamic_tonemap_extended/rain_lowlum_reduction_coeff")
+		storm_lowlum_reduction_coeff = ui_mcm.get("dynamic_tonemap_extended/storm_lowlum_reduction_coeff")
+
+		k_middle = ui_mcm.get("dynamic_tonemap_extended/k_middle")
+		min_middle_gray = ui_mcm.get("dynamic_tonemap_extended/min_middle_gray")
+		max_middle_gray = ui_mcm.get("dynamic_tonemap_extended/max_middle_gray")
+
+		k_lumscale_amb = ui_mcm.get("dynamic_tonemap_extended/k_lumscale_amb")
+		k_lumscale_amb_addition = ui_mcm.get("dynamic_tonemap_extended/k_lumscale_amb_addition")
+		min_lumscale_amb = ui_mcm.get("dynamic_tonemap_extended/min_lumscale_amb")
+		max_lumscale_amb = ui_mcm.get("dynamic_tonemap_extended/max_lumscale_amb")
+		not_clear_amb_reduction_coeff = ui_mcm.get("dynamic_tonemap_extended/not_clear_amb_reduction_coeff")
+		rain_amb_reduction_coeff = ui_mcm.get("dynamic_tonemap_extended/rain_amb_reduction_coeff")
+		storm_amb_reduction_coeff = ui_mcm.get("dynamic_tonemap_extended/storm_amb_reduction_coeff")
+
+		k_lumscale_hemi = ui_mcm.get("dynamic_tonemap_extended/k_lumscale_hemi")
+		k_lumscale_hemi_addition = ui_mcm.get("dynamic_tonemap_extended/k_lumscale_hemi_addition")
+		min_lumscale_hemi = ui_mcm.get("dynamic_tonemap_extended/min_lumscale_hemi")
+		max_lumscale_hemi = ui_mcm.get("dynamic_tonemap_extended/max_lumscale_hemi")
+		not_clear_hemi_reduction_coeff = ui_mcm.get("dynamic_tonemap_extended/not_clear_hemi_reduction_coeff")
+		rain_hemi_reduction_coeff = ui_mcm.get("dynamic_tonemap_extended/rain_hemi_reduction_coeff")
+		storm_hemi_reduction_coeff = ui_mcm.get("dynamic_tonemap_extended/storm_hemi_reduction_coeff")
+	end
+end
+
+local clamp = clamp
+local get_console = get_console
+local get_time_factor = level.get_time_factor
+local get_time_hours = level.get_time_hours
+local get_time_minutes = level.get_time_minutes
+local get_weather_manager = level_weathers.get_weather_manager
+local level_name = level.name
+local math_max = math.max
+local math_min = math.min
+local normalize = normalize
+local random_number = random_number
+local sf = string.find
+
+local CreateTimeEvent = demonized_time_events.CreateTimeEvent
+local RemoveTimeEvent = demonized_time_events.RemoveTimeEvent
+
+local tonemap_values = {
+	amount = min_amount,
+	lowlum = min_clear_lowlum,
+	middle_gray = min_middle_gray,
+	lumscale_amb = min_lumscale_amb,
+	lumscale_hemi = min_lumscale_hemi
+}
+
+--EMA smoothing for changing values
+local default_smoothing = 13
+local smoothing_alpha = 2.0 / (default_smoothing + 1)
+
+local function set_smoothing(n)
+	local n = math_max(n, 1)
+	smoothing_alpha = 2.0 / (n + 1)
+end
+
+local function ema(key, value)
+	tonemap_values[key] = tonemap_values[key] + smoothing_alpha * (value - tonemap_values[key])
+	-- printf("EMA fired, key %s, target %s, current %s, going %s", key, value, tonemap_values[key], (value > tonemap_values[key] and "up" or "down"))
+	return tonemap_values[key] 
+end
+
+local indoor_levels = {
+	jupiter_underground 	= true,
+	l03u_agr_underground 	= true,
+	l04u_labx18 			= true,
+	l08u_brainlab 			= true,
+	l10u_bunker 			= true,
+	l12u_control_monolith 	= true,
+	l12u_sarcofag 			= true,
+	l13u_warlab 			= true,
+	labx8				 	= true
+}
+
+local clear_weathers = {
+	clear = true,
+	partly = true
+}
+
+local clear_hemi_weathers = {
+	clear = true,
+}
+
+local weather_file_to_weather = {
+	w_clear = "clear",
+	w_partly = "partly",
+	w_cloudy = "cloudy",
+	w_rain = "rain",
+	w_storm = "storm",
+	w_foggy = "foggy",
+	tuman = "foggy"
+}
+
+local function get_current_weather()
+  return get_weather_manager().weather_file or ""
+end
+
+local function get_time_fractional(time_hours, time_minutes)
+	return time_hours + normalize(time_minutes, 0, 60)
+end
+
+local function set_tonemap_values(t)
+	local console = get_console()
+	console:execute("r2_tonemap_adaptation " .. t.adaptation)
+	console:execute("r2_tonemap_amount " .. ema("amount", t.amount))
+	console:execute("r2_tonemap_lowlum " .. ema("lowlum", t.lowlum))
+	console:execute("r2_tonemap_middlegray " .. ema("middle_gray", t.middle_gray))
+	console:execute("r2_sun_lumscale_amb " .. ema("lumscale_amb", t.lumscale_amb))
+	console:execute("r2_sun_lumscale_hemi " .. ema("lumscale_hemi", t.lumscale_hemi))
+	
+end
+
+local function update_tonemap()
+	-- printf("update_tonemap fired")
+	local time_fractional = get_time_fractional(get_time_hours(), get_time_minutes())
+	-- printf("time_fractional %s", time_fractional)
+	local current_weather = get_current_weather()
+
+	for k, v in pairs(weather_file_to_weather) do
+		if sf(current_weather, k) then
+			current_weather = v
+			break
+		end
+	end
+
+	local min_lowlum = min_clear_lowlum
+	local k_ambient_coeff = 1
+	local k_hemi_coeff = 1
+	if not clear_weathers[current_weather] then
+		if current_weather == "rain" then
+			min_lowlum = min_not_clear_lowlum * rain_lowlum_reduction_coeff
+			k_ambient_coeff = rain_amb_reduction_coeff
+		elseif current_weather == "storm" then
+			min_lowlum = min_not_clear_lowlum * storm_lowlum_reduction_coeff
+			k_ambient_coeff = storm_amb_reduction_coeff
+		else
+			min_lowlum = min_not_clear_lowlum
+			k_ambient_coeff = not_clear_amb_reduction_coeff
+		end
+	end
+
+	if not clear_hemi_weathers[current_weather] then
+		if current_weather == "rain" then
+			k_hemi_coeff = rain_hemi_reduction_coeff
+		elseif current_weather == "storm" then
+			k_hemi_coeff = storm_hemi_reduction_coeff
+		else
+			k_hemi_coeff = not_clear_hemi_reduction_coeff
+		end
+	end
+
+
+	local t = {
+		adaptation = adaptation,
+		amount = max_amount,
+		lowlum = max_lowlum,
+		middle_gray = min_middle_gray,
+		lumscale_amb = min_lumscale_amb,
+		lumscale_hemi = min_lumscale_hemi
+	}
+
+	if time_fractional > 3 and time_fractional < 9 then
+		t.amount = math_max(max_amount - k_amount * (time_fractional - 2), min_amount)
+		t.lowlum = math_max(max_lowlum - k_lowlum * (time_fractional - 2), min_lowlum)
+		t.middle_gray = math_min(min_middle_gray + k_middle * (time_fractional - 3), max_middle_gray)
+		t.lumscale_amb = clamp(math_min(min_lumscale_amb + k_lumscale_amb * (time_fractional - 2), max_lumscale_amb), min_lumscale_amb, max_lumscale_amb) * k_ambient_coeff
+		t.lumscale_hemi = min_lumscale_hemi * k_hemi_coeff
+
+	elseif time_fractional < 15 then
+		t.amount = min_amount
+		t.lowlum = min_lowlum
+		t.middle_gray = max_middle_gray
+		t.lumscale_amb = clamp(math_min(min_lumscale_amb + (k_lumscale_amb + k_lumscale_amb_addition) * (time_fractional - 2), max_lumscale_amb), min_lumscale_amb, max_lumscale_amb) * k_ambient_coeff
+		t.lumscale_hemi = min_lumscale_hemi * k_hemi_coeff
+
+	elseif time_fractional < 19.5 then
+		t.amount = math_min(min_amount + k_amount * (time_fractional - 14), max_amount)
+		t.lowlum = math_min(min_lowlum + k_lowlum * (time_fractional - 14), max_lowlum)
+		t.middle_gray = clamp(max_middle_gray - k_middle * (time_fractional - 17), min_middle_gray, max_middle_gray)
+		t.lumscale_amb = clamp(math_min(max_lumscale_amb - k_lumscale_amb * (time_fractional - 16), max_lumscale_amb), min_lumscale_amb, max_lumscale_amb) * k_ambient_coeff
+		t.lumscale_hemi = clamp(math_min(min_lumscale_hemi + k_lumscale_hemi * (time_fractional - 14), max_lumscale_hemi), min_lumscale_hemi, max_lumscale_hemi) * k_hemi_coeff
+
+	else
+		t.amount = math_min(min_amount + k_amount * (time_fractional - 14), max_amount)
+		t.lowlum = math_min(min_lowlum + k_lowlum * (time_fractional - 14), max_lowlum)
+		t.middle_gray = math_max(max_middle_gray - k_middle * (time_fractional - 17), min_middle_gray)
+		t.lumscale_amb = clamp((max_lumscale_amb - (k_lumscale_amb + k_lumscale_amb_addition) * (time_fractional - 16)), min_lumscale_amb, max_lumscale_amb) * k_ambient_coeff
+		t.lumscale_hemi = clamp(math_min(min_lumscale_hemi + (k_lumscale_hemi + k_lumscale_hemi_addition) * (time_fractional - 14), max_lumscale_hemi), min_lumscale_hemi, max_lumscale_hemi) * k_hemi_coeff
+	end
+
+	if (current_weather == "storm") then
+		t.amount = math_min(1, t.amount + storm_amount_addition)
+	elseif (current_weather == "rain") then
+		t.amount = math_min(1, t.amount + rain_amount_addition)
+	end
+
+	set_tonemap_values(t)
+
+end
+
+local function set_initial_values()
+	set_smoothing(1)
+	update_tonemap()
+	timer = 60 / get_time_factor()
+	set_smoothing(default_smoothing)
+end
+
+local start_tonemapping, reset_tonemapping_timer
+
+start_tonemapping = function()
+	-- printf("tonemapping started")
+	update_tonemap()
+	CreateTimeEvent("reset_tonemapping_timer", "reset_tonemapping_timer", 0.01, reset_tonemapping_timer)
+	return true
+end
+
+reset_tonemapping_timer = function()
+	-- printf("resetting tonemap timer")
+	CreateTimeEvent("update_tonemap", "update_tonemap", timer, start_tonemapping)
+	return true
+end
+
+local function reset_tonemapping()
+	RemoveTimeEvent("update_tonemap", "update_tonemap")
+	load_settings()
+	if not enable_dynamic_tonemap then return end
+
+	-- printf("current_level is %s", level_name())
+	if indoor_levels[level_name()] then
+		local console = get_console()
+		console:execute("r2_tonemap_adaptation ".. adaptation)
+		console:execute("r2_tonemap_amount " .. max_amount)
+		console:execute("r2_tonemap_lowlum " .. max_lowlum)
+		console:execute("r2_tonemap_middlegray " .. min_middle_gray)
+		console:execute("r2_sun_lumscale_amb " .. min_lumscale_amb)
+		console:execute("r2_sun_lumscale_hemi " .. min_lumscale_hemi)
+	else
+		set_initial_values()
+		start_tonemapping()
+	end
+
+	return true
+end
+
+local function actor_on_sleep()
+	CreateTimeEvent("update_values_after_sleep", "update_values_after_sleep", 5, reset_tonemapping)
+end
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_first_update", reset_tonemapping)
+	RegisterScriptCallback("on_option_change", reset_tonemapping)
+	RegisterScriptCallback("actor_on_sleep", actor_on_sleep)
+end

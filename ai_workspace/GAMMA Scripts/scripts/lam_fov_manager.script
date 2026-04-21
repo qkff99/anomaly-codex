@@ -1,0 +1,31 @@
+local default_fov
+
+
+function on_game_start()
+    RegisterScriptCallback("on_game_load", on_game_load)
+    RegisterScriptCallback("on_option_change", on_option_change)
+end
+
+
+function on_game_load()
+    write_fov()
+end
+
+function on_option_change()
+    write_fov()
+end
+
+
+function write_fov()
+    default_fov = ui_options.get("video/basic/hud_fov")
+end
+
+
+function set_fov(new_fov)
+    exec_console_cmd("hud_fov " .. new_fov)
+end
+
+
+function restore_fov()
+    exec_console_cmd("hud_fov " .. default_fov)
+end

@@ -1,0 +1,67 @@
+
+[squad_lure_prey_controller_1]:online_offline_group
+npc				= m_controller_normal
+faction			= monster
+story_id		= squad_lure_prey_controller_1
+logic			= scripts\misc_encounter\squad_lure_prey.ltx
+
+[squad_lure_prey_controller_2]:online_offline_group
+npc				= m_controller_normal
+faction			= monster
+story_id		= squad_lure_prey_controller_2
+logic			= scripts\misc_encounter\squad_lure_prey.ltx
+
+[squad_lure_prey_phantom]:online_offline_group
+npc				= sim_default_stalker_2
+faction			= stalker
+story_id		= squad_lure_prey_phantom
+logic			= scripts\misc_encounter\squad_lure_prey.ltx
+
+[squad_bloodsucker_val_1]:online_offline_group
+npc				= bloodsucker_weak,bloodsucker_weak,bloodsucker_weak,bloodsucker_weak,bloodsucker_normal,bloodsucker_normal
+faction			= monster
+story_id		= squad_bloodsucker_val_1
+logic			= scripts\misc_encounter\squad_bloodsucker_val.ltx
+on_death		= %=script(gameplay_misc_encounter:bloodsucker_val_dead)%
+
+[squad_bloodsucker_val_2]:online_offline_group
+npc				= bloodsucker_weak,bloodsucker_weak,bloodsucker_weak,bloodsucker_normal,bloodsucker_normal,bloodsucker_normal
+faction			= monster
+story_id		= squad_bloodsucker_val_2
+logic			= scripts\misc_encounter\squad_bloodsucker_val.ltx
+on_death		= %=script(gameplay_misc_encounter:bloodsucker_val_dead)%
+
+[squad_bloodsucker_val_3]:online_offline_group
+npc				= bloodsucker_normal,bloodsucker_normal,bloodsucker_normal,bloodsucker_strong,bloodsucker_strong,bloodsucker_strong
+faction			= monster
+story_id		= squad_bloodsucker_val_3
+logic			= scripts\misc_encounter\squad_bloodsucker_val.ltx
+on_death		= %=script(gameplay_misc_encounter:bloodsucker_val_dead)%
+
+[squad_sleeping_bloodsucker_jup_1]:online_offline_group
+npc_random		= bloodsucker_weak,bloodsucker_weak,bloodsucker_weak,bloodsucker_normal,bloodsucker_normal,bloodsucker_normal
+npc_in_squad    = 6
+faction			= monster
+story_id		= squad_sleeping_bloodsucker_jup_1
+logic			= scripts\misc_encounter\squad_sleeping_snork.ltx
+
+[squad_sleeping_bloodsucker_jup_2]:online_offline_group
+npc_random		= bloodsucker_normal,bloodsucker_normal,bloodsucker_normal,bloodsucker_strong,bloodsucker_strong,bloodsucker_strong
+npc_in_squad    = 6
+faction			= monster
+story_id		= squad_sleeping_bloodsucker_jup_2
+logic			= scripts\misc_encounter\squad_sleeping_snork.ltx
+
+[squad_sleeping_bloodsucker_jup_3]:online_offline_group
+npc_random		= bloodsucker_normal,bloodsucker_normal,bloodsucker_normal,bloodsucker_strong,bloodsucker_strong,bloodsucker_strong
+npc_in_squad    = 6
+faction			= monster
+story_id		= squad_sleeping_bloodsucker_jup_3
+logic			= scripts\misc_encounter\squad_sleeping_snork.ltx
+
+[squad_sleeping_gigant]:online_offline_group
+npc_random		= gigant_normal
+npc_in_squad    = 4
+faction			= monster
+story_id		= squad_sleeping_gigant
+logic			= scripts\misc_encounter\squad_sleeping_gigant.ltx

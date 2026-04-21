@@ -1,0 +1,160 @@
+local ratio = utils_xml.screen_ratio()
+ini_scaling = ini_file("plugins\\utjan_gun_scaling.ltx")
+
+_Set = utils_ui.UICellItem.Set
+function utils_ui.UICellItem:Set(obj, area)
+	self.grid_size = self.container and self.container.grid_size or 41
+
+    if not (obj and obj.clsid and IsWeapon(obj, nil)) then return _Set(self, obj, area) end
+
+	local has_silencer = utils_item.has_attached_silencer(obj)
+	local is_equipped = self.path == "equipment:cont_equ"
+
+	if not (has_silencer or is_equipped) then return _Set(self, obj, area) end
+	if not z_item_icon_info.settings.wpn_scaling.enable_inv_scaling and (has_silencer and not is_equipped) then return _Set(self, obj, area) end
+	if not z_item_icon_info.settings.wpn_scaling.enable_equip_hor_scale and is_equipped and not rot then return _Set(self, obj, area) end
+	if not z_item_icon_info.settings.wpn_scaling.enable_equip_vert_scale and is_equipped and rot then return _Set(self, obj, area) end
+
+	local rot = self.ico:GetHeading() > 0
+	local wpn_sec = obj:section()
+	local scale = 1
+	local sil_end = 0
+	if has_silencer then
+		local sil_sec = utils_item.get_attached_silencer(obj)
+		if sil_sec then
+			local sil_x = SYS_GetParam(2, wpn_sec, "silencer_x", 0) * (self.grid_size/50)
+			local sil_offset = ini_scaling:r_float_ex("silencer_cutoffs", sil_sec, 0) * (self.grid_size/50)
+			local sil_width = (SYS_GetParam(2, sil_sec, "inv_grid_width") * self.grid_size) - sil_offset
+			sil_end = (sil_x + sil_width) * (rot and 1 or ratio)
+		end
+	end
+
+	local width_diff = 0 -- delta between original icon width and icon+silencer width
+	local icon_width = SYS_GetParam(2, wpn_sec, "inv_grid_width") * self.grid_size * (rot and 1 or ratio)
+	local icon_height = SYS_GetParam(2, wpn_sec, "inv_grid_height") * self.grid_size * (rot and ratio or 1)
+	local total_width = icon_width
+	if sil_end > total_width then
+		width_diff = sil_end - total_width
+		total_width = sil_end
+	end
+
+	if rot then -- add padding from mcm
+		total_width = total_width + z_item_icon_info.settings.wpn_scaling.equip_vert_padding
+	else
+		total_width = total_width + z_item_icon_info.settings.wpn_scaling.equip_hor_padding
+	end
+
+	local cell_width = is_equipped and self.cell:GetWidth() or icon_width
+	local cell_height = is_equipped and self.cell:GetHeight() or icon_height
+
+	if not rot and (icon_height > cell_height) then
+		scale = cell_height / icon_height
+	end
+	if rot and (total_width > cell_height) then
+		local h_scale = cell_height / total_width
+		if h_scale < scale then
+			scale = h_scale
+			total_width = total_width
+		end
+	end
+	if not rot and (total_width > cell_width) then
+		local w_scale = cell_width / total_width
+		if w_scale < scale then
+			scale = w_scale
+		end
+	end
+
+	if scale ~= 1 then
+		self.grid_size = self.grid_size * scale
+	end
+
+    _align_to_center = utils_xml.align_to_center
+    function new_align(element, base, offset_x, offset_y)
+        if has_silencer then
+			if not is_equipped and self.area then -- unscale the cell of inv items cause messing with their grid size doesnt work as well as equipped items
+				local grid_size = self.container and self.container.grid_size or 41
+				local area_x = ((self.area.x * grid_size) - grid_size) * ratio
+				local area_y = (self.area.y * grid_size) - grid_size
+				local area_xl = self.grid_line * self.area.x
+				local area_yl = self.grid_line * self.area.y
+				
+				base:SetWndPos(vector2():set( area_x + area_xl , area_y + area_yl ))
+				base:SetWndSize(vector2():set(icon_width, icon_height))
+				utils_xml.sync_element(self.hl, self.cell)
+			end
+			local x_diff = rot and 0 or ((width_diff / 2) * scale)
+            local y_diff = rot and ((width_diff / 2) * scale) or 0
+			element:SetWndPos( vector2():set( (base:GetWidth() / 2) - x_diff, (base:GetHeight() / 2) + y_diff))
+        else
+            _align_to_center(element, base, offset_x, offset_y)
+        end
+    end
+
+    utils_xml.align_to_center = new_align
+
+	local res = _Set(self, obj, area)
+
+    utils_xml.align_to_center = _align_to_center
+
+	return res
+end
+
+_Action_Attach = ui_inventory.UIInventory.Action_Attach
+function ui_inventory.UIInventory:Action_Attach(obj, bag, temp, slot, wpn)
+	if not z_item_icon_info.settings.wpn_scaling.enable_inv_scaling then _Action_Attach(self, obj, bag, temp, slot, wpn) return end
+	obj = self:CheckItem(obj,"Action_Attach")
+	if not (wpn and obj and IsItem("sil",obj:section())) then _Action_Attach(self, obj, bag, temp, slot, wpn) return end
+
+	local wpn_bag
+	local wpn_cell_id
+	for bag, cc in pairs(self.CC) do
+		local cell_id = self.CC[bag].indx_id[wpn:id()]
+		if cell_id then
+			wpn_bag = bag
+			wpn_cell_id = cell_id
+			break
+		end
+	end
+	if not (wpn_bag and wpn_cell_id and wpn_bag ~= "actor_equ") then _Action_Attach(self, obj, bag, temp, slot, wpn) return end
+
+	_Action_Attach(self, obj, bag, temp, slot, wpn)
+
+	CreateTimeEvent("scale_guns", "attach_update", 0, function()
+		local cell_item = self.CC[wpn_bag].cell[wpn_cell_id]
+		if not cell_item then return true end
+		cell_item:Set(wpn, cell_item.area)
+		return true
+	end) 
+end
+
+_Action_Detach_Silencer = ui_inventory.UIInventory.Action_Detach_Silencer
+function ui_inventory.UIInventory:Action_Detach_Silencer(obj, bag)
+	if not z_item_icon_info.settings.wpn_scaling.enable_inv_scaling then _Action_Detach_Silencer(self, obj, bag) return end
+	if not self then
+		self = ui_inventory.GUI
+	end
+	obj = self:CheckItem(obj,"Action_Detach_Silencer")
+	if not obj then _Action_Detach_Silencer(self, obj, bag) return end
+	if not bag then 
+		if self.mode == "inventory" then
+			if self.CC["actor_bag"].indx_id[obj:id()] then
+				bag = "actor_bag"
+			end
+		elseif self.mode == "loot" then
+			if self.CC["npc_bag"].indx_id[obj:id()] then
+				bag = "npc_bag"
+			end
+		end
+
+		if not bag then _Action_Detach_Silencer(self, obj, bag) return end
+	end
+
+	_Action_Detach_Silencer(self, obj, bag)
+
+	CreateTimeEvent("scale_guns", "detach_update_" .. obj:id(), 0, function()
+		local sil_indx = self.CC[bag].indx_id[obj:id()]
+		local cell_item = self.CC[bag].cell[sil_indx]
+		cell_item:Set(obj, cell_item.area)
+		return true
+	end) 
+end

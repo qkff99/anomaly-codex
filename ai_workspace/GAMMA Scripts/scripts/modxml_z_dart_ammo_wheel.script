@@ -1,0 +1,76 @@
+local Dart   = dart_core
+local Utils  = dart_utils
+local Module = dart_module
+
+
+local mod = "ammoWheel"
+
+
+function parseUIWheelAmmo(XML, config)
+  local wheel, background, texture, all, alt, extended, result, ammo =
+    XML:query("wheel")[1],
+    XML:query("wheel > background")[1],
+    XML:query("wheel > background > texture")[1],
+    XML:query("wheel > all")[1],
+    XML:query("wheel > alt")[1],
+    XML:query("wheel > extended")[1],
+    XML:query("wheel > result")[1],
+    XML:query("ammo")[1]
+
+  local itemSettings = {
+    scale = config.scale,
+  }
+
+  local wheelSettings = Utils.merge(itemSettings, {
+    bounds   = XML:getBounds(wheel),
+    anchor   = config.anchor,
+    offset   = config.offset,
+    safezone = config.safezone,
+  })
+
+  if wheel then
+    XML:correctElement(wheel, wheelSettings)
+  end
+
+  if background then
+    XML:correctElement(background, itemSettings)
+  end
+
+  if extended then
+    XML:correctElement(extended, itemSettings)
+  end
+
+  if result then
+    XML:correctElement(result, itemSettings)
+  end
+
+  if
+    texture and config.roundWheel
+    and XML:getText(texture) == "ui_hud2_wheel_ammo"
+  then
+    XML:setText(texture, "ui_hud2_wheel_companion")
+  end
+
+  if all then
+    XML:safeIterate(all, function(child)
+      XML:correctElement(child, itemSettings)
+    end)
+  end
+
+  if alt then
+    XML:safeIterate(alt, function(child)
+      XML:correctElement(child, itemSettings)
+    end)
+  end
+
+  if ammo then
+    XML:safeIterate(ammo, function(child)
+      XML:correctElement(child, itemSettings)
+    end)
+  end
+end
+
+
+function on_xml_read()
+  Module.registerModule(mod, "ui_wheel_ammo", parseUIWheelAmmo)
+end

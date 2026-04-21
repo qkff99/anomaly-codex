@@ -1,0 +1,29 @@
+op = {
+	id = "weapon_cover_tilt", sh = true, gr = {
+    	{id = "banner", type = "slide", text = "ui_mcm_weapon_cover_tilt_title", size = {512, 50}, spacing = 20},
+
+    	{id = "enabled", type = "check", val = 1, def = true},
+			{id = "use_fire_bone", type = "check", val = 1, def = true},
+			{id = "use_fire_bone_debug", type = "check", val = 1, def = false},
+    	{id = "animation_speed", type = "track", val = 2, min = 9, max = 20, step = 0.1, def = 11.5},
+    	{id = "animation_weight_coeff", type = "track", val = 2, min = 0, max = 2, step = 0.1, def = 1},
+        {id = "trigger_radius", type = "track", val = 2, min = 0.5, max = 1.5, step = 0.01, def = 0.51},
+        {id = "trigger_radius_magnitude", type = "track", val = 2, min = 0, max = 5, step = 0.1, def = 1},
+        {id = "consider_silencer", type = "check", val = 1, def = true},
+    	{id = "tilt_rattle", type = "check", val = 1, def = true},
+    	{id = "offset_x", type = "track", val = 2, min = -0.2, max = 0.2, step = 0.002, def = 0},
+    	{id = "offset_y", type = "track", val = 2, min = -0.5, max = 0.5, step = 0.005, def = 0},
+    	{id = "offset_z", type = "track", val = 2, min = -0.5, max = 0.5, step = 0.005, def = 0},
+    	{id = "yaw_variation", type = "track", val = 2, min = 0, max = 30, step = 1, def = 10},
+    	{id = "roll_variation", type = "track", val = 2, min = 0, max = 30, step = 1, def = 10},
+
+        -- Keybinds
+        {id = "divider", type = "line" },
+        {id = "enable_manual_tilt", type = "check", val = 1, def = false},
+        {id = "manual_tilt_key_bind", type = "key_bind", val = 2, def = DIK_keys.DIK_COMMA},
+    }
+}
+
+function on_mcm_load()
+    return op
+end

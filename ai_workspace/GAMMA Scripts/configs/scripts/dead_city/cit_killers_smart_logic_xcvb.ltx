@@ -1,0 +1,419 @@
+[beh@general]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+gather_items_enabled = true
+help_wounded_enabled = true
+corpse_detection_enabled = true
+meet = meet@general
+wounded = wounded@ignore
+use_camp = false
+path_end = loop
+
+
+[beh@combat]:beh@general
+walk_dist = 25
+jog_dist = 220
+wait_anim = patrol
+walk_anim = patrol
+jog_anim = patrol
+run_anim = patrol
+sound_idle = state
+
+
+[beh@campfire]:beh@general
+turn_on_campfire = true
+sound_idle = state
+
+[beh@sleep]:beh@general
+gather_items_enabled = false
+corpse_detection_enabled = false
+meet = no_meet
+
+
+[meet@general]
+close_anim 		= nil
+close_victim 	= nil
+far_anim 		= nil
+far_victim 		= nil
+close_distance  = 0
+far_distance 	= 0
+use = {=actor_enemy} false, {=dist_to_actor_le(3)} true, false
+snd_on_use = {!dist_to_actor_le(3)} nil
+meet_on_talking = false
+
+[wounded@ignore]
+hp_state        = 0|wounded_heavy@help_heavy
+hp_state_see    = 0|wounded_heavy@help_heavy
+hp_victim       = 0|nil
+hp_fight        = 0|false
+hp_cover        = 0|false
+
+
+; =======================
+; ------------- DAY ---------------
+; =======================
+; ------------- 59
+; (guard 1 inside west)
+[logic@cit_killers_xcvb_day_1]
+active = beh@day_1
+suitable = {!surge_started !is_night} true
+prior = 59
+
+[beh@day_1]:beh@combat
+pt1 = 20000, guard | 		pos: -56, 2.7363, 32.9 	 	 look: -62.1102, 1.7376, 31.8975 
+
+
+; (guard 2 inside east)
+[logic@cit_killers_xcvb_day_2]
+active = beh@day_2
+suitable = {!surge_started !is_night} true
+prior = 59
+
+[beh@day_2]:beh@combat
+pt1 = 20000, guard | 		pos: -35, 2.7363, 30.8 	 	 look: -31.2436, 1.7359, 31.4528 
+
+
+; (guard 3 inside front)
+[logic@cit_killers_xcvb_day_3]
+active = beh@day_3
+suitable = {!surge_started !is_night} true
+prior = 59
+
+[beh@day_3]:beh@combat
+pt1 = 20000, guard | 		pos: -33.6, 2.7302, 20.3 	 	 look: -35.5511, 1.25, 13.205 
+
+
+; ------------- 58
+; (guard 4 inside patrol)
+[logic@cit_killers_xcvb_day_4]
+active = beh@day_4
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[beh@day_4]:beh@combat
+walk_anim = walk
+pt1 = 15000, ward | 		pos: -47.6, 2.7363, 32.2 	 	 look: -51.8218, 1.737, 32.1405  
+pt2 = 15000, ward | 		pos: -39.2, 2.7363, 34.3 	 	 look: -37.7112, 1.7371, 32.6421 
+
+
+; (guard 1 front west)
+[logic@cit_killers_xcvb_day_5]
+active = beh@day_5
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[beh@day_5]:beh@combat
+pt1 = 20000, guard | 		pos: -68.6, 2.0805, 2.1 	 	 look: -71.3497, 1.0335, -0.4941 
+
+
+; (guard 2 front east)
+[logic@cit_killers_xcvb_day_6]
+active = beh@day_6
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[beh@day_6]:beh@combat
+pt1 = 20000, guard | 		pos: 9.1, 2.0805, 2.1 	 	 look: 10.4768, 1.0777, 3.3641 
+
+
+; ------------- 57
+; (guard 3 front patrol)
+[logic@cit_killers_xcvb_day_7]
+active = beh@day_7
+suitable = {!surge_started !is_night} true
+prior = 57
+
+[beh@day_7]:beh@combat
+pt1 = 7500, guard | 		pos: -62.3, 2.0805, 5.6 	 	 look: -62.3694, 1.0808, 2.1002 
+pt2 = 7500, guard | 		pos: -4.2, 2.0805, 5.6 	 	 look: -3.9737, 1.0776, 2.4669 
+
+
+; (guard 4 south)
+[logic@cit_killers_xcvb_day_8]
+active = beh@day_8
+suitable = {!surge_started !is_night =guard_has_rifle} true
+prior = 57
+
+[beh@day_8]:beh@combat
+pt1 = 20000, threat_heli | 		pos: 4.2, 7.0905, -17.5 	 	 look: 2.8005, 6.0638, -19.2994 
+
+
+; (sniper 1 south)
+[logic@cit_killers_xcvb_day_9]
+active = beh@day_9
+suitable = {!surge_started !is_night =guard_has_sniper_rifle} true
+prior = 57
+
+[beh@day_9]:beh@combat
+pt1 = 20000, hide | 		pos: -90.3, 16.6254, -36.4 	 	 look: -68.43, 7.0845, -76.9945 
+
+
+; ------------- 56
+; (guard 3 2nd floor)
+[logic@cit_killers_xcvb_day_10]
+active = beh@day_10
+suitable = {!surge_started !is_night =guard_has_rifle} true
+prior = 56
+
+[beh@day_10]:beh@combat
+pt1 = 20000, guard | 		pos: -42, 8.3851, 20.3 	 	 look: -39.6662, 6.5866, 12.487 
+
+
+; ------------- 55
+; (guard 4 2nd floor)
+[logic@cit_killers_xcvb_day_11]
+active = beh@day_11
+suitable = {!surge_started !is_night =guard_has_rifle} true
+prior = 55
+
+[beh@day_11]:beh@combat
+pt1 = 20000, guard | 		pos: -53.9, 8.3851, 20.3 	 	 look: -55.9302, 5.4585, -3.1806  
+
+
+; (guard 1 2nd floor)
+[logic@cit_killers_xcvb_day_12]
+active = beh@day_12
+suitable = {!surge_started !is_night} true
+prior = 55
+
+[beh@day_12]:beh@combat
+pt1 = 20000, guard | 		pos: -25.9, 8.3851, 28.7 	 	 look: -25.9181, 7.3857, 25.6742 
+
+
+; (guard 2 2nd floor)
+[logic@cit_killers_xcvb_day_13]
+active = beh@day_13
+suitable = {!surge_started !is_night} true
+prior = 55
+
+[beh@day_13]:beh@combat
+pt1 = 20000, fold_arms | 		pos: -32.9, 8.3851, 24.5 	 	 look: -37.377, 7.3862, 24.5046 
+
+
+; (campfire 1)
+[logic@cit_killers_xcvb_day_14]
+active = animpoint@day_14
+suitable = {!surge_started !is_night} true
+prior = 55
+
+[animpoint@day_14]
+cover_name = cit_killers_animpoint_camp7
+use_camp = true
+turn_on_campfire = true
+
+
+; (campfire 2)
+[logic@cit_killers_xcvb_day_15]
+active = animpoint@day_15
+suitable = {!surge_started !is_night} true
+prior = 55
+
+[animpoint@day_15]
+cover_name = cit_killers_animpoint_camp8
+use_camp = true
+turn_on_campfire = true
+
+
+; (campfire 3)
+[logic@cit_killers_xcvb_day_16]
+active = animpoint@day_16
+suitable = {!surge_started !is_night} true
+prior = 55
+
+[animpoint@day_16]
+cover_name = cit_killers_animpoint_camp9
+use_camp = true
+turn_on_campfire = true
+
+
+
+; =======================
+; ------------ NIGHT -------------
+; =======================
+; ------------- 59
+; (guard 1 inside west)
+[logic@cit_killers_xcvb_night_1]
+active = beh@night_1
+suitable = {!surge_started =is_night} true
+prior = 59
+
+[beh@night_1]:beh@combat
+pt1 = 20000, guard | 		pos: -56, 2.7363, 32.9 	 	 look: -62.1102, 1.7376, 31.8975 
+
+
+; (guard 2 inside east)
+[logic@cit_killers_xcvb_night_2]
+active = beh@night_2
+suitable = {!surge_started =is_night} true
+prior = 59
+
+[beh@night_2]:beh@combat
+pt1 = 20000, guard | 		pos: -35, 2.7363, 30.8 	 	 look: -31.2436, 1.7359, 31.4528 
+
+
+; (guard 3 inside front)
+[logic@cit_killers_xcvb_night_3]
+active = beh@night_3
+suitable = {!surge_started =is_night} true
+prior = 59
+
+[beh@night_3]:beh@combat
+pt1 = 20000, guard | 		pos: -33.6, 2.7302, 20.3 	 	 look: -35.5511, 1.25, 13.205 
+
+
+; ------------- 58
+; (guard 1 front west)
+[logic@cit_killers_xcvb_night_4]
+active = beh@night_4
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[beh@night_4]:beh@combat
+pt1 = 20000, guard | 		pos: -68.6, 2.0805, 2.1 	 	 look: -71.3497, 1.0335, -0.4941 
+
+
+; (guard 2 front east)
+[logic@cit_killers_xcvb_night_5]
+active = beh@night_5
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[beh@night_5]:beh@combat
+pt1 = 20000, guard | 		pos: 9.1, 2.0805, 2.1 	 	 look: 10.4768, 1.0777, 3.3641 
+
+
+; (sleep 1)
+[logic@cit_killers_xcvb_night_6]
+active = beh@night_6
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[beh@night_6]:beh@sleep
+pt1 = 20000, sleep | 		pos: -42.7, 8.3851, 39.2 	 	 look: -42.5758, 7.3861, 36.7306 
+
+
+; (sleep 2)
+[logic@cit_killers_xcvb_night_7]
+active = beh@night_7
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[beh@night_7]:beh@sleep
+pt1 = 20000, sleep | 		pos: -40.6, 8.3851, 37.1 	 	 look: -42.0993, 7.3833, 36.0086 
+
+
+; ------------- 57
+; (guard 1 2nd floor)
+[logic@cit_killers_xcvb_night_8]
+active = beh@night_8
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[beh@night_8]:beh@combat
+pt1 = 20000, guard | 		pos: -25.9, 8.3851, 28.7 	 	 look: -25.9181, 7.3857, 25.6742 
+
+
+; (guard 3 2nd floor)
+[logic@cit_killers_xcvb_night_9]
+active = beh@night_9
+suitable = {!surge_started =is_night =guard_has_rifle} true
+prior = 57
+
+[beh@night_9]:beh@combat
+pt1 = 20000, guard | 		pos: -42, 8.3851, 20.3 	 	 look: -39.6662, 6.5866, 12.487
+
+
+; (sleep 3)
+[logic@cit_killers_xcvb_night_10]
+active = beh@night_10
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[beh@night_10]:beh@sleep
+pt1 = 20000, sleep | 		pos: -26.6, 8.3851, 35.7 	 	 look: -26.774, 7.3848, 38.0229 
+
+
+; ------------- 56
+; (guard 2 2nd floor)
+[logic@cit_killers_xcvb_night_11]
+active = beh@night_11
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[beh@night_11]:beh@combat
+pt1 = 20000, fold_arms | 		pos: -32.9, 8.3851, 24.5 	 	 look: -37.377, 7.3862, 24.5046 
+
+
+; (sleep 4)
+[logic@cit_killers_xcvb_night_12]
+active = beh@night_12
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[beh@night_12]:beh@sleep
+pt1 = 20000, sleep | 		pos: -26.6, 8.457, 39.2 	 	 look: -26.6466, 7.3838, 37.5673 
+
+
+ ; (guard 3 front patrol)
+[logic@cit_killers_xcvb_night_13]
+active = beh@night_13
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[beh@night_13]:beh@combat
+pt1 = 7500, guard | 		pos: -62.3, 2.0805, 5.6 	 	 look: -62.3694, 1.0808, 2.1002 
+pt2 = 7500, guard | 		pos: -4.2, 2.0805, 5.6 	 	 look: -3.9737, 1.0776, 2.4669 
+
+
+; (guard 4 south)
+[logic@cit_killers_xcvb_night_14]
+active = beh@night_14
+suitable = {!surge_started =is_night =guard_has_rifle} true
+prior = 56
+
+[beh@night_14]:beh@combat
+pt1 = 20000, threat_heli | 		pos: 4.2, 7.0905, -17.5 	 	 look: 2.8005, 6.0638, -19.2994 
+
+
+; (campfire 1)
+[logic@cit_killers_xcvb_night_15]
+active = animpoint@night_15
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[animpoint@night_15]
+cover_name = cit_killers_animpoint_camp7
+use_camp = true
+turn_on_campfire = true
+
+
+; (campfire 2)
+[logic@cit_killers_xcvb_night_16]
+active = animpoint@night_16
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[animpoint@night_16]
+cover_name = cit_killers_animpoint_camp8
+use_camp = true
+turn_on_campfire = true
+
+
+; (campfire 3)
+[logic@cit_killers_xcvb_night_17]
+active = animpoint@night_17
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[animpoint@night_17]
+cover_name = cit_killers_animpoint_camp9
+use_camp = true
+turn_on_campfire = true

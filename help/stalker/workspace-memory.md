@@ -18,6 +18,7 @@ Reference roots:
 - `ai_workspace/lua_help.script.txt` for exported Lua symbols
 - `ai_workspace/anomaly-modding-book-main` for local tutorial and file-format docs
 - `ai_workspace/Anomaly-Mod-Configuration-Menu-main` for local Anomaly MCM API, menu UI, and integration behavior
+- `ai_workspace/GAMMA Scripts` for flattened local GAMMA configs/scripts extracted from MO2 mods
 - `ai_workspace/user references` for user-added local references that should be searched automatically
 - `tests/fixtures` for deterministic repo-local regression inputs; this is not a live mod workspace
 

@@ -1,0 +1,743 @@
+<?xml version="1.0" encoding="windows-1252"?>
+
+<!--
+	UNUSED!
+	Fieldcraft Crafting Overhaul
+
+
+<string_table>
+	<string id="fieldcraft_survivalguide_name">
+		<text>Guia de sobrevivëncia das forças especiais ucranianas (No.76)</text>
+	</string>
+	<string id="fieldcraft_survivalguide_descr">
+		<text>Vocë estudou muitos guias de sobrevivëncia como este durante suas viagens. No entanto, ele ainda possui algum valor educacional e pode ser útil quando vocë é forçado a fabricar algum equipamento improvisado em campo. Fornece instruçöes compactas sobre como criar vários itens úteis: \n • Kit médico \n • Estimulante improvisado \n • Mochila \n • Saco de dormir \n • Explosivo químico \n • Muniçäo de RPG \n • Mina de proximidade \n • Placa de proteçäo improvisada \n • Chaleira do exército \n • Kit de reparo de pistola \n • Kit de reparo de shotgun \n • Kit de reparo para rifles de pequeno porte \n • Kit de reparo para rifle de médio e grande porte \n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] guia de criaçäo\n%c[d_orange] • %c[ui_gray_2] utilizável para:%c[ui_gray_1] limpeza e lubrificaçäo de armas (+3%)</text> 
+	</string>
+	
+	<string id="fieldcraft_pkg_medkit_0_name">
+		<text>Pacote de criaçäo: Kit médico</text>
+	</string>
+	<string id="fieldcraft_pkg_medkit_0_descr">
+		<text>Um pacote organizado para a elaboraçäo de um kit médico. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 1x Kit de costura \n - 1x Bandagem \n - Álcool puro \n - 1x Folha tëxtil \n\nAdicione esses itens em ordem. Adicione um kit de costura a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_medkit_1_name">
+		<text>Pacote de criaçäo: Kit médico</text>
+	</string>
+	<string id="fieldcraft_pkg_medkit_1_descr">
+		<text>Um pacote organizado para a elaboraçäo de um kit médico. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 1x Kit de costura \n - 1x Bandagem \n - Álcool puro \n - 1x Folha tëxtil \n\nAdicione esses itens em ordem. Adicione a bandagem a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_medkit_2_name">
+		<text>Pacote de criaçäo: Kit médico</text>
+	</string>
+	<string id="fieldcraft_pkg_medkit_2_descr">
+		<text>Um pacote organizado para a elaboraçäo de um kit médico. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 1x Kit de costura \n - 1x Bandagem \n - Álcool puro \n - 1x Folha tëxtil \n\nAdicione esses itens em ordem. Adicione Álcool puro a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_medkit_3_name">
+		<text>Pacote de criaçäo: Kit médico</text>
+	</string>
+	<string id="fieldcraft_pkg_medkit_3_descr">
+		<text>Um pacote organizado para a elaboraçäo de um kit médico. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 1x Kit de costura \n - 1x Bandagem \n - Álcool puro \n - 1x Folha tëxtil \n\nAdicione esses itens em ordem. Adicione uma folha tëxtil a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_medkit_4_name">
+		<text>Pacote de criaçäo: Kit médico (pronto)</text>
+	</string>
+	<string id="fieldcraft_pkg_medkit_4_descr">
+		<text>Um pacote organizado para a elaboraçäo de um kit médico. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 1x Kit de costura \n - 1x Bandagem \n - Álcool puro \n - 1x Folha tëxtil \n\nPronto para ser criado.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	
+	<string id="fieldcraft_pkg_stimpack_0_name">
+		<text>Pacote de criaçäo: Estimulante improvisado</text>
+	</string>
+	<string id="fieldcraft_pkg_stimpack_0_descr">
+		<text>Um pacote para criar um estimulante. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 1x Seringa vazia \n - 1x Álcool \n - Kit de fabricaçäo de drogas \n - 1x Vinca (coagulante do sangue) \n - 1x Clortetraciclina (antibiótico) \n - FERRAMENTA: Talheres (reutilizáveis) \n\nAdicione esses itens em ordem. Adicione Seringa vazia a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_stimpack_1_name">
+		<text>Pacote de criaçäo: Estimulante improvisado</text>
+	</string>
+	<string id="fieldcraft_pkg_stimpack_1_descr">
+		<text>Um pacote para criar um estimulante. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 1x Seringa vazia \n - 1x Álcool \n - Kit de fabricaçäo de drogas \n - 1x Vinca (coagulante do sangue) \n - 1x Clortetraciclina (antibiótico) \n - FERRAMENTA: Talheres (reutilizáveis) \n\nAdicione esses itens em ordem. Adicione o Álcool em seguida.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_stimpack_2_name">
+		<text>Pacote de criaçäo: Estimulante improvisado</text>
+	</string>
+	<string id="fieldcraft_pkg_stimpack_2_descr">
+		<text>Um pacote para criar um estimulante. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 1x Seringa vazia \n - 1x Álcool \n - Kit de fabricaçäo de drogas \n - 1x Vinca (coagulante do sangue) \n - 1x Clortetraciclina (antibiótico) \n - FERRAMENTA: Talheres (reutilizáveis) \n\nAdicione esses itens em ordem. Adicione o Kit de fabricaçäo de drogas a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_stimpack_3_name">
+		<text>Pacote de criaçäo: Estimulante improvisado</text>
+	</string>
+	<string id="fieldcraft_pkg_stimpack_3_descr">
+		<text>Um pacote para criar um estimulante. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 1x Seringa vazia \n - 1x Álcool \n - Kit de fabricaçäo de drogas \n - 1x Vinca (coagulante do sangue) \n - 1x Clortetraciclina (antibiótico) \n - FERRAMENTA: Talheres (reutilizáveis) \n\nAdicione esses itens em ordem. Adicione vinca a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_stimpack_4_name">
+		<text>Pacote de criaçäo: Estimulante improvisado</text>
+	</string>
+	<string id="fieldcraft_pkg_stimpack_4_descr">
+		<text>Um pacote para criar um estimulante. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 1x Seringa vazia \n - 1x Álcool \n - Kit de fabricaçäo de drogas \n - 1x Vinca (coagulante do sangue) \n - 1x Clortetraciclina (antibiótico) \n - FERRAMENTA: Talheres (reutilizáveis) \n\nAdicione esses itens em ordem. Adicione clortetraciclina a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_stimpack_5_name">
+		<text>Pacote de criaçäo: Estimulante improvisado</text>
+	</string>
+	<string id="fieldcraft_pkg_stimpack_5_descr">
+		<text>Um pacote para criar um estimulante. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 1x Seringa vazia \n - 1x Álcool \n - Kit de fabricaçäo de drogas \n - 1x Vinca (coagulante do sangue) \n - 1x Clortetraciclina (antibiótico) \n - FERRAMENTA: Talheres (reutilizáveis) \n\nAdicione esses itens em ordem. Adicione talheres a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_stimpack_6_name">
+		<text>Pacote de criaçäo: Estimulante improvisado (pronto)</text>
+	</string>
+	<string id="fieldcraft_pkg_stimpack_6_descr">
+		<text>Um pacote para criar um estimulante. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 1x Seringa vazia \n - 1x Álcool \n - Kit de fabricaçäo de drogas \n - 1x Vinca (coagulante do sangue) \n - 1x Clortetraciclina (antibiótico) \n - FERRAMENTA: Talheres (reutilizáveis) \n\nPronto para ser criado.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	
+	<string id="fieldcraft_pkg_backpack_0_name">
+		<text>Pacote de criaçäo: Mochila</text>
+	</string>
+	<string id="fieldcraft_pkg_backpack_0_descr">
+		<text>Um pacote para criar uma mochila. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Bolsa de compressäo \n - Arnës sintético \n - Kit de costura \n\nAdicione esses itens em ordem. Adicione uma bolsa de compressäo a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_backpack_1_name">
+		<text>Pacote de criaçäo: Mochila</text>
+	</string>
+	<string id="fieldcraft_pkg_backpack_1_descr">
+		<text>Um pacote para criar uma mochila. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Bolsa de compressäo \n - Arnës sintético \n - Kit de costura \n\nAdicione esses itens em ordem. Adicione um Arnës sintético a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_backpack_2_name">
+		<text>Pacote de criaçäo: Mochila</text>
+	</string>
+	<string id="fieldcraft_pkg_backpack_2_descr">
+		<text>Um pacote para criar uma mochila. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Bolsa de compressäo \n - Arnës sintético \n - Kit de costura \n\nAdicione esses itens em ordem. Adicione um kit de costura a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_backpack_3_name">
+		<text>Pacote de criaçäo: Mochila (pronto)</text>
+	</string>
+	<string id="fieldcraft_pkg_backpack_3_descr">
+		<text>Um pacote para criar uma mochila. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Bolsa de compressäo \n - Arnës sintético \n - Kit de costura \n\nPronto para ser criado.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	
+	<string id="fieldcraft_pkg_sleepbag_0_name">
+		<text>Pacote de criaçäo: Saco de dormir</text>
+	</string>
+	<string id="fieldcraft_pkg_sleepbag_0_descr">
+		<text>Um pacote organizado para criar um Saco de dormir. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Lona camuflada \n - Colcha \n - Kit de costura \n\nAdicione esses itens em ordem. Adicione uma Lona camuflada a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_sleepbag_1_name">
+		<text>Pacote de criaçäo: Saco de dormir</text>
+	</string>
+	<string id="fieldcraft_pkg_sleepbag_1_descr">
+		<text>Um pacote organizado para criar um Saco de dormir. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Lona camuflada \n - Colcha \n - Kit de costura \n\nAdicione esses itens em ordem. Adicione uma colcha a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_sleepbag_2_name">
+		<text>Pacote de criaçäo: Saco de dormir</text>
+	</string>
+	<string id="fieldcraft_pkg_sleepbag_2_descr">
+		<text>Um pacote organizado para criar um Saco de dormir. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Lona camuflada \n - Colcha \n - Kit de costura \n\nAdicione esses itens em ordem. Adicione um kit de costura a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_sleepbag_3_name">
+		<text>Pacote de criaçäo: Saco de dormir (pronto)</text>
+	</string>
+	<string id="fieldcraft_pkg_sleepbag_3_descr">
+		<text>Um pacote organizado para criar um Saco de dormir. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Lona camuflada \n - Colcha \n - Kit de costura \n\nPronto para ser criado.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	
+	<string id="fieldcraft_pkg_ied_0_name">
+		<text>Pacote de criaçäo: Explosivo químico</text>
+	</string>
+	<string id="fieldcraft_pkg_ied_0_descr">
+		<text>Um pacote organizado para a elaboraçäo de um explosivo químico. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Gasolina (jerrycan) \n - Granada de termite \n - Fio de cobre \n - Dispositivo de proximidade \n\nAdicione esses itens em ordem. Adicione um pouco de Gasolina em seguida.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_ied_1_name">
+		<text>Pacote de criaçäo: Explosivo químico</text>
+	</string>
+	<string id="fieldcraft_pkg_ied_1_descr">
+		<text>Um pacote organizado para a elaboraçäo de um explosivo químico. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Gasolina (jerrycan) \n - Granada de termite \n - Fio de cobre \n - Dispositivo de proximidade \n\nAdicione esses itens em ordem. Adicione uma Granada de termite em seguida.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_ied_2_name">
+		<text>Pacote de criaçäo: Explosivo químico</text>
+	</string>
+	<string id="fieldcraft_pkg_ied_2_descr">
+		<text>Um pacote organizado para a elaboraçäo de um explosivo químico. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Gasolina (jerrycan) \n - Granada de termite \n - Fio de cobre \n - Dispositivo de proximidade \n\nAdicione esses itens em ordem. Adicione Fio de cobre em seguida.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_ied_3_name">
+		<text>Pacote de criaçäo: Explosivo químico</text>
+	</string>
+	<string id="fieldcraft_pkg_ied_3_descr">
+		<text>Um pacote organizado para a elaboraçäo de um explosivo químico. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Gasolina (jerrycan) \n - Granada de termite \n - Fio de cobre \n - Dispositivo de proximidade \n\nAdicione esses itens em ordem. Adicione um dispositivo de proximidade a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_ied_4_name">
+		<text>Pacote de criaçäo: Explosivo químico (pronto)</text>
+	</string>
+	<string id="fieldcraft_pkg_ied_4_descr">
+		<text>Um pacote organizado para a elaboraçäo de um explosivo químico. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Gasolina (jerrycan) \n - Granada de termite \n - Fio de cobre \n - Dispositivo de proximidade \n\nPronto para ser criado.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	
+	<string id="fieldcraft_pkg_iedrpg_0_name">
+		<text>Pacote de criaçäo: Ogiva RPG IED</text>
+	</string>
+	<string id="fieldcraft_pkg_iedrpg_0_descr">
+		<text>Um pacote organizado para elaborar o IED da ogiva de RPG. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 1x Muniçäo de RPG \n - Fio de cobre \n - Dispositivo de proximidade \n\nAdicione esses itens em ordem. Adicione a Muniçäo de RPG a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_iedrpg_1_name">
+		<text>Pacote de criaçäo: Ogiva RPG IED</text>
+	</string>
+	<string id="fieldcraft_pkg_iedrpg_1_descr">
+		<text>Um pacote organizado para elaborar o IED da ogiva de RPG. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 1x Muniçäo de RPG \n - Fio de cobre \n - Dispositivo de proximidade \n\nAdicione esses itens em ordem. Adicione Fio de cobre em seguida.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_iedrpg_2_name">
+		<text>Pacote de criaçäo: Ogiva RPG IED</text>
+	</string>
+	<string id="fieldcraft_pkg_iedrpg_2_descr">
+		<text>Um pacote organizado para elaborar o IED da ogiva de RPG. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 1x Muniçäo de RPG \n - Fio de cobre \n - Dispositivo de proximidade \n\nAdicione esses itens em ordem. Adicione um dispositivo de proximidade a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_iedrpg_3_name">
+		<text>Pacote de criaçäo: Ogiva RPG IED (pronto)</text>
+	</string>
+	<string id="fieldcraft_pkg_iedrpg_3_descr">
+		<text>Um pacote organizado para elaborar o IED da ogiva de RPG. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 1x Muniçäo de RPG \n - Fio de cobre \n - Dispositivo de proximidade \n\nPronto para ser criado.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	
+	<string id="fieldcraft_pkg_mine_0_name">
+		<text>Pacote de criaçäo: Mina</text>
+	</string>
+	<string id="fieldcraft_pkg_mine_0_descr">
+		<text>Um pacote organizado para criar uma Mina de proximidade. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 1x Granada explosiva / muniçäo do lançador de granadas\n - Fio de cobre \n - Pedaços de plástico \n\nAdicione esses itens em ordem. Adicione uma granada a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_mine_1_name">
+		<text>Pacote de criaçäo: Mina</text>
+	</string>
+	<string id="fieldcraft_pkg_mine_1_descr">
+		<text>Um pacote organizado para criar uma Mina de proximidade. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 1x Granada explosiva / muniçäo do lançador de granadas\n - Fio de cobre \n - Pedaços de plástico \n\nAdicione esses itens em ordem. Adicione um fio de cobre a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_mine_2_name">
+		<text>Pacote de criaçäo: Mina</text>
+	</string>
+	<string id="fieldcraft_pkg_mine_2_descr">
+		<text>Um pacote organizado para criar uma Mina de proximidade. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 1x Granada explosiva / muniçäo do lançador de granadas\n - Fio de cobre \n - Pedaços de plástico \n\nAdicione esses itens em ordem. Adicione Pedaços de plástico a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_mine_3_name">
+		<text>Pacote de criaçäo: Mina (pronto)</text>
+	</string>
+	<string id="fieldcraft_pkg_mine_3_descr">
+		<text>Um pacote organizado para criar uma Mina de proximidade. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 1x Granada explosiva / muniçäo do lançador de granadas\n - Fio de cobre \n - Pedaços de plástico \n\nPronto para ser criado.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+
+	<string id="fieldcraft_pkg_plate_attch_0_name">
+		<text>Pacote de criaçäo: Placa de proteçäo improvisada</text>
+	</string>
+	<string id="fieldcraft_pkg_plate_attch_0_descr">
+		<text>Um pacote organizado para a elaboraçäo de uma Placa de proteçäo improvisada. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 2x Placa metálica\n - Parafusos, porcas (sucata em geral) \n - Arnës sintético \n - FERRAMENTA: Martelo (reutilizável) \n\nAdicione esses itens em ordem. Adicione uma placa metálica a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_plate_attch_1_name">
+		<text>Pacote de criaçäo: Placa de proteçäo improvisada</text>
+	</string>
+	<string id="fieldcraft_pkg_plate_attch_1_descr">
+		<text>Um pacote organizado para a elaboraçäo de uma Placa de proteçäo improvisada. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 2x Placa metálica\n - Parafusos, porcas (sucata em geral) \n - Arnës sintético \n - FERRAMENTA: Martelo (reutilizável) \n\nAdicione esses itens em ordem. Adicione uma placa metálica a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_plate_attch_2_name">
+		<text>Pacote de criaçäo: Placa de proteçäo improvisada</text>
+	</string>
+	<string id="fieldcraft_pkg_plate_attch_2_descr">
+		<text>Um pacote organizado para a elaboraçäo de uma Placa de proteçäo improvisada. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 2x Placa metálica\n - Parafusos, porcas (sucata em geral) \n - Arnës sintético \n - FERRAMENTA: Martelo (reutilizável) \n\nAdicione esses itens em ordem. Adicione sucata a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_plate_attch_3_name">
+		<text>Pacote de criaçäo: Placa de proteçäo improvisada</text>
+	</string>
+	<string id="fieldcraft_pkg_plate_attch_3_descr">
+		<text>Um pacote organizado para a elaboraçäo de uma Placa de proteçäo improvisada. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 2x Placa metálica\n - Parafusos, porcas (sucata em geral) \n - Arnës sintético \n - FERRAMENTA: Martelo (reutilizável) \n\nAdicione esses itens em ordem. Adicione um Arnës sintético a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_plate_attch_4_name">
+		<text>Pacote de criaçäo: Placa de proteçäo improvisada</text>
+	</string>
+	<string id="fieldcraft_pkg_plate_attch_4_descr">
+		<text>Um pacote organizado para a elaboraçäo de uma Placa de proteçäo improvisada. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 2x Placa metálica\n - Parafusos, porcas (sucata em geral) \n - Arnës sintético \n - FERRAMENTA: Martelo (reutilizável) \n\nAdicione esses itens em ordem. Adicione um martelo a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_plate_attch_5_name">
+		<text>Pacote de criaçäo: Placa de proteçäo improvisada (pronto)</text>
+	</string>
+	<string id="fieldcraft_pkg_plate_attch_5_descr">
+		<text>Um pacote organizado para a elaboraçäo de uma Placa de proteçäo improvisada. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - 2x Placa metálica\n - Parafusos, porcas (sucata em geral) \n - Arnës sintético \n - FERRAMENTA: Martelo (reutilizável) \n\nPronto para ser criado.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	
+	<string id="fieldcraft_pkg_army_bowler_0_name">
+		<text>Pacote de criaçäo: Chaleira do exército</text>
+	</string>
+	<string id="fieldcraft_pkg_army_bowler_0_descr">
+		<text>Um pacote organizado para a elaboraçäo de uma Chaleira do exército. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Uma panela de cozinha\n - Placa metálica\n - Parafusos, porcas, rebites, sucatas \n - Fio de cobre \n - FERRAMENTA: Martelo (reutilizável) \n\nAdicione esses itens em ordem. Adicione equipamento de cozinha a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_army_bowler_1_name">
+		<text>Pacote de criaçäo: Chaleira do exército</text>
+	</string>
+	<string id="fieldcraft_pkg_army_bowler_1_descr">
+		<text>Um pacote organizado para a elaboraçäo de uma Chaleira do exército. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Uma panela de cozinha\n - Placa metálica\n - Parafusos, porcas, rebites, sucatas \n - Fio de cobre \n - FERRAMENTA: Martelo (reutilizável) \n\nAdicione esses itens em ordem. Adicione uma placa metálica a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_army_bowler_2_name">
+		<text>Pacote de criaçäo: Chaleira do exército</text>
+	</string>
+	<string id="fieldcraft_pkg_army_bowler_2_descr">
+		<text>Um pacote organizado para a elaboraçäo de uma Chaleira do exército. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Uma panela de cozinha\n - Placa metálica\n - Parafusos, porcas, rebites, sucatas \n - Fio de cobre \n - FERRAMENTA: Martelo (reutilizável) \n\nAdicione esses itens em ordem. Adicione sucata a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_army_bowler_3_name">
+		<text>Pacote de criaçäo: Chaleira do exército</text>
+	</string>
+	<string id="fieldcraft_pkg_army_bowler_3_descr">
+		<text>Um pacote organizado para a elaboraçäo de uma Chaleira do exército. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Uma panela de cozinha\n - Placa metálica\n - Parafusos, porcas, rebites, sucatas \n - Fio de cobre \n - FERRAMENTA: Martelo (reutilizável) \n\nAdicione esses itens em ordem. Adicione Fio de cobre em seguida.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_army_bowler_4_name">
+		<text>Pacote de criaçäo: Chaleira do exército</text>
+	</string>
+	<string id="fieldcraft_pkg_army_bowler_4_descr">
+		<text>Um pacote organizado para a elaboraçäo de uma Chaleira do exército. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Uma panela de cozinha\n - Placa metálica\n - Parafusos, porcas, rebites, sucatas \n - Fio de cobre \n - FERRAMENTA: Martelo (reutilizável) \n\nAdicione esses itens em ordem. Adicione o martelo a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_army_bowler_5_name">
+		<text>Pacote de criaçäo: Chaleira do exército (pronto)</text>
+	</string>
+	<string id="fieldcraft_pkg_army_bowler_5_descr">
+		<text>Um pacote organizado para a elaboraçäo de uma Chaleira do exército. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Uma panela de cozinha\n - Placa metálica\n - Parafusos, porcas, rebites, sucatas \n - Fio de cobre \n - FERRAMENTA: Martelo (reutilizável) \n\nPronto para ser criado.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	
+	
+	<string id="fieldcraft_pkg_toolkit_p_0_name">
+		<text>Pacote de criaçäo: Kit de reparo de pistola</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_p_0_descr">
+		<text>Um pacote organizado para a elaboraçäo de um Kit de reparo de pistola. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Cabo de pistola \n - canivete suíço \n\nAdicione esses itens em ordem. Adicione óleo para armas / solvente a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_p_1_name">
+		<text>Pacote de criaçäo: Kit de reparo de pistola</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_p_1_descr">
+		<text>Um pacote organizado para a elaboraçäo de um Kit de reparo de pistola. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Cabo de pistola \n - canivete suíço \n\nAdicione esses itens em ordem. Adicione uma Mola a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_p_2_name">
+		<text>Pacote de criaçäo: Kit de reparo de pistola</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_p_2_descr">
+		<text>Um pacote organizado para a elaboraçäo de um Kit de reparo de pistola. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Cabo de pistola \n - canivete suíço \n\nAdicione esses itens em ordem. Adicione um Mecanismo de gatilho a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_p_3_name">
+		<text>Pacote de criaçäo: Kit de reparo de pistola</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_p_3_descr">
+		<text>Um pacote organizado para a elaboraçäo de um Kit de reparo de pistola. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Cabo de pistola \n - canivete suíço \n\nAdicione esses itens em ordem. Adicione um Kit de limpeza a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_p_4_name">
+		<text>Pacote de criaçäo: Kit de reparo de pistola</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_p_4_descr">
+		<text>Um pacote organizado para a elaboraçäo de um Kit de reparo de pistola. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Cabo de pistola \n - canivete suíço \n\nAdicione esses itens em ordem. Adicione um cabo de pistola a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_p_5_name">
+		<text>Pacote de criaçäo: Kit de reparo de pistola</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_p_5_descr">
+		<text>Um pacote organizado para a elaboraçäo de um Kit de reparo de pistola. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Cabo de pistola \n - canivete suíço \n\nAdicione esses itens em ordem. Adicione um canivete suíço a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_p_6_name">
+		<text>Pacote de criaçäo: Kit de reparo de pistola (pronto)</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_p_6_descr">
+		<text>Um pacote organizado para a elaboraçäo de um Kit de reparo de pistola. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Cabo de pistola \n - canivete suíço \n\nPronto para ser criado.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	
+	
+	<string id="fieldcraft_pkg_toolkit_s_0_name">
+		<text>Pacote de criaçäo: Kit de reparo de shotgun</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_s_0_descr">
+		<text>Um pacote organizado para criar um Kit de reparo de shotgun. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Stock de espingarda \n - Pé de cabra \n - 2x Cano liso \n\nAdicione esses itens em ordem. Adicione um óleo para armas / solvente a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_s_1_name">
+		<text>Pacote de criaçäo: Kit de reparo de shotgun</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_s_1_descr">
+		<text>Um pacote organizado para criar um Kit de reparo de shotgun. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Stock de espingarda \n - Pé de cabra \n - 2x Cano liso \n\nAdicione esses itens em ordem. Adicione uma Mola a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_s_2_name">
+		<text>Pacote de criaçäo: Kit de reparo de shotgun</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_s_2_descr">
+		<text>Um pacote organizado para criar um Kit de reparo de shotgun. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Stock de espingarda \n - Pé de cabra \n - 2x Cano liso \n\nAdicione esses itens em ordem. Adicione um Mecanismo de gatilho a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_s_3_name">
+		<text>Pacote de criaçäo: Kit de reparo de shotgun</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_s_3_descr">
+		<text>Um pacote organizado para criar um Kit de reparo de shotgun. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Stock de espingarda \n - Pé de cabra \n - 2x Cano liso \n\nAdicione esses itens em ordem. Adicione um Kit de limpeza a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_s_4_name">
+		<text>Pacote de criaçäo: Kit de reparo de shotgun</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_s_4_descr">
+		<text>Um pacote organizado para criar um Kit de reparo de shotgun. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Stock de espingarda \n - Pé de cabra \n - 2x Cano liso \n\nAdicione esses itens em ordem. Adicione um Stock de espingarda a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_s_5_name">
+		<text>Pacote de criaçäo: Kit de reparo de shotgun</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_s_5_descr">
+		<text>Um pacote organizado para criar um Kit de reparo de shotgun. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Stock de espingarda \n - Pé de cabra \n - 2x Cano liso \n\nAdicione esses itens em ordem. Adicione um pé de cabra a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_s_6_name">
+		<text>Pacote de criaçäo: Kit de reparo de shotgun</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_s_6_descr">
+		<text>Um pacote organizado para criar um Kit de reparo de shotgun. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Stock de espingarda \n - Pé de cabra \n - 2x Cano liso \n\nAdicione esses itens em ordem. Adicione Cano liso a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_s_7_name">
+		<text>Pacote de criaçäo: Kit de reparo de shotgun</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_s_7_descr">
+		<text>Um pacote organizado para criar um Kit de reparo de shotgun. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Stock de espingarda \n - Pé de cabra \n - 2x Cano liso \n\nAdicione esses itens em ordem. Adicione Cano liso a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_s_8_name">
+		<text>Pacote de criaçäo: Kit de reparo de shotgun (pronto)</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_s_8_descr">
+		<text>Um pacote organizado para criar um Kit de reparo de shotgun. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Stock de espingarda \n - Pé de cabra \n - 2x Cano liso \n\nPronto para ser criado.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	
+	
+	<string id="fieldcraft_pkg_toolkit_r5_0_name">
+		<text>Pacote de criaçäo: Kit de reparo para rifles de pequeno porte</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r5_0_descr">
+		<text>Um pacote organizado para criar um Kit de reparo para rifles de pequeno porte. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Ferrolho \n - Stock de espingarda \n - Pé de cabra \n - Cano 5.45 \n - Cano 5.56 \n\nAcrescente estes itens em ordem. Acrescente um óleo para armas / solvente em seguida.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r5_1_name">
+		<text>Pacote de criaçäo: Kit de reparo para rifles de pequeno porte</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r5_1_descr">
+		<text>Um pacote organizado para criar um Kit de reparo para rifles de pequeno porte. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Ferrolho \n - Stock de espingarda \n - Pé de cabra \n - Cano 5.45 \n - Cano 5.56 \n\nAdicione esses itens em ordem. Adicione uma Mola a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r5_2_name">
+		<text>Pacote de criaçäo: Kit de reparo para rifles de pequeno porte</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r5_2_descr">
+		<text>Um pacote organizado para criar um Kit de reparo para rifles de pequeno porte. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Ferrolho \n - Stock de espingarda \n - Pé de cabra \n - Cano 5.45 \n - Cano 5.56 \n\nAdicione esses itens em ordem. Adicione um Mecanismo de gatilho a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r5_3_name">
+		<text>Pacote de criaçäo: Kit de reparo para rifles de pequeno porte</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r5_3_descr">
+		<text>Um pacote organizado para criar um Kit de reparo para rifles de pequeno porte. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Ferrolho \n - Stock de espingarda \n - Pé de cabra \n - Cano 5.45 \n - Cano 5.56 \n\nAdicione esses itens em ordem. Adicione um Kit de limpeza a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r5_4_name">
+		<text>Pacote de criaçäo: Kit de reparo para rifles de pequeno porte</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r5_4_descr">
+		<text>Um pacote organizado para criar um Kit de reparo para rifles de pequeno porte. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Ferrolho \n - Stock de espingarda \n - Pé de cabra \n - Cano 5.45 \n - Cano 5.56 \n\nAdicione esses itens em ordem. Adicione um Ferrolho a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r5_5_name">
+		<text>Pacote de criaçäo: Kit de reparo para rifles de pequeno porte</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r5_5_descr">
+		<text>Um pacote organizado para criar um Kit de reparo para rifles de pequeno porte. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Ferrolho \n - Stock de espingarda \n - Pé de cabra \n - Cano 5.45 \n - Cano 5.56 \n\nAdicione esses itens em ordem. Adicione um Stock de espingarda a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r5_6_name">
+		<text>Pacote de criaçäo: Kit de reparo para rifles de pequeno porte</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r5_6_descr">
+		<text>Um pacote organizado para criar um Kit de reparo para rifles de pequeno porte. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Ferrolho \n - Stock de espingarda \n - Pé de cabra \n - Cano 5.45 \n - Cano 5.56 \n\nAdicione esses itens em ordem. Adicione um pé de cabra a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r5_7_name">
+		<text>Pacote de criaçäo: Kit de reparo para rifles de pequeno porte</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r5_7_descr">
+		<text>Um pacote organizado para criar um Kit de reparo para rifles de pequeno porte. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Ferrolho \n - Stock de espingarda \n - Pé de cabra \n - Cano 5.45 \n - Cano 5.56 \n\nAdicione esses itens em ordem. Adicione um Cano 5.45 a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r5_8_name">
+		<text>Pacote de criaçäo: Kit de reparo para rifles de pequeno porte</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r5_8_descr">
+		<text>Um pacote organizado para criar um Kit de reparo para rifles de pequeno porte. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Ferrolho \n - Stock de espingarda \n - Pé de cabra \n - Cano 5.45 \n - Cano 5.56 \n\nAdicione esses itens em ordem. Adicione um Cano 5.56 a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r5_9_name">
+		<text>Pacote de criaçäo: Kit de reparo para rifles de pequeno porte (pronto)</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r5_9_descr">
+		<text>Um pacote organizado para criar um Kit de reparo para rifles de pequeno porte. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Ferrolho \n - Stock de espingarda \n - Pé de cabra \n - Cano 5.45 \n - Cano 5.56 \n\nPronto para ser criado.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	
+	
+	<string id="fieldcraft_pkg_toolkit_r7_0_name">
+		<text>Pacote de criaçäo: Kit de reparo para rifle de médio e grande porte</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r7_0_descr">
+		<text>Um pacote organizado para criar um Kit de reparo para rifle de médio e grande porte. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Ferrolho \n - Stock de espingarda \n - Pé de cabra \n - Cano 7.62 \n - Cano 7.92 \n - Cano de 9mm \n\nAdicione esses itens em ordem. Adicione Óleo para Armas / solvente next.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r7_1_name">
+		<text>Pacote de criaçäo: Kit de reparo para rifle de médio e grande porte</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r7_1_descr">
+		<text>Um pacote organizado para criar um Kit de reparo para rifle de médio e grande porte. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Ferrolho \n - Stock de espingarda \n - Pé de cabra \n - Cano 7.62 \n - Cano 7.92 \n - Cano de 9mm \n\nAdicione esses itens em ordem. Adicione uma Mola a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r7_2_name">
+		<text>Pacote de criaçäo: Kit de reparo para rifle de médio e grande porte</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r7_2_descr">
+		<text>Um pacote organizado para criar um Kit de reparo para rifle de médio e grande porte. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Ferrolho \n - Stock de espingarda \n - Pé de cabra \n - Cano 7.62 \n - Cano 7.92 \n - Cano de 9mm \n\nAdd esses itens em ordem. Adicione um Mecanismo de gatilho a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r7_3_name">
+		<text>Pacote de criaçäo: Kit de reparo para rifle de médio e grande porte</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r7_3_descr">
+		<text>Um pacote organizado para criar um Kit de reparo para rifle de médio e grande porte. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Ferrolho \n - Stock de espingarda \n - Pé de cabra \n - Cano 7.62 \n - Cano 7.92 \n - Cano de 9mm \n\nAdicione esses itens em ordem. Adicione um Kit de limpeza a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r7_4_name">
+		<text>Pacote de criaçäo: Kit de reparo para rifle de médio e grande porte</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r7_4_descr">
+		<text>Um pacote organizado para criar um Kit de reparo para rifle de médio e grande porte. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Ferrolho \n - Stock de espingarda \n - Pé de cabra \n - Cano 7.62 \n - Cano 7.92 \n - Cano de 9mm \n\nAdicione esses itens em ordem. Adicione um Ferrolho a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r7_5_name">
+		<text>Pacote de criaçäo: Kit de reparo para rifle de médio e grande porte</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r7_5_descr">
+		<text>Um pacote organizado para criar um Kit de reparo para rifle de médio e grande porte. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Ferrolho \n - Stock de espingarda \n - Pé de cabra \n - Cano 7.62 \n - Cano 7.92 \n - Cano de 9mm \n\nAdicione esses itens em ordem. Adicione um Stock de espingarda a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r7_6_name">
+		<text>Pacote de criaçäo: Kit de reparo para rifle de médio e grande porte</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r7_6_descr">
+		<text>Um pacote organizado para criar um Kit de reparo para rifle de médio e grande porte. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Ferrolho \n - Stock de espingarda \n - Pé de cabra \n - Cano 7.62 \n - Cano 7.92 \n - Cano de 9mm \n\nAdicione esses itens em ordem. Adicione um pé de cabra a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r7_7_name">
+		<text>Pacote de criaçäo: Kit de reparo para rifle de médio e grande porte</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r7_7_descr">
+		<text>Um pacote organizado para criar um Kit de reparo para rifle de médio e grande porte. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Ferrolho \n - Stock de espingarda \n - Pé de cabra \n - Cano 7.62 \n - Cano 7.92 \n - Cano de 9mm \n\nAdicione esses itens em ordem. Adicione um Cano 7.62 a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r7_8_name">
+		<text>Pacote de criaçäo: Kit de reparo para rifle de médio e grande porte</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r7_8_descr">
+		<text>Um pacote organizado para criar um Kit de reparo para rifle de médio e grande porte. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Ferrolho \n - Stock de espingarda \n - Pé de cabra \n - Cano 7.62 \n - Cano 7.92 \n - Cano de 9mm \n\nAdicione esses itens em ordem. Adicione um Cano 7.92 a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r7_9_name">
+		<text>Pacote de criaçäo: Kit de reparo para rifle de médio e grande porte</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r7_9_descr">
+		<text>Um pacote organizado para criar um Kit de reparo para rifle de médio e grande porte. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Ferrolho \n - Stock de espingarda \n - Pé de cabra \n - Cano 7.62 \n - Cano 7.92 \n - Cano de 9mm \n\nAdicione esses itens em ordem. Adicione um Cano de 9mm a seguir.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r7_10_name">
+		<text>Pacote de criaçäo: Kit de reparo para rifle de médio e grande porte (pronto)</text>
+	</string>
+	<string id="fieldcraft_pkg_toolkit_r7_10_descr">
+		<text>Um pacote organizado para criar um Kit de reparo para rifle de médio e grande porte. De acordo com o guia de sobrevivëncia, vocë precisa reunir os seguintes itens:\n - Óleo para armas / solvente\n - Mola\n - Mecanismo de gatilho\n - Kit de limpeza \n - Ferrolho \n - Stock de espingarda \n - Pé de cabra \n - Cano 7.62 \n - Cano 7.92 \n - Cano de 9mm \n\nPronto para ser criado.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] Pacote de criaçäo</text>
+	</string>
+	
+	<string id="fieldcraft_plate_attch_name">
+		<text>Placa de proteçäo improvisada</text>
+	</string>
+	<string id="fieldcraft_plate_attch_descr">
+		<text>Uma placa de proteçäo improvisada composta por duas folhas de Placa metálica retiradas de um colete blindado. Ele desempenha uma ampla variedade de funçöes, a mais importante das quais é absorver o impacto de projéteis de armas de fogo. Usando o Arnës sintético anexado, ele pode ser amarrado na frente ou na parte de trás do tronco. Possui capacidades de proteçäo limitadas - constitui uma alternativa mais barata, porém mais fraca, às chapas de kevlar ou de aço. Além disso, qualquer tipo de revestimento de armadura também ajuda a manter as roupas em boas condiçöes, evitando a degradaçäo por desgaste.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar improvisado\n%c[d_cyan] • %c[ui_gray_2] é empilhável\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] reparos de roupa (+9%)</text>
+	</string>
+	<string id="syringe_empty_name">
+		<text>Seringa vazia</text>
+	</string>
+	<string id="syringe_empty_descr">
+		<text>As seringas säo frequentemente usadas na medicina para aplicar injeçöes, terapia intravenosa na corrente sanguínea, ou aplicar compostos como cola ou lubrificante e desenhar / medir líquidos. Esta seringa foi usada anteriormente e ainda existem algumas gotas de líquido residual visíveis dentro do barril. Deve ser desinfetado antes de ser usado novamente.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item médico\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] crafting (estimulante improvisado)</text>
+	</string>
+	<string id="dis_metalplate_name">
+		<text>Placa metálica</text>
+	</string>
+	<string id="dis_metalplate_descr">
+		<text>Uma folha gasta de metal forte arrancada de uma camada protetora de alguma roupa blindada. Ainda pode ser usado para reparar ou criar outro equipamento.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item comum\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] reparos de roupa (+5%)</text>
+	</string>
+	<string id="dis_scrap_name">
+		<text>Sucatas diversas</text>
+	</string>
+	<string id="dis_scrap_descr">
+		<text>Punhado de parafusos de metal, porcas, brocas e peças de equipamento. Pode ser usado para ajudar na reparaçäo de equipamentos, ou talvez até na fabricaçäo.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item comum\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] reparos de roupa, manutençäo de armas (+3%)</text>
+	</string>
+	<string id="st_copper_wire_name">
+		<text>Fio de cobre</text>
+	</string>
+	<string id="st_copper_wire_descr">
+		<text>Um fio de cobre sólido näo revestido, retirado de forma grosseira de algum equipamento elétrico. Ainda pode ter outro uso.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item tecnológico \n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] reparos de roupa (+4%)</text>
+	</string>
+	<string id="st_synth_harness_name">
+		<text>Arnës sintético</text>
+	</string>
+	<string id="st_synth_harness_descr">
+		<text>Um arranjo improvisado de tiras sintéticas enroladas juntas, servem para prender outro item no lugar.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item tecnológico</text>
+	</string>
+	<string id="st_proxim_device_name">
+		<text>Dispositivo de proximidade</text>
+	</string>
+	<string id="st_proxim_device_descr">
+		<text>Sensor de proximidade funcional retirado do detector de artefato. Pode ser usado para fabricar vários explosivos.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item tecnológico</text>
+	</string>
+	<string id="st_cloth_strip">
+		<text>Tira de pano</text>
+	</string>
+	<string id="st_cloth_strip_descr">
+		<text>Um pedaço de pano cortado de uma camisa ou lençol ou algo assim. Pode ser usado para auxiliar na limpeza de equipamentos. Grande o suficiente para ser usado como Bandagem, mas deve ser desinfetado primeiro.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item comum\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] reparos de roupa, manutençäo de armas (+1%)</text>
+	</string>
+	<string id="st_shotgunbarrelw">
+		<text>Cano liso (desgastado)</text>
+	</string>
+	<string id="st_shotgunbarrelw_descr">
+		<text>Cano liso, desgastado, de uma espingarda calibre 12. Pode ser usado para substituir o cano de uma espingarda diferente, mas é melhor limpá-la primeiro.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] manutençäo de armas (+10%)</text>
+	</string>
+	<string id="st_shotgunbarrelr">
+		<text>Cano liso (enferrujado)</text>
+	</string>
+	<string id="st_shotgunbarrelr_descr">
+		<text>Um Cano liso enferrujado de uma espingarda de calibre 12. Inútil em seu estado atual, mas vocë pode limpá-lo.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange]</text>
+	</string>
+	<string id="st_762_barrel">
+		<text>Cano 7.62</text>
+	</string>
+	<string id="st_762_barrel_descr">
+		<text>O cano de alguma arma soviética que usava cartuchos 7,62 mm. Ainda em condiçöes bastante decentes, poderia ser usado para substituir o cano de uma arma semelhante.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] manutençäo de armas (+20%)</text>
+	</string>
+	<string id="st_762_barrelw">
+		<text>Cano 7.62 (desgastado)</text>
+	</string>
+	<string id="st_762_barrelw_descr">
+		<text>Um cano desgastado de alguma arma soviética que usava cartuchos 7,62 mm. Pode ser usado para substituir o cano de outro rifle, mas é melhor limpá-lo primeiro.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] manutençäo de armas (+10%)</text>
+	</string>
+	<string id="st_762_barrelr">
+		<text>Cano 7.62 (enferrujado)</text>
+	</string>
+	<string id="st_762_barrelr_descr">
+		<text>Um cano enferrujado de um rifle 7,62. Inútil em seu estado atual, mas vocë pode limpá-lo. Ou tentar.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange]</text>
+	</string>
+	<string id="st_545_barrel">
+	<text>Cano 5.45</text>
+	</string>
+	<string id="st_545_barrel_descr">
+		<text>O cano de alguma arma que usava um cartucho de 5,45 mm. Ainda em condiçöes bastante decentes, poderia ser usado para substituir o cano de uma arma semelhante.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] manutençäo de armas (+20%)</text>
+	</string>
+	<string id="st_545_barrelw">
+		<text>Cano 5.45 (desgastado)</text>
+	</string>
+	<string id="st_545_barrelw_descr">
+		<text>Um cano desgastado de alguma arma que usava um cartucho de 5,45 mm. Pode ser usado para substituir o cano de outro rifle, mas é melhor limpá-lo primeiro.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] manutençäo de armas (+10%)</text>
+	</string>
+	<string id="st_545_barrelr">
+		<text>Cano 5.45 (enferrujado)</text>
+	</string>
+	<string id="st_545_barrelr_descr">
+		<text>Um cano enferrujado de um rifle 5,45. Inútil em seu estado atual, mas vocë pode limpá-lo. Ou tentar.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange]</text>
+	</string>
+		<string id="st_556_barrel">
+		<text>Cano 5.56</text>
+	</string>
+	<string id="st_556_barrel_descr">
+		<text>O cano de alguma arma que usava um cartucho de 5,56 mm. Ainda em condiçöes bastante decentes, poderia ser usado para substituir o cano de uma arma semelhante.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] manutençäo de armas (+20%)</text>
+	</string>
+	<string id="st_556_barrelw">
+		<text>Cano 5.56 (desgastado)</text>
+	</string>
+	<string id="st_556_barrelw_descr">
+		<text>Um cano desgastado de alguma arma que usava um cartucho de 5,56 mm. Pode ser usado para substituir o cano de outro rifle, mas é melhor limpá-lo primeiro.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] manutençäo de armas (+10%)</text>
+	</string>
+	<string id="st_556_barrelr">
+		<text>Cano 5.56 (enferrujado)</text>
+	</string>
+	<string id="st_556_barrelr_descr">
+		<text>Um cano enferrujado de um rifle de 5,56. Inútil em seu estado atual, mas vocë pode limpá-lo. Ou tentar.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange]</text>
+	</string>
+	<string id="st_9x_barrel">
+		<text>Cano de 9mm</text>
+	</string>
+	<string id="st_9x_barrel_descr">
+		<text>O cano de uma arma que usava um cartucho de 9 mm. Ainda em condiçöes bastante decentes, poderia ser usado para substituir o cano de uma arma semelhante.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] manutençäo de armas (+20%)</text>
+	</string>
+	<string id="st_9x_barrelw">
+		<text>Cano de 9mm (desgastado)</text>
+	</string>
+	<string id="st_9x_barrelw_descr">
+		<text>Um cano desgastado de alguma arma que usava um cartucho de 9 mm. Pode ser usado para substituir o cano de outro rifle, mas é melhor limpá-lo primeiro.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] manutençäo de armas (+10%)</text>
+	</string>
+	<string id="st_792_barrel">
+		<text>Cano 7.92</text>
+	</string>
+	<string id="st_792_barrel_descr">
+		<text>O cano de uma arma que usava um cartucho de 7,92 mm. Ainda em condiçöes bastante decentes, poderia ser usado para substituir o cano de uma arma semelhante.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] manutençäo de armas (+20%)</text>
+	</string>
+	<string id="st_792_barrelw">
+		<text>Cano 7.92 (desgastado)</text>
+	</string>
+	<string id="st_792_barrelw_descr">
+		<text>Um cano desgastado de uma arma que usava um cartucho de 7,92 mm. Pode ser usado para substituir o cano de outro rifle, mas é melhor limpá-lo primeiro.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] manutençäo de armas (+10%)</text>
+	</string>
+	<string id="st_stock">
+		<text>Stock de espingarda</text>
+	</string>
+	<string id="st_stock_descr">
+		<text>O buttstock de um rifle ou espingarda. Pode ser usado para recuperar uma arma.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] manutençäo de armas (+6%)</text>
+	</string>
+	<string id="st_shotgunbarrel">
+		<text>Cano liso</text>
+	</string>
+	<string id="st_shotgunbarrel_descr">
+		<text>Um Cano liso de uma espingarda de calibre 12. Ainda em condiçöes bastante decentes, poderia ser usado para substituir o cano de uma espingarda diferente.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] manutençäo de armas (+20%)</text>
+	</string>
+	<string id="st_trigger">
+		<text>Mecanismo de gatilho</text>
+	</string>
+	<string id="st_trigger_descr">
+		<text>O Mecanismo de gatilho e montagem de uma arma desconhecida. A maioria dos gatilhos é muito parecida, e näo há nenhum motivo para que este näo possa ser raspado para caber em outras armas.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] manutençäo de armas (+5%)</text>
+	</string>
+	<string id="st_triggerrusty">
+		<text>Mecanismo de gatilho (enferrujado)</text>
+	</string>
+	<string id="st_triggerrusty_descr">
+		<text>Uma ferrugem cobria o Mecanismo de gatilho e a montagem de uma arma desconhecida. Inútil em sua condiçäo atual, mas com a aplicaçäo de alguns solventes ou óleo, pode ser transformado novamente em um conjunto de gatilhos que funcionam.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange]</text>
+	</string>
+	<string id="st_spspring">
+		<text>Mola</text>
+	</string>
+	<string id="st_spspring_descr">
+		<text>Uma pequena Mola do conjunto do gatilho ou do funcionamento interno de uma arma de fogo desconhecida. Provavelmente poderia ser adaptado para substituir qualquer Mola pequena.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] manutençäo de armas (+2%)</text>
+	</string>
+	<string id="st_pistolgrip">
+		<text>Cabo de pistola</text>
+	</string>
+	<string id="st_pistolgrip_descr">
+		<text>Cabo de pistola de alguma pistola desconhecida. Essa alça emborrachada provavelmente poderia ser modelada ou moldada para caber em praticamente qualquer arma de fogo.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] manutençäo de armas (+6%)</text>
+	</string>
+	<string id="st_boltcarrier">
+		<text>Ferrolho</text>
+	</string>
+	<string id="st_boltcarrier_descr">
+		<text>O Ferrolho e o pino de tiro de um rifle desconhecido. Grande demais para caber em qualquer arma que use balas de pistola, mas pode ser útil para substituir um pino de disparo danificado ou quase em qualquer tipo de espingarda. Se for moído, pode até caber em determinadas submetralhadoras.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] manutençäo de armas (+8%)</text>
+	</string>
+	<string id="st_boltcarrierrusty">
+		<text>Ferrolho (enferrujado)</text>
+	</string>
+	<string id="st_boltcarrierrusty_descr">
+		<text>Um Ferrolho enferrujado e o pino de tiro de um rifle desconhecido. Grande demais para caber em qualquer arma que use balas de pistola, mas poderia ser usada para substituir um pino ou parafuso danificado em quase qualquer tipo de rifle, se vocë puder limpá-lo. Se for moído, pode até caber em determinadas submetralhadoras.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar</text>
+	</string>
+	<string id="st_barrelkit_762">
+		<text>Kit para troca de cano (7.62mm)</text>
+	</string>
+	<string id="st_barrelkit_762_descr">
+		<text>Este é um kit especializado para substituir os canos de vários rifles. Inclui chaves Allen de vários tamanhos e algumas ferramentas de calibraçäo básicas. Este kit específico pode ser usado para armas com um diâmetro de cano de 7,62 mm.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] reparo de armas\n%c[d_orange] • %c[ui_gray_2] näo utilizável nessa condiçäo %c[ui_gray_1] 45%</text>
+	</string>
+	<string id="st_barrelkit_545">
+		<text>Kit para troca de cano (5.45mm)</text>
+	</string>
+	<string id="st_barrelkit_545_descr">
+		<text>Este é um kit especializado para substituir os canos de vários rifles. Inclui chaves Allen de vários tamanhos e algumas ferramentas de calibraçäo básica. Este kit específico pode ser usado para armas com um diâmetro de cano de 5.45mm.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] reparo de armas\n%c[d_orange] • %c[ui_gray_2] näo utilizável nessa condiçäo %c[ui_gray_1] 45%</text>
+	</string>
+		<string id="st_barrelkit_556">
+		<text>Kit para troca de cano (5.56mm)</text>
+	</string>
+	<string id="st_barrelkit_556_descr">
+		<text>Este é um kit especializado para substituir os canos de vários rifles. Inclui chaves Allen de vários tamanhos e algumas ferramentas de calibraçäo básica. Este kit específico pode ser usado para armas com um diâmetro de cano de 5.56mm.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] reparo de armas\n%c[d_orange] • %c[ui_gray_2] näo utilizável nessa condiçäo %c[ui_gray_1] 45%</text>
+	</string>
+		<string id="st_barrelkit_9x">
+		<text>Kit para troca de cano (9mm)</text>
+	</string>
+	<string id="st_barrelkit_9x_descr">
+		<text>Este é um kit especializado para substituir os canos de vários rifles. Inclui chaves Allen de vários tamanhos e algumas ferramentas de calibraçäo básica. Este kit em particular pode ser usado para aqueles rifles raros que utilizam canos de 9 mm de diâmetro.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] reparo de armas\n%c[d_orange] • %c[ui_gray_2] näo utilizável nessa condiçäo %c[ui_gray_1] 45%</text>
+	</string>
+		<string id="st_barrelkit_792">
+		<text>Kit para troca de cano (7.92mm)</text>
+	</string>
+	<string id="st_barrelkit_792_descr">
+		<text>Este é um kit especializado para substituir os canos de vários rifles. Inclui chaves Allen de vários tamanhos e algumas ferramentas de calibraçäo básica. Este kit específico pode ser usado para armas com um diâmetro de cano de 7.92mm.\n \n%c[ui_gray_2]CARACTERÍSTICAS:\n%c[d_cyan] • %c[ui_gray_2] item militar\n%c[d_orange] • %c[ui_gray_2] usado para:%c[ui_gray_1] reparo de armas\n%c[d_orange] • %c[ui_gray_2] näo utilizável nessa condiçäo %c[ui_gray_1] 45%</text>
+	</string>
+</string_table>
+
+-->

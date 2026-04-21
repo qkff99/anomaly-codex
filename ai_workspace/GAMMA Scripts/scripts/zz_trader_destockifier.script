@@ -1,0 +1,739 @@
+local get_ammo = utils_item.get_ammo
+
+local floor = math.floor
+local max = math.max
+local min = math.min
+local random = math.random
+
+local function round(num)
+  return floor(num + 0.5)
+end
+
+local table_insert = table.insert
+
+-- Load the defaults
+local function load_defaults()
+	local t = {}
+	local op = trader_destockifier_mcm.op
+	for i, v in ipairs(op.gr) do
+		if v.def ~= nil then
+			t[v.id] = v.def
+		end
+	end
+	return t
+end
+local settings = load_defaults()
+
+--Utils
+local function trace(str, ...)
+	if settings.debug_mode then
+		-- printf("Trader Destockifier: " .. str, ...)
+	end
+	-- printf("-
+	-- зеленый
+
+	-- printf("!
+	-- красный
+
+	-- printf("~
+	-- желтый
+end
+
+--Recursive print of tables similar to PHP print_r function
+local function print_r(t) 
+    local print_r_cache={}
+    local function sub_print_r(t,indent)
+        local g_tostring = tostring
+        if (print_r_cache[g_tostring(t)]) then
+            -- printf(indent.."*"..tostring(t))
+        else
+            print_r_cache[tostring(t)]=true
+            if (type(t)=="table") then
+                for pos,val in pairs(t) do
+                    if (type(val)=="table") then
+                        -- printf(indent.."["..pos.."] => "..tostring(t).." {")
+                        sub_print_r(val,indent..string.rep(" ",#pos+8))
+                        -- printf(indent..string.rep(" ",string.len(pos)+6).."}")
+                    else
+                        -- printf(indent.."["..pos.."] => "..tostring(val))
+                    end
+                end
+            else
+                -- printf(indent..tostring(t))
+            end
+        end
+    end
+    sub_print_r(t,"  ")
+end
+
+local function trace_table(t)
+	if settings.debug_mode then
+		-- trace("Table Print")
+		print_r(t)
+	end
+end
+
+local function get_random_array_element(t)
+	return t[random(#t)]
+end
+
+local function array_keys(t)
+	local res = {}
+	local res_count = 1
+	for k, v in pairs(t) do
+		res[res_count] = k
+		res_count = res_count + 1
+	end
+	return res
+end
+
+local function get_random_key(t)
+	return get_random_array_element(array_keys(t))
+end
+
+local function get_random_key_value(t, delete)
+	local k = get_random_key(t)
+	local v = type(t[k]) == "table" and dup_table(t[k]) or t[k]
+	if delete then
+		t[k] = nil
+	end
+	return { [k] = v }
+end
+
+local function pick_item(trader, keep, max_key, key) -- default pick item function
+	if is_empty(trader) then
+		-- trace("%s table is empty, ignoring", key)
+		return
+	end
+	local trader = dup_table(trader)
+	local trader_max = settings[max_key] or 0
+	if settings.randomize then
+		local deviation = settings.randomize_deviation * 0.01
+		trader_max = trader_max + random(round(-trader_max * deviation), round(trader_max * deviation))
+	end
+	local i = 0
+	while i < trader_max and is_not_empty(trader) do
+		local item = get_random_key_value(trader, true)
+		-- trace("picked %s", key)
+		for k, v in pairs(item) do
+			-- trace("picked %s %s, id %s", key, k, v)
+			keep[k] = v
+		end
+		i = i + 1
+	end
+end
+
+-- Destockify
+local item_cache = {}
+
+local function create_items_table(key, max_key, check_func, collect_func, pick_func, remove_func)
+	return {
+		key = key or "item",
+		max_key = max_key or "max_item",
+		trader = {},
+		keep = {},
+		get_keep_item_id = function(self, item)
+			return self.keep[item:section()] or 0
+		end,
+		check = check_func or function(item)
+			return item
+		end,
+		collect = collect_func or function(self, npc, item)
+			if self.check(item) then
+				local sec = item:section()
+				local id = item:id()
+				-- trace("collecting %s %s, id %s", self.key, sec, id)
+				self.trader[sec] = id
+				item_cache[sec] = self.key
+			end
+		end,
+		pick = pick_func or function(self, npc)
+			pick_item(self.trader, self.keep, self.max_key, self.key)
+		end,
+		remove = remove_func or function(self, npc, item)
+			if settings[self.max_key] and settings[self.max_key] == -1 then
+				trace("Maximum for %s set to -1, not removing", self.max_key)
+				return
+			end
+
+			local sec = item:section()
+			local id = item:id()
+			if self.check(item) and self:get_keep_item_id(item) ~= id then
+				-- trace("%s is not in the picked table, removing. %s, id %s", self.key, sec, id)
+				alife_release(item)
+			end
+		end
+	}
+end
+
+-- Items table
+local items = {
+	guns = create_items_table("guns", "max_guns", function(item)
+		local sec = item:section()
+		local ignore_items = {
+			["w_pistol"] = true,
+			["WP_HPSA"]  = true,
+			["WP_PM"]    = true,
+			["WP_USP45"] = true,
+		}
+		return 	IsWeapon(item) and
+				not IsItem("fake_ammo_wpn",sec) and
+				not (ignore_items[SYS_GetParam(0, sec, "kind", 0)] or ignore_items[SYS_GetParam(0, sec, "class", 0)])
+	end),
+	handguns = create_items_table("handguns", "max_handguns", function(item)
+		local sec = item:section()
+		local valid_items = {
+			["w_pistol"] = true,
+			["WP_HPSA"]  = true,
+			["WP_PM"]    = true,
+			["WP_USP45"] = true,
+		}
+		return 	IsWeapon(item) and
+				not IsItem("fake_ammo_wpn",sec) and
+				(valid_items[SYS_GetParam(0, sec, "kind", 0)] or valid_items[SYS_GetParam(0, sec, "class", 0)])
+	end),
+	knives = create_items_table("knives", "max_knives", function(item)
+		return IsWeapon(item) and IsItem("fake_ammo_wpn",item:section())
+	end),
+	helmets = create_items_table("helmets", "max_helmets", function(item)
+		return IsHeadgear(item)
+	end),
+	outfits = create_items_table("outfits", "max_outfits", function(item)
+		return IsOutfit(item)
+	end),
+	weapon_attachments = create_items_table("weapon_attachments", "max_weapon_attachments", function(item)
+		local sec = item:section()
+		local ignore_items = {
+			["bolt"] 				= true,
+			["bolt_bullet"] 		= true,
+			["trijicon_rmr"] 		= true,
+			["psicho_rmr"] 			= true,
+			["aimpoint_pro"] 		= true,
+		}
+		return 	SYS_GetParam(0, sec, "kind", 0) == "w_misc" and not ignore_items[sec]
+	end),
+	backpacks = create_items_table("backpacks", "max_backpacks", function(item)
+		return SYS_GetParam(0, item:section(), "kind", 0) == "i_backpack"
+	end),
+	explosives = create_items_table("explosives", "max_explosives", function(item)
+		local sec = item:section()
+		local valid_items = {
+			["G_F1"] 	            = true,
+			["G_F1_S"]              = true,
+			["G_RGD5"] 	            = true,
+			["G_RGD5_S"]            = true,
+			["S_M209"]              = true,
+			["S_VOG25"]             = true,
+	        ["S_OG7B"]              = true,
+		}
+		return 	valid_items[SYS_GetParam(0, sec, "class", 0)] or
+				valid_items[SYS_GetParam(0, sec, "kind", 0)]
+	end),
+	food = create_items_table("food", "max_food", function(item)
+		local sec = item:section()
+		local valid_items = {
+			["i_drink"] 		= true,
+			["i_food"]			= true,
+			["i_mutant_cooked"]	= true,
+		}
+		return 	valid_items[SYS_GetParam(0, sec, "kind", 0)]
+	end),
+	heal = create_items_table("heal", "max_heal", function(item)
+		local sec = item:section()
+		local valid_items = {
+			["i_medical"] 		= true,
+		}
+		return 	valid_items[SYS_GetParam(0, sec, "kind", 0)]
+	end),
+	repair = create_items_table("repair", "max_repair", function(item)
+		local sec = item:section()
+		local valid_items = {
+			["i_repair"] 		= true,
+			["i_tool"] 			= true,
+			["i_kit"] 			= true,
+		}
+		local ignore_sec = {
+			["bolts_pack"] = true,
+			["box_matches"] = true,
+			["matches"] = true,
+			["charcoal"] = true,
+		}
+		return 	valid_items[SYS_GetParam(0, sec, "kind", 0)] and not ignore_sec[sec]
+	end),
+	-- Junk remover
+	junk = create_items_table("junk", 0, function(item)
+		local sec = item:section()
+		local valid_items = {
+			["trijicon_rmr"] 		= true,
+			["psicho_rmr"] 			= true,
+			["aimpoint_pro"] 		= true,
+		}
+		return 	valid_items[sec]
+	end),
+	-- Mags Redux
+	mags = create_items_table("mags", "max_mags", function(item)
+		return SYS_GetParam(1, item:section(), "is_mag", false)
+	end),
+}
+
+-- Process items after main destockify
+local items_after_order = { "ammo" }
+local items_after = {
+	ammo = create_items_table("ammo", "max_ammo_percent", function(item)
+		local sec = item:section()
+		local ignore_items = {
+			["G_F1"] 	            = true,
+			["G_F1_S"]              = true,
+			["G_RGD5"] 	            = true,
+			["G_RGD5_S"]            = true,
+			["S_M209"]              = true,
+			["S_VOG25"]             = true,
+	        ["S_OG7B"]              = true,
+		}
+		return 	IsAmmo(item) and
+				not ignore_items[SYS_GetParam(0, sec, "class", 0)] and
+				SYS_GetParam(1, sec, "is_mag", false) ~= true
+	end),
+}
+
+-- Special functions for certain groups
+local function collect_by_id(t, npc, item)
+	if t.check(item) then
+		local sec = item:section()
+		local id = item:id()
+		-- trace("collecting %s %s, id %s", t.key, sec, id)
+		t.trader[id] = sec
+		item_cache[sec] = t.key
+	end
+end
+
+local function pick_by_mechanic(t, npc, trader_type, reduction_coeff)
+	if is_empty(t.trader) then
+		-- trace("%s table is empty, ignoring", t.key)
+		return
+	end
+
+	local trader = dup_table(t.trader)
+	local trader_max = settings[t.max_key] or 0
+	local reduction_coeff = reduction_coeff or 0.5
+
+	if trader_autoinject.get_trader_type(npc) ~= trader_type then
+		trader_max = floor(trader_max * reduction_coeff)
+	end
+
+	if settings.randomize then
+		local deviation = settings.randomize_deviation * 0.01
+		trader_max = trader_max + random(round(-trader_max * deviation), round(trader_max * deviation))
+	end
+
+	local i = 0
+	while i < trader_max and is_not_empty(trader) do
+		local item = get_random_key_value(trader, true)
+		-- trace("picked %s", t.key)
+		for k, v in pairs(item) do
+			-- trace("picked %s %s, id %s", t.key, k, v)
+			t.keep[k] = v
+		end
+		i = i + 1
+	end
+end
+
+local function remove_by_id(t, npc, item)
+	if settings[t.max_key] and settings[t.max_key] == -1 then
+		trace("Maximum for %s set to -1, not removing", t.max_key)
+		return
+	end
+
+	local sec = item:section()
+	local id = item:id()
+	if t.check(item) and not t.keep[id] then
+		-- trace("%s is not in the picked table, removing. %s, id %s", t.key, sec, id)
+		alife_release(item)
+	end
+end
+
+-- Explosives
+items.explosives.collect = function(self, npc, item)
+	collect_by_id(self, npc, item)
+end
+
+items.explosives.remove = function(self, npc, item)
+	remove_by_id(self, npc, item)
+end
+
+-- Food
+items.food.collect = function(self, npc, item)
+	collect_by_id(self, npc, item)
+end
+
+items.food.pick = function(self, npc)
+	if is_empty(self.trader) then
+		-- trace("%s table is empty, ignoring", self.key)
+		return
+	end
+
+	local mandatory_drink = {
+		["flask"] = true,
+		["water_drink"] = true,
+	}
+
+	local mandatory_rad = {
+		["vodka"] = true,
+		["bottle_metal"] = true,
+		["cigarettes_russian"] = true,
+	}
+
+	local trader = self.trader
+	local t = self
+	local trader_max = settings[t.max_key] or 0
+
+	local trader_drink = {}
+	local trader_rad = {}
+	for k, v in pairs(trader) do
+		if mandatory_drink[v] then
+			trader_drink[k] = v
+		elseif mandatory_rad[v] then
+			trader_rad[k] = v
+		end
+	end
+
+	local max_items = math.min(trader_max, math.ceil(math.random() * 2))
+
+	local i = 0
+	while i < max_items and is_not_empty(trader_drink) do
+		local item = get_random_key_value(trader_drink, true)
+		-- trace("picked %s", t.key)
+		for k, v in pairs(item) do
+			-- trace("picked %s %s, id %s", t.key, k, v)
+			t.keep[k] = v
+			trader[k] = nil
+		end
+		i = i + 1
+	end
+
+	local i = 0
+	while i < max_items and is_not_empty(trader_rad) do
+		local item = get_random_key_value(trader_rad, true)
+		-- trace("picked %s", t.key)
+		for k, v in pairs(item) do
+			-- trace("picked %s %s, id %s", t.key, k, v)
+			t.keep[k] = v
+			trader[k] = nil
+		end
+		i = i + 1
+	end
+
+	pick_by_mechanic(self, npc, trader_autoinject.BARMAN)
+end
+
+items.food.remove = function(self, npc, item)
+	remove_by_id(self, npc, item)
+end
+
+-- Medical
+items.heal.collect = function(self, npc, item)
+	collect_by_id(self, npc, item)
+end
+
+items.heal.pick = function(self, npc)
+	if is_empty(self.trader) then
+		-- trace("%s table is empty, ignoring", self.key)
+		return
+	end
+
+	local mandatory_items = {
+		["bandage"] = true,
+		["medkit"] = true,
+		["drug_anabiotic"] = true,
+	}
+
+	local trader = self.trader
+	local t = self
+	local trader_max = settings[t.max_key] or 0
+	local trader_sec = {}
+	for k, v in pairs(trader) do
+		if mandatory_items[v] then
+			if not trader_sec[v] then trader_sec[v] = {} end
+			trader_sec[v][k] = v
+		end
+	end
+
+	local max_bandage = math.min(trader_max, math.ceil(math.random() * math.random() * 2) + 1)
+	local max_medkit = math.min(trader_max, math.ceil(math.random() * math.random() * 3))
+	local max_anabiotics = math.min(trader_max, math.ceil(math.random() * math.random() * 2) + 1)
+
+	local i = 0
+	while i < max_bandage and is_not_empty(trader_sec.bandage) do
+		local item = get_random_key_value(trader_sec.bandage, true)
+		-- trace("picked %s", t.key)
+		for k, v in pairs(item) do
+			-- trace("picked %s %s, id %s", t.key, k, v)
+			t.keep[k] = v
+			trader[k] = nil
+		end
+		i = i + 1
+	end
+
+	local i = 0
+	while i < max_medkit and is_not_empty(trader_sec.medkit) do
+		local item = get_random_key_value(trader_sec.medkit, true)
+		-- trace("picked %s", t.key)
+		for k, v in pairs(item) do
+			-- trace("picked %s %s, id %s", t.key, k, v)
+			t.keep[k] = v
+			trader[k] = nil
+		end
+		i = i + 1
+	end
+
+	local i = 0
+	while i < max_anabiotics and is_not_empty(trader_sec.drug_anabiotic) do
+		local item = get_random_key_value(trader_sec.drug_anabiotic, true)
+		-- trace("picked %s", t.key)
+		for k, v in pairs(item) do
+			-- trace("picked %s %s, id %s", t.key, k, v)
+			t.keep[k] = v
+			trader[k] = nil
+		end
+		i = i + 1
+	end
+
+	pick_by_mechanic(self, npc, trader_autoinject.MEDIC)
+end
+
+items.heal.remove = function(self, npc, item)
+	remove_by_id(self, npc, item)
+end
+
+-- Repair
+items.repair.collect = function(self, npc, item)
+	collect_by_id(self, npc, item)
+end
+
+items.repair.pick = function(self, npc)
+	pick_by_mechanic(self, npc, trader_autoinject.MECHANIC)
+end
+
+items.repair.remove = function(self, npc, item)
+	remove_by_id(self, npc, item)
+end
+
+-- Mags
+items.mags.collect = function(self, npc, item)
+	collect_by_id(self, npc, item)
+end
+
+items.mags.remove = function(self, npc, item)
+	remove_by_id(self, npc, item)
+end
+
+-- Ammo
+items_after.ammo.collect = function(self, npc, item)
+	if settings[self.max_key] < 0 then
+		return
+	end
+	
+	if self.check(item) then
+		local sec = item:section()
+		local id = item:id()
+		--trace("collecting %s %s, id %s", self.key, sec, id)
+		if not self.trader[sec] then 
+			self.trader[sec] = {
+				section = sec,
+				ids = {},
+			}
+		end
+		table_insert(self.trader[sec].ids, id)
+	end
+end
+
+items_after.ammo.pick = function(self, npc)
+	if settings[self.max_key] < 0 then
+		return
+	end
+
+	if is_empty(self.trader) then
+		-- trace("%s table is empty, ignoring", self.key)
+		return
+	end
+
+	local valid_items = {}
+	if not settings.sell_only_guns_ammo then
+		for k, v in pairs(self.trader) do
+			valid_items[k] = true
+		end
+	else
+		--trace("only guns ammo set, picking")
+		for sec, id in pairs(settings.max_guns == -1 and items.guns.trader or items.guns.keep) do
+			local ammo = get_ammo(sec, id, true)
+            for k, a in pairs(ammo) do
+            	if self.trader[k] then
+            		--trace("ammo %s is for gun %s, picking", k, sec)
+            		valid_items[k] = true
+            	end
+            end
+        end
+	end
+
+	local trader_max = settings[self.max_key] or 100
+	if settings.randomize then
+		local deviation = settings.randomize_deviation * 0.01
+		trader_max = min(trader_max + random(round(-trader_max * deviation), round(trader_max * deviation)), 100)
+	end
+	trader_max = trader_max * 0.01
+	for k, v in pairs(self.trader) do
+		if valid_items[k] then
+			self.keep[k] = {}
+			local count = round(#v.ids * trader_max)
+			for i = 1, count do
+				--trace("picked %s %s, id %s", self.key, k, v.ids[i])
+				self.keep[k][v.ids[i]] = true
+			end
+		end
+	end
+	--trace_table(self.keep)
+end
+
+items_after.ammo.remove = function(self, npc, item)
+	if settings[self.max_key] < 0 then
+		return
+	end
+
+	if is_empty(self.trader) then
+		return
+	end
+
+	if self.check(item) then
+		local sec = item:section()
+		local id = item:id()
+		if not (self.keep[sec] and self.keep[sec][id]) then
+			-- trace("%s is not in the picked table, removing. %s, id %s", self.key, sec, id)
+			alife_release(item)
+		end
+	end
+end
+
+local function reset_trader_items()
+	for k, v in pairs(items) do
+		empty_table(v.trader)
+		empty_table(v.keep)
+	end
+	for k, v in pairs(items_after) do
+		empty_table(v.trader)
+		empty_table(v.keep)
+	end
+end
+
+local function collect_trader_items(npc, item)
+	local sec = item:section()
+	if item_cache[sec] then
+		--trace("%s found in cache for collection", sec)
+		items[item_cache[sec]]:collect(npc, item)
+	else
+		for k, v in pairs(items) do
+			v:collect(npc, item)
+		end
+	end
+end
+
+local function pick_items(npc)
+	for k, v in pairs(items) do
+		v:pick(npc)
+		trace_table(v.keep)
+	end
+end
+
+local function remove_trader_items(npc, item)
+	local sec = item:section()
+	if item_cache[sec] then
+		--trace("%s found in cache for removing", sec)
+		items[item_cache[sec]]:remove(npc, item)
+	else
+		for k, v in pairs(items) do
+			v:remove(npc, item)
+		end
+	end
+end
+
+local function create_items_after_function(key, ...)
+	local t = {}
+	for _, v in ipairs(items_after_order) do
+		t[v] = function(...)
+			items_after[v][key](items_after[v], ...)
+		end
+	end
+	return t
+end
+
+local collect_trader_items_after = create_items_after_function("collect", npc, item)
+local pick_items_after = create_items_after_function("pick", npc)
+local remove_trader_items_after = create_items_after_function("remove", npc, item)
+
+local valid_traders = {
+	[trader_autoinject.SUPPLIER] = true,
+	[trader_autoinject.BARMAN] = true,
+	[trader_autoinject.MECHANIC] = true,
+	[trader_autoinject.MEDIC] = true,
+}
+
+function destockify(npc)
+	local trader = trader_autoinject.get_trader_type(npc)
+	if not valid_traders[trader] then
+		-- trace("npc %s, %s is not trader", npc:name(), npc:id())
+		return true
+	end
+
+	reset_trader_items()
+	npc:iterate_inventory(collect_trader_items, npc)
+	pick_items(npc)
+	npc:iterate_inventory(remove_trader_items, npc)
+
+	for _, v in ipairs(items_after_order) do
+		npc:iterate_inventory(collect_trader_items_after[v], npc)
+		pick_items_after[v](npc)
+		npc:iterate_inventory(remove_trader_items_after[v], npc)
+	end
+
+	return true
+end
+
+TraderAuto = trader_autoinject.update
+function trader_autoinject.update(npc)
+    TraderAuto(npc)
+    if settings.enable then
+	    local GUI_on_show
+	    GUI_on_show = function(name, path)
+	    	if name == "UIInventory" then
+	    		destockify(npc)
+	    		UnregisterScriptCallback("GUI_on_show", GUI_on_show)
+	    		RemoveTimeEvent("destockify" .. npc:id(), "destockify" .. npc:id())
+	    		CreateTimeEvent("destockify" .. npc:id() .. "_1", 0, 0, function()
+	    			ui_inventory.GUI:UpdateInfo(true)
+	    			ui_inventory.GUI:TMode_ResetInventories(true)
+	    			return true
+	    		end)	    		
+	    	end
+	    end
+	    RegisterScriptCallback("GUI_on_show", GUI_on_show)
+	    CreateTimeEvent("destockify" .. npc:id(), "destockify" .. npc:id(), 1, function()
+	    	destockify(npc)
+	    	UnregisterScriptCallback("GUI_on_show", GUI_on_show)
+	    	return true
+	    end)
+	end
+end
+
+local function on_option_change()
+	settings = load_defaults()
+	if ui_mcm then
+		for k, v in pairs(settings) do
+			settings[k] = ui_mcm.get("trader_destockifier/" .. k)
+		end
+	end
+end
+
+function on_game_start()
+	-- trace("Registering")
+	RegisterScriptCallback("actor_on_first_update", on_option_change)
+	RegisterScriptCallback("on_option_change", on_option_change)
+end

@@ -1,0 +1,30 @@
+--[[
+Companion aggro fix Script
+28/11/2020
+This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License
+Author: RavenAscendant
+--]]
+
+
+function escorteval(obj,enemy,flags)
+	
+	if not (obj:has_info("npcx_is_companion") or enemy:has_info("npcx_is_companion")) then --no companions then do nothing
+		return
+	end
+	local isenemy = false
+	isenemy = (enemy:relation(db.actor) >= game_object.enemy) or (obj:relation(db.actor ) >= game_object.enemy) --companions shouldn't be your enemy, if they are this will result in letting the game act like normal
+	
+	if not isenemy then -- if no one is the enemy of the player then they shouldn't be enemys of the companions.
+		flags.override = true
+		flags.result = false
+	end
+end
+	
+
+
+
+function on_game_start()
+	RegisterScriptCallback("on_enemy_eval",escorteval)
+end
+
+

@@ -1,0 +1,98 @@
+-- In this file you can enter the name of the section of a specific weapon for which you want to set special values ​​for
+-- the animation strength when leaning or crouching or looking up.
+-- Just copy this file, rename it any way you want, then uncomment or copy/paste example template to add custom values for
+-- leaning and crouching animations.
+--
+-- Currently you can set 4 variables:
+-- • l - animation power when leaning Left
+-- • r - animation power when leaning Right
+-- • c - animation power when Crouching
+-- • u - animation power when looking Up
+-- 
+-- Those variables take float values and will multiply power of the said animation.
+-- For example "r = 0" will disable leaning right animation for specific weapon,
+-- "c = 2" will make crouch animation 2 times more pronounced. See some examples below
+
+if liz_inertia_expanded then
+    if not liz_inertia_expanded.wpn_all_configs then
+        liz_inertia_expanded.wpn_all_configs = {}
+    end
+
+    local c = liz_inertia_expanded.wpn_all_configs
+
+    -- -- example 1: disable leaning left and right animations for wpn_ak74_alt
+    -- c["wpn_ak74_alt"] = {
+    --     l = 0,
+    --     r = 0,
+    -- }
+
+    -- -- example 2: make crouch animation less pronounced by half for wpn_ak74
+    -- c["wpn_ak74"] = {
+    --     c = 0.5,
+    -- }
+
+end
+
+
+if liz_inertia_expanded_crawl then
+    if not liz_inertia_expanded_crawl.blocked_weapons then
+        liz_inertia_expanded_crawl.blocked_weapons = {}
+    end
+
+    local b = liz_inertia_expanded_crawl.blocked_weapons
+
+    -- vanilla shotguns
+    b["wpn_mp133"] = true
+    b["wpn_remington870"] = true
+    b["wpn_fort500"] = true
+    b["wpn_toz106"] = true
+    b["wpn_toz106_m1"] = true
+    b["wpn_wincheaster1300"] = true
+    b["wpn_wincheaster1300_trapper"] = true
+
+    -- vanilla snipers rifles
+    b["wpn_m24"] = true
+    b["wpn_l96a1"] = true
+    b["wpn_l96a1m"] = true
+    b["wpn_m98b"] = true
+    b["wpn_remington700"] = true
+    b["wpn_sv98"] = true
+    b["wpn_sv98_custom"] = true
+    b["wpn_trg"] = true
+    b["wpn_vssk"] = true
+    b["wpn_mosin"] = true
+    b["wpn_k98_mod"] = true
+
+    -- modded weapons (you can add your weapons here)
+    b["wpn_marlin_tracker"] = true
+    b["wpn_win1886"] = true
+
+    b["wpn_toz106_bas"] = true
+
+    b["wpn_mossberg590"] = true
+    b["wpn_mossberg590_rail"] = true
+    b["wpn_mossberg590_wood"] = true
+
+    b["wpn_ks23"] = true
+    b["wpn_ks23_23_up"] = true
+    b["wpn_ks23_kaban"] = true
+    b["wpn_ks23_kaban_kab_up"] = true
+
+    b["wpn_eft_mosin"] = true
+    b["wpn_eft_obrez"] = true
+
+    b["wpn_k98_mod_silen98"] = true
+    b["wpn_kar98_retrotac"] = true
+    b["wpn_karabiner98k"] = true
+    b["wpn_karabiner98k_silen98"] = true
+    b["wpn_dvl10"] = true
+    b["wpn_dvl10_m1"] = true
+    b["wpn_remington700_bas"] = true
+    b["wpn_remington700_bas_archangel"] = true
+    b["wpn_remington700_bas_lapua700"] = true
+    b["wpn_remington700_bas_magpul_pro"] = true
+    b["wpn_remington700_bas_mod_x_gen3"] = true
+    b["wpn_rem700_aics"] = true
+    b["wpn_rem700_mcmillan"] = true
+
+end

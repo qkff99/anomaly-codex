@@ -1,0 +1,229 @@
+<!-- ====================================================================
+	New Extensible RF Sources
+    Author: Catspaw
+    Source: https://www.moddb.com/members/catspawmods/addons
+
+    Permission granted to freely translate into any language.
+===================================================================== -->
+
+<string_table>
+	<string id="ui_mcm_menu_nerfs">
+		<text>NERF Sources</text>
+	</string>
+
+	<string id="ui_mcm_menu_nerfmain">
+		<text>Основные настройки</text>
+	</string>
+
+	<string id="ui_mcm_menu_nerfwidget">
+		<text>Виджет доступности</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfmain_enable_rrfr">
+		<text>Включить совместимость с модификацией "Reworked RF Receiver"</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfmain_enable_rrfr_desc">
+		<text>Если у вас установлена модификация "Reworked RF Receiver" от Coverdrave, то данная опция активирует использование настроек звукового сигнала и частот из этого мода. Все остальные улучшения из модификации RRFR уже включены в NERFS.</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfmain_debuglogs">
+		<text>Включить ведение журнала отладки</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfmain_debuglogs_desc">
+		<text>Файл будет содержать много лишнего, но также предоставит информацию, полезную для разбора багов. Если вы хотите сообщить о проблеме с модификацией, то следуйте инструкции:\n\n
+				1. Включите данную опцию\n
+				2. Выйдите из игры на рабочий стол\n
+				3. Загрузите сохранение и воспроизведите проблемную ситуацию. По возможности без посторонних модификаций\n
+				4. Выйдите из игры на рабочий стол\n\n
+				Найдите файл лога в директории [anomaly_folder]/appdata/logs, заархивируйте его и затем выложите на какой-нибудь файлообменник</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfmain_max_freq">
+		<text>Максимальный диапазон радиочастот RF-ресивера</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfmain_max_freq_desc">
+		<text>RF-ресивер способен отображать трёхзначные числа, но его рабочий диапазон ограничен игрой в рамках ОВЧ (очень высоких частот; 30-300 МГц). Тем не менее, некоторые источники сигнала в стандартной игре находятся за пределами этого диапазона. Данная опция расширяет сразу 2 параметра: диапазон рабочих частот у ресивера и диапазон частот, используемый игрой при выдаче игроку заданий на поиск сигналов.</text>
+	</string>
+
+	
+	<string id="ui_mcm_nerfs_nerfmain_header_dar">
+		<text>Минимальная версия фреймворка для включения в Devices of Anomaly Redone</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfmain_header1">
+		<text>Модификация NERFS (Новые и расширяемые источники RF-сигналов) предлагает несколько улучшений для RF-ресивера, а именно она:\n
+				 • Расширяет верхнюю границу диапазона частот с 300 до 999 (можно настроить ниже)\n
+				 • Добавляет новые интересные источники шума, который распознаёт RF-ресивер\n
+				 • Переносит все источники RF-сигналов в расширяемый и дополняемый фреймворк, основанный на LTX-файлах. Это сделано для поддержки модификаций и исключения возможных конфликтов\n
+				 • Добавляет заметки с информацией о полезных частотах (также добавляет соответствующие статьи в справочник), которые игрок может изучить в ходе игрового процесса. Заметки которые можно найти случайным образом на трупах сталкеров (только полная версия - ссылка ниже)\n
+				 • Добавляет в HUD опциональный индикатор мощности сигнала RF-ресивера для игроков с ограниченными возможностями или же для пущего удобства\n
+				 • Включает в себя поддержку модификаций "Reworked RF Receiver" и "TB's RF Tasks"
+		</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfmain_header2">
+		<text>Более подробная информация на странице модификации на Moddb:\nhttps://www.moddb.com/members/catspawmods/addons
+		</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfwidget_header1">
+		<text>Виджет доступности - это простой визуальный индикатор для вашего HUD'а, который показывает мощность RF-сигнала. В первую очередь он предназначен для использования глухими людьми и теми, у кого наблюдаются проблемы со слухом. Также виджет может быть полезен тем, кому сложно отличить звуковые подсказки от фонового шума. Цвет индикатора и его позицию на экране можно изменить по вашему желанию, что также может быть полезно при дальтонизме. Виджет доступности появится на экране ТОЛЬКО при условии, что игрок держит в руке RF-ресивер.\n</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_scrolldown">
+		<text>** Прокрутите вниз, чтобы увидеть дополнительные настройки **</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfwidget_show">
+		<text>Показывать виджет доступности</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfwidget_lo_header">
+		<text>\n\nИндикатор будет мигать этим цветом при низком уровне сигнала.\nПо умолчанию (серый): 255,50,50,50\n\n</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfwidget_hi_header">
+		<text>\n\nИндикатор будет мигать этим цветом при высоком уровне сигнала.\nПо умолчанию (зеленый): 255,0,250,0</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfwidget_em_header">
+		<text>\n\nИндикатор будет мигать этим цветом во время выбросов.\nПо умолчанию (красный): 128,200,0,0\n\n</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfwidget_clr_a">
+		<text>Прозрачность</text>
+	</string>	
+	<string id="ui_mcm_nerfs_nerfwidget_clr_r">
+		<text>Красный</text>
+	</string>
+	<string id="ui_mcm_nerfs_nerfwidget_clr_g">
+		<text>Зелёный</text>
+	</string>
+	<string id="ui_mcm_nerfs_nerfwidget_clr_b">
+		<text>Синий</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfwidget_headerxy">
+		<text>Координаты XY, по которым размещается левый верхний угол виджета доступности:</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfwidget_headerxy_desc">
+		<text>0,0 - это левый верхний угол экрана; 1024,768 - правый нижний. Игра конвертирует эти значения, чтобы подстроиться под разрешение вашего монитора. Значение по умолчанию (по центру внизу) - 491,670.</text>
+	</string>
+	<string id="ui_mcm_nerfs_nerfwidget_pos_x">
+		<text>Координата X (по горизонтали, слева направо)</text>
+	</string>
+	<string id="ui_mcm_nerfs_nerfwidget_pos_y">
+		<text>Координата Y (по вертикали, сверху вниз)</text>
+	</string>
+
+<!-- Added in 1.2 -->
+
+	<string id="ui_mcm_nerfs_nerfmain_use_mwheel">
+		<text>Смена радиочастоты колесом мыши</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfmain_use_mwheel_desc">
+		<text>Когда эта функция включена, колесо мыши можно прокручивать вверх и вниз для изменения частоты RF-ресивера. Как и в стандартной игре, удерживание Shift или Alt изменит приращение частоты на 10 или 50 соответственно. Прокрутка стала намного быстрее!\n
+		Для этой функции требуются модифицированные EXE-файлы версии 20230701 или новее. В настоящий момент эта функция не поддерживается модификацией GAMMA.</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfmain_binaries">
+		<text>Модифицированные EXE-файлы от demonized: https://github.com/themrdemonized/STALKER-Anomaly-modded-exes/
+		</text>
+	</string>
+
+<!-- Added in 1.3 - переведено Google Translate -->
+
+	<string id="ui_mcm_menu_nerfpresets">
+		<text>Пресеты</text>
+	</string>
+
+	<string id="ui_mcm_nerfpresets_header1">
+		<text>Вы можете указать до девяти предустановленных частот и назначить для каждой свою горячую клавишу.</text>
+	</string>
+
+	<string id="ui_mcm_nerfpresets_header2">
+		<text>Если у вас включена опция смены радиочастоты колесом мыши, то вы также можете удерживать Ctrl во время прокрутки, чтобы переключаться между предустановками ниже.</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_preset1_freq">
+		<text>Предустановленная частота 1</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_kb_preset1">
+		<text>Клавиша для предустановки 1</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_preset2_freq">
+		<text>Предустановленная частота 2</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_kb_preset2">
+		<text>Клавиша для предустановки 2</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_preset3_freq">
+		<text>Предустановленная частота 3</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_kb_preset3">
+		<text>Клавиша для предустановки 3</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_preset4_freq">
+		<text>Предустановленная частота 4</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_kb_preset4">
+		<text>Клавиша для предустановки 4</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_preset5_freq">
+		<text>Предустановленная частота 5</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_kb_preset5">
+		<text>Клавиша для предустановки 5</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_preset6_freq">
+		<text>Предустановленная частота 6</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_kb_preset6">
+		<text>Клавиша для предустановки 6</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_preset7_freq">
+		<text>Предустановленная частота 7</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_kb_preset7">
+		<text>Клавиша для предустановки 7</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_preset8_freq">
+		<text>Предустановленная частота 8</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_kb_preset8">
+		<text>Клавиша для предустановки 8</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_preset9_freq">
+		<text>Предустановленная частота 9</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_kb_preset9">
+		<text>Клавиша для предустановки 9</text>
+	</string>
+
+	<string id="st_nerfs_freq_preset">
+		<text>Предустановленная частота %s: %s МГц</text>
+	</string>
+
+</string_table>

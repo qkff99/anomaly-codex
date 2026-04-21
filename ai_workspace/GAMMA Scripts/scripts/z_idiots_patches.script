@@ -1,0 +1,25 @@
+AddScriptCallback("idiots_on_start")
+
+
+require "illish.patches.axr_beh"
+require "illish.patches.axr_companions"
+require "illish.patches.ea_callbacks"
+require "illish.patches.itms_manager"
+require "illish.patches.rx_ff"
+require "illish.patches.sr_light"
+require "illish.patches.state_mgr"
+require "illish.patches.surge_manager"
+require "illish.patches.utils_obj"
+require "illish.patches.xr_combat_ignore"
+require "illish.patches.xr_combat"
+require "illish.patches.xr_conditions"
+require "illish.patches.xr_corpse_detection"
+require "illish.patches.xr_danger"
+require "illish.patches.xr_gather_items"
+require "illish.patches.xr_help_wounded"
+require "illish.patches.xr_weapon_jam"
+
+
+function on_game_start()
+  SendScriptCallback("idiots_on_start")
+end

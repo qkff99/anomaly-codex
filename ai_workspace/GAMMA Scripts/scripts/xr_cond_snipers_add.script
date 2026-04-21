@@ -1,0 +1,114 @@
+local wpn_t = { ["w_rifle"] = true, ["w_sniper"] = true, ["w_smg"] = true }
+
+xr_conditions.guard_has_rifle = function(actor, npc, p)
+	if not (npc) then
+		return false
+	end
+
+	local id = type(npc.id) == "function" and npc:id() or npc.id
+
+	local st = db.storage[id]
+	if not (st) then
+		return false
+	end
+
+	local obj = st and st.object or level.object_by_id(id)
+	if (not obj) then
+		return
+	end
+
+	local wpn = obj:best_weapon() or obj:active_item()
+	if not (wpn and IsWeapon(wpn) and not IsMelee(wpn)) then
+		return
+	end
+
+	local kind = wpn and wpn:section() and ini_sys:r_string_ex(wpn:section(), "kind") or nil
+
+	if kind and wpn_t[kind] then
+		return true
+	end
+
+	return false
+end
+
+xr_conditions.guard_has_sniper_rifle = function(actor, npc, p)
+	if not (npc) then
+		return false
+	end
+
+	local id = type(npc.id) == "function" and npc:id() or npc.id
+
+	local st = db.storage[id]
+	if not (st) then
+		return false
+	end
+
+	local obj = st and st.object or level.object_by_id(id)
+	if (not obj) then
+		return
+	end
+
+	local wpn = obj:best_weapon() or obj:active_item()
+	if not (wpn and IsWeapon(wpn) and not IsMelee(wpn)) then
+		return
+	end
+
+	local kind = wpn and wpn:section() and ini_sys:r_string_ex(wpn:section(), "kind") or nil
+
+	if kind and kind == "w_sniper" then
+		return true
+	end
+
+	return false
+end
+
+xr_conditions.trader_sleep_time = function(actor, npc, p)
+	local opt_on = semiradiant_ai_mcm.get_config("trader_sleep")
+	local hrs_from = semiradiant_ai_mcm.get_config("sleep_from")
+	local hrs_to = semiradiant_ai_mcm.get_config("sleep_to")
+	local must_go_sleep = opt_on and hrs_from and hrs_to and (level.get_time_hours() >= hrs_from or level.get_time_hours() < hrs_to)
+
+	if db.actor ~= nil and must_go_sleep then
+		return true
+	end
+
+	return false
+end
+
+xr_conditions.mechanic_sleep_time = function(actor, npc, p)
+	local opt_on = semiradiant_ai_mcm.get_config("mechanic_sleep")
+	local hrs_from = semiradiant_ai_mcm.get_config("sleep_from")
+	local hrs_to = semiradiant_ai_mcm.get_config("sleep_to")
+	local must_go_sleep = opt_on and hrs_from and hrs_to and (level.get_time_hours() >= hrs_from or level.get_time_hours() < hrs_to)
+
+	if db.actor ~= nil and must_go_sleep then
+		return true
+	end
+
+	return false
+end
+
+xr_conditions.medic_sleep_time = function(actor, npc, p)
+	local opt_on = semiradiant_ai_mcm.get_config("medic_sleep")
+	local hrs_from = semiradiant_ai_mcm.get_config("sleep_from")
+	local hrs_to = semiradiant_ai_mcm.get_config("sleep_to")
+	local must_go_sleep = opt_on and hrs_from and hrs_to and (level.get_time_hours() >= hrs_from or level.get_time_hours() < hrs_to)
+
+	if db.actor ~= nil and must_go_sleep then
+		return true
+	end
+
+	return false
+end
+
+xr_conditions.check_door_faction_time = function(actor,npc,p)
+	local opt_on = semiradiant_ai_mcm.get_config("trader_sleep")
+	local hrs_from = semiradiant_ai_mcm.get_config("sleep_from")
+	local hrs_to = semiradiant_ai_mcm.get_config("sleep_to")
+	local must_go_sleep = opt_on and hrs_from and hrs_to and (level.get_time_hours() >= hrs_from or level.get_time_hours() < hrs_to)
+
+	if(p[1]~=nil) then
+		return game_relations.is_factions_enemies(character_community(db.actor), p[1]) or must_go_sleep
+	end
+	return false
+end

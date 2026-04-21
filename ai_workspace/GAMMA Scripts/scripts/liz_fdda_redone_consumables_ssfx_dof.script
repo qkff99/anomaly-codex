@@ -1,0 +1,31 @@
+--references
+local ssfx_far_blur = nil
+--vars
+local mcm_ssfx_wpn_dof_FDDA = false
+
+function on_game_start()
+    if not (ssfx_001_mcm and ssfx_weapons_dof) then
+        return
+    end
+    ssfx_far_blur = ssfx_weapons_dof.ssfx_far_blur
+    RegisterScriptCallback("on_game_load", initialize)
+    RegisterScriptCallback("on_option_change", initialize)
+    RegisterScriptCallback("on_fddar_consumable_anim_start", on_fddar_consumable_anim_start)
+    RegisterScriptCallback("on_fddar_consumable_anim_end", on_fddar_consumable_anim_end)
+end
+
+function initialize()
+    mcm_ssfx_wpn_dof_FDDA = ssfx_001_mcm.ssfx_get_setting("wpn_dof", "fdda", ssfx_weapons_dof_settings)
+end
+
+function on_fddar_consumable_anim_start(section)
+    if mcm_ssfx_wpn_dof_FDDA then
+        ssfx_far_blur(1, 0)
+    end
+end
+
+function on_fddar_consumable_anim_end(section)
+    if mcm_ssfx_wpn_dof_FDDA then
+        ssfx_far_blur(0, 0)
+    end
+end

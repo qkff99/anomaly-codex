@@ -1,0 +1,61 @@
+local is_shift_pressed = false
+local is_use_long_anim = false
+local section_list_cigarettes = {
+    ["cigar1"] = true,
+    ["cigar2"] = true,
+    ["cigar3"] = true,
+    ["cigarettes"] = true,
+    ["cigarettes_lucky"] = true,
+    ["cigarettes_russian"] = true,
+    ["tobacco"] = true,
+    ["joint"] = true,
+    ["marijuana"] = true,
+    ["cigar"] = true,
+    ["hand_rolling_tobacco"] = true,
+}
+--- ------------------------------------------
+--- init
+--- ------------------------------------------
+
+function on_game_start()
+    custom_functor_autoinject.add_functor("enjoy_cigs", is_valid_cigarette, get_functor_name, nil, enjoy_cigarette, true)
+    RegisterScriptCallback("on_key_press", on_key_press)
+    RegisterScriptCallback("on_key_release", on_key_release)
+end
+
+function on_key_press(key)
+    if (key == DIK_keys.DIK_LSHIFT) or (key == DIK_keys.DIK_RSHIFT) then is_shift_pressed = true end
+end
+
+function on_key_release(key)
+    if (key == DIK_keys.DIK_LSHIFT) or (key == DIK_keys.DIK_RSHIFT) then is_shift_pressed = false end
+end
+
+function is_valid_cigarette(obj, bag, mode)
+    return section_list_cigarettes[obj:section()] and mode == "inventory" and bag == "actor_bag"
+end
+
+function get_functor_name(obj, bag, mode)
+    return "st_enjoy_cigs"
+end
+
+function enjoy_cigarette(obj, bag, mode)
+    is_use_long_anim = true
+    ui_inventory.GUI:Action_Use(obj, bag)
+end
+
+--- ------------------------------------------
+--- main
+--- ------------------------------------------
+
+function mutator(section)
+    local item_section = section
+
+    if section_list_cigarettes[item_section] and (is_shift_pressed or is_use_long_anim) then
+        is_use_long_anim = false
+        item_section = item_section .. "_alt"
+    end
+
+    return item_section
+end
+liz_fdda_redone_animation_mutator.add(5, mutator)

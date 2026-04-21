@@ -1,0 +1,451 @@
+; Fields:
+; s3ds_reticle_size - reticle size multiplier (default 4)
+; s3ds_eye_relief - distance from scope lens to projected shadow, or eye relief (default 4)
+; s3ds_exit_pupil - exit pupil diameter relative to ocular lens diameter, or parallax shadow diameter (default 0.3)
+; s3ds_ffp - enable first focal plane feature, reticle sizes up while zooming. Can be 0 or 1 (default 0)
+
+; s3ds_reflection_hue - hue parameter of lens reflections, range [0 .. 1] (default 0.65)
+; s3ds_min_zoom_1x - at minimal FOV magnification, disable image scale up inside scope. Needed for 1x optic sights and 1-Nx LPVO scopes
+
+; s3ds_image_type - background image processor (default 0)
+;   0 - none
+;   1 - NV scope (with ms_count = 2 becomes switchable)
+;   2 - thermal scope (with ms_count = 2 becomes switchable white-hot/black-hot, with ms_count = 3 becomes also switchable on/off)
+;   3 - Colored thermal scope (same as previous)
+; s3ds_reticle_type - reticle processor (default 0)
+;   0 - none
+;   1 - LED illuminated reticle
+;   2 - Masked LED illuminated reticle (red channel is regular black reticle, green channel is illuminated area)
+;   3 - ACOG, sun illuminated reticle (red channel is regular black reticle, green channel is illuminated area, blue channel is gray text)
+;   4 - ELCAN Specter, LED illuminated reticle with zoom switch (red channel is regular black reticle, green channel is illuminated area 1, blue channel is illuminated area 2).
+;         Use with ms_count = 3 and ms_colors = scope_black, scope_red_dim, scope_red
+;   5 - 1P59 Giperon scope (red channel at first focal plane, green channel at second focal plane, blue channel rotated by zoom), has LED illumination
+;   6 - Screen (used for classic thermal scopes, disables parallax shadow and circle sight bound)
+;	7 - Projected reticle (additive blend mode, use for NVs and magnifiers of reflex/holographic sights)
+;   8 - Flat screen (used for plain LCD screens of thermal sights like T12, disables almost all lens effects)
+;	9 - Dual Focal Plane reticle (red channel is FFP, green channel is SFP, blue channel is illumination)
+; s3ds_dirt_intensity - dirtness. 0 is clear vision, 1 is severe contamination (default 0)
+; s3ds_chroma_power - chromatic abberation intensity. Represents scope overall quality. 0 is no chroma, 0.02 is barely noticeable chroma, 0.05 is trash-tier scope (default 0.02)
+
+; s3ds_lens_color - image color affection by lens. Represents lens quality and condition. Also may be used for contrast lens cups.
+
+; ms_colors - list of colors for illumination
+; ms_count - count of different reticles
+;
+; magnification - zoom level. individual weapon section still require scope_zoom_factor to be set to avoid infinite zoom bug.
+;
+; Ingame testing (console commands, put actual parameters)
+; s3ds_param_1 s3ds_reticle_size, s3ds_eye_relief, s3ds_exit_pupil, s3ds_ffp
+; s3ds_param_2 s3ds_reflection_hue, 0, s3ds_min_zoom_1x, 0
+; s3ds_param_3 s3ds_image_type, s3ds_reticle_type, s3ds_dirt_intensity, s3ds_chroma_power
+; s3ds_param_4 s3ds_lens_color, 0
+;
+;Guns with integrated scopes need to have the scope paramateres defined under their weapon sections. Look in the rifles ltx.
+;
+;ATHI Note - Shotguns and SMGs should be limited to 4x zoom max scopes for balance purposes. Some of these have the pn23 attached for night time. It's zoom can be limited in the 
+;weapon's scope section by setting scope factor to 30. You can do this for any scope you want if you prefer the look of a certain scope but wish to maintain this balance
+;
+;zoom_step_count must be added to individual weapon sections to constrain the amount of steps between min and max zoom. To get a nice feeling zoom, it is recommended that
+; zoom_step_count = (max zoom)-1 or (max zoom/2)-1. for example. for a 4x zoom, zoom_step_count=3 [4-1=3]. or for a 10x zoom, zoom_step_count = 4 [(10/2)-1=4]
+;
+; Sights
+;----------------------------------DOVETAIL/EAST SCOPES---------------------------------
+![pka]	--1x, Red dot
+	s3ds_reticle_size 	= 2
+	s3ds_eye_relief 	= 4.9
+	s3ds_exit_pupil 	= 5
+	s3ds_min_zoom_1x 	= 1
+	s3ds_reticle_type 	= 1
+	ms_count 			= 2
+	ms_colors 			= scope_red, scope_green	
+
+![1p78gs] 	--2.8x
+	s3ds_reticle_size 	= 3.6
+	s3ds_eye_relief 	= 2
+	s3ds_exit_pupil		= 0.5	
+	magnifications 		= 2.8	
+	
+![kashtan_rmr]	--1p78gs, 2.8x
+	s3ds_reticle_size 	= 3.6
+	s3ds_eye_relief 	= 2
+	s3ds_exit_pupil		= 0.5	
+	magnifications 		= 2.8
+	
+![1pn93n2_1gs] --Thermal, 3.7x
+	s3ds_reticle_size 	= 3.5	
+	s3ds_eye_relief 	= 2.8
+	s3ds_exit_pupil		= 0.33	
+	s3ds_image_type 	= 2
+	s3ds_reticle_type	= 7	
+	magnifications 		= 3.7
+
+![1p29]	--4x
+	s3ds_reticle_size 	= 4.2
+	s3ds_eye_relief 	= 2.7
+	s3ds_exit_pupil		= 0.24
+	s3ds_reticle_type  	= 2
+	ms_count            = 2
+    ms_colors           = scope_black, scope_green 
+	magnifications 		= 4	
+	
+![usp1] --1P29, 4x
+	s3ds_reticle_size 	= 4.2
+	s3ds_eye_relief 	= 2.7
+	s3ds_exit_pupil		= 0.24
+	s3ds_reticle_type  	= 2
+	ms_count            = 2
+    ms_colors           = scope_black, scope_green 
+	magnifications 		= 4	
+	
+![ps01]	--4x
+	s3ds_reticle_size 	= 4.4
+	s3ds_eye_relief 	= 2.2
+	s3ds_exit_pupil		= 0.6	
+	s3ds_reticle_type 	= 1	
+	ms_count 			= 2
+	ms_colors 			= scope_black, scope_red
+	magnifications 		= 4
+		
+![pso2]	--4x
+	s3ds_reticle_size 	= 4.1
+	s3ds_eye_relief 	= 2.2
+	s3ds_exit_pupil		= 0.5	
+	s3ds_reticle_type 	= 1
+	ms_count 			= 2
+	ms_colors 			= scope_black, scope_red
+	magnifications 		= 4
+
+![pritseldob] --PS02, 4x
+	s3ds_reticle_size 	= 4.1
+	s3ds_eye_relief 	= 2
+	s3ds_exit_pupil		= 0.5	
+	s3ds_reticle_type 	= 1
+	ms_count 			= 2
+	ms_colors 			= scope_black, scope_red
+	magnifications 		= 4
+	
+![1pn93] --Dynamic, NVG, 4x
+ 	s3ds_reticle_size 	= 3.3	
+	s3ds_eye_relief 	= 2.9
+	s3ds_exit_pupil		= 0.4
+	s3ds_image_type 	= 1
+	s3ds_reticle_type	= 7	
+	ms_count 			= 2
+	magnifications 		= 1-4
+
+![pgo7gs] --4x, RPG scope
+	s3ds_reticle_size 	= 10
+	s3ds_eye_relief 	= 2.5
+	magnifications 		= 4
+	
+![pso1m21] --PS0P, 6x
+	s3ds_reticle_size 	= 4.1
+	s3ds_eye_relief 	= 2
+	s3ds_exit_pupil		= 0.5	
+	s3ds_reticle_type 	= 1
+	ms_count 			= 2
+	ms_colors 			= scope_black, scope_red	
+	magnifications 		= 6	
+	
+![1p59] --Dynamic, 3x-10x
+	s3ds_reticle_size 	= 4.05
+	s3ds_eye_relief 	= 4.7
+	s3ds_exit_pupil		= 0.75	
+	s3ds_ffp			= 1
+	s3ds_reticle_type 	= 5
+	ms_count 			= 2
+	ms_colors 			= scope_black, scope_red
+	magnifications 		= 3-10
+	
+![1p69] --1p59, 3x-10x, picatinny, UNUSED
+	s3ds_reticle_size 	= 4.05
+	s3ds_eye_relief 	= 4.7
+	s3ds_exit_pupil		= 0.75	
+	s3ds_ffp			= 1
+	s3ds_reticle_type 	= 5
+	ms_count 			= 2
+	ms_colors 			= scope_black, scope_red
+	magnifications 		= 3-10
+	
+![wpn_addon_scope_pu] 	--3.5x
+	s3ds_reticle_size 	= 2.9
+	s3ds_exit_pupil		= 0.5
+	s3ds_eye_relief 	= 3.8
+    s3ds_lens_color     = lens_old_yellow	
+	magnifications 		= 3.5
+	
+![wpn_addon_scope_zf4]	--4x
+	s3ds_reticle_size 	= 4
+	s3ds_eye_relief 	= 2
+	s3ds_exit_pupil		= 0.65
+    s3ds_lens_color     = lens_old_yellow	
+	magnifications 		= 4
+
+![wpn_addon_scope_g43]	--4x
+	s3ds_reticle_size 	= 3
+	s3ds_eye_relief 	= 3.7
+	s3ds_lens_color     = lens_old_yellow
+	magnifications 		= 4
+	
+![wpn_addon_scope_po4x34]	--Groza, 4x
+	s3ds_reticle_size 	= 4.2
+	s3ds_eye_relief 	= 2
+	s3ds_exit_pupil		= 0.35
+	s3ds_lens_color     = lens_old_yellow	
+	magnifications 		= 4
+	
+;----------------------------------PICATINNY/WEST SCOPES---------------------------------
+![t12]	--Thermal, 1x
+	s3ds_reticle_size 	= 1.05
+	s3ds_image_type 	= 3
+	s3ds_reticle_type 	= 8
+	s3ds_min_zoom_1x	= 1
+
+![echo1] --Thermal, 1x-2x
+	s3ds_chroma_power   = 0.02
+	s3ds_dirt_intensity = 0.1
+	s3ds_eye_relief     = 3
+	s3ds_image_type     = 3
+	s3ds_reticle_size   = 0.9
+	s3ds_reticle_type   = 8
+	magnifications 		= 1,2
+	
+![monstrum]	--2x
+	s3ds_reticle_size 	= 3
+	s3ds_eye_relief 	= 2
+	s3ds_exit_pupil		= 0.8
+	s3ds_reticle_type 	= 1
+	ms_count 			= 2
+	ms_colors 			= scope_black, scope_red	
+	magnifications 		= 2
+	
+![acog]		--2.8x
+	s3ds_reticle_size 	= 4.2
+	s3ds_eye_relief 	= 1.7
+	s3ds_exit_pupil		= 0.6
+	s3ds_chroma_power	= 0.02	
+	s3ds_reticle_type 	= 3
+	ms_count		  	= 3
+	ms_colors 			= scope_red, scope_green, scope_amber	
+	magnifications 		= 2.8	
+	
+![triji]	--acog, 2.8x
+	s3ds_reticle_size 	= 4.2
+	s3ds_eye_relief 	= 1.7
+	s3ds_exit_pupil		= 0.6
+	s3ds_chroma_power	= 0.02	
+	s3ds_reticle_type 	= 3
+	ms_count		  	= 3
+	ms_colors 			= scope_red, scope_green, scope_amber	
+	magnifications 		= 2.8	
+
+![trihawk]	--3x
+	s3ds_reticle_size 	= 3.2
+	s3ds_eye_relief 	= 2.2
+	s3ds_exit_pupil		= 0.7
+	s3ds_chroma_power	= 0.02
+	magnifications 		= 3
+	
+![gee36]	--3x
+	s3ds_reticle_size 	= 3.2
+	s3ds_eye_relief 	= 2
+	s3ds_exit_pupil		= 0.75	
+	magnifications 		= 3
+
+![c79]	--3.5x
+	s3ds_reticle_size 	= 3.6
+	s3ds_eye_relief 	= 2.3
+	s3ds_exit_pupil		= 0.65
+	magnifications 		= 3.5
+	
+![side]	--3.5x
+	s3ds_chroma_power   = 0.1
+    s3ds_exit_pupil     = 0.38
+    s3ds_lens_color     = lens_old_yellow
+	magnifications 		= 3.5
+
+![vulcan] --NVG, 3.5x
+	s3ds_reticle_size 	= 3.4
+	s3ds_eye_relief 	= 2
+	s3ds_exit_pupil		= 0.65	
+	s3ds_chroma_power	= 0.05	
+	s3ds_image_type 	= 1
+	s3ds_reticle_type	= 0
+	ms_count 			= 2
+	magnifications 		= 3.5
+	
+![susat]	--4x
+	s3ds_reticle_size 	= 4.1
+	s3ds_eye_relief 	= 2.6
+	magnifications		= 4
+
+![susatov]	--4x, l85 sight
+	s3ds_reticle_size 	= 4.1
+	s3ds_eye_relief 	= 2.6
+	magnifications		= 4
+	
+![bravo4]	--4x
+	s3ds_reticle_size 	= 4.4
+	s3ds_eye_relief 	= 2.2
+	s3ds_exit_pupil		= 0.35	
+	magnifications 		= 4
+
+![hamr]	--4x
+	s3ds_reticle_size 	= 4.7
+	s3ds_eye_relief 	= 2.2
+	s3ds_exit_pupil		= 0.35
+	s3ds_chroma_power	= 0.035
+	magnifications 		= 4
+	
+![specter] --Dynamic, Rotating Scope, 1x or 4x, zoom_step_count = 1
+	s3ds_reticle_size 	= 6.1
+	s3ds_eye_relief 	= 2
+	s3ds_chroma_power	= 0.04	
+	s3ds_reticle_type 	= 4
+	ms_count 			= 3
+	ms_colors			= scope_black, scope_red_dim, scope_red
+	magnifications 		= 1,4
+	
+![spec_alt] --Dynamic, specter, Rotating Scope, 1x OR 4x, zoom_step_count = 1
+	s3ds_reticle_size 	= 6.1
+	s3ds_eye_relief 	= 2
+	s3ds_chroma_power	= 0.04	
+	s3ds_reticle_type 	= 4
+	ms_count 			= 3
+	ms_colors			= scope_black, scope_red_dim, scope_red
+	magnifications 		= 1,4
+	
+![tac30]	--Dynamic, 1x-4x
+	s3ds_reticle_size 	= 4.3
+	s3ds_eye_relief 	= 2.1
+	s3ds_exit_pupil		= 0.4
+	s3ds_chroma_power	= 0.04	
+	magnifications 		= 1-4
+	
+![p4x32] --Not Adjusted                                  		
+	s3ds_reticle_size 	= 4.2
+	s3ds_eye_relief 	= 2
+	s3ds_exit_pupil		= 0.35	
+
+	
+![po4x34] --Picatinny, 4x
+	s3ds_reticle_size 	= 4.2
+	s3ds_eye_relief 	= 2
+	s3ds_exit_pupil		= 0.35	
+	magnifications 		= 4
+	
+![uh1_magd] --6x
+	s3ds_reticle_size 	= 4
+	s3ds_eye_relief 	= 2.5
+	s3ds_chroma_power	= 0		
+	magnifications 		= 6
+
+![e0t2_magd]	--3x	
+	s3ds_reticle_size 	= 4
+	s3ds_eye_relief 	= 2.8
+	s3ds_chroma_power	= 0
+	ms_count 			= 6	
+	magnifications		= 3
+
+![devo]	--1x/6x
+	s3ds_reticle_size 	= 4.6
+	s3ds_eye_relief 	= 2
+	s3ds_exit_pupil		= 0.525
+	s3ds_chroma_power	= 0		
+	s3ds_reticle_type 	= 1
+	ms_count 			= 2
+	ms_colors 			= scope_black, scope_red	
+	magnifications 		= 6
+	
+![pn23] --Dynamic, NVG, 1x-6x
+	s3ds_reticle_size 	= 4.38	
+	s3ds_eye_relief 	= 1.98
+	s3ds_exit_pupil		= 0.45	
+	s3ds_chroma_power	= 0.05	
+	s3ds_image_type 	= 1
+	s3ds_reticle_type	= 7
+	ms_count 			= 2
+	magnifications 		= 1-6
+	
+![razorhd] --Dynamic, 1x-6x
+	s3ds_reticle_size 	= 4.1
+	s3ds_eye_relief 	= 2.3
+	s3ds_chroma_power	= 0		
+	magnifications 		= 1-6
+	
+![ps320] --Dynamic, Rotating Scope, 1x OR 6x, zoom_step_count = 1
+	s3ds_reticle_size 	= 4.4
+	s3ds_eye_relief 	= 2.35
+	s3ds_ffp			= 1		
+	s3ds_chroma_power	= 0.045	
+	s3ds_reticle_type 	= 4
+	ms_count 			= 3
+	ms_colors			= scope_black, scope_red_dim, scope_red	
+	magnifications 		= 1,6
+	
+;--------------------------------------------------------------
+;----------------------Sniper Scopes---------------------------	
+;--------------------------------------------------------------
+
+![leupold] --Dynamic, 1x-8x
+	s3ds_reticle_size 	= 4.35
+	s3ds_eye_relief 	= 4
+	s3ds_exit_pupil		= 0.4	
+	s3ds_ffp			= 1	
+	magnifications 		= 1-8
+	
+![mark8_rmr] --Dynamic, leupold, 1x-8x
+	s3ds_reticle_size 	= 4.35
+	s3ds_eye_relief 	= 4
+	s3ds_exit_pupil		= 0.4	
+	s3ds_ffp			= 1	
+	magnifications 		= 1-8
+	
+![ado]	--Dynamic, 3x-9x
+	s3ds_reticle_size 	= 3.9
+	s3ds_eye_relief 	= 4.8	
+	s3ds_exit_pupil		= 0.55		
+	magnifications 		= 3-9	
+	
+![march_f_shorty] --Dynamic, 1x-8x
+	s3ds_eye_relief 	= 2	
+	s3ds_exit_pupil		= 0.55	
+	s3ds_ffp			= 1
+	s3ds_reticle_type 	= 9
+	ms_count 			= 3
+	ms_colors 			= scope_black, scope_red2, scope_orange
+	magnifications 		= 1-8
+	
+![march_f_shorty_alt] --Dynamic, 1x-8x
+	s3ds_eye_relief 	= 2	
+	s3ds_exit_pupil		= 0.55	
+	s3ds_ffp			= 1
+	s3ds_reticle_type 	= 9
+	ms_count 			= 3
+	ms_colors 			= scope_black, scope_red2, scope_orange
+	magnifications 		= 1-8
+
+![gauss_sight] --Dynamic, Thermal, 1x-10x, zoom_step_count = 4
+	s3ds_reticle_size 	= 5
+	s3ds_image_type 	= 2
+	s3ds_reticle_type 	= 6
+	ms_count 			= 2
+	magnifications 		= 1-10
+	
+![cortex] --Dynamic, 1x-10x
+	s3ds_reticle_size 	= 4
+	s3ds_eye_relief 	= 6
+	s3ds_exit_pupil		= 0.9	
+	s3ds_ffp			= 1		
+	magnifications 		= 1-10
+	
+![marchf] --Dynamic, 3x-24x
+	s3ds_reticle_size 	= 4.9
+	s3ds_eye_relief 	= 3.1
+	s3ds_ffp			= 1	
+	s3ds_reticle_type 	= 2
+	ms_count 			= 2
+	ms_colors 			= scope_black, scope_red	
+	magnifications 		= 3-24
+	
+;----------------------------------------------------------------------

@@ -1,0 +1,130 @@
+ --[[
+item pickup animation script
+Author: Feel_Fried
+--]]
+local skin_anim, harv_usage_snd,enable_take
+local ltx = ini_file("items\\items\\anims_loot_list.ltx")
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_first_update",actor_on_first_update)
+	RegisterScriptCallback("on_option_change", loadsettings)
+end
+
+function actor_on_first_update()
+	RegisterScriptCallback("actor_on_item_take",actor_on_item_take)
+	RegisterScriptCallback("actor_on_item_before_pickup",actor_on_item_before_pickup)
+	loadsettings()
+end
+
+function loadsettings()
+	if ui_mcm then
+		enable_animations = ui_mcm.get("EA_settings/enable_animations")
+		enable_take = ui_mcm.get("EA_settings/take_item_anim")
+	else
+		enable_animations = ui_options.get("video/player/animations")
+		enable_take = true
+	end
+	enable_multipickup = ui_options.get("control/general/pickup_mode")
+end
+
+
+local anim_plays = nil
+local anm_name = "camera_effects\\weapon\\two_handed_weapon_effect.anm"
+function actor_on_item_before_pickup(item,flags)
+	if (not enable_take) or (not enable_animations) then return end --1 - 10 single press, 50+ - long press
+	flags.ret_value = false
+	if not anim_plays and not enhanced_animations.used_item then
+		game.play_hud_motion(db.actor:active_slot()==0 and 2 or 1, "item_ea_take_hud", "anm_ea_take", true, 1.4)
+		game.play_hud_anm(anm_name, 0, 1.4, 1, false)
+		CreateTimeEvent("ea_item_take","take_delay",0.65,take_delay,item)
+		CreateTimeEvent("ea_item_take","anim_delay",1.33,anim_delay)
+		anim_plays = true
+	end
+end
+
+function anim_delay()
+	anim_plays = nil
+	return true
+end
+
+function take_delay(obj_o)
+	local actor = db.actor
+	actor:take_item(obj_o)
+	if enable_multipickup then
+		multipickup(1.5,0.75,actor)
+		multipickup(1,0.5,actor)
+		multipickup(0.5,0.25,actor)
+	end
+	printf(obj_o:section() .. " taken with id " .. obj_o:id())
+	actor = nil
+	return true
+end
+
+function multipickup(dist,radius,actor)
+	local pos = device().cam_pos
+	local dir = device().cam_dir
+	pos = pos:add(dir:mul(dist))
+	level.iterate_nearest(pos,dist,function(obj)
+		if obj:cast_InventoryItem() and (pos:distance_to(obj:position()) <= radius) then
+			actor:take_item(obj)
+			printf(obj:section() .. " taken with id " .. obj:id())
+		end
+	end)
+	pos,dir = nil
+end
+
+function actor_on_item_take(item)
+	--mutant loot bag animation
+	if enhanced_animations.fake_monster then
+		fov_anim_manager.change_fov(0.45)
+		enhanced_animations.fake_monster = nil
+		level.disable_input()
+		local sect = item:section()
+		local item_sect_index = ltx:section_exist(sect) and ltx:r_string_ex(sect, "indx"):match("(.+),(.+)") or math.random(14)
+		local anim_section_name = "item_ea_harv_meat_"..item_sect_index.."_hud"
+		harv_usage_snd = sound_object("interface\\item_usage\\harvest_use_success")
+		harv_usage_snd:play(db.actor, 0, sound_object.s2d)
+		game.play_hud_motion(2, anim_section_name, "anm_ea_show", true, 0.75)
+		level.add_cam_effector("itemuse_anm_effects\\harvest_loot.anm", 8560, false, "")
+		CreateTimeEvent("restore_knife", "restor_knife", 1.8 , restore_knife)
+		skin_anim = true
+		item_sect_index ,anim_section_name ,sect = nil
+	end
+end
+
+
+
+--patching mutant loot dialog close call
+function ui_mutant_loot.UIMutantLoot:Close()
+	--deleting fake mutant object to prevent bag animation if mutant was empty
+	CreateTimeEvent("delete_fake", "delete_fake", 0.2, take_item_anim.delete_fake)
+	self:SetMutantState()
+	self:HideDialog()
+	Unregister_UI("UIMutantLoot")
+end
+
+function delete_fake()
+	enhanced_animations.fake_monster = nil
+	--draw knife if mutant was empty or player just closed dialog without looting anything
+	if not skin_anim then
+		return_slots()
+	end
+	return true
+end
+
+function restore_knife()
+	return_slots()
+	skin_anim = nil
+	level.enable_input()
+	return true
+end
+
+function return_slots()
+	fov_anim_manager.restore_fov()
+	local slot = enhanced_animations.active_slot
+	db.actor:activate_slot(slot or 1)
+	local device = enhanced_animations.det_active
+	if device then device:switch_state(1) end
+	device = nil
+	slot = nil
+end

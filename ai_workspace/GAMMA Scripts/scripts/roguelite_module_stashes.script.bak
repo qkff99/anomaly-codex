@@ -1,0 +1,453 @@
+--[[
+	Jabbers
+	15FEB2022
+	Jabbers Ironman Roguelite - Stashes Module
+--]]
+
+local placeable_containers_section_names = {
+    "inv_backpack",
+    "placeable_case",
+    "placeable_blue_box",
+    "placeable_exo_repair_kit",
+    "placeable_sumka6",
+    "workshop_stash"
+}
+
+local m_data = {
+    stashes_version = 2,
+    stashes = {},
+    item_uses_data = {},
+    spawned_stashes = {}
+}
+
+--------------------------------
+-- Private stuff and things
+--------------------------------
+
+local function degrade(name, condition)
+    if not condition then
+        return condition
+    end
+    local degrade_amount = condition * roguelite_manager_mcm.get_config("stash_item_condition_loss_percent", 0.01)
+    local new_condition = condition - degrade_amount
+    roguelite_manager.debug_write("Degrading "..name.." from "..condition.." to "..new_condition)
+    return new_condition
+end
+
+local function tablelength(T)
+    local count = 0
+    for _ in pairs(T) do count = count + 1 end
+    return count
+end
+
+local function restore_prior_state_stashes_v1(data)
+    local state = alife_storage_manager.get_state()
+    
+    -- Commented out for now, this is causing a crash in 0.9
+    -- if not (state.player_created_stashes) then 
+    --     state.player_created_stashes = {}
+    -- end
+
+    for _, stash_data in pairs(data.stashes) do
+        if stash_data then
+            roguelite_manager.debug_write("Restoring stash")
+
+            local pos = vector():set(stash_data.position.x, stash_data.position.y, stash_data.position.z)
+            local se_obj = alife_create(stash_data.section, pos, stash_data.level_vertex_id, stash_data.game_vertex_id)
+            
+            if se_obj then         
+                -- Commented out for now, this is causing a crash in 0.9       
+                --state.player_created_stashes[se_obj.id] = stash_data.section 
+
+                table.insert(m_data.spawned_stashes, se_obj.id)
+
+                if stash_data.angle then
+                    se_obj.angle = vector():set(stash_data.angle.x, stash_data.angle.y, stash_data.angle.z)
+                end
+
+                if roguelite_manager_mcm.get_config("show_stashes_on_pda", true) then
+                    level.map_add_object_spot_ser(se_obj.id, "treasure_player", stash_data.txt)
+                end
+
+                if stash_data.parent_obj then
+                    roguelite_manager.debug_write("Spawning parent item "..stash_data.parent_obj.section)
+                    pos = vector():set(stash_data.parent_obj.position.x, stash_data.parent_obj.position.y, stash_data.parent_obj.position.z)
+                    
+                    local p_se_obj = alife_create(stash_data.parent_obj.section, pos, stash_data.parent_obj.level_vertex_id, stash_data.parent_obj.game_vertex_id)
+                    
+                    if p_se_obj then
+                        p_se_obj.angle = vector():set(stash_data.parent_obj.angle.x, stash_data.parent_obj.angle.y, stash_data.parent_obj.angle.z)
+                        stash_data.parent_obj.id = p_se_obj.id
+                        local state = alife_storage_manager.get_state() 
+                        if not (state.workshop_stashes) then
+                            state.workshop_stashes = {}
+                        end
+                        roguelite_manager.debug_write("Setting stash_id "..tostring(se_obj.id).." to workshop id "..p_se_obj.id)
+                        state.workshop_stashes[p_se_obj.id] = se_obj.id
+                    end
+                end
+
+                roguelite_manager.debug_write("Updating restored stash id "..tostring(stash_data.id).." to id "..se_obj.id)
+               
+                stash_data.id = se_obj.id
+
+                for _, item_data in pairs(stash_data.items) do
+                    local class = ini_sys:r_string_ex(item_data.section,"class") or nil
+                    if class then 
+                        roguelite_manager.debug_write("Condition check for item clsid:"..item_data.clsid.." class:"..class.." section:"..item_data.section)
+                        if (IsWeapon(nil, item_data.clsid) and (item_data.section ~= "wpn_binoc_inv")) or
+                            IsOutfit(nil, item_data.clsid) or
+                            IsHeadgear(nil, item_data.clsid) or
+                            IsItem("device", item_data.section) then
+                            item_data.condition = degrade(item_data.section, item_data.condition)
+                        end
+                    end
+                end
+
+                m_data.stashes[stash_data.id] = stash_data
+
+                roguelite_manager.debug_write("Restored player stash "..stash_data.id.." ".. stash_data.txt .. " with "..tablelength(m_data.stashes[stash_data.id].items).." items.")
+            end
+        else 
+            roguelite_manager.debug_write("Not expected.")
+        end
+    end
+end
+
+local function restore_prior_state_money_v1(data)
+    -- Only restore the previous amount if it is more than the amount
+    -- you start with in a new game.
+    if roguelite_manager_mcm.get_config("is_money_restore_enabled", true) and data.money and db.actor:money() < data.money then
+        roguelite_manager.debug_write("Restoring money")
+        db.actor:give_money(data.money)
+    end
+end
+
+local function try_spawn_stash(box)
+    roguelite_manager.debug_write("Trying to populate player stash")
+
+    local stash = m_data.stashes[box:id()]
+
+    if not stash then
+        roguelite_manager.debug_write("No stash data found for " .. box:id() .. ".")
+        return
+    end
+
+    roguelite_manager.debug_write("Populating stash")
+
+    local se_box = alife_object(box:id())
+    local item_processor = itms_manager.get_item_processor()
+
+    item_processor.Debug = true
+
+    for _, item_data in pairs(stash.items) do
+        local section = item_data.section
+        roguelite_manager.restore_item(section, se_box.position, se_box.m_level_vertex_id, se_box.m_game_vertex_id, item_data, se_box.id, false)
+    end
+
+    level.map_remove_object_spot(box:id(), "treasure")
+
+    item_processor:update()
+    m_data.stashes[box:id()] = nil
+end
+
+local function table_has_value (tab, val)
+    for index, value in ipairs(tab) do
+        if value == val then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function save_stash(se_obj, section_name, stash_data, sim) 
+    roguelite_manager.debug_write("Found player stash " .. se_obj:name() .. " " .. se_obj.id .. ".")
+
+    local txt = strformat(game.translate_string("st_itm_stash_of_character"), db.actor:character_name())
+    local parent_obj = nil
+    
+    if section_name == "workshop_stash" then
+        local state = alife_storage_manager.get_state() 
+        if state and state.workshop_stashes then
+            for workshop_id, stash_id in pairs(state.workshop_stashes) do
+                if stash_id == se_obj.id then
+                    local p_se_obj = sim:object(workshop_id)  
+                    roguelite_manager.debug_write("Saving parent item "..p_se_obj:section_name())
+                    parent_obj =  roguelite_manager.serialize_se_obj(p_se_obj)
+                    parent_obj.is_container = false
+                    break;
+                end
+            end
+        end     
+    end
+
+    local ser_obj = roguelite_manager.serialize_se_obj(se_obj)
+
+    ser_obj.parent_obj = parent_obj
+    ser_obj.txt = txt
+    ser_obj.is_container = true
+    ser_obj.items = {}
+
+    stash_data[se_obj.id] = ser_obj       
+
+    -- If the players stash was not yet opened, we need to save the data from the cache
+    if m_data.stashes[se_obj.id] then
+        roguelite_manager.debug_write("Stash not restored saving prior data.")
+        stash_data[se_obj.id].items = m_data.stashes[se_obj.id].items
+    end
+end
+
+local function get_player_stashes()
+    local stash_data = {}
+    local sim = alife()
+
+    roguelite_manager.debug_write("Searching for player stashes")
+
+    -- First find all the stashes
+    for i = 1, 65534 do
+        local se_obj = sim:object(i)
+        if se_obj then
+            local section_name = se_obj:section_name()
+            if table_has_value(placeable_containers_section_names, section_name) and se_obj.parent_id ~= AC_ID then
+                save_stash(se_obj, section_name, stash_data, sim)
+            end
+        end
+    end
+
+    if not next(stash_data) then
+        roguelite_manager.debug_write("No player stashes found.")
+        return stash_data
+    end
+
+    roguelite_manager.debug_write("Searching for items in player stashes")
+    -- Second iterate all items and find the ones with the parent_id of a found stash
+ 
+    for i = 1, 65534 do
+        local se_obj = sim:object(i)
+
+        if se_obj then
+            local stash = stash_data[se_obj.parent_id]
+
+            if stash and stash.is_container then
+                roguelite_manager.debug_write("Found stash item " .. se_obj:name() .. " " .. se_obj.id ..".")
+
+                local stash_item = roguelite_manager.serialize_item(se_obj)
+
+                if IsItem("multiuse", stash_item.section) and m_data.item_uses_data[stash_item.id]then
+                    stash_item.uses = m_data.item_uses_data[se_obj.id]
+                end
+
+                stash.items[se_obj.id] = stash_item
+            end
+        end
+    end
+
+    return stash_data
+end
+
+--------------------------------
+-- Game Callbacks
+--------------------------------
+local function save_state(data)
+    if not IsHardcoreMode() then
+        return
+    end
+
+    roguelite_manager.debug_write("Saving stash data.")
+
+    if not data.roguelite_manager then
+        data.roguelite_manager = {}
+    end
+
+    local money = db.actor:money()
+
+    data.roguelite_manager.stashes_version = m_data.stashes_version
+    data.roguelite_manager.stashes = m_data.stashes
+    data.roguelite_manager.item_uses_data = m_data.item_uses_data
+    data.roguelite_manager.money = money
+    data.roguelite_manager.spawned_stashes = m_data.spawned_stashes
+end
+
+local function load_state(data)
+    if not IsHardcoreMode() then
+        return
+    end
+
+    if not data.roguelite_manager then
+        return
+    end
+
+    roguelite_manager.debug_write("Loading stash data.")
+
+    local stashes_version = data.roguelite_manager.stashes_version
+
+    if stashes_version >= 2 then
+        if data.roguelite_manager.money then
+            roguelite_manager.debug_write("Restoring money from prior save.")
+            m_data.money = data.roguelite_manager.money
+        end
+    end
+
+    if stashes_version >= 1 then
+        if  data.roguelite_manager.stashes then
+            roguelite_manager.debug_write("Restoring stash data from prior save.")
+            m_data.stashes = data.roguelite_manager.stashes
+            m_data.spawned_stashes =  data.roguelite_manager.spawned_stashes
+        end
+        if  data.roguelite_manager.item_uses_data then
+            roguelite_manager.debug_write("Restoring item use data from prior save.")
+            m_data.item_uses_data = data.roguelite_manager.item_uses_data
+        end
+    end
+    
+
+    data.roguelite_manager.stashes_version = nil
+    data.roguelite_manager.stashes = nil
+    data.roguelite_manager.item_uses_data = nil
+    data.roguelite_manager.money = nil
+    data.roguelite_manager.spawned_stashes = nil
+end
+
+local function physic_object_on_use_callback(box, who)
+    if who then
+        roguelite_manager.debug_write(who:name().." interacted with "..box:name())
+    else
+        roguelite_manager.debug_write(box:name().." was interacted with.")
+    end
+
+    if not roguelite_manager.is_enabled() then
+        roguelite_manager.debug_write("physic_object_on_use_callback roguelite disabled.")
+        return
+    end
+
+    if not IsHardcoreMode() then
+        roguelite_manager.debug_write("physic_object_on_use_callback not an ironman game mode.")
+        return
+    end
+
+    local section_name = box:section()
+
+    if not table_has_value(placeable_containers_section_names, section_name) then
+        roguelite_manager.debug_write("physic_object_on_use_callback doesn't support container type ".. section_name)
+    end
+    
+    try_spawn_stash(box)
+end
+
+local function actor_on_item_put_in_box(box, item)
+    if not roguelite_manager.is_enabled() then
+        roguelite_manager.debug_write("actor_on_item_put_in_box roguelite disabled.")
+        return
+    end
+
+    if not IsHardcoreMode() then
+        roguelite_manager.debug_write("actor_on_item_put_in_box not an ironman game mode.")
+        return
+    end
+
+    local section_name = box:section()
+
+    if table_has_value(placeable_containers_section_names, section_name) then
+        return
+    end
+
+    -- I couldn't find a way to get access to "uses" when only having
+    -- access to server objects.   This is a hacky little work around.
+    if IsItem("multiuse", item:section()) then
+        local uses = utils_item.get_item_remaining_uses(item) or 0
+        m_data.item_uses_data[item:id()] = uses
+    end
+end
+
+local function actor_on_stash_remove(data) 
+    --if m_data.spawned_stashes and table_has_value(m_data.spawned_stashes, data.stash_id) then
+    --    data.cancel = true
+    --    return
+    --end
+end
+
+function roguelite_load_state(save_data)
+    if roguelite_manager_mcm.get_config("is_stash_restore_enabled", true) then
+        if save_data.stashes_version >= 2 then
+            restore_prior_state_money_v1(save_data)
+        end
+        if save_data.stashes_version >= 1 then
+            restore_prior_state_stashes_v1(save_data)
+        end
+    end
+end
+
+function roguelite_save_state(save_data)
+    if roguelite_manager_mcm.get_config("is_stash_restore_enabled", true) then
+        save_data.stashes_version = m_data.stashes_version
+        save_data.stashes = get_player_stashes()
+        save_data.money = db.actor:money()
+    end
+end
+
+function append_mcm_options(gr)
+    roguelite_manager.debug_write("Appending stash module mcm options.")
+    --Charater Reputation Settings
+    table.insert(gr, { id = "line" , type = "line" })
+    table.insert(gr, {
+        id = "desc_mcm",
+        type = "desc",
+        text = "ui_mcm_roguelite_stashes_description",
+        clr = {255, 255 ,255 ,0},
+    })
+    table.insert(gr, {
+        id = "is_stash_restore_enabled",
+        type = "check",
+        val = 1,
+        def = true
+    })
+    table.insert(gr, {
+        id = "is_money_restore_enabled",
+        type = "check",
+        val = 1,
+        def = true
+    })
+    table.insert(gr, {
+        id = "show_stashes_on_pda",
+        type = "check",
+        val = 1,
+        def = true
+    })
+    table.insert(gr, {
+        id = "stash_item_condition_loss_percent",
+        type = "track",
+        val = 2,
+        min = 0,
+        max = 1,
+        step = 0.01,
+        def = 0.01
+    })
+end
+
+function on_option_change()
+    local get_config = roguelite_manager_mcm.get_config
+
+    roguelite_manager.debug_write("is_stash_restore_enabled = "..tostring(get_config("is_stash_restore_enabled", true)))
+    roguelite_manager.debug_write("is_money_restore_enabled = "..tostring(get_config("is_money_restore_enabled", true)))
+    roguelite_manager.debug_write("show_stashes_on_pda = "..tostring(get_config("show_stashes_on_pda", true)))
+    roguelite_manager.debug_write("stash_item_condition_loss_percent = "..tostring(get_config("stash_item_condition_loss_percent", 0.01)))
+end
+
+function on_game_load()
+    if ui_mcm then
+	    on_option_change()
+    end
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_game_load", on_game_load)
+    RegisterScriptCallback("save_state", save_state)
+    RegisterScriptCallback("load_state", load_state)
+    RegisterScriptCallback("actor_on_item_put_in_box",actor_on_item_put_in_box)
+    RegisterScriptCallback("physic_object_on_use_callback", physic_object_on_use_callback)
+    RegisterScriptCallback("actor_on_stash_remove", actor_on_stash_remove)
+    
+
+    roguelite_manager.debug_write("Stash module callbacks registered")
+end

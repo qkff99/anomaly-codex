@@ -1,0 +1,211 @@
+---==================================================================================================================---
+---                                                                                                                  ---
+---    Original Author(s) : NLTP_ASHES                                                                               ---
+---    Edited : N/A                                                                                                  ---
+---    Date : 07/12/2023                                                                                             ---
+---    License : Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)           ---
+---                                                                                                                  ---
+---    Script used to show a radial menu to access the different slots of the inventory.                             ---
+---                                                                                                                  ---
+---==================================================================================================================---
+
+-- ---------------------------------------------------------------------------------------------------------------------
+-- Constants, global variables and imported functions
+-- ---------------------------------------------------------------------------------------------------------------------
+
+-- Singleton
+GUI                          = nil                    -- instance, don't touch
+
+-- Constants
+SLOTS_DATA                   = {                      -- table to store slots data (ids, titles & descriptions)
+    {
+        id                   = 2,
+        name                 = "rq_secondary",
+        icon                 = "ui_rq_secondary",
+        title                = game.translate_string("st_rq_secondary_title")
+    },
+    {
+        id                   = 1,
+        name                 = "rq_knife",
+        icon                 = "ui_rq_knife",
+        title                = game.translate_string("st_rq_knife_title")
+    },
+    {
+        id                   = 4,
+        name                 = "rq_grenade",
+        icon                 = "ui_rq_grenade",
+        title                = game.translate_string("st_rq_grenade_title")
+    },
+    {
+        id                   = 8,
+        name                 = "rq_pda",
+        icon                 = "ui_rq_pda",
+        title                = game.translate_string("st_rq_pda_title")
+    },
+    {
+        id                   = 5,
+        name                 = "rq_binoculars",
+        icon                 = "ui_rq_binoculars",
+        title                = game.translate_string("st_rq_binoculars_title")
+    },
+    {
+        id                   = 6,
+        name                 = "rq_bolts",
+        icon                 = "ui_rq_bolts",
+        title                = game.translate_string("st_rq_bolts_title")
+    },
+    {
+        id                   = 3,
+        name                 = "rq_primary",
+        icon                 = "ui_rq_primary",
+        title                = game.translate_string("st_rq_primary_title")
+    },
+}
+
+-- Variables
+saved_time_factor          = nil                      -- time factor to restore after slowing time
+
+-- ---------------------------------------------------------------------------------------------------------------------
+-- General functions
+-- ---------------------------------------------------------------------------------------------------------------------
+
+--- Function used to open the radial menu if the right key is pressed.
+--- @param dik DIK_Keys
+--- @return nil
+function open_radial_menu(dik)
+    if dik ~= radial_quickslots_mcm.get_config("open_menu_key") then
+        return
+    end
+
+    this.dbg_printf("[RQ] Key-binding pressed : %s", dik)
+
+	hide_hud_inventory()
+
+    if not GUI then
+        GUI = UIRadialQuickslots()
+        if not GUI then
+            printf("![RQ] ERROR | Failed to instantiate UIRadialQuickslots !")
+            return
+        end
+    end
+
+    GUI:ResetSlots()
+
+    if not GUI:IsShown() then
+        GUI:ShowDialog(true)
+        Register_UI("UIRadialQuickslots", "radial_quickslots")
+    end
+end
+
+--- Function called by callback used to change the time factor while the UIRadialQuickslots is shown.
+--- @param name string
+--- @param path string
+--- @return nil
+function change_time_factor(name, path)
+    -- Short circuit on unrelated UIs
+    if not (name == "UIRadialQuickslots" and path == "radial_quickslots") then
+        return
+    end
+
+    -- Short circuit if option is disabled
+    if not radial_quickslots_mcm.get_config("slow_motion") then
+        return
+    end
+
+    -- Short circuit if no GUI instance
+    if not GUI then
+        printf("![RQ] ERROR | Cannot change time factor without UI instance !")
+        return
+    end
+
+    -- Time factors
+    local old_time_factor = get_console_cmd(0, "time_factor")
+    local new_time_factor = GUI:IsShown() and tostring(radial_quickslots_mcm.get_config("slow_motion_factor")) or saved_time_factor
+
+    -- Update memory
+    saved_time_factor = GUI:IsShown() and old_time_factor or nil
+
+    -- Apply new time factor
+    exec_console_cmd("time_factor " .. new_time_factor)
+    this.dbg_printf("Changed time factor (old: %s, new: %s)", old_time_factor, new_time_factor)
+end
+
+-- ---------------------------------------------------------------------------------------------------------------------
+-- Callbacks registration
+-- ---------------------------------------------------------------------------------------------------------------------
+
+--- Function used to register callbacks.
+--- @return nil
+function on_game_start()
+    RegisterScriptCallback("on_key_press", open_radial_menu)
+    RegisterScriptCallback("GUI_on_show", change_time_factor)
+    RegisterScriptCallback("GUI_on_hide", change_time_factor)
+end
+
+-- ---------------------------------------------------------------------------------------------------------------------
+-- Utils functions
+-- ---------------------------------------------------------------------------------------------------------------------
+
+--- Function used to print information into the console/log file only when debug mode is enabled.
+--- @return nil
+function dbg_printf(...)
+    if not radial_quickslots_mcm.get_config("debug_mode") then
+        return
+    end
+    printf(...)
+end
+
+-- ---------------------------------------------------------------------------------------------------------------------
+-- UI class
+-- ---------------------------------------------------------------------------------------------------------------------
+
+class "UIRadialQuickslots" (arm.UIRadialMenu)
+
+function UIRadialQuickslots:__init() super()
+    this.dbg_printf("[RQ] Building GUI...")
+
+    for _, slot_data in ipairs(SLOTS_DATA) do
+        local option = arm.OptionData(slot_data.name, slot_data.icon)
+        arm.UIRadialMenu.AddOption(self, option)
+        arm.UIRadialMenu.RegisterCallback(self, slot_data.name, function(flags) self:ActivateSlot(slot_data.id) end)
+    end
+
+    -- Draw options
+    arm.UIRadialMenu.DrawOptions(self)
+end
+
+function UIRadialQuickslots:ResetSlots()
+    for _, slot_data in ipairs(SLOTS_DATA) do
+        local option = arm.UIRadialMenu.GetOption(self, slot_data.name)
+        option:SetText(self:GetSlotText(slot_data))
+    end
+end
+
+function UIRadialQuickslots:GetSlotText(slot_data)
+    -- Get name of item in slot
+    local obj = db.actor:item_in_slot(slot_data.id)
+    local obj_name = obj and ini_sys:r_string_ex(obj:section(), "inv_name", "st_rq_unknown_slot") or "st_rq_empty_slot"
+
+    return {
+        title = slot_data.title,
+        description = game.translate_string(obj_name)
+    }
+end
+
+function UIRadialQuickslots:ActivateSlot(slot_id)
+    local active_slot = db.actor:active_slot()
+
+    this.dbg_printf("[RQ] Active slot : %s", active_slot)
+
+    if (not active_slot) or (active_slot ~= slot_id) then
+        db.actor:activate_slot(slot_id)
+        this.dbg_printf("[RQ] Switched to slot : %s", slot_id)
+    else
+        this.dbg_printf("[RQ] Failed to switch to slot : %s", slot_id)
+    end
+end
+
+function UIRadialQuickslots:Close()
+    self:HideDialog()
+    Unregister_UI("UIRadialQuickslots")
+end

@@ -1,0 +1,75 @@
+[zone_mine_flash]:zone_base
+GroupControlSection	= spawn_group_zone
+$spawn 			= "zones_eugenium\zone_mine_flash"
+$def_sphere = 3
+$prefetch 		= 16
+class			= ZS_MBALD ;---CMosquitoBald
+hit_impulse_scale	= 0.3;0.5 ;0.1
+effective_radius	= 1.0 ;размер радиуса в процентах от оригинального, где действует зона
+actor_blowout_radius_percent	= 0.75
+
+ef_anomaly_type			= 1
+ef_weapon_type			= 13
+
+postprocess		= postprocess_electra_mine
+
+hit_type			= shock
+
+;----------- Anomaly settings -----------------------
+max_start_power		= 1
+attenuation			= 1
+
+idle_particles		= eugenium_anomalies\anomaly_flash\flash_idle
+blowout_particles	= eugenium_anomalies\anomaly_flash\flash_blast
+
+hit_small_particles			= eugenium_anomalies\anomaly_flash\flash_blast
+hit_big_particles			= eugenium_anomalies\anomaly_flash\flash_blast
+idle_small_particles		= 
+idle_big_particles			= 
+entrance_small_particles	= eugenium_anomalies\anomaly_flash\flash_shield
+entrance_big_particles		= eugenium_anomalies\anomaly_flash\flash_shield
+
+idle_sound			= eugenium_anomaly\flash\flash_idle		;постоянный звук
+blowout_sound		= eugenium_anomaly\flash\flash_shield ; anomaly_gravy_blast01	;во время выброса(удара) в центре аномалии
+hit_sound			= eugenium_anomaly\flash\flash_shield								;на персонаже, когда тот получает хит
+entrance_sound		= eugenium_anomaly\flash\flash_shield								;при попадании объекта в аномалию
+
+
+awaking_time		= 50;100
+blowout_time		= 500
+accamulate_time		= 60000 ;10;200
+
+blowout_light_time		= 200
+blowout_explosion_time	= 200
+blowout_particles_time	= 200
+blowout_sound_time  	= 100
+
+disable_time		= 5000		;время игнорирования неживого объекта в зоне (-1 если не нужно)
+disable_time_small	= 5000		;время игнорирования маленького неживого объекта в зоне (-1 если не нужно)
+disable_idle_time	= 100		;время отключения idle партиклов
+
+ignore_nonalive		= false
+ignore_small		= true
+ignore_artefacts	= true
+
+blowout_light		= on
+light_color		    = 0.5,0.4,0.3
+light_range		    = 30.0
+light_time 		    = 0.9;0.35
+light_height		= 1.5			;подъем источника света на высоту
+
+
+idle_light			= off
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ветер
+blowout_wind		= on
+
+blowout_wind_time_start     = 0
+blowout_wind_time_peak      = 300
+blowout_wind_time_end		= 501; 899
+blowout_wind_power			= 0.5			;сила поднимаего ветра (от 0 до 1), в момент blowout_wind_time_peak
+
+shape_transp_color		= 255, 0, 0, 60
+shape_edge_color		= 32, 32, 32, 255

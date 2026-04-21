@@ -1,0 +1,55 @@
+local zoom_in_iron = 0.4
+local zoom_in_scop = 0.4
+local zoom_bad_scop = 0.2
+local default_hud_fov = ui_options.get("video/basic/hud_fov")
+
+ini_fov = ini_file_ex("items\\weapon_fov_values.ltx")
+
+function on_option_change()
+	zoom_in_iron = scope_fov_mcm.get_config("iron_fov")
+	zoom_in_scop = scope_fov_mcm.get_config("scop_fov")
+	zoom_bad_scop = scope_fov_mcm.get_config("bad_scop_fov")
+end
+
+function zoom_in()
+local weapon = db.actor:active_item()
+local scope = utils_item.get_attached_scope(weapon)
+local parent = ini_sys:r_string_ex(weapon:section(),"parent_section")
+if not parent then
+	parent = weapon:section()
+	end
+local sec_exist = ini_fov:section_exist(parent)
+local iron_fov = ini_fov:r_string_ex(parent, "iron")
+	if sec_exist and scope ~= nil then
+	local scope_fov = ini_fov:r_string_ex(parent, scope)
+		if scope and scope_fov then
+			exec_console_cmd("hud_fov " .. scope_fov)
+			return
+		end
+	end
+	if sec_exist and scope == nil and iron_fov then
+		exec_console_cmd("hud_fov " .. iron_fov)
+		return
+	end
+	if scope then
+		local scope_bad = ini_fov:r_string_ex("bad_scopes", scope)
+		if scope_bad then
+			exec_console_cmd("hud_fov " .. zoom_bad_scop)
+		else exec_console_cmd("hud_fov " .. zoom_in_scop)
+		end
+	end
+	if scope == nil then
+	exec_console_cmd("hud_fov " .. zoom_in_iron)
+	end
+end
+
+function zoom_out()
+	exec_console_cmd("hud_fov " .. default_hud_fov)
+end
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_weapon_zoom_in", zoom_in)
+	RegisterScriptCallback("actor_on_weapon_zoom_out", zoom_out)
+	RegisterScriptCallback("on_option_change", on_option_change)
+	on_option_change()
+end

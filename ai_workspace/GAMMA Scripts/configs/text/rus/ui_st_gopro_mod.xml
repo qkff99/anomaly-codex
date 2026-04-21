@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+	<string id="ui_mcm_title_gopro_mod">
+		<text>GoPro MOD</text>
+	</string>
+	<string id="ui_mcm_menu_gopro_mod">
+		<text>GoPro MOD</text>
+	</string>
+	<string id="ui_mcm_title_gopro_mod_settings">
+		<text>Настройки</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_overview">
+		<text>Переключает камеру на NPC или монстра, на которого вы сейчас смотрите. Пока режим активен, актор бессмертен, управление заблокировано, а интерфейс скрыт до повторного переключения.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_enabled">
+		<text>Включить мод</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_enabled_desc">
+		<text>Главный тумблер GoPro MOD. Когда мод выключен, горячие клавиши POV и тюнера не работают, а активное наблюдение сразу завершается.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_toggle_key">
+		<text>Переключение POV NPC</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_toggle_key_desc">
+		<text>Наведитесь на живого сталкера или монстра и нажмите клавишу, чтобы войти в режим камеры от его лица или выйти из него.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_ui_toggle_key">
+		<text>Открыть окно тюнинга</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_ui_toggle_key_desc">
+		<text>Открывает компактное окно настройки GoPro во время игры. Изменения из окна сразу записываются в MCM.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_free_look_key">
+		<text>Клавиша свободного обзора</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_free_look_key_desc">
+		<text>Удерживайте эту клавишу во время POV NPC, чтобы временно отвязать обзор от головы цели и свободно крутить камерой мышью. После отпускания камера вернётся к направлению цели.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_follow_actor">
+		<text>Игрок следует за NPC</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_follow_actor_desc">
+		<text>Пока POV NPC активен, удерживает актора в 10 метрах над целью и опускает его на текущую позицию цели после выхода из режима.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_hide_head_in_pov">
+		<text>Скрывать голову цели в POV</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_hide_head_in_pov_desc">
+		<text>Когда камера привязана к кости головы или глаза, скрывает ветку головы цели во время POV, чтобы лицо, шлем или морда не перекрывали весь экран.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_death_cam">
+		<text>Death cam</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_death_cam_desc">
+		<text>После смерти наблюдаемой цели ещё 5 секунд показывает вид от её лица, прежде чем режим завершится или переключится на другую цель.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_death_auto_switch">
+		<text>Автопереключение после смерти</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_death_auto_switch_desc">
+		<text>После смерти цели автоматически переключает POV на другой валидный юнит. Если Death cam включён, переключение произойдёт после 5 секунд посмертного вида.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_death_auto_switch_mode">
+		<text>Режим автопереключения</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_death_auto_switch_mode_desc">
+		<text>Auto: член отряда, затем ближайший юнит той же расы, затем любой ближайший валидный юнит. Killer: последний валидный убийца, с откатом на Auto при необходимости.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_pov_fov">
+		<text>FOV наблюдения</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_pov_fov_desc">
+		<text>FOV камеры, который применяется только во время POV NPC. После выхода из наблюдения обычный FOV игрока восстанавливается.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_camera_update_hz">
+		<text>Частота обновления камеры</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_camera_update_hz_desc">
+		<text>Как часто GoPro MOD считывает позу кости цели. Более низкие значения сильнее режут джиттер костей, но добавляют ступенчатость движения.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_camera_ema_strength">
+		<text>Сила EMA-плавности</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_camera_ema_strength_desc">
+		<text>Насколько сильно сглаживаются позиция и поворот между сэмплами кости. Более высокие значения дают более плавную камеру, но добавляют лаг.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_camera_lag_compensation">
+		<text>Компенсация лага</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_camera_lag_compensation_desc">
+		<text>Предсказывает положение камеры вперед по скорости движения цели, чтобы уменьшить визуальное отставание и увод камеры назад во время движения.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_camera_bone">
+		<text>Кость камеры NPC</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_camera_bone_desc">
+		<text>Буквальное имя кости, которое используется первым для привязки POV. Если у цели такой кости нет, GoPro MOD переходит к встроенной цепочке запасных костей.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_roll_offset_deg">
+		<text>Поворот по roll</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_roll_offset_deg_desc">
+		<text>Дополнительный поворот камеры по roll в градусах. Нужен, когда ориентация кости повернута набок.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_viewport_near">
+		<text>Ближняя плоскость</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_viewport_near_desc">
+		<text>Меньшие значения уменьшают обрезание модели у камеры вблизи. Слишком низкие значения могут дать артефакты глубины.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_forward_offset">
+		<text>Смещение вперед</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_forward_offset_desc">
+		<text>Сдвигает камеру вперед или назад вдоль направления, куда смотрит цель.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_up_offset">
+		<text>Смещение вверх</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_up_offset_desc">
+		<text>Сдвигает камеру вверх или вниз вдоль локальной оси up цели.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_right_offset">
+		<text>Смещение вправо</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_right_offset_desc">
+		<text>Сдвигает камеру влево или вправо вдоль локальной оси right цели.</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_bone_bip01_head">
+		<text>bip01_head</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_bone_eye_left">
+		<text>eye_left</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_bone_eye_right">
+		<text>eye_right</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_bone_bip01_neck">
+		<text>bip01_neck</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_bone_bip01_spine2">
+		<text>bip01_spine2</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_bone_bip01_spine1">
+		<text>bip01_spine1</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_bone_bip01_spine">
+		<text>bip01_spine</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_bone_bip01_pelvis">
+		<text>bip01_pelvis</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_bone_pelvis">
+		<text>pelvis</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_bone_head">
+		<text>head</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_bone_head_boss">
+		<text>head_boss</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_death_auto_switch_mode_auto">
+		<text>auto</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_death_auto_switch_mode_killer">
+		<text>killer's POV</text>
+	</string>
+	<string id="st_gopro_tuner_title">
+		<text>GoPro Tuner</text>
+	</string>
+	<string id="st_gopro_tuner_subtitle">
+		<text>Эти изменения сразу сохраняются в MCM и применяются на лету, пока POV NPC активен.</text>
+	</string>
+	<string id="st_gopro_tuner_hints_title">
+		<text>Горячие клавиши</text>
+	</string>
+	<string id="st_gopro_tuner_camera_bone">
+		<text>Кость камеры</text>
+	</string>
+	<string id="st_gopro_tuner_follow_actor">
+		<text>Игрок следует за NPC</text>
+	</string>
+	<string id="st_gopro_tuner_hide_head_in_pov">
+		<text>Скрывать голову цели в POV</text>
+	</string>
+	<string id="st_gopro_tuner_death_cam">
+		<text>Death cam</text>
+	</string>
+	<string id="st_gopro_tuner_death_auto_switch">
+		<text>Автопереключение после смерти</text>
+	</string>
+	<string id="st_gopro_tuner_death_auto_switch_mode">
+		<text>Режим автопереключения</text>
+	</string>
+	<string id="st_gopro_tuner_pov_fov">
+		<text>FOV наблюдения</text>
+	</string>
+	<string id="st_gopro_tuner_camera_update_hz">
+		<text>Частота обновления</text>
+	</string>
+	<string id="st_gopro_tuner_camera_ema_strength">
+		<text>Сила EMA-плавности</text>
+	</string>
+	<string id="st_gopro_tuner_camera_lag_compensation">
+		<text>Компенсация лага</text>
+	</string>
+	<string id="st_gopro_tuner_roll_offset">
+		<text>Поворот по roll</text>
+	</string>
+	<string id="st_gopro_tuner_viewport_near">
+		<text>Ближняя плоскость</text>
+	</string>
+	<string id="st_gopro_tuner_forward_offset">
+		<text>Смещение вперед</text>
+	</string>
+	<string id="st_gopro_tuner_up_offset">
+		<text>Смещение вверх</text>
+	</string>
+	<string id="st_gopro_tuner_right_offset">
+		<text>Смещение вправо</text>
+	</string>
+	<string id="st_gopro_tuner_btn_defaults">
+		<text>Сбросить</text>
+	</string>
+	<string id="st_gopro_tuner_btn_close">
+		<text>Закрыть</text>
+	</string>
+	<string id="st_gopro_tuner_hint_squad_members">
+		<text>Предыдущий / следующий член отряда</text>
+	</string>
+	<string id="st_gopro_tuner_hint_squads">
+		<text>Предыдущий / следующий отряд на локации</text>
+	</string>
+	<string id="st_gopro_tuner_hint_prev_member">
+		<text>Предыдущий член отряда</text>
+	</string>
+	<string id="st_gopro_tuner_hint_next_member">
+		<text>Следующий член отряда</text>
+	</string>
+	<string id="st_gopro_tuner_hint_prev_squad">
+		<text>Предыдущий отряд на локации</text>
+	</string>
+	<string id="st_gopro_tuner_hint_next_squad">
+		<text>Следующий отряд на локации</text>
+	</string>
+	<string id="st_gopro_tuner_hint_close">
+		<text>Закрыть окно</text>
+	</string>
+	<string id="st_gopro_tuner_status_inactive">
+		<text>POV выключен. Наведитесь на живого сталкера или монстра и нажмите горячую клавишу POV.</text>
+	</string>
+	<string id="st_gopro_tuner_status_target">
+		<text>Цель</text>
+	</string>
+	<string id="st_gopro_tuner_status_follow_actor">
+		<text>Игрок следует за NPC</text>
+	</string>
+	<string id="st_gopro_tuner_status_on">
+		<text>Вкл</text>
+	</string>
+	<string id="st_gopro_tuner_status_off">
+		<text>Выкл</text>
+	</string>
+	<string id="st_gopro_tuner_status_selected">
+		<text>Выбранная кость</text>
+	</string>
+	<string id="st_gopro_tuner_status_resolved">
+		<text>Итоговая кость</text>
+	</string>
+</string_table>

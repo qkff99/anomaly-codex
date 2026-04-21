@@ -1,0 +1,8 @@
+[logic]
+active = ph_idle@idle
+
+[ph_idle@idle]
+on_info = {=is_actor_inside_lc} %=script(lc_extra_transitions:handle_nearby_actor)% ph_idle@wait
+
+[ph_idle@wait]
+on_timer = 5000| ph_idle@idle

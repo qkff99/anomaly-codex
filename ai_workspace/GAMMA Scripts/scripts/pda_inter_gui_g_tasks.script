@@ -1,0 +1,197 @@
+pmain = pda_inter_gui
+local gt = game.translate_string
+local CustomPDAX = pda_inter_gui.CustomPDAX
+local pr = pda_inter_gui.pr
+
+function CustomPDAX:BuildTaskUpperMenu()
+	local xml = self.xml
+
+	self.selected_task_type = 0		-- selected task type to pass further, resets on ResetUpperMenus, OnClickSend and OnClickCancel
+
+	-- task buttons for each type
+	self.task_btn = self.task_btn or {}
+	pmain.pda_msg_states[7].cd = pmain.pda_msg_states[7].cd or {}
+
+	for i = 1, pmain.task_menu_btns do
+		self.task_btn[i] = self.task_btn[i] or {}
+		pmain.pda_msg_states[7].cd[i] = pmain.pda_msg_states[7].cd[i] or false
+
+		self.task_btn[i].btn = xml:Init3tButton("mid_container_7:task_btn_" .. i, self.pda_t[7].mid_cont)
+		self:Register(self.task_btn[i].btn, "task_btn_" .. i)
+		self.task_btn[i].btn:Enable( (not pmain.pda_msg_states[7].cd[i]) )
+
+	end
+
+	-- arrow
+	self.task_arrow = xml:InitStatic("mid_container_7:arrow_r", self.pda_t[7].mid_cont)
+	self.task_arrow:Show(false)
+end
+
+function CustomPDAX:InitTaskCallbacks()
+	for i = 1, pmain.task_menu_btns do
+		CustomPDAX["OnClickTask_".. i] = function(self)
+			self:OnClickTask(i)
+		end
+		self:AddCallback("task_btn_" .. i, ui_events.BUTTON_CLICKED, self["OnClickTask_" .. i], self)
+	end
+end
+
+function CustomPDAX:ResetTaskMenu()
+	-- reset self.selected_task_type
+	self.selected_task_type = 0
+
+	-- hide arrow
+	self.task_arrow:Show(false)
+end
+
+function CustomPDAX:OnClickTask(num)
+	if self.selected_task_type and self.selected_task_type ~= num then
+
+		-- set selected task
+		self.selected_task_type = num
+
+		-- enable send button
+		self.send_btn:Enable(true)
+
+		-- show and repos task arrow
+		self.task_arrow:Show(true)
+		local btn_pos = self.task_btn[num].btn:GetWndPos()
+		local btn_width = self.task_btn[num].btn:GetWidth()
+		self.task_arrow:SetWndPos(vector2():set(btn_pos.x + btn_width, btn_pos.y))
+	end
+
+end
+
+function CustomPDAX:OnClickSendTask()
+	-- setup task and lower menu
+	local num = self.selected_task_type
+	pda_inter_x_tasks.find_givers(num)
+
+	-- set menu state
+	pmain.pda_msg_states[self.cur_tree].state = 5
+
+	-- set active message
+	self.active_text:SetText(gt("pda_cur_active") .. "    " .. gt("pda_task_active_msg"))
+
+	-- disable buttons of ALL big menus till cancelled/failed
+	self:UpdMenuButtons()
+end
+
+function CustomPDAX:OnClickExecTask(num)
+	local tasks_t = pda_inter_x_tasks.Tasks_available_givers
+
+	-- check if target still exist
+	local cur_task_type = tasks_t[num].task_type
+	local still_exist = pda_inter_x_tasks.task_targets_check(tasks_t[num].target_id, tasks_t[num].giver_id, cur_task_type)
+	if not still_exist then
+		pr("xcvb task target does not exist")
+		return
+	end
+
+	-- hide bottom containers
+	self:ResetLowerMenus()
+
+	-- find button by task type and disable it
+	for i = 1, #tasks_t do
+		self.task_btn[tasks_t[i].task_type].btn:Enable(false)
+	end
+
+	-- reset active message
+	self.active_text:SetText(gt("pda_cur_active") .. "    " .. gt("pda_cur_active_none"))
+
+	-- setup task and pass info from selected character to new table before clearing old ones
+	pda_inter_x_tasks.setup_task(num)
+
+	-- set state to 0
+	pmain.pda_msg_states[7].state = 0
+
+	-- clear tables
+	pda_inter_x_tasks.clear_task_tables()
+
+end
+
+function CustomPDAX:UpdTaskLowerMenu()
+	local task_t = pda_inter_x_tasks.Tasks_available_givers
+
+	-- reset menu first
+	self:ResetLowerMenus()
+
+	for i = 1, #task_t do
+
+		-- show character container
+		if not (self.bottom[i].big:IsShown()) then
+			self.bottom[i].big:Show(true)
+		end
+
+		-- update icon
+		self.bottom[i].icon:InitTexture(task_t[i].giver_icon)
+
+		-- update description
+		local target_str1, target_str2 = "<nil>", "<nil>"
+		local white_clr_str = strformat("%c[%s,%s,%s,%s]", 255, 255, 255, 255)
+		local yel_clr_str = strformat("%c[%s,%s,%s,%s]", 255, 255, 255, 0)
+		local def_clr_str = strformat("%c[%s,%s,%s,%s]", 255, 190, 190, 190)
+
+		local giver_name = white_clr_str .. gt("st_mm_new_game_name") .. " " .. task_t[i].giver_name
+
+		-- mutant hunt / bounty
+		if task_t[i].task_type == 1 or task_t[i].task_type == 2 then
+			local target_comm = task_t[i].target_comm and ( " (" .. (task_t[i].target_comm == "trader" and gt("st_ui_pda_legend_trader") or gt("st_faction_" .. task_t[i].target_comm)) .. ")") or ""
+			target_str1 = task_t[i].target_name and (yel_clr_str .. gt(task_t[i].target_name) .. def_clr_str .."\n".. target_comm)
+			target_str2 = task_t[i].target_level and (white_clr_str .. gt(task_t[i].target_level) .. def_clr_str)
+		-- guide
+		elseif task_t[i].task_type == 3 then
+			target_str1 = task_t[i].target_level and (yel_clr_str .. gt(task_t[i].target_level) .. def_clr_str)
+			target_str2 = task_t[i].guide_time and (yel_clr_str .. math.floor(task_t[i].guide_time / 3600) .. def_clr_str)
+		-- fetch items
+		elseif task_t[i].task_type == 4 then
+			target_str1 = task_t[i].amount and (yel_clr_str .. gt(task_t[i].amount) .. def_clr_str)
+			target_str2 = task_t[i].target_name and (yel_clr_str .. gt(task_t[i].target_name) .. def_clr_str)
+		-- dangerous squad
+		elseif task_t[i].task_type == 5 then
+			target_str1 = task_t[i].target_name and (yel_clr_str .. gt(task_t[i].target_name) .. def_clr_str)
+			target_str2 = task_t[i].target_level and (white_clr_str .. gt(task_t[i].target_level) .. def_clr_str)
+		-- stealth task
+		elseif task_t[i].task_type == 6 then
+			target_str1 = task_t[i].enemy_comm and (yel_clr_str .. gt("st_faction_" .. task_t[i].enemy_comm) .. def_clr_str)
+			target_str2 = ""
+		-- guard task
+		elseif task_t[i].task_type == 7 then
+			local sm_name = "st_" .. task_t[i].target_name .. "_name"
+			target_str1 = sm_name and (yel_clr_str .. gt(sm_name) .. def_clr_str)
+			target_str2 = ""
+		-- scout task
+		elseif task_t[i].task_type == 8 then
+			target_str1 = task_t[i].route_levels and (yel_clr_str .. task_t[i].route_levels .. def_clr_str)
+			target_str2 = ""
+		-- artefact task
+		elseif task_t[i].task_type == 9 then
+			target_str1 = task_t[i].anomaly_level_name and (yel_clr_str .. gt(task_t[i].anomaly_level_name) .. def_clr_str)
+			target_str2 = ""
+		-- delivery task
+		elseif task_t[i].task_type == 10 then
+			target_str1 = task_t[i].delivery_stash_level_name and (yel_clr_str .. gt(task_t[i].delivery_stash_level_name) .. def_clr_str)
+			target_str2 = task_t[i].target_level and (yel_clr_str .. gt(task_t[i].target_level) .. def_clr_str)
+		end
+
+		local task_desc = strformat(gt("pda_task_desc_" .. task_t[i].task_type), target_str1, target_str2)
+		local reward = white_clr_str .. gt("pda_task_reward") .. " " .. task_t[i].reward .. def_clr_str
+
+		-- guard task change to reward string
+		if task_t[i].task_type == 7 then
+			reward = reward .. " " .. gt("pda_task_reward_hour")
+		end
+
+		self.bottom[i].descr:SetText(giver_name .. "\\n" .. def_clr_str .. task_desc .. "" .. reward)
+
+		-- update button
+		self.bottom[i].btn:TextControl():SetText(gt("pda_task_accept_btn"))
+
+	end
+
+end
+
+function CustomPDAX:UpdTaskButtons(task_type)
+	-- enable task button after cooldown
+	self.task_btn[task_type].btn:Enable( (not pmain.pda_msg_states[7].cd[task_type]) )
+end

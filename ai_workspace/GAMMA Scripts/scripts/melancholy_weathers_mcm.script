@@ -1,0 +1,155 @@
+-- Utility function to change the default value of an MCM option
+-- Just ignore the implementation and use it below
+---@param page { gr: table<integer, { id: string, def: number|string|boolean }> }
+---@param updates table<string, number|string|boolean>
+local function set_mcm_opts_def(page, updates)
+    local page_opts = page.gr
+
+    for _, opt in ipairs(page_opts) do
+        local opt_id = opt.id
+        if updates[opt_id] ~= nil then
+            opt.def = updates[opt_id]
+        end
+    end
+
+    return page
+end
+
+-- Monkey patches to change SSS' MCM default values
+-- for Melancholy Weathers
+-- hippobot, please, close this file
+local og_ao_mcm_load = ssfx_ao_mcm.on_mcm_load
+function ssfx_ao_mcm.on_mcm_load()
+    local opts, extra = og_ao_mcm_load()
+
+    set_mcm_opts_def(opts, {
+        quality_mcm = 4,
+        res_mcm = 1,
+        distance_mcm = 150,
+        blur_mcm = 1,
+        radius_mcm = 2.1,
+        max_occ_mcm = 0.2,
+        global_int_mcm = 1.0,
+        hud_int_mcm = 0.8,
+        flora_int_mcm = 0.4,
+    })
+
+    return opts, extra
+end
+
+local og_pp_mcm_load = ssfx_pp_mcm.on_mcm_load
+function ssfx_pp_mcm.on_mcm_load()
+    local opts, extra = og_pp_mcm_load()
+    local bloom_page = opts.gr[1]
+
+    set_mcm_opts_def(bloom_page, {
+        use_weather_mcm = false,
+        threshold_mcm = 5.5,
+        exposure_mcm = 1.3,
+        blur_mcm = 1,
+        vibrance_mcm = 0.3,
+        sky_mcm = 1.3,
+        lens_mcm = 0,
+        dirt_mcm = 0,
+    })
+
+    return opts, extra
+end
+
+local og_rain_mcm_load = ssfx_rain_mcm.on_mcm_load
+function ssfx_rain_mcm.on_mcm_load()
+    local opts, extra = og_rain_mcm_load()
+    local rain_main_page = opts.gr[1]
+
+    set_mcm_opts_def(rain_main_page, {
+        quality_mcm = 2,
+        max_drops_mcm = 3500,
+        radius_mcm = 25,
+        speed_mcm = 2.0,
+        len_mcm = 4.2,
+        width_mcm = 0.1,
+        alpha_mcm = 0.8,
+        brightness_mcm = 0.35,
+        refraction_mcm = 3,
+        reflection_mcm = 1,
+        splash_alpha_mcm = 0.5,
+        splash_refraction_mcm = 1.5,
+    })
+
+    return opts, extra
+end
+
+local og_shadows_mcm_load = ssfx_shadows_mcm.on_mcm_load
+function ssfx_shadows_mcm.on_mcm_load()
+    local opts, extra = og_shadows_mcm_load()
+
+    set_mcm_opts_def(opts, {
+        lod_quality_mcm = 1,
+        lod_min_mcm = 1,
+        lod_max_mcm = 0,
+        volumetric_force_mcm = false,
+        volumetric_int_mcm = 0.8,
+        volumetric_quality_mcm = 4.0,
+    })
+
+    return opts, extra
+end
+
+local og_ssr_mcm_load = ssfx_ssr_mcm.on_mcm_load
+function ssfx_ssr_mcm.on_mcm_load()
+    local opts, extra = og_ssr_mcm_load()
+
+    set_mcm_opts_def(opts, {
+        quality_mcm = 0,
+        render_scale_mcm = 1,
+        blur_mcm = 0.35,
+        use_noise_mcm = true,
+        general_int_mcm = 1,
+        sky_int_mcm = 2,
+        weapon_int_mcm = 0.5,
+        weapon_int_max_mcm = 0.02,
+    })
+
+    return opts, extra
+end
+
+local og_weapons_dof_mcm_load = ssfx_weapons_dof_mcm.on_mcm_load
+function ssfx_weapons_dof_mcm.on_mcm_load()
+    local opts, extra = og_weapons_dof_mcm_load()
+
+    set_mcm_opts_def(opts, {
+        aim_fadestart_mcm = 0,
+        aim_fadelen_mcm = 0,
+        aim_blur_mcm = 0,
+        aim_edgeblur_mcm = 0,
+        fadestart_mcm = 0,
+        fadelen_mcm = 0,
+        blur_mcm = 0,
+        edgeblur_mcm = 0,
+        reloading_mcm = false,
+        pda_mcm = false,
+        inventory_mcm = false,
+        fdda_mcm = false,
+        looting_mutant_mcm = false,
+    })
+
+    return opts, extra
+end
+
+local og_wind_mcm_load = ssfx_wind_mcm.on_mcm_load
+function ssfx_wind_mcm.on_mcm_load()
+    local opts, extra = og_wind_mcm_load()
+
+    set_mcm_opts_def(opts, {
+        min_speed_mcm = 0.45,
+        grass_speed_mcm = 12.1,
+        grass_turbulence_mcm = 1.7,
+        grass_push_mcm = 1.3,
+        grass_wave_mcm = 0.9,
+        trees_speed_mcm = 11.5,
+        trees_trunk_mcm = 0.2,
+        trees_bend_mcm = 0.55,
+    })
+
+    return opts, extra
+end

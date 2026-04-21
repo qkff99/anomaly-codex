@@ -1,0 +1,261 @@
+local dte = demonized_time_events
+local dropper_id = {}
+local drop_queue = {}
+local last_tick = 0
+local isFDDARedone = lam2 and liz_fdda_redone_mcm
+local FDDAAnimPlaying = false
+
+local cig_sec = {
+	["cigarettes"] = true,
+	["cigar1"] = true,
+	["cigar2"] = true,
+	["cigar3"] = true,
+	["cigarettes_lucky"] = true,
+	["cigarettes_russian"] = true,
+	["tobacco"] = true,
+	["hand_rolling_tobacco"] = true,
+	["nc_zonecig1f"] = true,
+	["nc_zonecig2f"] = true,
+	["nc_zonecig3f"] = true,
+	["nc_zonecig4f"] = true,
+	["nc_zonecig5f"] = true,
+	["nc_zonecig6f"] = true,
+	["nc_prima"] = true,
+	["nc_bt"] = true,
+	["nc_lm"] = true,
+	["nc_camel"] = true,
+	["nc_sobranieblack"] = true,
+	["nc_americanspirit"] = true,
+	["nc_chesterfield"] = true
+}
+
+local cig1_sec = {
+	["nc_camelblue"] = true,
+	["nc_chapman"] = true,
+	["nc_marlboroblue"] = true,
+	["nc_marlborogold"] = true,
+	["nc_minsk"] = true,
+	["nc_parliament"] = true,
+	["nc_sobranie"] = true,
+	["nc_winston"] = true,
+	["nc_winstonwhite"] = true,
+}
+
+local medkit_sec = {
+	["medkit_scientic"] = true,
+	["medkit_army"] = true,
+	["medkit"] = true,
+}
+
+local medkit1_sec = {
+	["clearskymedkit"] = true,
+	["banditmedkit"] = true,
+	["monolithmedkit"] = true,
+	["renegademedkit"] = true,
+	["freedommedkit"] = true,
+	["sinmedkit"] = true,
+	["mercmedkit"] = true,
+	["isgmedkit"] = true,
+	["dutymedkit"] = true,
+	["tacmedkit"] = true,
+	["toxmedkit"] = true,
+	["commedkit"] = true,
+	["civmedkit"] = true,
+}
+
+local function print(a,...)
+	local g_type = type
+	if g_type(a)=="table" then
+		-- printf("ze table\n%s", utils_data.print_table(a, false, true))
+	elseif g_type(a) == "string" or g_type(a) == "number" or g_type(a) == "boolean" or g_type(a) == "nil" then
+		-- printf(tostring(a))
+	elseif g_type(a) == "userdata" then
+		if a.x and a.y and a.z then
+			-- printf("("..a.x.." , "..a.y.." , "..a.z..") ")
+		end
+	end
+end
+
+function getActorPos()
+	local direction = vector():setHP(device().cam_dir:getH(), 0):mul(-0.75)
+	local pos = db.actor:position()
+	if IsMoveState("mcCrouch") and IsMoveState("mcAccel") then -- Prone
+		pos.y = pos.y + 0.4
+	elseif IsMoveState("mcCrouch") then
+		pos.y = pos.y + 1.2
+	else
+		pos.y = pos.y + 1.6
+	end
+	return pos:add(direction)
+end
+
+function randomf(m, n)
+	local max = math.max(m, n)
+	local min = math.min(m, n)
+	return math.random() * (max - min) + min
+end
+
+function apply_force(target)
+	local math_random = math.random
+	if target and target:get_physics_shell() then
+		local forceMagnitude = target:mass() * 19.52 * randomf(5, 8)
+		local direction = vector():set(math_random() * 2 - 1, math_random() * 2 - 1, math_random() * 2 - 1):mul(
+			forceMagnitude)
+
+		target:get_physics_shell():apply_force(direction.x, 0, direction.z)
+		target:get_physics_shell():apply_torque(forceMagnitude * 20, forceMagnitude * 20, forceMagnitude * 20)
+	end
+end
+
+function get_current_action(action)
+	if action  then
+		local str = action.name
+		return (str and string.find(str,"fdda_anim_") and string.gsub(str,"fdda_anim_","")) or (action.tag == "vanilla_item_use" and action.item_sec) or nil
+	end
+end
+
+function spawn_object(item_sec, alted)
+	if haruka_fill and item_sec == "flask" then return true end -- Fillable Canteen patch
+	if not alted then
+		for i = 1, 5 do
+			if SYS_GetParam(0, "dropper_" .. item_sec .. "_" .. tostring(i), "visual") then
+				-- CreateTimeEvent(0,"model_drop_delayer_"..item_sec..tostring(i),0.05*i, spawn_object,item_sec.."_"..tostring(i),true)
+				spawn_object(item_sec .. "_" .. tostring(i), true)
+			end
+		end
+	end
+	if SYS_GetParam(0, "dropper_" .. item_sec, "visual") then
+		local se_obj = alife_create("dropper_" .. item_sec, getActorPos(), db.actor:level_vertex_id(),
+			db.actor:game_vertex_id())
+		if not se_obj then return true end
+		local id         = se_obj.id
+		se_obj.angle     = vector():set(randomf(-1, 1), randomf(-1, 1), randomf(-1, 1)):mul(math.pi)
+		local data       = utils_stpk.get_physic_data(se_obj)
+		data.custom_data = [[
+[collide]
+ignore_small_objects
+]]
+		utils_stpk.set_physic_data(data, se_obj)
+		local time_start = time_global()
+		dte.CreateTimeEvent(0, "model_drop_apply_starting_force_" .. id, 0, function(id)
+			local obj = level.object_by_id(id)
+			if obj then
+				obj:force_set_position(getActorPos(), true)
+				apply_force(obj)
+				dropper_id[#dropper_id+1] = { id, getActorPos() }
+				return true
+			end
+			local func_time = time_global() - time_start
+			if func_time > 1000 then
+				-- print("obj search timeout")
+				return true
+			end
+		end, id)
+	end
+	return true
+end
+
+function actor_on_item_use(obj, section)
+	if section == "items_anm_dummy" then return end
+	if cig_sec[section] then
+		drop_queue[#drop_queue+1] = "cigbutt"
+	end
+	if cig1_sec[section] then
+		drop_queue[#drop_queue+1] = "cigbutt1"
+	end
+	if medkit_sec[section] then
+		drop_queue[#drop_queue+1] = "medkit_needle"
+	end
+	if medkit1_sec[section] then
+		drop_queue[#drop_queue+1] = "medkit_needle1"
+	end
+	if obj:get_remaining_uses()==0 then
+		drop_queue[#drop_queue+1] = section
+	end
+end
+
+local item_sec
+
+function actor_on_update()
+	if isFDDARedone then -- FDDA Redone check
+		FDDAAnimPlaying = lam2.is_running()
+		if FDDAAnimPlaying and item_sec and item_sec~=get_current_action(lam2.get_current_action()) then
+			FDDAAnimPlaying = false
+		end
+		item_sec = get_current_action(lam2.get_current_action())
+	end
+	if #drop_queue>0 and not FDDAAnimPlaying then
+		for i = 1,#drop_queue do
+			spawn_object(drop_queue[i])
+		end
+		drop_queue = {}
+	end
+	if time_global() - last_tick > 5000 and dropper_id and dropper_id[1] then
+		local pos_removed = {}
+		for i = 1, #dropper_id do
+			if dropper_id[i] and dropper_id[i][2]:distance_to_sqr(getActorPos()) > 65 * 65 then
+				local se_obj = alife_object(dropper_id[i][1])
+				if se_obj and string.find(se_obj:section_name(), "dropper_") then
+					alife_release(se_obj)
+				end
+				dropper_id[i] = nil
+			end
+		end
+		last_tick = time_global()
+	end
+end
+
+function actor_on_first_update()
+	for i = 1, 65534 do
+		local se_obj = alife_object(i)
+		if se_obj and string.find(se_obj:section_name(), "dropper_") then
+			alife_release(se_obj)
+		end
+	end
+	last_tick = time_global()
+end
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_update", actor_on_update)
+	RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+	RegisterScriptCallback("actor_on_item_use", actor_on_item_use)
+end
+
+if not isFDDARedone and enhanced_animations then -- og fdda check dump by demonized
+	if enhanced_animations.anim_prepare then
+		local eap = enhanced_animations.anim_prepare
+		enhanced_animations.anim_prepare = function(...)
+			FDDAAnimPlaying = true
+			return eap(...)
+		end
+	end
+	if enhanced_animations.stop_my_item_anim then
+		local eap = enhanced_animations.stop_my_item_anim
+		enhanced_animations.stop_my_item_anim = function(...)
+			FDDAAnimPlaying = false
+			return eap(...)
+		end
+	end
+	if enhanced_animations.stop_my_monster_anim then
+		local eap = enhanced_animations.stop_my_monster_anim
+		enhanced_animations.stop_my_monster_anim = function(...)
+			FDDAAnimPlaying = false
+			return eap(...)
+		end
+	end
+	if ea_callbacks and ea_callbacks.EA_SendScriptCallback and ea_callbacks.EA_RegisterScriptCallback then
+		ea_callbacks.EA_RegisterScriptCallback("ea_on_item_use", function()
+			FDDAAnimPlaying = true
+		end)
+		ea_callbacks.EA_RegisterScriptCallback("ea_on_item_anim_stop", function()
+			FDDAAnimPlaying = false
+		end)
+	end
+	end
+	if zzz_skin and zzz_skin.stop_my_monster_anim then
+	local eap = zzz_skin.stop_my_monster_anim
+	zzz_skin.stop_my_monster_anim = function(...)
+		FDDAAnimPlaying = false
+		return eap(...)
+	end
+end

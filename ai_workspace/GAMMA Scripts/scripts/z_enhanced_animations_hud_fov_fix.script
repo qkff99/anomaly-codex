@@ -1,0 +1,27 @@
+local ini_eff = ini_file("items\\items\\animations_settings.ltx")
+local ea_debug = false
+
+orig_enhanced_animations_start_anim = enhanced_animations.start_anim
+enhanced_animations.start_anim = function(anim_section_hud)
+	UnregisterScriptCallback("actor_on_update", enhanced_animations.actor_on_update)
+	fov_anim_manager.change_fov(ini_sys:r_float_ex(anim_section_hud, "hud_fov", 0.45))
+	local speed = ini_eff:r_float_ex(enhanced_animations.used_item or "nothing", "speed", 1)
+	if ea_debug then printf("speed is = "..speed) end
+	game.play_hud_motion(2, anim_section_hud, "anm_ea_show", false, speed)
+	local hud_anm = enhanced_animations.used_item and ini_eff:r_string_ex(enhanced_animations.used_item, "hud_anm")
+	if hud_anm then
+		game.play_hud_anm(hud_anm, 0, 1, 1, false)
+	end
+	hud_anm = nil
+end
+
+function on_option_change()
+	if ui_mcm then
+		ea_debug = ui_mcm.get("EA_settings/ea_debug")
+	end
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_option_change", on_option_change)
+	on_option_change()
+end

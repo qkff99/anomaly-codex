@@ -1,0 +1,216 @@
+-- Artefacts movement module for DAO
+
+-- Shuffle table, Fisher-Yates shuffle with preserving original table
+local function shuffle(t)
+   local s = {}
+   for i = 1, #t do s[i] = t[i] end
+   for i = #t, 2, -1 do
+     local j = math.random(i)
+     s[i], s[j] = s[j], s[i]
+   end
+   return s
+end
+
+local function vec_to_table(vec)
+	return {
+		x = vec.x,
+		y = vec.y,
+		z = vec.z
+	}
+end
+
+local function table_to_vec(vec)
+	return vector():set(vec.x, vec.y, vec.z)
+end
+
+local function distance_to_xz_sqr(a, b)
+	if a.distance_to_xz_sqr then
+		return a:distance_to_xz_sqr(b)
+	end
+
+	local va = b.x - a.x
+	local vb = b.z - a.z
+	return va * va + vb * vb
+end
+
+local function table_nexter(t)
+    local nexter = {}
+    nexter.t = t
+    nexter.current = nil
+    nexter.next = function(self)
+    	if self.current ~= nil and not self.t[self.current] then
+            self.current = nil
+        end
+        self.current = next(self.t, self.current)
+        if self.current == nil then
+            self.current = next(self.t, self.current)
+        end
+        return self.current, self.t[self.current]
+    end
+    return nexter
+end
+
+artefact_ids_to_way = table_nexter({})
+
+spawn_artefact_on_smart = drx_da_main.spawn_artefact_on_smart
+drx_da_main.spawn_artefact_on_smart = function(level_file, smart_name, picked_artefact, level_name)
+	local id = spawn_artefact_on_smart(level_file, smart_name, picked_artefact, level_name)
+	if not id then return end
+
+	-- 50% chance for way generation
+	if math.random() < 0.5 then
+		generate_ways_for_id(id, smart_name, picked_artefact, level_name)
+	end
+	return id
+end
+
+clean_artefacts_on_level = drx_da_main.clean_artefacts_on_level
+drx_da_main.clean_artefacts_on_level = function(level_name)
+	clean_artefacts_on_level(level_name)
+	for id, v in pairs(artefact_ids_to_way.t) do
+		if v.level_name == level_name then
+			artefact_ids_to_way.t[id] = nil
+		end
+	end
+end
+
+function generate_ways_for_id(id, smart_name, picked_artefact, level_name)
+	if artefact_ids_to_way.t[id] then
+		-- printf("artefact way is already generated for %s on %s in %s", id, smart_name, level_name)
+		return
+	end
+
+	local anomalies = drx_da_main.updated_anomaly_levels[level_name] and drx_da_main.updated_anomaly_levels[level_name].anomalies_by_smart and drx_da_main.updated_anomaly_levels[level_name].anomalies_by_smart[smart_name]
+	if not anomalies then
+		-- printf("no anomalies are in db on smart for %s on %s in %s", id, smart_name, level_name)
+		return
+	end
+
+	local se_objs = {}
+	for id, _ in pairs(anomalies) do
+		local se_obj = alife_object(id)
+		if se_obj then
+			se_objs[#se_objs + 1] = se_obj
+		end
+	end
+
+	if is_empty(se_objs) then
+		-- printf("no anomalies se_objs found on smart for %s on %s in %s", id, smart_name, level_name)
+		return
+	end
+
+	artefact_ids_to_way.t[id] = {
+		points = {},
+		current_point_index = 1,
+		smart_name = smart_name,
+		level_name = level_name,
+		update_time = 0
+	}
+	local points = artefact_ids_to_way.t[id].points
+	se_objs = shuffle(se_objs)
+	for i, se_obj in ipairs(se_objs) do
+		points[#points + 1] = vec_to_table(se_obj.position)
+		-- printf("adding point for %s on %s in %s: %s,%s,%s", id, smart_name, level_name, round_idp(se_obj.position.x, 2), round_idp(se_obj.position.y, 2), round_idp(se_obj.position.z, 2))
+	end
+end
+
+function move_artefact(obj, t)
+	local id = obj:id()
+	local pos = obj:position()
+	local point = t.points[t.current_point_index]
+	if not point then
+		-- printf("update artefact %s, point not found by index %s", id, t.current_point_index)
+		point = t.points[1]
+		t.current_point_index = 1
+	end
+	point = table_to_vec(point)
+	if distance_to_xz_sqr(pos, point) < 2 then
+		t.current_point_index = t.current_point_index + 1
+		-- printf("update artefact %s, artefact near current point, new point index %s", id, t.current_point_index)
+		point = t.points[t.current_point_index]
+		if not point then
+			-- printf("update artefact %s, point not found by index %s", id, t.current_point_index)
+			point = t.points[1]
+			t.current_point_index = 1
+		end
+	end
+	point = table_to_vec(point)
+
+	local lvid = obj:level_vertex_id()
+	local lvid_pos = level.vertex_position(lvid)
+	point.y = lvid_pos.y + 0.1
+	local dir = vector():set(point):sub(pos):normalize()
+	-- demonized_geometry_ray.VisualizeRay(pos, point, nil, 500)
+
+	-- obj:set_const_force(vector():set(dir.x, dir.y, dir.z), 100, 1000)
+	local ph = obj:get_physics_shell()
+	if ph then
+		local mass = obj:mass()
+		dir.y = dir.y + 1
+		dir:mul(mass)
+		ph:apply_force(dir.x * 150, dir.y * 250, dir.z * 150)
+		obj:set_const_force(vector():set(dir.x, dir.y / 5, dir.z), 2.5, 1000)
+		-- printf("move artefact %s, index %s", id, t.current_point_index)
+	end
+end
+
+local tg = 0
+function update_artefacts()
+	if time_global() == tg then return end
+	tg = time_global()
+
+	local id, t = artefact_ids_to_way:next()
+	if not id then return end
+	
+	local obj = level.object_by_id(id)
+	if not obj then
+		-- printf("no artefact obj by %s", id)
+		return
+	end
+
+	if time_global() < (t.update_time or 0) then return end
+	t.update_time = time_global() + math.random(500, 1500)
+
+	move_artefact(obj, t)
+end
+
+function save_state(m_data)
+	m_data.dao_artefact_movement = artefact_ids_to_way
+end
+
+function load_state(m_data)
+	if m_data.dao_artefact_movement then
+		artefact_ids_to_way = m_data.dao_artefact_movement
+	end
+end
+
+function actor_on_item_take(obj)
+	if artefact_ids_to_way.t[obj:id()] then
+		artefact_ids_to_way.t[obj:id()] = nil
+	end
+end
+
+function npc_on_item_take(npc, obj)
+	actor_on_item_take(obj)
+end
+
+-- Next actor tick enabling
+function actor_on_first_update()
+	CreateTimeEvent("drx_da_main_artefacts_movement", 0, 0, function()
+		AddUniqueCall(update_artefacts)
+		return true
+	end)
+end
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+	RegisterScriptCallback("save_state", save_state)
+	RegisterScriptCallback("load_state", load_state)
+	RegisterScriptCallback("actor_on_item_take", actor_on_item_take)
+	RegisterScriptCallback("npc_on_item_take", npc_on_item_take)
+end
+
+function refresh_artefacts()
+	drx_da_main.clean_artefacts_on_level(level.name())
+	drx_da_main.spawn_artefacts_on_level(level.name())
+end

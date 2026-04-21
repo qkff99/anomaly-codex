@@ -1,0 +1,33 @@
+[ballistic_plate_anm_sounds]
+snd_plate_add			    = item_plate_use\bp_sound_add
+snd_plate_remove            = item_plate_use\bp_sound_remove
+snd_replace_old             = item_plate_use\bp_sound_replace_old
+snd_replace_new             = item_plate_use\bp_sound_replace_new
+
+[ballistic_plate_anm_animations]
+hud_fov                     = 0.5
+hands_position				= 0, 0, 0
+hands_orientation			= 0, 0, 0
+hands_position_16x9			= 0, 0, 0
+hands_orientation_16x9		= 0, 0, 0
+anm_plate_add			    = hand_add_plate_anim, add_plate_anim
+anm_plate_remove            = hand_remove_plate_anim, remove_plate_anim
+anm_replace_old             = hand_replace_old_plate_anim, replace_old_plate_anim
+anm_replace_new             = hand_replace_new_plate_anim, replace_new_plate_anim
+cam_plate_add			    = itemuse_anm_effects\add_plate.anm
+cam_plate_remove            = itemuse_anm_effects\remove_plate.anm
+cam_replace_old             = itemuse_anm_effects\replace_old_plate.anm
+cam_replace_new             = itemuse_anm_effects\replace_new_plate.anm
+
+
+[ballistic_plate_anm_kevlar_hud]:ballistic_plate_anm_animations,ballistic_plate_anm_sounds
+item_visual             	= dynamics\weapons\wpn_plate\plate_kevlar_hud.ogf
+
+[ballistic_plate_anm_plate_hud]:ballistic_plate_anm_animations,ballistic_plate_anm_sounds
+item_visual             	= dynamics\weapons\wpn_plate\plate_plate_hud.ogf
+
+[ballistic_plate_anm_ceramic_hud]:ballistic_plate_anm_animations,ballistic_plate_anm_sounds
+item_visual             	= dynamics\weapons\wpn_plate\plate_ceramic_hud.ogf
+
+[ballistic_plate_anm_polymer_hud]:ballistic_plate_anm_animations,ballistic_plate_anm_sounds
+item_visual             	= dynamics\weapons\wpn_plate\plate_polymer_hud.ogf

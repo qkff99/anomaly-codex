@@ -1,0 +1,254 @@
+local default_settings = {
+    enable_grenade = true,
+    enable_launcher = true,
+    lmb_show_mode = 1,      -- 1=always, 2=lmb_only
+    rmb_show = true,        -- show charging trajectory
+    particle_style = 1,     -- 1=glow, 2=solid, 3=dim
+    particle_size = 2,      -- 1=small, 2=medium, 3=large
+    particle_color = 1,     -- 1=green, 2=red, 3=yellow, 4=blue, 5=cyan, 6=white
+    particle_brightness = 2, -- 1=dark, 2=medium, 3=bright
+    trajectory_points = 30,
+    show_trajectory = true, -- show trajectory dots
+    show_impact = true,     -- show impact marker
+    impact_size = 1,        -- 1=1x, 2=2x, 3=3x, 4=4x, 5=5x
+}
+
+local lmb_show_mode_map = {
+    [1] = "always",
+    [2] = "lmb_only",
+}
+
+local particle_style_map = {
+    [1] = "glow",
+    [2] = "solid",
+    [3] = "dim",
+}
+
+local particle_size_map = {
+    [1] = "small",
+    [2] = "medium",
+    [3] = "large",
+}
+
+local particle_color_map = {
+    [1] = "green",
+    [2] = "red",
+    [3] = "yellow",
+    [4] = "blue",
+    [5] = "cyan",
+    [6] = "white",
+}
+
+local impact_size_map = {
+    [1] = "1x",
+    [2] = "2x",
+    [3] = "3x",
+    [4] = "4x",
+    [5] = "5x",
+}
+
+local particle_brightness_map = {
+    [1] = "dark",
+    [2] = "medium",
+    [3] = "bright",
+}
+
+local function get_config(key)
+    if ui_mcm then
+        local val = ui_mcm.get("grenade_trajectory/" .. key)
+        if val ~= nil then
+            return val
+        end
+    end
+    return default_settings[key]
+end
+
+function load_settings()
+    local lmb_mode_val = get_config("lmb_show_mode")
+    local style_val = get_config("particle_style")
+    local size_val = get_config("particle_size")
+    local color_val = get_config("particle_color")
+    local brightness_val = get_config("particle_brightness")
+    local impact_size_val = get_config("impact_size")
+    
+    return {
+        enable_grenade = get_config("enable_grenade"),
+        enable_launcher = get_config("enable_launcher"),
+        lmb_show_mode = lmb_show_mode_map[lmb_mode_val] or "always",
+        rmb_show = get_config("rmb_show"),
+        particle_style = particle_style_map[style_val] or "glow",
+        particle_size = particle_size_map[size_val] or "medium",
+        particle_color = particle_color_map[color_val] or "green",
+        particle_brightness = particle_brightness_map[brightness_val] or "medium",
+        trajectory_points = get_config("trajectory_points") or 30,
+        show_trajectory = get_config("show_trajectory"),
+        show_impact = get_config("show_impact"),
+        impact_size = impact_size_map[impact_size_val] or "1x",
+    }
+end
+
+function on_option_change()
+    if grenade_trajectory and grenade_trajectory.update_settings then
+        grenade_trajectory.update_settings(load_settings())
+    end
+end
+
+function on_mcm_load()
+    return {
+        id = "grenade_trajectory",
+        sh = true,
+        gr = {
+            -- Enable for grenades
+            {
+                id = "enable_grenade",
+                type = "check",
+                val = 1,
+                def = true,
+            },
+            
+            -- Enable for launchers
+            {
+                id = "enable_launcher",
+                type = "check",
+                val = 1,
+                def = true,
+            },
+            
+            {
+                id = "divider_1",
+                type = "line",
+            },
+            
+            -- LMB show mode
+            {
+                id = "lmb_show_mode",
+                type = "list",
+                val = 2,
+                def = 1,
+                content = {
+                    {1, "gt_lmb_always"},
+                    {2, "gt_lmb_held"},
+                },
+            },
+            
+            -- RMB show toggle
+            {
+                id = "rmb_show",
+                type = "check",
+                val = 1,
+                def = true,
+            },
+            
+            {
+                id = "divider_2",
+                type = "line",
+            },
+            
+            -- Trajectory dots toggle
+            {
+                id = "show_trajectory",
+                type = "check",
+                val = 1,
+                def = true,
+            },
+            
+            -- Impact marker toggle
+            {
+                id = "show_impact",
+                type = "check",
+                val = 1,
+                def = true,
+            },
+            
+            -- Impact marker size
+            {
+                id = "impact_size",
+                type = "list",
+                val = 2,
+                def = 1,
+                content = {
+                    {1, "gt_impact_1x"},
+                    {2, "gt_impact_2x"},
+                    {3, "gt_impact_3x"},
+                    {4, "gt_impact_4x"},
+                    {5, "gt_impact_5x"},
+                },
+            },
+            
+            -- Style selection (transparency/brightness)
+            {
+                id = "particle_style",
+                type = "list",
+                val = 2,
+                def = 1,
+                content = {
+                    {1, "gt_style_glow"},
+                    {2, "gt_style_solid"},
+                    {3, "gt_style_dim"},
+                },
+            },
+            
+            -- Size selection
+            {
+                id = "particle_size",
+                type = "list",
+                val = 2,
+                def = 2,
+                content = {
+                    {1, "gt_size_small"},
+                    {2, "gt_size_medium"},
+                    {3, "gt_size_large"},
+                },
+            },
+            
+            -- Color selection
+            {
+                id = "particle_color",
+                type = "list",
+                val = 2,
+                def = 1,
+                content = {
+                    {1, "gt_color_green"},
+                    {2, "gt_color_red"},
+                    {3, "gt_color_yellow"},
+                    {4, "gt_color_blue"},
+                    {5, "gt_color_cyan"},
+                    {6, "gt_color_white"},
+                },
+            },
+            
+            -- Brightness selection
+            {
+                id = "particle_brightness",
+                type = "list",
+                val = 2,
+                def = 2,
+                content = {
+                    {1, "gt_brightness_dark"},
+                    {2, "gt_brightness_medium"},
+                    {3, "gt_brightness_bright"},
+                },
+            },
+            
+            {
+                id = "divider_3",
+                type = "line",
+            },
+            
+            -- Trajectory points (length)
+            {
+                id = "trajectory_points",
+                type = "track",
+                val = 2,
+                def = 30,
+                min = 10,
+                max = 60,
+                step = 5,
+            },
+        },
+    }
+end
+
+function on_game_start()
+    RegisterScriptCallback("on_option_change", on_option_change)
+end

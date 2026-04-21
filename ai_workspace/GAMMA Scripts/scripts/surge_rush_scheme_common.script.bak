@@ -1,0 +1,282 @@
+--Protected function call to prevent crashes to desktop
+--Prints error in console if occured, otherwise proceed normally
+--Use for test only, slower than usual
+local try = try or function(func, ...)
+	local status, error_or_result = pcall(func, ...)
+	if not status then
+		printf(error_or_result)
+		return false, status, error_or_result
+	else
+		return error_or_result, status
+	end
+end
+
+local debug_enabled = true
+local function printf(str, ...)
+	if debug_enabled then
+		_G.printf("SURGE RUSH [" .. script_name() .. "]: " .. str, ...)
+	end
+end
+
+function get_se_obj_level(se_obj)
+	return alife():level_name(game_graph():vertex(se_obj.m_game_vertex_id):level_id())
+end
+
+function is_on_actor_level(se_obj)
+	local level_name = level.name()
+	local se_obj_level = get_se_obj_level(se_obj)
+	return se_obj_level == level_name
+end
+
+busy_lvids = {}
+function get_cover_params(npc, params)
+	local id = npc:id()
+	return db.storage[id].surge_cover_params
+end
+
+function set_cover_params(npc, params)
+	local id = npc:id()
+	db.storage[id].surge_cover_params = {
+		lvid = params.lvid,
+		cover_id = params.cover_id,
+		pos = vector():set(params.pos)
+	}
+	busy_lvids[params.lvid] = true
+	return db.storage[id].surge_cover_params
+end
+
+function reset_cover_params(npc)
+	if not npc then return end
+	local id = npc:id()
+	local params = db.storage[id].surge_cover_params
+	if params then
+		busy_lvids[params.lvid] = nil
+	end
+	db.storage[id].surge_cover_params = nil
+end
+
+function reset_all_cover_params()
+	for _, id in ipairs(db.OnlineStalkers) do
+		reset_cover_params(level.object_by_id(id))
+	end
+end
+
+local squads = {}
+surge_covers = nil
+vanilla_covers = nil
+tb_ids = surge_manager_tb_covers.tb
+tb_covers = surge_manager_tb_covers.tb_covers
+tb_cover_radius_sqr = surge_manager_tb_covers.tb_cover_radius_sqr
+function build_surge_covers()
+	local surge_manager = surge_manager.get_surge_manager()
+	if not surge_manager then return true end
+
+	local curr_level = level.name()
+	local srs = {}
+	local vanilla = {}
+	for name,condlist in pairs(surge_manager.covers) do
+		local zone = db.zone_by_name[name]
+		if zone and is_on_actor_level(alife_object(zone:id())) then
+			printf("adding surge cover %s, %s", zone:name(), zone:id())
+			srs[#srs + 1] = zone:id()
+			vanilla[#srs + 1] = zone:id()
+		end
+	end
+
+	-- TB Zones
+	for i = 1, #tb_ids do
+		printf("adding tb surge cover %s", tb_ids[i])
+		srs[#srs + 1] = tb_ids[i]
+	end
+
+	surge_covers = kd_tree.buildTreeSeObjectIds(srs)
+	vanilla_covers = kd_tree.buildTreeSeObjectIds(vanilla)
+
+	reset_all_cover_params()
+end
+
+function rebuild_covers_if_empty()
+	if is_empty(surge_covers) then build_surge_covers() end
+end
+
+last_surge_time = nil
+function surge_started()
+	return 	surge_manager.is_loaded() and surge_manager.is_started()
+	or 		psi_storm_manager.is_loaded() and psi_storm_manager.is_started()
+end
+
+surge_ignore_communities = {
+	zombied = true,
+	monolith = true,
+	monster = true,
+}
+function is_surge_community(npc)
+	return not surge_ignore_communities[character_community(npc) or "monster"]
+end
+
+function is_valid_npc(npc)
+	if not npc then
+		-- printf("no se_obj found")
+		return
+	end
+
+	local name = npc:name()
+
+	if not IsStalker(npc) then
+		-- printf("npc %s is not stalker", name)
+		return
+	end
+
+	if not is_surge_community(npc) then
+		-- printf("npc %s is not valid community %s", name, character_community(npc) or "monster")
+		return
+	end
+
+	local id = npc:id()
+	if axr_companions.non_task_companions[id] then
+		-- printf("npc %s is a companion", name)
+		return
+	end
+
+	if surge_manager_ignore_npc and surge_manager_ignore_npc.ignore_npc and surge_manager_ignore_npc.ignore_npc[npc:section()] then
+		-- printf("npc %s is in ignore list", name)
+		return
+	end
+
+	if get_object_story_id(id) then
+		-- printf("npc %s is story object", name)
+		return
+	end
+
+	for id,squad in pairs(axr_companions.companion_squads) do 
+		if squad then
+			for k in squad:squad_members() do
+				if k.id == id then
+					return
+				end
+			end
+		end
+	end
+
+	-- printf("npc %s is valid", name)
+	return true
+end
+
+function is_accessible(npc,point)
+	if (type(point) == "number") then
+		return point < 4294967295 and point >= 0 and npc:accessible(point)
+	end
+
+	local lvid = level.vertex_id(point)
+	return lvid < 4294967295 and point >= 0 and npc:accessible(point)
+end
+
+function is_valid_vertex(vid)
+	return vid and vid < 4294967295 and vid >= 0
+end
+
+function find_lvid_in_cover(cover_se_obj, npc)
+	local sm = surge_manager.get_surge_manager()
+	local pos = npc:position()
+	if sm:pos_in_cover(pos) then
+		busy_lvids[npc:level_vertex_id()] = true
+		return npc:level_vertex_id(), pos
+	end
+	for i = 1, 100 do
+		local pos = vector():set(cover_se_obj.position)
+		pos.x = pos.x + random_float(-16, 16)
+		pos.y = pos.y + random_float(0, 2)
+		pos.z = pos.z + random_float(-16, 16)
+		local lvid = level.vertex_id(pos)
+		if is_valid_vertex(lvid) and is_accessible(npc, lvid) then
+			local lvid_pos = level.vertex_position(lvid)
+			local sm = surge_manager.get_surge_manager()
+			if lvid_pos and sm:pos_in_cover(lvid_pos) and (i >= 75 or not busy_lvids[lvid]) then
+				busy_lvids[lvid] = true
+				return lvid, lvid_pos
+			end
+		end
+	end
+end
+
+function get_evaluator_func(func)
+	return function(self)
+		local npc = self.object
+		local id = npc:id()
+
+		if not surge_started() then
+			return false
+		end
+
+		if not npc:alive() then 
+			return false 
+		end 
+		
+		if IsWounded(npc) then 
+			return false 
+		end 
+
+		if not is_valid_npc(npc) then
+			return false
+		end
+
+		if last_surge_time then
+			if game.get_game_time():diffSec(last_surge_time) / level.get_time_factor() < 5 then
+				return false
+			end
+		end
+
+		if func(npc) then
+			return false
+		end
+
+		local params = get_cover_params(npc)
+		if params then
+			return true
+		end
+		
+		rebuild_covers_if_empty()	
+
+		local nearest_cover = surge_covers:nearest(npc:position())
+		if nearest_cover[1] then
+			local cover_id = nearest_cover[1][1].data
+			local cover_se_obj = alife_object(cover_id)
+			if cover_se_obj then
+				local lvid, lvid_pos = find_lvid_in_cover(cover_se_obj, npc)
+				if lvid then
+					set_cover_params(npc, {
+						lvid = lvid,
+						cover_id = cover_id,
+						pos = lvid_pos,
+						reached = false
+					})
+					printf("%s found cover %s, enable scheme", npc:name(), lvid)
+					return true
+				end
+			end
+		end
+
+		return false
+	end
+end
+
+function npc_on_death_callback(npc)
+	reset_cover_params(npc)
+end
+
+function npc_on_net_destroy(npc)
+	reset_cover_params(npc)
+end
+
+function actor_on_interaction(a, b, c)
+	if a == "anomalies" and (c == "emission_start" or c == "psi_storm_start") then
+		last_surge_time = game.get_game_time()
+		printf("surge start")
+	end
+end
+
+function on_game_start()
+	RegisterScriptCallback("npc_on_death_callback", npc_on_death_callback)
+	RegisterScriptCallback("npc_on_net_destroy", npc_on_net_destroy)
+	RegisterScriptCallback("actor_on_interaction", actor_on_interaction)
+end

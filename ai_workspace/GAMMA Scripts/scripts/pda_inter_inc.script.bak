@@ -1,0 +1,291 @@
+local vic_squad, en_squad
+local actor_helped = false
+
+local enable_stalker_sos = pda_inter_mcm.get_config("inc_sos_enable")
+local chance_for_sos = pda_inter_mcm.get_config("inc_sos_chance")	-- for each death
+local money_reward = pda_inter_mcm.get_config("inc_sos_money")
+local stash_reward_chance = pda_inter_mcm.get_config("inc_sos_stash")
+local time_to_reset = 180
+
+local gt = game.translate_string
+
+-- check stuff and send sos message
+function squad_on_npc_death(squad, se_victim, se_killer)
+
+	if not squad then return end
+
+	if not enable_stalker_sos then
+		reset_vars()
+		return
+	end
+
+	-- dont do if we already have squads
+	if vic_squad and en_squad then return end
+
+	-- make sure victim and killer online
+	local victim = se_victim and level.object_by_id(se_victim.id)
+	local killer = se_killer and level.object_by_id(se_killer.id)
+	if not (victim and killer) then return end
+
+	-- victim and killer are not companions
+	if victim:has_info("npcx_is_companion") or killer:has_info("npcx_is_companion") then return end
+	-- killer is not actor
+	if killer:id() == 0 then return end
+
+	-- victim too far away from actor
+	local ac_pos = db.actor:position()
+	local victim_pos = victim:position()
+	local dist = ac_pos and victim_pos and ac_pos:distance_to(victim_pos)
+	if not (dist and dist < 150) then return end
+
+	-- victim not enemy to actor
+	local squad_comm = squad:get_squad_community()
+	if squad_comm == "zombied" then return end
+	local squad_is_not_enemy = squad_comm and (not game_relations.is_factions_enemies(alife():actor():community(), squad_comm))
+	if not squad_is_not_enemy then return end
+
+	-- victim is default squad
+	local squad_sec = squad:section_name()
+	local victim_is_default = squad_sec and string.find(squad_sec, "sim_squad")
+	if not victim_is_default then return end
+
+	-- check victims squad size
+	local squad_size = squad:npc_count() and squad:npc_count() - 1
+	if squad_size <= 0 then return end
+
+	-- get killer and its squad
+	local killer_squad = get_object_squad(killer)
+	local killer_squad_comm = killer_squad and killer_squad:get_squad_community()
+	if not killer_squad_comm then return end
+
+	-- plug for emission, check if victim squad id isnt killers squad id
+	if squad.id == killer_squad.id then return end
+
+	-- do only if victim squad lesser than killer squad
+--	local killer_squad_size = killer_squad:npc_count()
+--	if squad_size > killer_squad_size then return end
+
+	-- get nearest victim smart
+	local smart = get_victim_smart(victim)
+	if not smart then return end
+
+	-- random chance
+	if math.random() > chance_for_sos then return end
+
+
+	-- save squads info before sending message
+	vic_squad = squad.id
+	en_squad = killer_squad.id
+
+	-- check if killer squad is stalker or mutant (for message)
+	local killer_is_mutant = killer_squad.player_id and string.find(killer_squad.player_id, "monster")
+	local msg_killer_squad_comm = killer_is_mutant and gt(get_mutant_name(killer_squad)) or gt("st_faction_" .. killer_squad_comm)
+
+	-- send message and start cooldown
+	local def_clr = strformat("%c[%s,%s,%s,%s]", 255, 190, 190, 190)
+	local inc_clr = strformat("%c[%s,%s,%s,%s]", 255, 0, 140, 180)
+	local msg_sos = gt("st_dyn_news_comm_" .. squad_comm .. "_" .. math.random(11, 14))
+	local msg_enemy = gt("st_dyn_news_builder_attacked_" .. math.random(1, 4)) .. " " .. msg_killer_squad_comm
+	local msg_at = gt("pda_banter_sos_at") .. " " .. gt("st_" .. smart:name() .. "_name") .. "!"
+	local msg = inc_clr .. gt("pda_non_private_msg") .. " " .. def_clr .. msg_sos .. " " .. msg_enemy .. " " .. msg_at .. "!"
+
+	local member = get_random_member(squad.id, victim)
+	if not member then return end
+
+	local sender_name = member:character_name()
+	local sender_icon = member:character_icon()
+	dynamic_news_helper.send_tip(msg, sender_name, nil, 10, sender_icon, "danger", "npc")
+
+	CreateTimeEvent("stalker_sos_reset_e", "stalker_sos_reset_a", time_to_reset, reset_vars)
+
+end
+
+-- check if failed or complete
+function manage_sos_event(squad, se_obj, killer)
+
+	-- dont do if we already have squads
+	if not (vic_squad and en_squad) then return end
+
+	-- check if all victim squad died
+	if squad.id == vic_squad and squad:npc_count() <= 1 then
+		-- reset everything
+		reset_vars()
+		return
+	end
+
+
+	-- check if actor killed any of enemies
+	if killer.id == 0 and squad.id == en_squad then
+		actor_helped = true
+	end
+
+
+	-- check if enemy squad died
+	if squad.id == en_squad and squad:npc_count() <= 1 then
+
+		-- give reward if actor helped
+		if actor_helped then
+			sos_give_reward(vic_squad)
+		end
+
+		-- reset everything
+		reset_vars()
+	end
+
+end
+
+function sos_give_reward(squad_id)
+	local member = get_random_member(squad_id)
+	if not member then return end
+
+	local sender_name = member:character_name()
+	local sender_icon = member:character_icon()
+
+	local msg_thanks = gt("pda_stalker_sos_thanks_" .. math.random(1, 3))
+
+	local idx_reward = math.random() > stash_reward_chance and 1 or 2
+
+	local def_clr = strformat("%c[%s,%s,%s,%s]", 255, 190, 190, 190)
+	local inc_clr = strformat("%c[%s,%s,%s,%s]", 255, 0, 140, 180)
+
+	local reward_msg = ""
+	-- money reward
+	if idx_reward == 1 then
+		local reward_range = math.random(80, 120) / 100
+		local reward = math.ceil(money_reward * reward_range)
+		db.actor:give_money(reward)
+
+		-- money message
+		reward_msg = string.format(gt("pda_stalker_sos_reward_1"), reward)
+
+	-- stash reward
+	elseif idx_reward == 2 then
+		give_stash_reward()
+
+		-- stash message
+		reward_msg = gt("pda_stalker_sos_reward_2")
+
+	end
+
+	local msg = inc_clr .. gt("pda_private_msg") .. " " .. def_clr .. msg_thanks .. " " .. reward_msg
+	dynamic_news_helper.send_tip(msg, sender_name, nil, 10, sender_icon, "danger", "npc")
+
+end
+
+function get_random_member(squad_id, victim)
+	local squad = alife_object(squad_id)
+	if (not squad) or (not squad.commander_id) then return end
+
+	for member in squad:squad_members() do
+		local npc = level.object_by_id(member.id)
+		if npc and (type(npc) == "userdata") and npc:alive() then
+			-- do not count victim
+			if victim then
+				if victim:id() ~= npc:id() then
+					return npc
+				end
+			else
+				return npc
+			end
+		end
+	end
+
+end
+
+function get_victim_smart(victim)
+	local se_victim = victim and victim:id() and alife_object(victim:id())
+	if not se_victim then return end
+
+	-- get nearest to victim smart id
+	local picked_smart
+	local min_dist = 999
+
+	for name, smart in pairs(SIMBOARD.smarts_by_names) do
+		if simulation_objects.is_on_the_same_level(smart, se_victim) then
+			local smart_pos = smart.position
+			local victim_pos = se_victim.position
+			local dist = smart_pos and victim_pos and victim_pos:distance_to(smart_pos)
+			if dist and dist < min_dist then
+				min_dist = dist
+				picked_smart = smart
+			end
+		end
+	end
+
+	return picked_smart
+end
+
+function reset_vars()
+	vic_squad = nil
+	en_squad = nil
+	actor_helped = false
+end
+
+function give_stash_reward()
+	local bonus
+
+	if ((math.random(1, 100) / 100) <= 0.5) then
+		local stash_bonus = treasure_manager.stash_bonus
+		if stash_bonus and (#stash_bonus > 0) then
+			bonus = {stash_bonus[math.random(#stash_bonus)]}
+		end
+	end
+
+	treasure_manager.create_random_stash(nil, nil, bonus, true)
+
+end
+
+local strings = {
+	tushkano = "encyclopedia_mutants_tushkano",
+	flesh = "encyclopedia_mutants_flesh",
+	zombie = "encyclopedia_mutants_zombie",
+	dog = "encyclopedia_mutants_blind_dog",
+	boar = "encyclopedia_mutants_boar",
+	cat = "encyclopedia_mutants_cat",
+	fracture = "encyclopedia_mutants_fracture",
+	pseudodog = "encyclopedia_mutants_pseudodog",
+	SM_LURKER = "encyclopedia_mutants_lurker",
+	snork = "encyclopedia_mutants_snork",
+	SM_POLTER_G	= "encyclopedia_mutants_poltergeist",
+	SM_PYRO_G = "encyclopedia_mutants_pyrogeist",
+	SM_PSEUDO_G	= "encyclopedia_mutants_pseudogeist",
+	SM_KARLIK = "encyclopedia_mutants_karlik",
+	burer = "encyclopedia_mutants_burer",
+	bloodsucker = "encyclopedia_mutants_bloodsucker",
+	SM_PSYSUCKER = "encyclopedia_mutants_psysucker",
+	chimera = "encyclopedia_mutants_chimera",
+	controller = "encyclopedia_mutants_controller",
+	giant = "encyclopedia_mutants_pseudogiant",
+
+	bird = "encyclopedia_mutants_crow", 
+}
+
+function get_mutant_name(squad)	-- need server objects
+	if not squad then return "<empty>" end
+
+	if squad.commander_id then
+		for member in squad:squad_members() do
+			local npc = alife_object(member.id)
+			if npc then
+				local str = ini_sys:r_string_ex(npc:section_name(), "kind") or ini_sys:r_string_ex(npc:section_name(), "species") or nil
+				if str and strings[str] then
+					return strings[str]
+				end
+			end
+		end
+	end
+
+end
+
+function on_option_change()
+	enable_stalker_sos = pda_inter_mcm.get_config("inc_sos_enable")
+	chance_for_sos = pda_inter_mcm.get_config("inc_sos_chance")
+	money_reward = pda_inter_mcm.get_config("inc_sos_money")
+	stash_reward_chance = pda_inter_mcm.get_config("inc_sos_stash")
+end
+
+function on_game_start()
+	RegisterScriptCallback("squad_on_npc_death", squad_on_npc_death)
+	RegisterScriptCallback("squad_on_npc_death", manage_sos_event)
+	RegisterScriptCallback("on_option_change", on_option_change)
+end

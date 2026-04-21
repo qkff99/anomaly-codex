@@ -1,0 +1,56 @@
+local ini_whitelist = {}
+local ini_eff = {}
+local strict_mode_enabled = headgear_animations_mcm.get_config("strict_helmets")
+
+
+function on_game_start()
+    RegisterScriptCallback("on_game_load", on_game_load)
+    RegisterScriptCallback("on_option_change", on_option_change)
+end
+
+function on_game_load()
+    ini_whitelist = ini_file("items\\items\\headgear_item_use_whitelist.ltx")
+    ini_eff = ini_file("items\\items\\animations_settings.ltx")
+end
+
+function on_option_change()
+    strict_mode_enabled = headgear_animations_mcm.get_config("strict_helmets")
+end
+
+
+local originalAOIBU = itms_manager.actor_on_item_before_use
+function itms_manager.actor_on_item_before_use(obj, flags)
+    if strict_mode_enabled then
+        if ini_eff:r_bool_ex(obj:section(), "helm") == false then
+            if is_have_helmet() then
+                actor_menu.set_msg(1, game.translate_string("liz_ha_text_cant_consume_item"), 3)
+                flags.ret_value = false
+                return
+            end
+        end
+    end
+    originalAOIBU(obj, flags)
+end
+
+
+function is_have_helmet()
+    --check if we have helmet in helmet slot
+    local o_helm = db.actor:item_in_slot(12)
+    if o_helm then 
+        local m_headgear_is_in_whitelist = ini_whitelist:section_exist(o_helm:section())
+        if not m_headgear_is_in_whitelist then
+            return true
+        else
+            return false
+        end
+    end
+
+    --if not check if we have outfit that have integrated helmet
+    local o_outfit = db.actor:item_in_slot(7)
+    if o_outfit then
+        local c_outfit = o_outfit:cast_CustomOutfit()
+        if not c_outfit.bIsHelmetAvaliable then return true end
+    end
+
+    return false
+end

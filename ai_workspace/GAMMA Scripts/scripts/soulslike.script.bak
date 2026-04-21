@@ -1,0 +1,957 @@
+--[[
+	Jabbers
+	05APR2023
+	Jabbers' Soulslike Anomaly Mod
+--]]
+
+local version = "0.45-beta"
+
+local tools_list = {
+    ["itm_basickit"] = true,
+    ["itm_advancedkit"] = true,
+    ["itm_expertkit"] = true,
+    ["itm_drugkit"] = true,
+    ["itm_ammokit"] = true,
+    ["itm_gunsmith_toolkit"] = true,
+    ["itm_artefactskit"] = true,
+}
+
+local scenario_logic = nil
+
+RELATIONS = { 
+    FRIENDS = 1000,    
+    BUDDIES = 500,
+    NEUTRALS = 0,
+    ENEMIES = -1000
+}
+
+SCENARIOS = {
+    Default = 1,
+    RFDetectorStash = 2,
+    HiddenStash = 3,
+    NoLoss = 4,
+}
+
+hit_type_to_str = {
+	[hit.light_burn]    = "Light Burn",
+	[hit.burn]          = "Burn",
+	[hit.strike]        = "Strike",
+	[hit.shock]         = "Shock",
+	[hit.wound]         = "Wound",
+	[hit.radiation]     = "Radiation",
+	[hit.telepatic]     = "Telepatic",
+	[hit.chemical_burn] = "Chemical Burn",
+	[hit.explosion]     = "Explosion",
+	[hit.fire_wound]    = "Fire",
+}
+
+entity_type = { 
+    Stalker = 1,
+    Monster = 2,
+    Anomaly = 3,
+    Self = 4,
+    Other = 5
+}
+
+MAX_HIT_POOL_COUNT = 30
+MAX_HIT_TIME = 30000
+local hit_queue = soulslike_classes.TimedQueue(MAX_HIT_POOL_COUNT, MAX_HIT_TIME)
+
+----------------------------------------
+-- Helpers
+----------------------------------------
+
+function try(func, ...)
+	local status, error_or_result = pcall(func, ...)
+	if not status then
+		soulslike.error(error_or_result)
+		return false
+	else
+		return error_or_result
+	end
+end
+
+function math.clamp(x, min, max)
+    if x < min then return min end
+    if x > max then return max end
+    return x
+end
+
+function table.get_length(T)
+    local count = 0
+    for _ in pairs(T) do count = count + 1 end
+    return count
+end
+
+function table.has_value(tab, val)
+    for _, value in ipairs(tab) do
+        if value == val then
+            return true
+        end
+    end    
+    return false
+end
+
+----------------------------------------
+-- DEBUG
+----------------------------------------
+local function print_table (tbl, indent)
+    if not indent then
+        indent = 0
+    end
+
+    utils_data.debug_write(string.rep(" ", indent) .. "{")
+
+    indent = indent + 2
+
+    if (type(tbl) == "userdata") then        
+        utils_data.debug_write("<userdata>,\n")
+    else
+        for k, v in pairs(tbl) do
+            local toprint = string.rep(" ", indent)
+
+            if (type(k) == "number") then
+                toprint = toprint .. "[" .. k .. "] = "
+            elseif (type(k) == "string") then
+                toprint = toprint  .. k ..  " = "
+            end
+
+            if (type(v) == "number") then
+                utils_data.debug_write(toprint .. v .. ",")
+            elseif (type(v) == "string") then
+                utils_data.debug_write(toprint .. "\"" .. v .. "\",")
+            elseif (type(v) == "table") then
+                utils_data.debug_write(toprint)
+                print_table(v, indent + 2)
+            else
+                utils_data.debug_write(toprint .. "\"" .. tostring(v) .. "\",")
+            end
+        end
+    end
+
+    utils_data.debug_write(string.rep(" ", indent-2) .. "}")
+end
+
+local function log(log_type, output)
+    if not output then
+        utils_data.debug_write("[Soulslike] "..log_type..": ".."(nil)")
+    elseif (type(output) == "table") then
+        utils_data.debug_write("[Soulslike] "..log_type..": ")
+        print_table(output)
+    else
+        utils_data.debug_write("[Soulslike] "..log_type..": "..output)
+    end
+end
+
+function debug(output)
+    log("DEBUG", output)
+end
+
+function info(output)
+    log("INFO ", output)
+end
+
+function warn(output)
+    log("WARN ", output)
+end
+
+function error(output)
+    log("ERROR", output)
+end
+
+function debug_tip(text, delay)
+    debug(text)
+
+    if not soulslike_mcm.show_debug_tips() then
+        return
+    end
+
+    local text = "[Soulslike] "..tostring(text)
+
+    if not db.actor then
+        return
+    end
+    
+    local ico = "ui_inGame2_Dengi_otdani"
+    local text_color = utils_xml.get_color("pda_white")
+
+    text = text_color .. text
+
+    if delay == nil then
+        delay = 6000
+    end
+
+    news_manager.send_tip(db.actor, text, nil, ico, delay)
+end
+
+
+----------------------------------------
+-- Globals
+----------------------------------------
+
+function _G.IsSoulslikeMode()
+    return (not IsHardcoreMode()) and axr_main.config and (axr_main.config:r_value("character_creation","new_game_soulslike_mode",1) == true) or (alife_storage_manager.get_state().enable_soulslike_mode == true)
+end
+
+function _G.IsToolkit(o, s)
+    if not (s) then
+		s = o and o:section()
+	end
+    return tools_list[s]
+end
+
+----------------------------------------
+-- Helper Functions
+----------------------------------------
+
+function get_soulslike_state()
+    local game_state = alife_storage_manager.get_state()
+    
+    if not game_state.soulslike then 
+        game_state.soulslike = {
+            created_stashes = {},
+            spawn_location = {
+                    level = nil,
+                    position = {
+                        x = nil,
+                        y = nil,
+                        z = nil,
+                    },
+                    angle = {
+                        x = nil,
+                        y = nil,
+                        z = nil,
+                    },
+                    level_vertex_id = nil,
+                    game_vertex_id = nil,
+                },
+            note_message_data = {},
+            hidden_stashes = {}
+        }
+    end
+
+    -- Backward save compatibility
+    if not game_state.soulslike.note_message_data then
+        game_state.soulslike.note_message_data = {}
+    end
+
+    if not game_state.soulslike.hidden_stashes then
+        game_state.soulslike.hidden_stashes = {}
+    end
+
+    if not game_state.soulslike.created_stashes then
+        game_state.soulslike.created_stashes = {}
+    end
+
+    if not game_state.soulslike.spawn_location then
+        game_state.soulslike.spawn_location = {
+            level = nil,
+            position = {
+                x = nil,
+                y = nil,
+                z = nil,
+            },
+            angle = {
+                x = nil,
+                y = nil,
+                z = nil,
+            },
+            level_vertex_id = nil,
+            game_vertex_id = nil,
+        }
+    end
+
+    return game_state.soulslike
+end
+
+function set_spawn(show_message)
+	local se_actor = alife():actor()
+    local state = get_soulslike_state()
+
+	state.spawn_location.level = level.name()
+	state.spawn_location.position.x = se_actor.position.x
+	state.spawn_location.position.y = se_actor.position.y
+	state.spawn_location.position.z = se_actor.position.z
+	state.spawn_location.angle.x = se_actor.angle.x
+	state.spawn_location.angle.y = se_actor.angle.y
+	state.spawn_location.angle.z = se_actor.angle.z
+	state.spawn_location.level_vertex_id = se_actor.m_level_vertex_id
+	state.spawn_location.game_vertex_id = se_actor.m_game_vertex_id
+    
+    debug("Saved spawn location data:")
+            
+    if show_message then
+        local str = game.translate_string("st_soulslike_spawn_location_set")
+        actor_menu.set_msg(1, str, 4)
+    end
+end
+
+function find_closest_enemy()
+    local enemy = nil
+    local enemy_dist = 150
+	local sim = alife()
+	local gg = game_graph()
+    local level_name = level.name()
+
+    if not sim then return end
+    if not gg then return end
+
+	for i=1,65534 do
+		local se_obj = sim:object(i)
+		if se_obj and (level_name == sim:level_name(gg:vertex(se_obj.m_game_vertex_id):level_id())) then
+            local cls = se_obj:clsid()
+			local sec = se_obj:section_name()
+            local is_valid = false
+
+			if IsStalker(nil,cls) and string.find(sec,"sim_default_") and se_obj:alive() then
+				local comm = se_obj:community()
+				if (comm ~= "trader") and (comm ~= "zombied") then
+					is_valid = true
+				end
+			elseif IsMonster(nil,cls) then
+                is_valid = true
+			end
+
+            if is_valid then
+                local dist = se_obj.position:distance_to_sqr(db.actor:position())
+                if enemy_dist > dist then                    
+                    if IsStalker(nil,cls) then
+                        local comm = se_obj:community()
+                        debug("Found enemy "..se_obj:name().." from the "..comm.." community "..tostring(dist).." meters away.")
+                        enemy = se_obj
+                    elseif IsMonster(nil,cls) then
+                        enemy = se_obj
+                    end
+                end
+            end
+		end
+	end
+
+    return enemy
+end
+
+function find_closest_enemy_mutant()
+    local enemy = nil
+    local enemy_dist = 75
+	local sim = alife()
+	local gg = game_graph()
+    local level_name = level.name()
+
+    if not sim then return end
+    if not gg then return end
+
+	for i=1,65534 do
+		local se_obj = sim:object(i)
+		if se_obj and (level_name == sim:level_name(gg:vertex(se_obj.m_game_vertex_id):level_id())) then
+            local cls = se_obj:clsid()
+
+            if IsMonster(nil,cls) then
+                local dist = se_obj.position:distance_to_sqr(db.actor:position())
+                if enemy_dist > dist then                    
+                    if IsMonster(nil,cls) then
+                        enemy = se_obj
+                    end
+                end
+            end
+		end
+	end
+
+    return enemy
+end
+
+function find_closest_enemy_stalker()  
+    local enemy = nil
+    local enemy_dist = 100000
+
+	for i=1, #db.OnlineStalkers do
+		local id = db.OnlineStalkers[i]
+		local npc = db.storage[id] and db.storage[id].object or level.object_by_id(id)
+
+        if npc then
+            local dist = npc:position():distance_to_sqr(db.actor:position())
+            local is_enemy = npc:general_goodwill(db.actor) <= RELATIONS.ENEMIES
+            
+            if npc:alive() and is_enemy and enemy_dist > dist and (not get_object_story_id(id)) then
+                local comm = npc:character_community()
+                debug("Found enemy "..npc:name().." from the "..comm.." community "..tostring(dist).." meters away.")
+                enemy = npc
+                enemy_dist = dist
+            end
+        end
+    end
+
+    return enemy
+end
+
+function find_closest_friendly_stalker()  
+    local friendly = nil
+    local friendly_dist = 100000
+
+	for i=1, #db.OnlineStalkers do
+		local id = db.OnlineStalkers[i]
+		local npc = db.storage[id] and db.storage[id].object or level.object_by_id(id)
+
+        if npc then
+            local dist = npc:position():distance_to_sqr(db.actor:position())
+            local is_friend = npc:general_goodwill(db.actor) >= RELATIONS.ENEMIES
+            
+            if npc:alive() and is_friend and friendly_dist > dist and (not get_object_story_id(id)) then
+                local comm = npc:character_community()
+                debug("Found friend "..npc:name().." from the "..comm.." community "..tostring(dist).." meters away.")
+                friendly = npc
+                friendly_dist = dist
+            end
+        end
+    end
+
+    return friendly
+end
+
+function force_save(type)
+	--if game isn't already paused, then force a pause here
+	local force_pause
+	if not (device():is_paused()) then 
+		device():pause(true)
+		force_pause = true
+	end
+	local Y, M, D, h
+    Y, M, D, h = game.get_game_time():get(Y, M, D, h)
+    
+    local m = level.get_time_minutes()
+    if m < 10 then
+        m = ("0"..m)
+    end
+    
+    local comm = utils_xml.get_special_txt(db.actor:character_community())
+    local map = utils_xml.get_special_txt(level.name())
+    local date = string.format("%d.%d.%d %d-%d", D, M, Y, h, m)
+    local file_name = "soulslike_"..comm.." - "..map.." "..date.." - "..type
+
+	exec_console_cmd("save ".. file_name)
+    
+	if (force_pause) then 
+		device():pause(false)
+	end
+end
+
+----------------------------------------
+-- Dream Callbacks
+----------------------------------------
+
+function wakeup_callback()
+    debug("wakeup_callback")
+	xr_effects.enable_ui(db.actor, nil)
+
+	exec_console_cmd("snd_volume_music "..tostring(_G.mus_vol))
+	exec_console_cmd("snd_volume_eff "..tostring(_G.amb_vol))
+
+	_G.amb_vol = 0
+	_G.mus_vol = 0
+
+	disable_info("tutorial_sleep")
+	disable_info("actor_is_sleeping")
+	disable_info("sleep_active")
+    
+    debug("Looking for scenario logic.")
+
+    if scenario_logic then
+        debug("Completing scenario.")
+        scenario_logic:OnComplete()          
+    else
+        error("No logic state")
+    end
+    
+    local data = get_soulslike_state()  
+    scenario_logic:destroy()
+    scenario_logic = nil    
+    data.logic_state = nil
+end
+
+function dream_callback()
+    debug("dream_callback")
+    level.add_cam_effector("camera_effects\\sleep.anm", 10, false, "soulslike.wakeup_callback")
+	
+	local hours = math.random(6,14)	
+	level.change_game_time(0,hours,0)
+	
+	db.actor.power = 1
+	
+	SendScriptCallback("actor_on_sleep", hours)
+end
+
+----------------------------------------
+-- Game Callbacks
+----------------------------------------
+
+local function actor_on_before_death(who, flags)    
+    if not IsSoulslikeMode() then
+        return
+    end
+
+    -- Pretty sure this fixes arena fights, still need to test
+	if has_alife_info("bar_arena_fight") or has_alife_info("bar_arena_start") then
+        debug('Actor was in an arena fight, ignoring death.')
+		return
+	end
+
+    debug('Actor died')
+	game_statistics.increment_statistic("deaths")
+
+    hit_queue:Invalidate()	    
+    scenario_logic = soulslike_scenario_logic_factory.create_new(hit_queue:Values())
+    
+    if scenario_logic then 
+        scenario_logic:OnDeath()
+        flags.ret_value = false
+    end
+
+    hit_queue:Clear()
+end
+
+local function on_before_save_input(flags, type, text)
+    if not IsSoulslikeMode() then
+        return
+    end    
+
+    -- No hardcore save setting, allow saving
+    if not soulslike_mcm.is_hardcore_save_enabled() then 
+        return
+    end
+
+    -- Hardcore save is enabled, but we still want to save at campfires
+    -- We just return to let the regular saving work.
+    if soulslike_mcm.override_campfire_hardcore_saves() then        
+        return
+    end
+    
+    -- All other scenarios flow through here and we just disallow saving
+    if not level_weathers.valid_levels[level.name()] then
+        return
+    end
+
+    debug('User tried to save')
+
+    local str = game.translate_string("st_save_only_when_sleeping")
+    actor_menu.set_msg(1, str, 4)
+    exec_console_cmd("main_menu off")
+    flags.ret = true
+end
+
+local function try_send_inventory_examined_message(stash_id)        
+    local data = get_soulslike_state()
+    local stash_data = data.created_stashes[stash_id]
+
+    if stash_data and not stash_data.examine then  
+        local lost_items = stash_data.lost_items
+      
+        debug('Stash not yet examined.')
+        debug(lost_items)
+
+        if #lost_items > 0 then
+
+            local msg = "You examine your belongings and find that you were missing the following items: "
+            local item_groups = {}
+            
+            for _, sec in pairs(lost_items) do
+                if not item_groups[sec] then 
+                    item_groups[sec] = {
+                        section = sec,
+                        count = 1
+                    }
+                else
+                    item_groups[sec].count = item_groups[sec].count + 1
+                end
+            end
+
+            local item_names = {}
+            
+            for _, group in pairs(item_groups) do
+                local inv_name = ui_item.get_sec_name(group.section)
+                if group.count > 1 then
+                    table.insert(item_names, tostring(group.count).." x "..inv_name)                    
+                else
+                    table.insert(item_names, inv_name)                    
+                end
+            end
+            
+            msg = msg..table.concat(item_names, ", ")
+
+            local ui_sender = news_manager.tips_icons['default']
+            db.actor:give_game_news("", msg, ui_sender, 0, 20000)
+            
+            stash_data.examine = true
+        end
+    end
+end
+
+local function actor_on_item_take_from_box(box,obj)
+    if not IsSoulslikeMode() then
+        return
+    end
+
+    local state = get_soulslike_state()
+    local id = box:id()
+
+	if (box:section() == "inv_backpack") then
+        if (box:is_inv_box_empty()) then
+            hide_hud_inventory()
+            
+            local se_obj = alife_object(id)
+
+            if se_obj then
+                alife_release(se_obj)
+                try_send_inventory_examined_message(id)
+                state.created_stashes[id] = nil
+            end
+        end
+	end
+end
+
+local function actor_on_stash_remove(data)
+    if not IsSoulslikeMode() then
+        return
+    end
+
+    local state = get_soulslike_state()
+
+    if state.created_stashes[data.stash_id] then
+        data.cancel = true    
+        try_send_inventory_examined_message(state.stash_id)
+    end
+end
+
+local function on_console_execute(name, ...)
+    if not IsSoulslikeMode() then
+        return
+    end
+
+    if(name == "save") then
+        debug(name)
+        local extraArgs = {...}
+
+        if extraArgs then
+            local last_save_file_name = table.concat(extraArgs," ")
+            debug(last_save_file_name)
+            if soulslike_mcm.is_hardcore_save_enabled() then
+                last_save_file_name = string.lower(last_save_file_name)
+            
+                debug("Don't delete: ".. last_save_file_name)
+            
+                local uuid = get_soulslike_state().uuid	
+                local fs = getFS()
+                if not fs then return end
+                
+                local flist = fs:file_list_open_ex("$game_saves$",bit_or(FS.FS_ListFiles,FS.FS_RootOnly),"*.scoc")
+                local f_cnt = flist:Size()
+            
+                for	it=0, f_cnt-1 	do
+                    local file = flist:GetAt(it)
+                    local file_name = string.sub(file:NameFull(), 0, (string.len(file:NameFull()) - string.len(".scoc")))
+                    
+                    local scoc_path = fs:update_path('$game_saves$', '')..file_name..".scoc"
+                    local scop_path = fs:update_path('$game_saves$', '')..file_name..".scop"
+                    local dds_path = fs:update_path('$game_saves$', '')..file_name..".dds"
+            
+                    local f = io.open(scoc_path,"rb")
+            
+                    if f then
+                        local data = f:read("*all")
+                        f:close()
+            
+                        if (data) then
+                            local decoded = alife_storage_manager.decode(data)
+                            local d_soulslike = decoded and decoded.soulslike
+                            
+                            if (d_soulslike and (d_soulslike.uuid == uuid)) then
+                                debug("/ Soulslike mode | file: "..file_name)
+                                file_name = string.lower(file_name)
+                                if file_name ~= last_save_file_name then
+                                    debug("~ Soulslike mode | delete save file: "..file_name)
+            
+                                    local scoc_path_bak = fs:update_path('$game_saves$', '').."soulslike-backup/"..file_name..".scoc"
+                                    local scop_path_bak = fs:update_path('$game_saves$', '').."soulslike-backup/"..file_name..".scop"
+                                    local dds_path_bak = fs:update_path('$game_saves$', '').."soulslike-backup/"..file_name..".dds"
+            
+                                    fs:file_copy(scoc_path, scoc_path_bak)
+                                    fs:file_copy(scop_path, scop_path_bak)
+                                    fs:file_copy(dds_path, dds_path_bak)
+            
+                                    ui_load_dialog.delete_save_game(file_name)			
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function physic_object_on_use_callback(box, who)
+    local data = get_soulslike_state()
+
+    if not IsInvbox(box) or not data.hidden_stashes or not data.hidden_stashes[box:id()] then
+        return
+    end
+
+    local id = box:id()
+    local stash_data = data.hidden_stashes[id]
+    local stash_id = stash_data.stash_id
+    local se_obj = alife_object(stash_id)
+	local stash = level.object_by_id(stash_id)
+    
+    if not stash then        
+        warn("Not expected, unable to find stash id linked to "..tostring(id)..".  Please save and reload near the stash to see if it solves the issue.")
+        debug("Removing INVALID PDA marker "..tostring(id))   
+        level.map_remove_object_spot(id, "secondary_task_location")
+        return 
+    end
+    
+    local sim = alife();
+
+    if not sim then return end
+
+    if se_obj and not se_obj.online then 
+        se_obj:switch_online()
+    end
+    
+    sim:set_switch_online(stash_id,true)
+    sim:set_switch_offline(stash_id,false)  
+    
+    try_send_inventory_examined_message(stash_id)
+
+    local function transfer_item(temp,item)
+        debug("Transfering item "..item:section())    
+        stash:transfer_item(item, box)
+    end
+
+    if stash_data.radio_id then
+        debug("Clearing radio stash "..tostring(stash_data.radio_id))  
+	    item_radio.clear_stash(stash_data.radio_level, stash_data.radio_id) 
+    end 
+
+    debug("Transfering items from hidden stash "..tostring(id).." to static stash "..tostring(stash_id))    
+    
+
+    stash:iterate_inventory_box(transfer_item)      
+    alife_release(stash)
+
+    debug("Removing PDA marker "..tostring(id))   
+    level.map_remove_object_spot(id , "secondary_task_location")
+
+    data.hidden_stashes[id] = nil
+end
+
+local function load_state(data) 
+    if not IsSoulslikeMode() then
+        return
+    end
+
+    local data = get_soulslike_state()
+
+    if not data.logic_state then
+        debug("No logic state")  
+    elseif data.logic_state and not data.logic_state.scenario_id then
+        warn("Logic state exists without scenario id")   
+    elseif data.logic_state and data.logic_state.scenario_id then
+        -- Reinitialize the last scenario using the saved logic state.
+        scenario_logic = soulslike_scenario_logic_factory.create_by_id(data.logic_state.scenario_id, data.logic_state)
+    end
+end
+
+local function save_state(data) 
+    if not IsSoulslikeMode() then
+        return
+    end
+
+    local data = get_soulslike_state()
+
+    if not data.spawn_location.level and level.name() ~= 'fake_start' then
+        set_spawn(false)
+    end
+
+    if scenario_logic then
+        -- Save the logic state for the current scenario so we can restore it on load
+        -- This is for the purposes of ChangeLevel which unloads the scripts and then 
+        -- reloads them, so we need to be able to reinitialize the scenario as it was
+        -- before changing levels
+        data.logic_state = scenario_logic.logic_state;
+    end
+end
+
+local function on_level_changing() 
+    if not IsSoulslikeMode() then
+        return
+    end
+
+    debug("On on_level_changing load.")
+    local data = get_soulslike_state()
+
+    if not data.spawn_location.level and level.name() ~= 'fake_start' then
+        set_spawn(false)
+    end
+end
+
+local function on_game_load()
+    if not IsSoulslikeMode() then
+        return
+    end
+
+    debug("On game load.")
+
+    local data = get_soulslike_state()
+    local sim = alife()
+
+    if sim then
+        debug("Updating position and status of hidden stashes.")
+        for box_id, value in pairs(data.hidden_stashes) do
+            local se_hidden_stash = alife_object(value.stash_id)
+            local se_box = alife_object(box_id)
+            
+            if not se_hidden_stash then 
+                debug("Unable to find hidden stash "..tostring(value.stash_id)) 
+            elseif not se_box then 
+                debug("Unable to find box id "..tostring(box_id))
+            else
+                debug("Moving hidden stash"..tostring(value.stash_id))
+                sim:teleport_object(value.stash_id, se_box.m_game_vertex_id, se_box.m_level_vertex_id, se_box.position)
+                debug("Setting hidden stash online")
+                if not se_box.online then
+                    se_box:switch_online()
+                end
+                
+                for i=1,65534 do 
+                    local se_obj = sim:object(i)
+                    if (se_obj and se_obj.parent_id == id) then 
+                        debug("Moving "..se_obj.section.." id:"..tostring(value.stash_id))
+                        sim:teleport_object(value.stash_id, se_box.m_game_vertex_id, se_box.m_level_vertex_id, se_box.position)
+                        if se_obj then 
+                            if not se_obj.online then
+                                debug("Setting "..se_obj.section.." online")
+                                se_obj:switch_online()
+                            end
+                        end
+                    end
+                end                            
+
+            end 
+        end 
+    end   
+
+    -- Write out an identifier so we can use it later
+    -- to identify other saves with the same ID if the 
+    -- user is playing with Hardcore Saves enabled.
+    if not data.uuid then        
+        data.uuid = GAME_VERSION .. "_" .. tostring(math.random(100)) .. tostring(math.random()) .. tostring(math.random(1000))
+    end
+
+    debug("Looking for scenario logic.")
+
+    if scenario_logic then
+        debug("Calling scenario respawn.")
+        scenario_logic:OnRespawn()
+    end
+end 
+
+local function actor_on_sleep(hours)    
+    if not IsSoulslikeMode() then
+        return
+    end
+
+    soulslike.debug('actor_on_sleep')
+
+    -- Only force save if we aren't running a scenario 
+    if not scenario_logic then
+        soulslike.force_save("sleep")
+    end
+end
+
+local detour_actor_on_before_hit = nil
+
+local function actor_on_before_hit(shit, bone_id, flags)
+    if not IsSoulslikeMode() then
+        if detour_actor_on_before_hit then
+            detour_actor_on_before_hit(shit, bone_id, flags)
+        end
+        return
+    end
+
+    local damage = shit.power
+    if grok_actor_damage_balancer and grok_actor_damage_balancer.damage then
+        --debug("Using damage from Grok's Damage Balancer")
+        damage = grok_actor_damage_balancer.damage
+    end
+
+    --debug("Player hit:")
+    --debug("shit.type: "..tostring(hit_type_to_str[shit.type]))
+    --debug("shit.power: "..tostring(damage))
+    --debug("shit.impulse: "..tostring(shit.impulse))
+    --debug("shit.draftsman: "..(shit and shit.draftsman:name() or "<nil>"))
+
+    if shit.draftsman then
+        --debug("shit.draftsman: "..(shit and shit.draftsman:name() or "<nil>"))
+
+    end
+
+    local health = db.actor.health
+    local is_fatal = shit.power >= health
+
+    hit_queue:Enqueue({ 
+        type = shit.type,
+        power = damage,
+        is_fatal = is_fatal,
+        time = time_global(),
+        draftsman_id = shit.draftsman and shit.draftsman:id() or nil,
+    })
+    
+    --debug("is_fatal: "..tostring(is_fatal))
+end
+
+local function npc_on_net_spawn(npc, se_obj)
+    if not IsSoulslikeMode() then
+        return
+    end
+
+    local state = get_soulslike_state()
+    if npc and IsStalker(npc) and state.tracked_ambushers and state.tracked_ambushers[npc:id()] then
+        debug("Setting up ambushers "..tostring(npc:id()))
+        local ambusher_state = state.tracked_ambushers[npc:id()]
+        local position = vector():set(ambusher_state.position.x, ambusher_state.position.y, ambusher_state.position.z)
+           
+        npc:set_mental_state(ambusher_state.mental_state)
+        npc:set_body_state(ambusher_state.body_state)
+        npc:set_movement_type(ambusher_state.movement_type)
+        npc:set_sight(ambusher_state.sight_type, nil, 0)
+        npc:set_desired_position(position)
+        npc:set_desired_direction()
+
+        if soulslike_mcm.debug_squad_spawns() then
+            level.map_add_object_spot_ser(npc:id(), "secondary_task_location", "DEBUG: Ambush NPC") 
+        end
+
+        state.tracked_ambushers[npc:id()] = nil
+    end
+end
+
+local function actor_on_first_update()
+    debug("actor_on_first_update")
+end
+
+function on_game_start()
+    debug('Version: '..version)
+    
+    RegisterScriptCallback("actor_on_stash_remove", actor_on_stash_remove)
+    RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+    RegisterScriptCallback("actor_on_item_take_from_box", actor_on_item_take_from_box)
+    RegisterScriptCallback("actor_on_before_death", actor_on_before_death)
+    RegisterScriptCallback("on_before_save_input", on_before_save_input)
+    RegisterScriptCallback("save_state", save_state)
+    RegisterScriptCallback("load_state", load_state)
+    RegisterScriptCallback("on_level_changing", on_level_changing)
+    RegisterScriptCallback("on_game_load", on_game_load)
+    RegisterScriptCallback("actor_on_sleep", actor_on_sleep)
+	RegisterScriptCallback("on_console_execute", on_console_execute)
+    RegisterScriptCallback("actor_on_before_hit", actor_on_before_hit)
+	RegisterScriptCallback("physic_object_on_use_callback", physic_object_on_use_callback)
+    --RegisterScriptCallback("npc_on_net_spawn", npc_on_net_spawn)
+end

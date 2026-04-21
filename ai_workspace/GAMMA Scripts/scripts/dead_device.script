@@ -1,0 +1,28 @@
+
+-- Out of Battery Draw Script
+
+
+function actor_on_hud_animation_play(anm_table, item)
+    if not item then return end
+    if not animation_common.has_animation(item:section(), "anm_show_dead") then return end
+    if anm_table.anm_name == "anm_show" and item:condition() <= 0.05 then
+        anm_table.anm_name = "anm_show_dead"
+    end
+end
+
+function actor_on_update()
+    local actor = db.actor
+    local det = actor:active_detector()
+    
+    if (det and string.find(det:section(), "flashlight")) then return end
+    zz_glowstick_mcm.actor_on_update()
+end
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_hud_animation_play", actor_on_hud_animation_play)
+
+    if (zz_glowstick_mcm ~= nil) then
+        UnregisterScriptCallback("actor_on_update", zz_glowstick_mcm.actor_on_update)
+        RegisterScriptCallback("actor_on_update", actor_on_update)
+    end
+end

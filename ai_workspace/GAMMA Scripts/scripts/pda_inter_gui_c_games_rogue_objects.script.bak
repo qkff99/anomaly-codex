@@ -1,0 +1,644 @@
+local gt = game.translate_string
+local CustomPDAX = pda_inter_gui.CustomPDAX
+local astar = pda_inter_gui_c_games_rogue_a_path
+local pr = pda_inter_gui.pr
+
+
+function CustomPDAX:RogueGenerateObjects(win)
+	local actor_cache = {
+		health = win and self.rogue_objects[1].health or 4,
+		max_health = win and self.rogue_objects[1].max_health or 4,
+		melee_pwr = win and self.rogue_objects[1].melee_pwr or 2,
+		range_pwr = win and self.rogue_objects[1].range_pwr or 1,
+		evasion = win and self.rogue_objects[1].evasion or 15,
+		ammo = win and self.rogue_objects[1].ammo or 6,
+		max_ammo = win and self.rogue_objects[1].max_ammo or 6,
+		money = win and self.rogue_objects[1].money or 0,
+	}
+
+	iempty_table(self.rogue_objects)
+
+	self:RogueGenerateObjectActor(actor_cache)
+	self:RogueGenerateObjectExits()
+	self:RogueGenerateObjectArtefact()
+	self:RogueGenerateNPC()
+	self:RogueGenerateObjectConsumables()
+	self:RogueGenerateObjectAnomalies()
+end
+
+
+------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------- Objects Spawn -----------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+function CustomPDAX:RogueGenerateObjectActor(cache)
+	-- choose potential positions then pick random
+	local ac_spawns = {}
+
+	local start_at = 1
+	local end_at = 0
+
+	repeat
+		start_at = start_at + 1
+		end_at = end_at + 1
+		for row = start_at, #self.rogue_grid - end_at do
+			for col = start_at, #self.rogue_grid[row] - end_at do
+				local ter = self.rogue_grid[row][col].terrain
+				local cond = row == start_at or row == #self.rogue_grid - end_at or col == start_at or col == #self.rogue_grid[row] - end_at
+				if ter == 0 and cond then
+					ac_spawns[#ac_spawns + 1] = {row, col}
+				end
+			end
+		end
+	until #ac_spawns > 0
+
+	local rnd_ac_spawn = ac_spawns[math.random(1, #ac_spawns)]
+	local ac_row = rnd_ac_spawn[1]
+	local ac_col = rnd_ac_spawn[2]
+
+	-- set object
+	self.rogue_objects[1] = {
+		typ = "actor",
+		status = "alive",
+		health = cache.health,
+		max_health = cache.max_health,
+		melee_pwr = cache.melee_pwr,
+		range_pwr = cache.range_pwr,
+		evasion = cache.evasion,
+		ammo = cache.ammo,
+		max_ammo = cache.max_ammo,
+		money = cache.money,
+		row = ac_row,
+		col = ac_col,
+		spawn_radius = 10,
+		dir = "down",
+		texture = "rogue_cell_actor_",
+	}
+end
+
+function CustomPDAX:RogueGenerateObjectExits()
+	-- choose potential positions and then pick random
+	local ex_spawns = {}
+	local ex_spawns_bkp = {}
+
+	local start_at = 1
+	local end_at = 0
+
+	repeat
+		start_at = start_at + 1
+		end_at = end_at + 1
+		for row = start_at, #self.rogue_grid - end_at do
+			for col = start_at, #self.rogue_grid[row] - end_at do
+				local ter = self.rogue_grid[row][col].terrain
+				local cond = row == start_at or row == #self.rogue_grid - end_at or col == start_at or col == #self.rogue_grid[row] - end_at
+				if ter == 0 and cond then
+					local dist = self:CellDistance(row, col, self:RogueActor().row, self:RogueActor().col)
+					if dist > 40 then
+						ex_spawns[#ex_spawns + 1] = {row, col}
+					elseif dist > 25 then
+						ex_spawns_bkp[#ex_spawns_bkp + 1] = {row, col}
+					end
+				end
+			end
+		end
+	until #ex_spawns > 0 or #ex_spawns_bkp > 0
+
+	-- try to pick from furthest array, if not possible pick from backup
+	local exit_furthest = #ex_spawns > 0 and ex_spawns or ex_spawns_bkp
+	local rnd_exit = exit_furthest[math.random(1, #exit_furthest)]
+	local exit_row = rnd_exit[1]
+	local exit_col = rnd_exit[2]
+
+	for row = exit_row - 1, exit_row + 1 do		-- extend exit to 3-4 cells if possible
+		for col = exit_col - 1, exit_col + 1 do
+			for i = 1, #exit_furthest do
+				local cell = exit_furthest[i]
+				if row == cell[1] and col == cell[2] then
+					-- set object
+					self.rogue_objects[#self.rogue_objects + 1] = {
+						typ = "exit",
+						status = "static",
+						row = row,
+						col = col,
+						spawn_radius = 1,
+						texture = "rogue_cell_exit",
+					}
+				end
+			end
+		end
+	end
+end
+
+function CustomPDAX:RogueGenerateObjectArtefact()
+	local ac_row, ac_col = self:RogueActor().row, self:RogueActor().col
+	local art_radius = 2
+
+	local art_furthest = {}
+	for row = 3, #self.rogue_grid - 2 do
+		for col = 3, #self.rogue_grid[row] - 2 do
+			local ter = self.rogue_grid[row][col].terrain
+			local dist = self:CellDistance(row, col, ac_row, ac_col)
+			local allowed_radius = self:SpawnRadiusAllowed(row, col, art_radius)
+			if ter == 0 and allowed_radius and dist > 20 then
+				art_furthest[#art_furthest + 1] = {row, col}
+			end
+		end
+	end
+
+	local rnd_art = art_furthest[math.random(1, #art_furthest)]
+	local art_row = rnd_art[1]
+	local art_col = rnd_art[2]
+
+	self.rogue_objects[#self.rogue_objects + 1] = {
+		typ = "artefact",
+		status = "world",
+		row = art_row,
+		col = art_col,
+		spawn_radius = art_radius,
+		texture = "rogue_cell_artefact_" .. math.random(1, 4),
+	}
+end
+
+function CustomPDAX:RogueGenerateNPC()
+	local mutants_t = {
+		[1] = { name = "chimera", health = 5, melee_pwr = 3, loot = 20, radius = 7, aggro_range = 7, max_texture = 1, spawn_score = 1, min_level = 19 },
+		[2] = { name = "bloodsucker", health = 4, melee_pwr = 2, loot = 10, radius = 6, aggro_range = 6, max_texture = 1, spawn_score = 2, min_level = 9, invis = true },
+		[3] = { name = "dog", health = 3, melee_pwr = 1, loot = 4, radius = 5, aggro_range = 5, max_texture = 4, spawn_score = 100, min_level = 1 },
+	}
+
+	for i = 1, 5 do
+
+		-- choose mutant
+		local mut_t = mutants_t[3]
+		for j, t in ipairs(mutants_t) do
+			local level_cond = self.cur_level >= t.min_level
+			local spawn_chance = self.cur_level * t.spawn_score
+			if level_cond and math.random(100) < spawn_chance then
+				mut_t = mutants_t[j]
+				break
+			end
+		end
+
+		local mut_pos = {}
+		for row = 3, #self.rogue_grid - 2 do
+			for col = 3, #self.rogue_grid[row] - 2 do
+				local ter = self.rogue_grid[row][col].terrain
+				local allowed_radius = self:SpawnRadiusAllowed(row, col, mut_t.radius)
+				if ter == 0 and allowed_radius then
+					mut_pos[#mut_pos + 1] = {row, col}
+				end
+			end
+		end
+
+		if #mut_pos > 0 then
+			local rnd_mut = mut_pos[math.random(1, #mut_pos)]
+			local mut_row = rnd_mut[1]
+			local mut_col = rnd_mut[2]
+
+			self.rogue_objects[#self.rogue_objects + 1] = {
+				typ = "mutant",
+				sec = mut_t.name,
+				status = "alive",
+				health = mut_t.health,
+				melee_pwr = mut_t.melee_pwr,
+				row = mut_row,
+				col = mut_col,
+				spawn_radius = mut_t.radius,
+				loot = mut_t.loot,
+				aggro = false,
+				invis = mut_t.invis or false,
+				aggro_range = mut_t.aggro_range,
+				gulag_row = mut_row,
+				gulag_col = mut_col,
+				gulag_radius = mut_t.radius,
+				dir = "left",		-- for render
+				texture = "rogue_cell_" .. mut_t.name .. "_" .. math.random(1, mut_t.max_texture) .. "_",
+			}
+		end
+	end
+end
+
+function CustomPDAX:RogueGenerateObjectConsumables()
+	local ac_row, ac_col = self:RogueActor().row, self:RogueActor().col
+	local item_radius = 2
+
+	for i = 1, 2 do
+		local item = i == 1 and "medkit" or "ammo"
+		local item_texture = "rogue_cell_" .. item
+
+		local itm_furthest = {}
+		for row = 3, #self.rogue_grid - 2 do
+			for col = 3, #self.rogue_grid[row] - 2 do
+				local ter = self.rogue_grid[row][col].terrain
+				local dist = self:CellDistance(row, col, ac_row, ac_col)
+				local allowed_radius = self:SpawnRadiusAllowed(row, col, item_radius)
+				if ter == 0 and allowed_radius and dist > 15 then
+					itm_furthest[#itm_furthest + 1] = {row, col}
+				end
+			end
+		end
+
+		if #itm_furthest > 0 then
+			local rnd_itm = itm_furthest[math.random(1, #itm_furthest)]
+			local itm_row = rnd_itm[1]
+			local itm_col = rnd_itm[2]
+
+			self.rogue_objects[#self.rogue_objects + 1] = {
+				typ = item,
+				status = "world",
+				row = itm_row,
+				col = itm_col,
+				spawn_radius = item_radius,
+				texture = item_texture,
+			}
+		end
+	end
+end
+
+function CustomPDAX:RogueGenerateObjectAnomalies()
+	local ac_row, ac_col = self:RogueActor().row, self:RogueActor().col
+	local exit_path = self:ActorPathToExit()
+
+	local anomalies_t = {
+		[1] = { name = "fire", melee_pwr = 2, max_anm = 4 },
+		[2] = { name = "electra", melee_pwr = 2, max_anm = 5 },
+		[3] = { name = "acid", melee_pwr = 2, max_anm = 6 },
+		[4] = { name = "gravi", melee_pwr = 2, max_anm = 6 },
+	}
+
+	local anomaly_amount = math.random(5, 7) + math.ceil(self.cur_level / 10) * 3
+
+	for i = 1, anomaly_amount do
+
+		local anom_t = anomalies_t[math.random(1, #anomalies_t)]
+
+		local anom_pos = {}
+		for row = 2, #self.rogue_grid - 1 do
+			for col = 2, #self.rogue_grid[row] - 1 do
+				local ter = self.rogue_grid[row][col].terrain
+				local allowed_radius = self:SpawnRadiusAllowed(row, col, 2)
+				local pos_safe = not self:PosOnExitPath(exit_path, row, col)
+				if ter == 0 and allowed_radius and pos_safe then
+					anom_pos[#anom_pos + 1] = {row, col}
+				end
+			end
+		end
+
+		if #anom_pos > 0 then
+			local rnd_anom = anom_pos[math.random(1, #anom_pos)]
+			local anom_row = rnd_anom[1]
+			local anom_col = rnd_anom[2]
+
+			self.rogue_objects[#self.rogue_objects + 1] = {
+				typ = "anomaly",
+				sec = anom_t.name,
+				status = "static",
+				melee_pwr = anom_t.melee_pwr,
+				row = anom_row,
+				col = anom_col,
+				spawn_radius = 2,
+				anm = 1,
+				max_anm = anom_t.max_anm,
+				texture = "rogue_anomaly_" .. anom_t.name .. "_",
+			}
+		end
+	end
+end
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------- Objects handler ---------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+
+--------------------------------------------------- Actor ---------------------------------------------------
+function CustomPDAX:MoveActor(dir)
+	local ac_obj = self:RogueActor()
+	local cur_dir = ac_obj.dir
+
+	-- rotate actor and update render
+	if cur_dir ~= dir then
+		ac_obj.dir = dir
+		self:RenderUpdate()
+		return
+	end
+
+	-- choose dir
+	local to_row = ac_obj.row
+	local to_col = ac_obj.col
+
+	if dir == "up" then
+		to_row = to_row - 1
+	elseif dir == "down" then
+		to_row = to_row + 1
+	elseif dir == "left" then
+		to_col = to_col - 1
+	elseif dir == "right" then
+		to_col = to_col + 1
+	end
+
+	-- try to move (terrain wall)
+	if self:CanMove(1, to_row, to_col) == false then
+		return
+	end
+
+	-- try to move
+	if self:CanMove(1, to_row, to_col) then
+		ac_obj.row = to_row
+		ac_obj.col = to_col
+	end
+
+	-- object interaction
+	for idx, t in pairs(self.rogue_objects) do
+		if t.row == to_row and t.col == to_col then
+
+			-- melee attack if its alive mutant
+			if t.typ == "mutant" and t.status == "alive" then
+				self:Attack(1, idx)
+				self:PlaySound("rogue_melee")
+				break
+			end
+
+			-- try to pick up if its item
+			if t.status == "world" then
+				if t.typ == "artefact" then
+					ac_obj.money = ac_obj.money + 100
+					self:PlaySound("rogue_artefact")
+				elseif t.typ == "medkit" then
+					ac_obj.health = clamp(ac_obj.health + 4, 0, ac_obj.max_health)
+					self:PlaySound("rogue_medkit")
+				elseif t.typ == "ammo" then
+					ac_obj.ammo = clamp(ac_obj.ammo + 6, 0, ac_obj.max_ammo)
+					self:PlaySound("rogue_ammo")
+				end
+				self.rogue_objects[idx].status = "taken"
+			end
+
+			-- exit
+			if t.typ == "exit" then
+				self:RogueActorOnLevelExit()
+				return
+			end
+
+		end
+	end
+
+	-- update grid
+	self:RogueGridUpdate()
+end
+
+function CustomPDAX:WaitActor()
+	self:RogueGridUpdate()
+end
+
+function CustomPDAX:ShootActor()
+	local ac_obj = self:RogueActor()
+	local dir = ac_obj.dir
+
+	if ac_obj.ammo <= 0 then
+		self:PlaySound("rogue_shoot_empty")
+		return
+	end
+
+	-- reduce ammo and play shoot sound
+	ac_obj.ammo = ac_obj.ammo - 1
+	self:PlaySound("rogue_shoot")
+
+	-- get nearest alive mutant in actor direction
+	local near_dist = 99
+	local near_id
+	for idx, t in pairs(self.rogue_objects) do
+		if t.typ == "mutant" and t.status == "alive" then
+			local up_cond = dir == "up" and t.col == ac_obj.col and t.row < ac_obj.row
+			local down_cond = dir == "down" and t.col == ac_obj.col and t.row > ac_obj.row
+			local left_cond = dir == "left" and t.row == ac_obj.row and t.col < ac_obj.col
+			local right_cond = dir == "right" and t.row == ac_obj.row and t.col > ac_obj.col
+			local cond = up_cond or down_cond or left_cond or right_cond
+			local dist = self:CellDistance(t.row, t.col, ac_obj.row, ac_obj.col)
+			if cond and dist < near_dist then
+				near_dist = dist
+				near_id = idx
+			end
+		end
+	end
+
+	-- hit if mutant exist and range is melee or no obstacles in line
+	local mut_obj = near_id and self.rogue_objects[near_id]
+	if mut_obj then
+		local obstacles = self:ObstaclesInLine(mut_obj.row, mut_obj.col, ac_obj.row, ac_obj.col)
+		if not obstacles then
+			self:Attack(1, near_id, "range_pwr")
+		end
+	end
+
+	self:RogueGridUpdate()
+end
+
+function CustomPDAX:RogueActorOnLevelExit()
+	-- give some money
+	self:RogueActor().money = self:RogueActor().money + self.cur_level * 2
+
+	-- trader or new level
+	if self.cur_level % 5 == 0 then
+		self.rogue_enable_input = false
+		self:RogueTradeUpdate()
+	else
+		self:RogueGenerateNewLevel(true)
+	end
+
+	self:PlaySound("rogue_end_level")
+end
+
+function CustomPDAX:RogueActorOnDeath()
+	self:PlaySound("rogue_actor_die_" .. math.random(1, 2))
+	self.rogue_start_over_btn:Show(true)
+	self.rogue_enable_input = false
+end
+
+
+--------------------------------------------------- Shared ---------------------------------------------------
+function CustomPDAX:Attack(id, victim_id, typ)
+	-- actor evasion
+	if victim_id == 1 and math.random(100) <= self:RogueActor().evasion then
+		self:PlaySound("rogue_evade_" .. math.random(2))
+		return
+	end
+
+	local hit_typ = typ or "melee_pwr"
+	local pwr = self.rogue_objects[id][hit_typ]
+	self.rogue_objects[victim_id].health = self.rogue_objects[victim_id].health - pwr
+	if self.rogue_objects[victim_id].health <= 0 then
+		self.rogue_objects[victim_id].status = "dead"
+
+		-- npc died
+		if victim_id ~= 1 then
+			self:RogueNPCOnDeath(victim_id, id, self.rogue_objects[victim_id].sec)
+		end
+
+		-- if actor died - generate from start
+		if victim_id == 1 then
+			self:RogueActorOnDeath()
+		end
+	end
+end
+
+
+--------------------------------------------------- NPCs ---------------------------------------------------
+function CustomPDAX:MoveIdleNPC(idx)
+	for i = 1, 3 do
+		local to_row = self.rogue_objects[idx].row
+		local to_col = self.rogue_objects[idx].col
+
+		local rnd = math.random(1, 4)
+		if rnd == 1 then
+			to_row = to_row - 1
+		elseif rnd == 2 then
+			to_row = to_row + 1
+		elseif rnd == 3 then
+			to_col = to_col - 1
+			self.rogue_objects[idx].dir = "left"
+		elseif rnd == 4 then
+			to_col = to_col + 1
+			self.rogue_objects[idx].dir = "right"
+		end
+
+		if self:CanMove(idx, to_row, to_col) then
+			self.rogue_objects[idx].row = to_row
+			self.rogue_objects[idx].col = to_col
+			break
+		end
+	end
+end
+
+function CustomPDAX:MoveAggroNPC(idx, victim_idx)
+	local row = self.rogue_objects[idx].row
+	local col = self.rogue_objects[idx].col
+
+	local victim_row = self.rogue_objects[victim_idx].row
+	local victim_col = self.rogue_objects[victim_idx].col
+
+	local astar_path = astar.astar_find(self.grid_h, self.grid_w, {x=row, y=col}, {x=victim_row, y=victim_col}, astar.AStarCanMove, self, idx, victim_idx)
+	if not (astar_path and astar_path[2]) then return end
+
+	-- test display path
+--	CreateTimeEvent("test_rogue_ev" .. idx, "test_rogue_ac" .. idx, 1, function()
+--		for idx, p in ipairs(astar_path) do self.rogue_grid[p.x][p.y].test_cell:SetTextureColor( GetARGB(255, 240, 255, 70) ) end
+--		return true end)
+	-------------------
+
+	-- set dir
+	if astar_path[2].y < col then
+		self.rogue_objects[idx].dir = "left"
+	elseif astar_path[2].y > col then
+		self.rogue_objects[idx].dir = "right"
+	end
+
+	-- set pos
+	self.rogue_objects[idx].row = astar_path[2].x
+	self.rogue_objects[idx].col = astar_path[2].y
+end
+
+function CustomPDAX:ChimeraJump(idx, victim_idx, dist, row, col, victim_row, victim_col)
+	local same_col_or_row = (row == victim_row) or (col == victim_col)
+	if not same_col_or_row then return end
+	if dist ~= 3 then return end
+
+	local ret_cell
+	-- get all cells between
+	local cells = self:CellsInLine(row, col, victim_row, victim_col)
+	for i, ar in ipairs(cells) do
+		-- if nearest to actor and can move to it - set and return it
+		local valid_final_row = (ar[1]-1 == victim_row) or (ar[1]+1 == victim_row)
+		local valid_final_col = (ar[2]-1 == victim_col) or (ar[2]+1 == victim_col)
+		if (valid_final_row or valid_final_col) and self:CanMove(idx, ar[1], ar[2]) then
+			ret_cell = {ar[1], ar[2]}
+		end
+
+		-- dont let jump through walls
+		if self.rogue_grid[ar[1]][ar[2]].terrain == 1 then
+			return
+		end
+
+		-- don let jump through other objects
+		for obj_id, t in pairs(self.rogue_objects) do
+			if t.status == "alive" and t.row == ar[1] and t.col == ar[2] then
+				return
+			end
+		end
+	end
+
+	return ret_cell
+end
+
+function CustomPDAX:RogueNPCOnDeath(id, killer_id, sec)
+	-- if actor killed - give money
+	if killer_id == 1 then
+		self:RogueActor().money = self:RogueActor().money + self.rogue_objects[id].loot
+	end
+
+	-- play snd
+	self:PlaySound("rogue_" .. sec .. "_die_" .. math.random(1, 2))
+end
+
+function CustomPDAX:MutantsUpdate()
+	local ac_row = self:RogueActor().row
+	local ac_col = self:RogueActor().col
+
+	for idx, t in pairs(self.rogue_objects) do
+		local dist_to_ac = self:CellDistance(t.row, t.col, ac_row, ac_col)
+
+		if t.typ == "mutant" and t.status == "alive" then
+			-- try to set aggro
+			if (not t.aggro) and dist_to_ac <= t.aggro_range then
+				self.rogue_objects[idx].aggro = true
+			end
+
+			-- bloodsucker invis
+			if t.invis and dist_to_ac <= 5 then
+				self.rogue_objects[idx].invis = false
+				self:PlaySound("rogue_bloodsucker_invis")
+			end
+
+			-- attack
+			if dist_to_ac <= 1 then
+				self:Attack(idx, 1)
+				self:PlaySound("rogue_" .. t.sec .. "_attack_" .. math.random(1, 3))
+			end
+
+			-- move
+			if dist_to_ac > 1 then
+				if t.aggro then
+					-- chimera try to jump
+					local chimera_can_jump = t.sec == "chimera" and self:ChimeraJump(idx, 1, dist_to_ac, t.row, t.col, ac_row, ac_col)
+					if chimera_can_jump then
+						self.rogue_objects[idx].row = chimera_can_jump[1]
+						self.rogue_objects[idx].col = chimera_can_jump[2]
+						self:Attack(idx, 1)
+						self:PlaySound("rogue_chimera_jump")
+					else
+						self:MoveAggroNPC(idx, 1)
+					end
+				else
+					self:MoveIdleNPC(idx)
+				end
+			end
+
+		end
+	end
+end
+
+
+--------------------------------------------------- Anomalies ---------------------------------------------------
+function CustomPDAX:AnomaliesUpdate()
+	for idx, t in pairs(self.rogue_objects) do
+		if t.typ == "anomaly" then
+
+			for victim_idx, victim_t in pairs(self.rogue_objects) do
+				if victim_t.status == "alive" and t.row == victim_t.row and t.col == victim_t.col then
+					self:Attack(idx, victim_idx)
+					self:PlaySound("rogue_anomaly_" .. t.sec)
+				end
+			end
+
+		end
+	end
+end

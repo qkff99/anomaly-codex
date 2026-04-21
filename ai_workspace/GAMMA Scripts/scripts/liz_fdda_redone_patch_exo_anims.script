@@ -1,0 +1,19 @@
+local ini_eff = {}
+
+function on_game_start()
+    ini_eff = ini_file("items\\items\\animations_settings.ltx")
+end
+
+function mutator(section)
+    local item = section
+    local outfit = db.actor:item_in_slot(7)
+    outfit = outfit and outfit:section() or item
+    local hud = SYS_GetParam(0, outfit, "player_hud_section", "")
+    if hud:find("exo$") or hud:find("nosorog$") then
+        item = item .. "_exo"
+        if not ini_eff:r_string_ex(item, "snd") then item = section end
+    end
+
+    return item
+end
+liz_fdda_redone_animation_mutator.add(5, mutator)

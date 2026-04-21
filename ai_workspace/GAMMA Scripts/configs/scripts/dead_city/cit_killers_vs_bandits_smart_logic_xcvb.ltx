@@ -1,0 +1,148 @@
+[beh@general]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+gather_items_enabled = true
+help_wounded_enabled = true
+corpse_detection_enabled = true
+meet = meet@general
+wounded = wounded@ignore
+use_camp = false
+path_end = loop
+
+
+[beh@combat]:beh@general
+walk_dist = 25
+jog_dist = 220
+wait_anim = patrol
+walk_anim = patrol
+jog_anim = patrol
+run_anim = patrol
+sound_idle = state
+
+
+[beh@campfire]:beh@general
+turn_on_campfire = true
+sound_idle = state
+
+[beh@sleep]:beh@general
+gather_items_enabled = false
+corpse_detection_enabled = false
+meet = no_meet
+
+
+[meet@general]
+close_anim 		= nil
+close_victim 	= nil
+far_anim 		= nil
+far_victim 		= nil
+close_distance  = 0
+far_distance 	= 0
+use = {=actor_enemy} false, {=dist_to_actor_le(3)} true, false
+snd_on_use = {!dist_to_actor_le(3)} nil
+meet_on_talking = false
+
+[wounded@ignore]
+hp_state        = 0|wounded_heavy@help_heavy
+hp_state_see    = 0|wounded_heavy@help_heavy
+hp_victim       = 0|nil
+hp_fight        = 0|false
+hp_cover        = 0|false
+
+
+; =======================
+; ------------- DAY ---------------
+; =======================
+; ------------- 59
+; (guard 1st floor)
+[logic@cit_killers_vs_bandits_xcvb_day_1]
+active = beh@day_1
+suitable = {!surge_started} true
+prior = 59
+
+[beh@day_1]:beh@combat
+pt1 = 20000, guard |		pos: -48.3, 2.7603, -60.9 	 	 look: -48.353, 1.7612, -56.8029 
+
+
+; ------------- 58
+; (sniper 1)
+[logic@cit_killers_vs_bandits_xcvb_day_2]
+active = beh@day_2
+suitable = {!surge_started =guard_has_sniper_rifle} true
+prior = 58
+
+[beh@day_2]:beh@combat
+pt1 = 20000, threat_heli | 		pos: -53.9, 14.6995, -76.3 	 	 look: -52.1562, 12.5581, -84.0043 
+
+
+; (guard 2 2nd floor)
+[logic@cit_killers_vs_bandits_xcvb_day_3]
+active = beh@day_3
+suitable = {!surge_started} true
+prior = 58
+
+[beh@day_3]:beh@combat
+pt1 = 20000, guard | 		pos: -32.9, 8.4032, -74.9 	 	 look: -32.8018, 7.4035, -77.6774 
+
+
+; ------------- 57
+; (sniper 2)
+[logic@cit_killers_vs_bandits_xcvb_day_4]
+active = beh@day_4
+suitable = {!surge_started =guard_has_rifle} true
+prior = 57
+
+[beh@day_4]:beh@combat
+pt1 = 15000, threat_heli | 		pos: -32.9, 14.6995, -74.2 	 	 look: -23.1336, 12.6188, -79.1513 
+pt2 = 30000, threat_heli | 		pos: -37.8, 14.6995, -63.7 	 	 look: -37.636, 11.6575, -56.3769 
+
+
+; (patrol)
+[logic@cit_killers_vs_bandits_xcvb_day_5]
+active = beh@day_5
+suitable = {!surge_started} true
+prior = 57
+
+[beh@day_5]:beh@combat
+pt1 = 20000, guard | 		pos: -51.8, 3.1869, -73.5 	 	 look: -52.2691, 2.1882, -75.8874 
+pt2 = 1, guard | 		pos: -48.3, 3.1869, -67.9 	 	 look: -45.3851, 2.1851, -67.684 
+pt3 = 20000, guard | 		pos: -34.3, 3.1869, -68.6 	 	 look: -34.3162, 2.1842, -71.5632 
+pt4 = 1, guard | 		pos: -48.3, 3.1869, -66.5 	 	 look: -50.7815, 2.1881, -65.6321 
+
+
+; (campfire 1)
+[logic@cit_killers_vs_bandits_xcvb_day_6]
+active = beh@day_6
+suitable = {!surge_started} true
+prior = 57
+
+[beh@day_6]:beh@campfire
+pt1 = 35000, sit | 		pos: -54.6, 3.1869, -63.7 	 	 look: -54.5657, 2.1822, -67.8525 
+pt2 = 25000, eat_energy | 		pos: -54.6, 3.1869, -63.7 	 	 look: -54.5657, 2.1822, -67.8525 
+pt3 = 30000, use_pda | 		pos: -54.6, 3.1869, -63.7 	 	 look: -54.5657, 2.1822, -67.8525 
+
+
+; ------------- 56
+; (campfire 2)
+[logic@cit_killers_vs_bandits_xcvb_day_7]
+active = beh@day_7
+suitable = {!surge_started} true
+prior = 56
+
+[beh@day_7]:beh@campfire
+pt1 = 50000, sit_ass | 		pos: -56.7, 3.1869, -65.8 	 	 look: -52.7282, 2.1879, -65.4702 
+pt2 = 25000, eat_kolbasa | 		pos: -56.7, 3.1869, -65.8 	 	 look: -52.7282, 2.1879, -65.4702 
+pt3 = 30000, smoking_sit | 		pos: -56.7, 3.1869, -65.8 	 	 look: -52.7282, 2.1879, -65.4702 
+
+
+
+; =======================
+; ------------ NIGHT -------------
+; =======================

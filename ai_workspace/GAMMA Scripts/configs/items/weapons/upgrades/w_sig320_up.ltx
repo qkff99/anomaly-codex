@@ -1,0 +1,127 @@
+
+[up_sect_firsta_sig320]
+cost                                     = 1460
+value                                    = +10
+rpm                                      = +20
+inv_weight                               = +0.1
+
+[up_sect_firstc_sig320]
+cost                                     = 1960
+value                                    = +15
+
+condition_shot_dec                       = -0.00015
+condition_queue_shot_dec                 = -0.00015
+misfire_start_prob                       = -0.0015
+misfire_end_prob                         = -0.015
+inv_weight                               = +0.18
+
+[up_sect_firstd_sig320]
+cost                                     = 1980
+value                                    = +20
+bullet_speed                             = +56
+fire_distance                            = +30
+fire_dispersion_base                     = -0.02
+inv_weight                               = +0.13
+
+[up_sect_firste_sig320]
+cost                                     = 2860
+value                                    = ".45 ACP"
+ammo_class                  = ammo_11.43x23_fmj, ammo_11.43x23_fmj_bad, ammo_11.43x23_fmj_verybad, ammo_11.43x23_hydro, ammo_11.43x23_hydro_bad, ammo_11.43x23_hydro_verybad
+ammo_elapsed                = -7
+ammo_mag_size               = -7
+
+hit_power                   = 0.55, 0.55, 0.55, 0.55
+		
+shell_particles	 			= weapons\45acp
+
+rpm                                      = -150
+cam_dispersion                           = +0.35
+zoom_cam_dispersion					= +0.18
+cam_dispersion_inc                       = +0.06
+inv_weight                               = +0.06
+
+snd_shoot               = wpn_sig220_snd_shoot
+
+;----------------------------------------------------------------------------------------------------------------------
+[up_firsta_sig320]
+scheme_index                             = 0, 0
+known                                    = 1
+effects                                  = up_gr_firstcd_sig320
+section                                  = up_sect_firsta_sig320
+property                                 = prop_rpm
+precondition_functor                     = inventory_upgrades.precondition_functor_a
+precondition_parameter                   = a & b
+effect_functor                           = inventory_upgrades.effect_functor_a
+effect_parameter                         = on_weapon_upgrade_something_here
+
+prereq_functor                           = inventory_upgrades.prereq_functor_a
+prereq_tooltip_functor                   = inventory_upgrades.prereq_tooltip_functor_a
+prereq_params                            =
+name                                     = st_up_zatp_a1_name
+description                              = st_up_zatp_a1_descr
+icon                                     = ui_inGame2_upgrade_SIP_t_M200_1
+
+
+[up_firstc_sig320]
+scheme_index                             = 1, 0
+known                                    = 1
+effects                                  = up_gr_firstef_sig320
+section                                  = up_sect_firstc_sig320
+property                                 = prop_reliability
+precondition_functor                     = inventory_upgrades.precondition_functor_a
+precondition_parameter                   = a & b
+effect_functor                           = inventory_upgrades.effect_functor_a
+effect_parameter                         = something_here
+
+prereq_functor                           = inventory_upgrades.prereq_functor_a
+prereq_tooltip_functor                   = inventory_upgrades.prereq_tooltip_functor_a
+prereq_params                            =
+name                                     = st_up_zatp_b3_name
+description                              = st_up_zatp_b3_descr
+icon                                     = ui_inGame2_upgrade_SIP_t_M200_2
+
+[up_firstd_sig320]
+scheme_index                             = 1, 1
+known                                    = 1
+effects                                  = up_gr_firstef_sig320
+section                                  = up_sect_firstd_sig320
+property                                 = prop_bullet_speed
+precondition_functor                     = inventory_upgrades.precondition_functor_a
+precondition_parameter                   = a & b
+effect_functor                           = inventory_upgrades.effect_functor_a
+effect_parameter                         = something_here
+prereq_functor                           = inventory_upgrades.prereq_functor_a
+prereq_tooltip_functor                   = inventory_upgrades.prereq_tooltip_functor_a
+prereq_params                            =
+name                                     = st_up_zatp_b8_name
+description                              = st_up_zatp_b8_descr
+icon                                     = ui_inGame2_upgrade_SIP_t_M200_3
+
+[up_firste_sig320]
+scheme_index                             = 2, 0
+known                                    = 1
+effects                                  =
+section                                  = up_sect_firste_sig320
+property                                 = prop_calibre
+precondition_functor                     = inventory_upgrades.precondition_functor_a
+precondition_parameter                   = a & b
+effect_functor                           = inventory_upgrades.effect_functor_a
+effect_parameter                         = something_here
+
+prereq_functor                           = inventory_upgrades.prereq_functor_a
+prereq_tooltip_functor                   = inventory_upgrades.prereq_tooltip_functor_a
+prereq_params                            =
+name                                     = st_up_p320_c7_name
+description                              = st_up_p320_c7_descr
+icon                                     = ui_inGame2_upgrade_Marta_15
+
+
+;----------------------------------------------------------------------------------------------------------------------
+[up_gr_firstab_sig320]
+elements                                 = up_firsta_sig320
+
+[up_gr_firstcd_sig320]
+elements                                 = up_firstc_sig320, up_firstd_sig320
+
+[up_gr_firstef_sig320]
+elements                                 = up_firste_sig320

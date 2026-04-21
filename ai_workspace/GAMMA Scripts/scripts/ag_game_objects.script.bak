@@ -1,0 +1,691 @@
+-- Boolean Functions
+function is_talking(npc)
+	npc:is_talking()
+end
+
+function is_actor_talking() 
+	return is_talking(db.actor)
+end
+
+function is_enemy(npc)
+    return game_relations.is_factions_enemies(npc:character_community(), db.actor:character_community())
+end
+
+function is_friend(npc)
+    return game_relations.is_factions_friends(npc:character_community(), db.actor:character_community())
+end
+
+function xr_conditions.is_hostage(actor, npc, p)
+    if (not p and p[1]) then return end
+    local npc_id = type(p[1]) == "table" and p[1] or npc:id()
+    return axr_task_manager.hostages_by_id[npc:id()] and true or false
+end
+
+function is_story_npc(npc)
+    return get_object_story_id(npc:id()) and true or false
+end
+
+function IsAlcohol(obj)
+    local alcohol = false
+    for _, pt in pairs{"vodka", "tea", "bottle_metal"} do
+        if string.find(obj:section(), "vodka") then
+            alcohol = true
+        end
+    end
+    return alcohol
+end
+
+-- Table Functions
+
+--- Checks list of game objects for a section
+---@param tbl table
+---@param sect string
+function contains_sect(tbl, sect)
+    for idx, obj in pairs(tbl) do
+        if obj:section() == sect then
+            return true
+        end
+    end
+    return false
+end
+
+--- Checks list of game objects for an id
+---@param tbl table
+---@param id number
+function contains_id(tbl, id)
+    for idx, obj in pairs(tbl) do
+        if obj:id() == id then
+            return true
+        end
+    end
+    return false
+end
+
+--- Get a list of sections from objects
+---@param objs table{game_objects}
+function obj_to_sect_list(objs)
+    local sect_list = {}
+    for _, obj in ipairs(objs) do
+        sect_list[#sect_list + 1] = obj:section()
+    end
+    --printf("sect list %s", table.concat(sect_list, ","))
+    return sect_list
+end
+
+--- Get a list of sections from objects
+---@param objs table{game_objects}
+function get_sect_tbl(tbl)
+    local sect_tbl = {}
+    for _, obj in ipairs(tbl) do
+        sect_tbl[#sect_tbl + 1] = obj:section()
+    end
+    --printf("sect list %s", table.concat(sect_list, ","))
+    return sect_tbl
+end
+
+function get_all_mutant_sections()
+	local mutant_sections = {}
+	ini_sys:section_for_each( function(section)
+		local visual = ini_sys:r_string_ex(section, "visual")
+		if visual and string.find(visual, "monsters\\") then
+			mutant_sections[#mutant_sections + 1] = section
+		end
+	end)
+	return mutant_sections
+end
+
+-- function mutant_sect_to_generic(sect_list)
+	-- local generic_mutant_sect = {}
+	-- local mutant_sections = get_mutant_section()
+	-- for i=1, #mutant_patterns do
+		-- local mutant_name = mutant_patterns[i]
+		-- for _, sect in pairs(sect_list) do
+			-- if string.find(sect, mutant_name) then
+				-- generic_mutant_sect[sect] = mutant_name
+			-- end
+		-- end
+	-- end
+    -- return generic_mutant_sect
+-- end
+
+function get_kinds(type)
+    local kind_types = {
+        ["weapons_guns"] = {"w_pistol", "w_shotgun", "w_smg", "w_rifle", "w_sniper"},
+        ["weapons_melee"] = {"w_melee"},
+        ["weapons_misc"] = {"w_misc"},
+        ["outfits_body"] = {"o_light", "o_medium", "o_sci", "o_heavy"},
+        ["outfits_extra"] = {"o_helmet","i_backpack"},
+        ["artefacts"] = {"i_arty", "i_arty_junk", "i_arty_cont", "i_mutant_belt", "i_mutant_part"},
+        ["items_devices"] = {"i_device"},
+        ["items_repair"] = {"i_tool", "i_repair"},
+        ["items_upgrades"] = {"i_upgrade", "i_kit", "i_attach"},
+        ["items_consumable_mutants"] = {"i_mutant_raw", "i_mutant_cooked"},
+        ["items_consumable_edible"] = {"i_food", "i_drink"},
+        ["items_consumable_medical"] = {"i_medical"},
+        ["items_misc"] = {"i_misc", "i_letter", "i_part", "i_quest"}
+    }
+    return kind_types[type]
+end
+
+
+function get_factions(npc_list)
+    local factions = {}
+    for idx, npc in pairs(npc_list) do
+        factions[#factions + 1] = get_real_community(npc)
+    end
+    return factions
+end
+
+function get_trader_stock(npc)
+    local stock = {}
+    local profile = trade_manager.get_trade_profile(npc:id(), "cfg_ltx")
+    local config = trade_manager.get_trade_cfg(profile)    
+
+    stock["no_buy"] = {} -- items bought by trader from actor aka what the actor sells to trader. (sell in cfg)
+    stock["sell"] = {} -- items bought by actor from trader aka what the actor purchases from the trader (buy in cfg)
+    local supply_level = trader_autoinject.supply_level(npc, true)
+    for i=1, supply_level do
+        local lines = get_section_lines(config, strformat("supplies_%s", i))
+        k2t_table(lines)
+        table.insert(stock["sell"], lines)
+    end
+
+    local lines = get_section_lines(config, "trade_genric_sell")
+    k2t(lines)
+    stock["no_buy"] = lines
+    return stock
+end
+
+
+
+-- Distance/Position/Smart
+
+-- Author: @dan6642 12-04-23
+function get_nearby_allies(npc, distance, mutual_enemy)
+    -- sanity check for npc
+    if not npc then
+        talk_log("get_nearby_allies called with nil npc", 5)
+        return {}
+    end
+
+    local dist = distance or 100
+    local npc_comm = npc:character_community()
+    local mutual_enemy_comm = mutual_enemy and mutual_enemy:character_community()
+    
+    local allies = {}
+    local function itr(obj)
+        if obj and IsStalker(obj) and obj:alive() then 
+            local obj_comm = obj:character_community()
+            -- Check if mutual_enemy is provided
+            if mutual_enemy then
+                -- Check if not enemy with npc and enemy with mutual_enemy
+                if (not game_relations.is_factions_enemies(npc_comm, obj_comm)) and game_relations.is_factions_enemies(mutual_enemy_comm, obj_comm) then
+                    allies[obj:id()] = obj  -- Store the object
+                end
+            else
+                -- Check if friendly with npc when no mutual_enemy is provided
+                if game_relations.is_factions_friends(npc_comm, obj_comm) then
+                    allies[obj:id()] = obj  -- Store the object
+                end
+            end
+        end
+    end
+    level.iterate_nearest(npc:position(), dist, itr)
+
+    return allies  -- Return the table directly
+end
+
+function dist_between_pos(a, b)
+    return a:distance_to(b)
+end
+
+function dist_to_pos(npc, pos)
+	return npc:position():distance_to(pos or db.actor:position())
+end
+
+function get_nearest(tbl, pos)
+    local closest_idx
+    local closest_dist
+    pos = pos or db.actor:position()
+    for idx, obj in pairs(tbl) do
+        local dist = pos:distance_to(obj:position())
+        if not closest_dist or dist < closest_dist then
+            closest_dist = dist
+            closest_idx = idx
+        end
+    end
+    return tbl[closest_idx]
+end
+
+function npcs_by_distance(distance)
+	local tbl = {}
+	for id, obj in pairs(get_nearby_npcs(distance)) do
+		tbl[obj:id()] = dist_to_actor(obj)
+	end
+	return tbl
+end
+
+function get_nearby_npcs(distance)
+	local nearby_stalkers = {}	
+
+	alife():iterate_objects(function(se_obj)
+		local obj = get_unknown_object({id=se_obj.id}, "game")
+		if obj and IsStalker(obj)  and obj:alive() then
+			local squad = get_squad_of(obj)
+			for member in squad:squad_members() do
+				local sq_member = get_unknown_object({id=se_obj.id}, "game")
+				if contains(nearby_stalkers, sq_member:id(), true) then return end
+
+				-- local npc_smart = get_closest_smart(sq_member:position())
+				if dist_to_actor(sq_member) <= distance then
+					nearby_stalkers[sq_member:id()] = sq_member
+				end				
+			end
+		end
+	  end)
+
+	return nearby_stalkers
+end
+
+function get_closest_smart(pos)
+    local closest_smart_id = false
+    local closest_dist
+    for name, smart in pairs(SIMBOARD.smarts_by_names) do
+        if simulation_objects.is_on_the_same_level(alife():actor(), smart) then
+            local dist = smart.position:distance_to(pos or db.actor:position())
+            local tbl = SIMBOARD.smarts[smart.id]
+            if tbl and (not closest_smart_id or (dist < closest_dist)) then
+                closest_smart_id = tbl.smrt.id
+                closest_dist = dist
+            end
+        end
+    end
+
+    return SIMBOARD.smarts[closest_smart_id].smrt
+end
+
+function get_smart_name(smart, pos, as_sect)
+    pos = pos or db.actor:position()
+    smart = smart or get_closest_smart(pos)
+    local smart_name = smart:name()
+    if as_sect then
+        return smart_name
+    end
+    return game.translate_string(smart_name)
+end
+
+function is_inside(smart)
+    -- From XCVB's Toxic Air Addon
+    local safe_smarts = {
+        --dead city
+            ["cit_killers"] = true,
+            ["cit_killers_vs_bandits"] = true,
+        --pripyat
+            ["pri_monolith"] = true,
+            ["mlr_terrain"] = true,
+        --pripyat outskirts
+            ["pri_a18_smart_terrain"] = true,
+            ["pri_a16_mlr_copy"] = true,
+            ["pri_a16"] = true,
+            ["pri_a17"] = true,
+        --mil warehouse
+            ["mil_smart_terrain_7_10"] = 51,
+            ["mil_smart_terrain_7_7"] = 71,
+            ["mil_smart_terrain_7_12"] = 60,
+            ["mil_smart_terrain_7_8"] = 56,
+        --yantar
+            ["yan_smart_terrain_6_4"] = 51,
+        --agroprom
+            ["agr_smart_terrain_1_6_near_1"] = true,
+            ["agr_smart_terrain_1_6_near_2"] = true,
+            ["agr_smart_terrain_1_6"] = true,
+            ["agr_smart_terrain_4_4_near_2"] = true,
+            ["agr_smart_terrain_4_4_near_3"] = true,
+            ["agr_smart_terrain_4_4_near_1"] = true,
+            ["agr_smart_terrain_4_4"] = true,
+        --garbage
+            ["gar_smart_terrain_3_5"] = true,
+            ["gar_smart_terrain_5_2"] = true,
+        --dark valley
+            ["val_smart_terrain_7_4"] = true,
+            ["val_smart_terrain_7_3"] = true,
+            ["val_smart_terrain_7_5"] = true,
+            ["val_smart_terrain_8_6"] = true,
+        --darkscape
+            ["ds2_domik_st"] = true,
+        --escape
+            ["esc_smart_terrain_5_7"] = true,
+            ["esc_smart_terrain_2_12"] = true,
+        --marsh
+            ["mar_smart_terrain_10_5"] = true,
+            ["mar_smart_terrain_3_3"] = true,
+            ["mar_smart_terrain_doc"] = true,
+            ["mar_smart_terrain_base"] = true,
+        --zaton
+            ["zat_stalker_base_smart"] = true,
+            ["zat_b18"] = 12,
+            ["zat_b40_smart_terrain"] = true,
+        -- jupiter
+            ["jup_a6"] = true,
+            ["jup_b41"] = true,
+        -- bar
+            ["bar_zastava"] = true,
+            ["bar_visitors"] = true,
+            ["bar_zastava_2"] = true,
+            ["bar_dolg_general"] =  true,
+            ["bar_dolg_bunker"] =  true,
+        -- red forest
+            ["red_smart_terrain_3_2"] = true,
+    }
+    return safe_smarts[smart:name()]
+end
+
+function is_outside(smart)
+    return not is_inside(smart)
+end
+
+function get_smart_radius(smart)
+    local smart_pos = smart:position()
+    local smart_name = smart:name()
+    local r = 0
+    local max_dist = 45
+    for i=0, max_dist do
+        smart_pos.x = smart_pos.x + i
+        local new_smart = get_closest_smart(smart)
+        r = i
+        if i == max_dist or new_smart:name() ~= smart_name then break end
+    end
+    return r
+end
+
+function smart_to_level_name(smart)
+    local cvertex = game_graph():vertex(smart.m_game_vertex_id)
+    local lvl_name = alife():level_name(cvertex:level_id())
+    return lvl_name
+end
+
+-- Getters
+
+function get_direction(pos_1, pos_2)
+    local dx = pos_2.x - pos_1.x
+    local dy = pos_2.y - pos_1.y
+    local dz = pos_2.z - pos_1.z
+    local length = math.sqrt(math.pow(dx, 2)) + math.sqrt(math.pow(dy, 2)) + math.sqrt(math.pow(dz, 2))
+    local nx = dx/length
+    local ny = dy/length
+    local nz = dz/length
+    local norm_dir = vector():set(nx, ny, nz)
+    return norm_dir
+end
+
+--- Authored by NLTP_ASHES 17/02/24 Anomaly Discord
+function get_unknown_object(obj, result_obj_type)
+    if result_obj_type == "server" then
+        if obj and type(obj.id) == "number" then
+            return obj
+        elseif obj and type(obj.id) == "function" then
+            return alife_object(obj:id())
+        end
+    elseif result_obj_type == "game" then
+        if obj and type(obj.id) == "number" then
+            return level.object_by_id(obj.id)
+        elseif obj and type(obj.id) == "function" then
+            return obj
+        end
+    end
+    return nil
+end
+
+--- Author: @NLTP_ASHES
+function get_squad_of(obj)
+    if (obj:id() == AC_ID) then
+        return
+    end
+
+    if not (IsStalker(obj) or IsMonster(obj)) then
+        return
+    end
+
+    local squad = get_object_squad(obj)
+    if not squad then
+        return
+    end
+
+    return squad
+end
+
+function get_bone_pos(obj, bone_name)    
+    --  local bid = obj:get_bone_id(bone_name)
+    --  local bpos = obj:bone_position(bid)
+    --  return bpos
+    return utils_obj.safe_bone_pos(obj, bone_name)
+end
+
+function get_item_cost(sect)
+    return ini_sys:r_float_ex(sect,"cost")
+end
+
+function get_item_costs(sect_list)
+    local costs = {}
+    for _, sect in pairs(sect_list) do
+        costs[#costs + 1] = get_item_cost(sect)
+    end
+    return costs
+end
+
+function get_repairable_item(npc)
+    local items = {}
+    itr_inv(npc, function(obj)
+        if inventory_upgrades.can_repair_item(obj:section()) then
+            items[#items + 1] = obj
+        end
+    end)
+    return items
+end
+
+function how_much_repair( item_name, item_condition )
+    local cost = ini_sys:r_u32(item_name, "cost")
+    local class = ini_sys:r_string_ex(item_name, "class")
+    local cof = game_difficulties.get_eco_factor("repair") or 1.67
+
+    --return math.floor( cost * factor * math.pow(1 - item_condition , 1.63) )
+    return math.floor( cost * (1 - item_condition) * cof ) -- CoP formula
+end
+
+function get_rank(obj)
+    return ranks.get_obj_rank_name(obj)
+end
+
+
+function rank_val(rank_name)
+    local ranks = {
+        ["novice"] = 1,
+        ["trainee"] = 2,
+        ["experienced"] = 3,
+        ["professional"] = 4,
+        ["veteran"] = 5,
+        ["expert"] = 6,
+        ["master"] = 7,
+        ["legend"] = 8 
+    }
+    return ranks[rank_name]
+end
+
+function get_highest_rank(npc_list)
+    local highest_rank = ""
+    local highest_rank_val = 0
+    for idx, npc in pairs(npc_list) do
+        local rank = ranks.get_obj_rank_name(npc)
+        local rank_val = rank_val(rank)
+        if rank_val > highest_rank_val then
+            highest_rank_val = rank_val
+            highest_rank = rank
+        end
+    end
+    return highest_rank
+end
+
+function get_rep(obj)
+    return string.gsub( utils_obj.get_reputation_name(obj:character_reputation()) , "st_reputation_" , "" )
+end
+
+function get_personal_goodwill(obj_1, obj_2)
+    return game_relations.get_npcs_relations(obj_1, obj_2)
+end
+
+-- Get Faction Goodwill of obj_1 Towards obj_2
+function get_faction_goodwill(obj_1, obj_2)
+    return relation_registry.community_relation(obj_1, obj_2)
+end
+
+--- Convert section to item name
+---@param sect string
+function sect_to_name(sect, cfg_tbl)
+    for _, config in pairs(cfg_tbl) do
+        if config:section_exist(sect) then
+            return game.translate_string(config:r_value(sect, "inv_name"))
+        end
+    end
+end
+
+--- Get weight of item by section
+---@param item string
+function get_item_weight(item, cfg_tbl)
+    for _, config in pairs(cfg_tbl) do
+        if config:section_exist(item) then
+            return config:r_float_ex(item, "inv_weight")
+        end
+    end
+    return 0.01
+end
+
+-- Inventory/World Iteration
+
+--- @author NLTP_ASHES
+--- @addon Western Goods
+function itr_inv(npc, func, ...)
+	local args = {...}
+	npc:iterate_inventory(
+		function(owner, obj)
+			return func(owner, obj, unpack(args))
+		end, 
+	npc)
+end
+
+function find_inv_item(key)
+    local t = type(key)
+    local tmp = {}
+    local function search(npc, obj)
+        local sect = obj:section()
+        --pr("%s in %s? %s", sect, key, is_not_empty({string.find(sect, key)}))
+        if is_not_empty({string.find(sect, key)}) then
+            tmp[#tmp + 1] = obj
+        end
+    end
+    itr_inv(db.actor, search)
+    return tmp
+end
+
+function find_obj(sect, pos, radius, search)
+    local objs = {}
+    local function itr(obj)
+        local found_sect = obj:section()
+        if not search then
+            if is_not_empty({string.find(found_sect, sect)}) then
+                objs[#objs + 1] = obj
+            end
+        else
+            if search(obj) then
+                objs[#objs + 1] = obj
+            end
+        end       
+    end
+    level.iterate_nearest(pos, radius, itr)
+    return objs
+end
+
+-- HUD/ GUI/ UI
+
+function valid_screen_pos(pos)
+	return (pos.x ~= -9999) and (pos.y ~= 0) and (pos.x <= 1024) and (pos.y <= 768)
+end
+
+-- demonized aoe
+function volumetric_check(obj, dist_sqrt)
+    local ray_pos = vector():set(obj:position()):add(vector():set(0, 0.4, 0))
+    local ray_dir = IsStalker(obj) and vector():set(utils_obj.safe_bone_pos(obj, "bip01_spine") or obj:position():add(vector():set(0, 0.4, 0))):sub(ray_pos):normalize()
+    local ray = demonized_geometry_ray.geometry_ray({
+        ray_range = dist_sqrt,
+    })
+    local res = ray:get(ray_pos, ray_dir)
+    if not demonized_geometry_ray.similar(res.distance, dist_sqrt, 0.01) then
+        return false
+    end
+    return true
+end
+
+function is_object_visible(id)
+    local visible = false
+    local obj = get_unknown_object({id=id}, "game")
+    if obj then
+        printf("object found")
+        local max_dist = ui_options.get("video/advanced/optimize_dynamic_geom") * 100
+        local dist_to_actor = distance_between(db.actor, obj)
+
+        if dist_to_actor < max_dist then
+            printf("object within distance")
+            local pos = vector():set(obj:position()):add(vector():set(0, 0, 0))
+            local vec = game.world2ui(pos, false, false)
+
+            if valid_screen_pos(vec) then
+                printf("valid screen pos")
+                visible = volumetric_check(obj, math.sqrt(dist_to_actor))
+                printf("checked if behind wall")
+            else
+                printf("invalid screen pos")
+            end
+        else
+            printf("out of distance")
+        end
+    else
+        printf("obj not found")
+    end
+    printf("Is %s visible: %s?", id, visible)
+    return visible
+end
+
+-- NPC Stalker
+function is_known_stalker(npc_id)
+    return contains(known_stalkers, npc_id, true)
+end
+
+function get_known_stalker(npc_id)
+    if not npc_id then
+        return known_stalkers
+    end
+    return known_stalkers[npc_id]
+end
+
+function remember_stalker(npc)
+    if not IsStalker(npc) or is_known_stalker(npc:id()) or npc:id() == AC_ID then return end
+    known_stalkers[npc:id()] = {name=npc:character_name(), faction=npc:character_community()}
+end
+
+function forget_stalker(npc_id)
+    if not is_known_stalker(npc_id) then return end
+    known_stalkers[npc_id] = nil
+end
+
+-- Debugging
+function print_bones()
+    local obj = level.get_target_obj()
+    if not obj then return end
+    local bones = obj:list_bones()
+    printf("%s: %s", obj:section(), utils_data.print_table(bones, nil, true))
+end
+
+function get_level_item_count(sect)
+    local items = {}
+    local function search(obj)
+        local item_sect = obj:section()
+        if item_sect == sect then
+            items[#items + 1] = item_sect
+        end
+    end
+    level.iterate_nearest(db.actor:position(), 500, search)
+    printf("Found %s %s's on current level", size_table(items), sect)
+end
+
+function play_particle(name, pos, timeout)
+    if not timeout then timeout = 3 end
+    thial_particles.add(name, pos, timeout*1000)
+end
+
+function get_texture()
+    local obj = level.get_target_obj()
+    if obj then
+        local sect = obj:section()
+        local file = utils_xml.get_icons_texture(sect)
+        printf("%s icon file: %s", sect, file)
+    end
+end
+
+function get_visual()
+    local obj = level.get_target_obj()
+    if obj then
+        local sect = obj:section()
+        local name = obj:name()
+        local visual = ini_sys:r_string_ex(sect, "visual")
+        printf("%s %s %s", sect, visual, name)
+    end
+end
+
+
+local _cmd = debug_cmd_list.command_get_list()
+
+-- Print Current Smart to Log and IGN Console
+function _cmd.print_smart(_, _, owner)
+    local closest_smart = get_closest_smart()
+    owner:SendOutput(closest_smart)
+    pr("Closest Smart to Player: %s", game.translate_string(closest_smart))
+end

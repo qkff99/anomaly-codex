@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="Windows-1252" ?>
+<!-- ALSEWARE -->
+<!-- File made by XDomWeedX using ALSÉWARE Tool -->
+<string_table>
+	<string id="ui_mcm_menu_bountysquads">
+		<text>Expansion des escadrons de primes</text>
+	</string>
+	<string id="ui_mcm_title_bountysquads">
+		<text>Expansion des escadrons de primes</text>
+	</string>
+	<string id="ui_mcm_bountysquads_delay">
+		<text>Délai entre les fractions potentielles</text>
+	</string>
+	<string id="ui_mcm_bountysquads_delay_desc">
+		<text>Il s'agit du temps minimum (en heures de jeu) qui doit s'écouler avant d'envisager la création d'une équipe de primes. L'apparition d'une escouade de primes dépend des chances de chaque faction de faire apparaître une escouade de primes.</text>
+	</string>
+	<string id="ui_mcm_bountysquads_delay_spawn">
+		<text>Temps entre les mises à jour du spawn</text>
+	</string>
+	<string id="ui_mcm_bountysquads_delay_spawn_desc">
+		<text>Il s'agit du temps (en secondes réelles) entre les mises à jour de la faction, de la réputation et de la vérification du spawn de l'acteur. Ce temps est compté après le chargement du jeu, donc l'acteur doit être à portée de niveau de liaison d'une position hostile pendant ce laps de temps avant qu'un escadron de primes ait une chance de surgir.</text>
+	</string>
+	<string id="ui_mcm_bountysquads_delay_state">
+		<text>Temps entre les mises à jour de la localisation des acteurs</text>
+	</string>
+	<string id="ui_mcm_bountysquads_delay_state_desc">
+		<text>Il s'agit du temps (en secondes réelles) entre les mises à jour de la position de l'acteur. Les escadrons de chasseurs de primes reciblent la position actuelle de l'acteur après ce laps de temps. Ils reculeront également si l'acteur se trouve dans un endroit "sûr" avec des alliés à proximité.</text>
+	</string>
+	<string id="ui_mcm_bountysquads_base_spawn_chance">
+		<text>% de chance d'apparition de la base</text>
+	</string>
+	<string id="ui_mcm_bountysquads_base_spawn_chance_desc">
+		<text>Il s'agit de la chance d'apparition de base : le pourcentage de chance qu'un escadron de primes apparaisse lors d'une mise à jour donnée lorsque l'acteur n'a tué aucun membre de cette faction. La chance totale d'apparition d'un escadron de primes est calculée comme suit : (base_spawn_chance * faction_multiplier), où le multiplicateur de faction dépend du nombre de membres de la faction tués par l'acteur. Il est recommandé de garder cette valeur basse, car le multiplicateur de faction fera en sorte que les escadrons de primes aient de grandes chances de se former.</text>
+	</string>
+	<string id="ui_mcm_bountysquads_spawn_mult_attacked_increment">
+		<text>Augmentation du multiplicateur par décès</text>
+	</string>
+	<string id="ui_mcm_bountysquads_spawn_mult_attacked_increment_desc">
+		<text>Si l'acteur est particulièrement agressif envers une faction spécifique, celle-ci aura plus de chances d'envoyer des escadrons de primes à sa poursuite. Chaque fois que l'acteur tue un STALKER, la faction de la victime augmentera son multiplicateur de déclenchement d'une équipe de primes, faction_multiplier, de ce montant. Par exemple, si cette valeur est fixée à 0,5, la première fois que l'acteur tuera un membre d'une faction, le multiplicateur sera porté à 1,5. La victime suivante le portera à 2,0, et ainsi de suite. Cette valeur est ensuite multipliée par la chance de frai de base chaque fois que cette faction envisage de frayer une équipe de primes.</text>
+	</string>
+</string_table>

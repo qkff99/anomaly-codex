@@ -141,6 +141,7 @@ Expanded rules:
   - `ai_workspace/lua_help.script.txt` -> exported API surface
   - `ai_workspace/anomaly-modding-book-main` -> local tutorial and format docs
   - `ai_workspace/Anomaly-Mod-Configuration-Menu-main` -> local authority for Anomaly MCM menu behavior, API, and conflict surface
+  - `ai_workspace/GAMMA Scripts` -> flattened local GAMMA MO2 configs/scripts reference overlay for pack-specific addon behavior and conflict examples
   - `ai_workspace/user references` -> user-managed extra references; search these automatically when present
 - Treat `.codex-stalker/workspace.json` `external_paths` as remembered user-approved search roots for logs, MO2 installs, unpacked `gamedata`, or external mod folders.
 - Treat `.codex-stalker/workspace.json` `known_reference_repos` as curated persistent GitMCP references that should be preferred over ad-hoc web searching.
@@ -148,7 +149,7 @@ Expanded rules:
 - Use `xray-monolith` before generic web lookups for engine capabilities or Modded Exes behavior.
 - Use `anomaly-modding-book` before generic web lookups for tutorials, onboarding, file formats, and workflow questions.
 - Use `modorganizer2` before generic web lookups for MO2 directory layout, profile/overwrite assumptions, VFS behavior, and packaging expectations.
-- Use curated repos such as `stalker-gamma` before generic web lookups when local refs are insufficient for addon discovery, modpack composition, or pack-specific glue examples.
+- Use local `ai_workspace/GAMMA Scripts` before remote `stalker-gamma` when pack-specific scripts/configs are enough; use curated repos such as `stalker-gamma` before generic web lookups when local refs are insufficient for addon discovery, modpack composition, or pack-specific glue examples.
 - Use DeepWiki for fast subsystem mapping, but verify actionable claims in code or primary references before editing.
 
 Load `references/source-priority.md` when source choice is non-obvious.

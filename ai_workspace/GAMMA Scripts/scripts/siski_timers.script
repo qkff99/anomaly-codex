@@ -1,0 +1,171 @@
+siski = siski or {}
+
+local type = _G.type
+local pcall = _G.pcall
+local setmetatable = _G.setmetatable
+local tonumber = _G.tonumber
+local tostring = _G.tostring
+local unpack = _G.unpack
+local CreateTimeEvent = _G.CreateTimeEvent
+local RemoveTimeEvent = _G.RemoveTimeEvent
+
+local function ensure_class()
+    local cls = siski.class
+    if type(cls) == "function" then
+        local ok, probe = pcall(cls, "_probe")
+        if ok and type(probe) == "table" then
+            return
+        end
+    end
+
+    local function define()
+        function siski.class(name)
+            local c = {}
+            c.__index = c
+            c.__name = name or "class"
+            function c.new(...)
+                local self = setmetatable({}, c)
+                if self.__init then
+                    self:__init(...)
+                end
+                return self
+            end
+            return c
+        end
+    end
+
+    if type(siski.class) ~= "function" then
+        define()
+        return
+    end
+
+    local ok2, probe2 = pcall(siski.class, "_probe")
+    if not (ok2 and type(probe2) == "table") then
+        define()
+    end
+end
+
+ensure_class()
+
+local Timers = siski.class("Timers")
+Timers.__index = Timers
+
+local function make_key(ns, name)
+    return tostring(ns or "siski") .. "|" .. tostring(name or "")
+end
+
+local function safe_call(module, fn, ...)
+    local ok, res = pcall(fn, ...)
+    if ok then
+        return true, res
+    end
+    if siski and siski.log and siski.log.error then
+        siski.log.error("TIMERS", "%s failed: %s", tostring(module or "timer"), tostring(res))
+    end
+    return false, res
+end
+
+function Timers:__init()
+    self.entries = {}
+end
+
+function Timers:_dispatch(ns, name, ...)
+    local key = make_key(ns, name)
+    local entry = self.entries[key]
+    if not entry then
+        return true
+    end
+
+    self.entries[key] = nil
+    local args = entry.args or {}
+    safe_call(key, entry.fn, unpack(args))
+    return true
+end
+
+function Timers:_schedule(ns, name, delay_ms, fn, ...)
+    if type(name) ~= "string" or name == "" then return false end
+    if type(fn) ~= "function" then return false end
+
+    local key = make_key(ns, name)
+    self:_cancel(ns, name)
+    local delay = tonumber(delay_ms) or 0
+    if delay < 0 then delay = 0 end
+    local delay_sec = delay / 1000
+    local args = {...}
+
+    self.entries[key] = {
+        ns = ns,
+        name = name,
+        fn = fn,
+        args = args,
+    }
+
+    if CreateTimeEvent then
+        local ok = pcall(CreateTimeEvent, tostring(ns or "siski"), name, delay_sec, self._dispatch, self, ns, name)
+        if ok then
+            return true
+        end
+    end
+
+    self.entries[key] = nil
+    return safe_call(key, fn, unpack(args))
+end
+
+function Timers:_cancel(ns, name)
+    local key = make_key(ns, name)
+    self.entries[key] = nil
+    if RemoveTimeEvent then
+        return pcall(RemoveTimeEvent, tostring(ns or "siski"), name)
+    end
+    return true
+end
+
+function Timers:_reschedule(ns, name, delay_ms, fn, ...)
+    self:_cancel(ns, name)
+    return self:_schedule(ns, name, delay_ms, fn, ...)
+end
+
+function Timers:_has(ns, name)
+    return self.entries[make_key(ns, name)] ~= nil
+end
+
+function Timers:_clear(ns)
+    local targets = {}
+    if ns == nil then
+        for _, entry in pairs(self.entries) do
+            if type(entry) == "table" and entry.name ~= nil then
+                targets[#targets + 1] = {
+                    ns = entry.ns,
+                    name = entry.name,
+                }
+            end
+        end
+    else
+        local prefix = tostring(ns) .. "|"
+        for key, entry in pairs(self.entries) do
+            if string.sub(key, 1, #prefix) == prefix and type(entry) == "table" and entry.name ~= nil then
+                targets[#targets + 1] = {
+                    ns = entry.ns,
+                    name = entry.name,
+                }
+            end
+        end
+    end
+    for i = 1, #targets do
+        self:_cancel(targets[i].ns, targets[i].name)
+    end
+    return true
+end
+
+local inst = Timers.new and Timers.new() or setmetatable({}, Timers)
+if not inst.entries then
+    Timers.__init(inst)
+end
+
+inst.schedule = function(ns, name, delay_ms, fn, ...) return inst:_schedule(ns, name, delay_ms, fn, ...) end
+inst.cancel = function(ns, name) return inst:_cancel(ns, name) end
+inst.reschedule = function(ns, name, delay_ms, fn, ...) return inst:_reschedule(ns, name, delay_ms, fn, ...) end
+inst.has = function(ns, name) return inst:_has(ns, name) end
+inst.clear = function(ns) return inst:_clear(ns) end
+
+siski.timers = inst

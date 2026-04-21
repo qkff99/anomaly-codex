@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="windows-1251"?>
+
+<string_table>	
+	<string id="ui_mcm_menu_auto_looter">
+		<text>Auto Looter</text>
+	</string>
+	<string id="ui_mcm_auto_looter_base_description">
+		<text>Auto looter performs actions in a specific order: Disassembling -> Part/Attachment stripping -> Looting -> Deleting. I. e. if you turn on the disassembling for armors, the parts received out of it will later be subjected to additional condition check before looting if it's also enabled.</text>
+	</string>
+
+	<string id="ui_mcm_auto_looter_looter_key_title">
+		<text>Key binding</text>
+	</string>
+	<string id="ui_mcm_auto_looter_looter_key_description">
+		<text>Some mods are blocking certain key events on inventory UI. It is advised to not change the binding below, as Left Alt should never be blocked.</text>
+	</string>
+	<string id="ui_mcm_auto_looter_looter_key">
+		<text>Looter key</text>
+	</string>
+
+	<string id="ui_mcm_auto_looter_remote_looting_title">
+		<text>Remote looting</text>
+	</string>
+	<string id="ui_mcm_auto_looter_remote_looting_description">
+		<text>Set the max distance at which remote looting should be possible. Setting it to 0 will disable remote looting. WARNING: Remote-looting should not be enabled if you're using mods that fire additional scripts on opening dead stalker/box inventories. Gamma players should always have it turned off.</text>
+	</string>
+	<string id="ui_mcm_auto_looter_remote_looting_distance">
+		<text>Max distance</text>
+	</string>
+
+	<string id="ui_mcm_auto_looter_proximity_looting_title">
+		<text>EXPERIMENTAL: Proximity looting</text>
+	</string>
+	<string id="ui_mcm_auto_looter_proximity_looting_description">
+		<text>Proximity looting works in a similar manner to the remote looting, but the difference is that it refires automatically with configurable invervals and iterates over all lootable bodies (inventory boxes excluded to not loot your own stashes) in a given range. Setting range to 0 will disable proximity looting. WARNING: Proximity-looting should not be enabled if you're using mods that fire additional scripts on opening dead stalker inventories. Gamma players should always have it turned off.</text>
+	</string>
+	<string id="ui_mcm_auto_looter_proximity_looting_distance">
+		<text>Proximity looting range</text>
+	</string>
+	<string id="ui_mcm_auto_looter_proximity_looting_refire_time">
+		<text>Proximity looting interval</text>
+	</string>
+
+	<string id="ui_mcm_auto_looter_disassemble_title">
+		<text>Auto disassembling settings</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_ammo">
+		<text>Disassemble ammo</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_armor">
+		<text>Disassemble outfits and headgears</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_armor_desc">
+		<text>Usable armor parts are those with condition higher than 50% or those which can be used in crafting recipes</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_weapon">
+		<text>Disassemble weapons</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_title">
+		<text>Disassemble misc</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_description">
+		<text>Given that some of the misc items' parts are near to worthless and tasks for the whole item might give you some better reward (e. g. porn magazines), you can define below what kind of misc items should and should not be disassembled. PDAs mentioned at the end of the end of the list are referring only to the PDAs dropped by stalkers that can give you random stashes.</text>
+	</string>
+
+	<string id="ui_mcm_auto_looter_strip_title">
+		<text>Auto parts and attachments stripping settings</text>
+	</string>
+	<string id="ui_mcm_auto_looter_strip_attachments">
+		<text>Strip attachments</text>
+	</string>
+	<string id="ui_mcm_auto_looter_strip_weapon">
+		<text>Strip weapon parts</text>
+	</string>
+
+	<string id="ui_mcm_auto_looter_loot_title">
+		<text>Auto looting settings</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_description">
+		<text>Define which types of items you want to (conditionally) loot. Armors and weapons will automatically be omitted. The rest of the item types not described below (e. g. upgrade kits, weapon attachments, repair items, not disassembled misc items, etc.) will be automatically looted to not overcomplicate the logic.</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_ammo">
+		<text>Loot ammo</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_ammo_parts">
+		<text>Loot ammo parts</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_grenades">
+		<text>Loot grenades</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_magazines">
+		<text>Loot magazines</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_armor_parts">
+		<text>Loot armor parts</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_armor_parts_desc">
+		<text>Usable armor parts are those with condition higher than 50% or those which can be used in crafting recipes</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_weapon_parts">
+		<text>Loot weapon parts</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_title">
+		<text>Loot misc</text>
+	</string>
+
+	<string id="ui_mcm_auto_looter_delete_title">
+		<text>Deleting settings</text>
+	</string>
+	<string id="ui_mcm_auto_looter_delete_description">
+		<text>Bodies that pile up are cool till they start impacting the performance. Settings below allow you to automatically delete looted bodies or items that you're sure you're never going to pick up but will still impact the performance by just being inside the looted stashes. "Delete rest" usually refers to weapon and armor parts that were not picked up by the looter.</text>
+	</string>
+	<string id="ui_mcm_auto_looter_delete_body">
+		<text>Delete whole body</text>
+	</string>
+	<string id="ui_mcm_auto_looter_delete_armor">
+		<text>Delete outfits and headgears</text>
+	</string>
+	<string id="ui_mcm_auto_looter_delete_weapon">
+		<text>Delete weapons</text>
+	</string>
+	<string id="ui_mcm_auto_looter_delete_misc">
+		<text>Delete rest</text>
+	</string>
+
+	<string id="ui_mcm_auto_looter_misc_options_title">
+		<text>Miscellaneous settings</text>
+	</string>
+	<string id="ui_mcm_auto_looter_no_valid_tool_messaging">
+		<text>Show message when no valid disassembly tool is available</text>
+	</string>
+	<string id="ui_mcm_auto_looter_usable_armor_part_condition_treshold">
+		<text>Usable armor part condition treshold</text>
+	</string>
+	<string id="ui_mcm_auto_looter_usable_weapon_part_condition_treshold">
+		<text>Usable weapon part condition treshold</text>
+	</string>
+	<string id="ui_mcm_auto_looter_always_treat_recipe_part_as_usable">
+		<text>Always treat recipe part as usable</text>
+	</string>
+	<string id="ui_mcm_auto_looter_always_treat_recipe_part_as_usable_description">
+		<text>Disabling this option will make the looter only consider the condition of the armor part when deciding whether the part is usable. The assertion of usage of the given part in the crafting recipes will be omitted.</text>
+	</string>
+
+	<!-- Dropdown options -->
+	<string id="ui_mcm_lst_auto_looter_all_label">
+		<text>All</text>
+	</string>
+	<string id="ui_mcm_lst_auto_looter_none_label">
+		<text>None</text>
+	</string>
+	<string id="ui_mcm_lst_auto_looter_non_favourite_label">
+		<text>Non-favourite only</text>
+	</string>
+	<string id="ui_mcm_lst_auto_looter_with_usable_parts_label">
+		<text>With usable parts</text>
+	</string>
+	<string id="ui_mcm_lst_auto_looter_with_usable_barrel_label">
+		<text>With usable barrel</text>
+	</string>
+	<string id="ui_mcm_lst_auto_looter_usable_label">
+		<text>Usable</text>
+	</string>
+
+
+	<!-- To do: remove this section once RavenAscendant adds the support for "text" prop for more fields -->
+	<!-- There might be an exception required for the powder can - can't see XMLs defined for it -->
+	<!-- Other exceptions: Guitar (section: guitar_a, string id: st_guitar_name), Sleeping bag (section: itm_sleepbag, string id: st_itm_sleepbag_name),  -->
+	<!-- PDAs (existing XMLs don't mention whether they are common, uncommon or rare) -->
+	<string id="ui_mcm_auto_looter_disassemble_misc_porn">
+		<text>Russian PLAYBOY</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_porn2">
+		<text>Ukrainian MAXIM</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_beadspread">
+		<text>Bed spread</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_synthrope">
+		<text>2 synthetic ropes</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_tarpaulin">
+		<text>Camouflaged tarpaulin</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_underwear">
+		<text>Soaked underwear</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_shovel_old">
+		<text>Metal shovel</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_shovel_mili">
+		<text>Military field shovel</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_ball_hammer">
+		<text>Ball-peen hammer</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_boots">
+		<text>Leather boots</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_broken_detector">
+		<text>Broken detector</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_cutlery">
+		<text>Field cutlery</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_explo_metalcan_powder">
+		<text>Powder can</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_flashlight_broken">
+		<text>Broken flashlight</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_gloves">
+		<text>Leather gloves</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_hand_watch">
+		<text>Hand watch</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_headlamp">
+		<text>Old head lamp</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_mirror">
+		<text>Telescopic mirror</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_radio">
+		<text>Small radio</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_radio2">
+		<text>Broken radio</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_walkie">
+		<text>Walkie talkie</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_guitar_a">
+		<text>Guitar</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_compression_bag">
+		<text>Compression bag</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_itm_sleepbag">
+		<text>Sleeping bag</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_itm_pda_common">
+		<text>PDA - Common</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_itm_pda_uncommon">
+		<text>PDA - Uncommon</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_itm_pda_rare">
+		<text>PDA - Rare</text>
+	</string>
+
+
+	<string id="ui_mcm_auto_looter_loot_misc_porn">
+		<text>Russian PLAYBOY</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_porn2">
+		<text>Ukrainian MAXIM</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_beadspread">
+		<text>Bed spread</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_synthrope">
+		<text>2 synthetic ropes</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_tarpaulin">
+		<text>Camouflaged tarpaulin</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_underwear">
+		<text>Soaked underwear</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_shovel_old">
+		<text>Metal shovel</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_shovel_mili">
+		<text>Military field shovel</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_ball_hammer">
+		<text>Ball-peen hammer</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_boots">
+		<text>Leather boots</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_broken_detector">
+		<text>Broken detector</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_cutlery">
+		<text>Field cutlery</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_explo_metalcan_powder">
+		<text>Powder can</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_flashlight_broken">
+		<text>Broken flashlight</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_gloves">
+		<text>Leather gloves</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_hand_watch">
+		<text>Hand watch</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_headlamp">
+		<text>Old head lamp</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_mirror">
+		<text>Telescopic mirror</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_radio">
+		<text>Small radio</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_radio2">
+		<text>Broken radio</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_walkie">
+		<text>Walkie talkie</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_bolt">
+		<text>Bolt</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_bolt_bullet">
+		<text>Empty cartridge</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_guitar_a">
+		<text>Guitar</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_compression_bag">
+		<text>Compression bag</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_itm_sleepbag">
+		<text>Sleeping bag</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_itm_pda_common">
+		<text>PDA - Common</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_itm_pda_uncommon">
+		<text>PDA - Uncommon</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_itm_pda_rare">
+		<text>PDA - Rare</text>
+	</string>
+</string_table>

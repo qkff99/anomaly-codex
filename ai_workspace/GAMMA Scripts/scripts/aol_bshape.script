@@ -1,0 +1,375 @@
+last_gizmo_id = 696969
+color_colliding = fcolor():set(1,0,0,1)
+color_not_colliding = fcolor():set(0,1,0,1)
+color_not_colliding_front = fcolor():set(0.25,1,0.75,1)
+color_contact = fcolor():set(1,1,0,1)
+color_side = fcolor():set(0.5,0.5,0.5,1)
+
+-- Generic Class for handling collisions with a bounding shape
+-- supposed to be subclassed into a useful shape (see aol_bbox)
+class "bshape_collider"
+
+function bshape_collider:__init(world_origin, local_origin, rotation)
+    -- Coordinates of the origin in local space (relative to self.vertices)
+    self.local_origin = local_origin or vector():set(0,0,0)
+
+    -- Coordinates of the entire box's origin in world space (relative to game map)
+    self.world_origin = world_origin or vector():set(0,0,0)
+
+    self.rotation = rotation
+    
+    self.is_colliding = false
+
+    -- Coordinates of bbox's vertices in local space
+    self.vertices = {}
+
+    -- Coordinates of bbox vertices in world space
+    self.world_vertices = {}
+
+    -- Pairs of vertices to perform raycasting between
+    self.ray_pairs = {}
+
+    -- Map of ray pair index to it's length
+    self.ray_pair_i2length = {}
+end
+
+function bshape_collider:UpdateBBox()
+    -- Get position of vertices in bounding box in world space
+    for i, local_vertex in ipairs(self.vertices) do
+        -- local space
+        local position = vector():set(local_vertex.x, local_vertex.y, local_vertex.z)
+
+        -- rotate with quaternion
+        if self.rotation then
+            position = self.rotation:rotate_vector(position)
+        end
+
+        -- world space
+        position = position:add(self.world_origin)
+
+        -- store vertices coordinates in world space of bbox
+        self.world_vertices[i] = position
+    end
+end
+
+function bshape_collider:UpdateLengths()
+    for i, ray_pair in ipairs(self.ray_pairs) do
+        local v1 = self.world_vertices[ray_pair[1]]
+        local v2 = self.world_vertices[ray_pair[2]]
+
+        local length = v1:distance_to(v2)
+        self.ray_pair_i2length[i] = length
+    end
+end
+
+function bshape_collider:CheckForCollisions()
+    -- Check for collisions by ray casting between vertex pairs
+    -- Pairs are specified in ray_pairs
+    -- Ray cast in both directions in case the ray goes into the world (rays only register collisions when hitting onto a normal plane)
+    local collision_found = false
+    for i, ray_pair in ipairs(self.ray_pairs) do
+        -- Exit early if there is no collision
+        if not collision_found then
+            local ray_length = self.ray_pair_i2length[i]
+            local ray = demonized_geometry_ray.geometry_ray({
+                ray_range=4,
+                contact_range=ray_length,
+                flags=(1+2)})
+            local ray_direction = vec_sub(self.world_vertices[ray_pair[1]], self.world_vertices[ray_pair[2]])
+            ray_direction = ray_direction:normalize()
+
+            -- Perform raycasts
+            local ray_result_rev = ray:get(vec_set(self.world_vertices[ray_pair[1]]), vec_set(ray_direction):invert())
+            local ray_result = ray:get(vec_set(self.world_vertices[ray_pair[2]]), vec_set(ray_direction))
+
+            if ray_result.in_contact or ray_result_rev.in_contact then
+                collision_found = true
+            end
+        end
+    end
+
+    self.is_colliding = collision_found
+
+    return collision_found
+end
+
+-- Setters
+
+function bshape_collider:SetLocalOrigin(new_pos)
+    self.local_origin = vec_set(new_pos)
+
+    -- update vertices of bbox in local space
+    self:UpdateVertices()
+
+    self:UpdateBBox()
+end
+
+function bshape_collider:SetWorldOrigin(new_pos)
+    self.world_origin = vec_set(new_pos)
+end
+
+-- Functions to be completed by subclasses
+
+function bshape_collider:UpdateVertices()
+end
+
+
+
+-- Class for rendering bounding boxes with particles
+class "bshape_renderer"
+
+function bshape_renderer:__init()
+    self.particles = {}
+    self.gizmos = nil
+    self.contact_gizmos = {}
+    self.side_gizmos = nil
+    --ray for testing distance to walls and drawing distance lines
+    self.ray = demonized_geometry_ray.geometry_ray({ ray_range=1, contact_range=0.5, flags=(1+2)})
+end
+
+function bshape_renderer:DrawBShapeCollider(bshape_collider)
+    if #bshape_collider.world_vertices >= 8 then
+        self:DrawCube(bshape_collider)
+        if bshape_collider.is_colliding == false then
+            self:CheckCubeCollision(bshape_collider) 
+        else
+            self:StopContactGizmos()
+            self:StopSideGizmos()
+        end              
+    else
+        self:DrawLegacy(bshape_collider)
+    end
+end
+
+function bshape_renderer:DrawCube(bshape_collider)
+    if self.gizmos == nil then
+        self.gizmos = {
+            self:AddCubeLine(bshape_collider, 1, 2, true, false),
+            self:AddCubeLine(bshape_collider, 2, 4, false, false),
+            self:AddCubeLine(bshape_collider, 3, 4, false, false),
+            self:AddCubeLine(bshape_collider, 1, 3, false, false),
+            self:AddCubeLine(bshape_collider, 5, 6, true, false),
+            self:AddCubeLine(bshape_collider, 6, 8, false, false),
+            self:AddCubeLine(bshape_collider, 7, 8, false, false),
+            self:AddCubeLine(bshape_collider, 5, 7, false, false),
+            self:AddCubeLine(bshape_collider, 1, 5, true, false),
+            self:AddCubeLine(bshape_collider, 2, 6, true, false),
+            self:AddCubeLine(bshape_collider, 3, 7, false, false),
+            self:AddCubeLine(bshape_collider, 4, 8, false, false)
+        }
+    end
+    if self.side_gizmos == nil then
+        self.side_gizmos = {
+            ["front"] = {
+                self:AddCubeLine(bshape_collider, 1, 6, false, true),
+                self:AddCubeLine(bshape_collider, 2, 5, false, true)
+            },
+            ["back"] = {
+                self:AddCubeLine(bshape_collider, 3, 8, false, true),
+                self:AddCubeLine(bshape_collider, 4, 7, false, true)
+            },
+            ["left"] = {
+                self:AddCubeLine(bshape_collider, 1, 7, false, true),
+                self:AddCubeLine(bshape_collider, 3, 5, false, true)
+            },
+            ["right"] = {
+                self:AddCubeLine(bshape_collider, 2, 8, false, true),
+                self:AddCubeLine(bshape_collider, 4, 6, false, true)
+            },
+            ["top"] = {
+                self:AddCubeLine(bshape_collider, 5, 8, false, true),
+                self:AddCubeLine(bshape_collider, 6, 7, false, true)
+            },
+            ["bottom"] = {
+                self:AddCubeLine(bshape_collider, 1, 4, false, true),
+                self:AddCubeLine(bshape_collider, 2, 3, false, true)
+            }
+        }
+        self:StopSideGizmos()
+    end  
+
+    for i, gizmo in ipairs(self.gizmos) do 
+        gizmo.line.visible = true
+        gizmo.line.color = bshape_collider.is_colliding and aol_bshape.color_colliding
+            or (gizmo.is_front and aol_bshape.color_not_colliding_front or aol_bshape.color_not_colliding) 
+        gizmo.line.point_a = bshape_collider.world_vertices[gizmo.vertex_1]
+        gizmo.line.point_b = bshape_collider.world_vertices[gizmo.vertex_2]
+    end
+end
+
+function bshape_renderer:CheckCubeCollision(bshape_collider)
+    if bshape_collider == nil then
+        return
+    end
+
+    local verts = bshape_collider.world_vertices
+    local dir_front = vec_sub(verts[3], verts[1]):normalize():invert()
+    local dir_back = vec_sub(verts[1], verts[3]):normalize():invert()
+    local dir_left = vec_sub(verts[2], verts[1]):normalize():invert()
+    local dir_right = vec_sub(verts[1], verts[2]):normalize():invert()
+    local dir_top = vec_sub(verts[1], verts[5]):normalize():invert()
+    local dir_bottom = vec_sub(verts[5], verts[1]):normalize():invert()
+
+    self:CheckSideCollision(bshape_collider, dir_front, "front", 1, 2, 5, 6, 9)
+    self:CheckSideCollision(bshape_collider, dir_back, "back", 3, 4, 7, 8, 10)
+    self:CheckSideCollision(bshape_collider, dir_left, "left", 1, 3, 5, 7, 11)
+    self:CheckSideCollision(bshape_collider, dir_right, "right", 2, 4, 6, 8, 12)
+    self:CheckSideCollision(bshape_collider, dir_top, "top", 5, 6, 7, 8, 13)
+    self:CheckSideCollision(bshape_collider, dir_bottom, "bottom", 1, 2, 3, 4, 14)            
+end
+
+function bshape_renderer:CheckSideCollision(bshape_collider, direction, direction_name, vertex_1, vertex_2, vertex_3, vertex_4, vertex_5)
+    local valid = bshape_collider and direction and direction_name and vertex_1 and vertex_2 and vertex_3 and vertex_4 and vertex_5
+    if not valid then
+        return
+    end
+
+    local verts = bshape_collider.world_vertices
+    local center_pos = self:GetSideCenterPosition(bshape_collider, vertex_1, vertex_4)
+
+    local result_1 = self:CheckRayCollision(bshape_collider, direction, direction_name, verts[vertex_1], vertex_1)
+    local result_2 = self:CheckRayCollision(bshape_collider, direction, direction_name, verts[vertex_2], vertex_2)
+    local result_3 = self:CheckRayCollision(bshape_collider, direction, direction_name, verts[vertex_3], vertex_3)
+    local result_4 = self:CheckRayCollision(bshape_collider, direction, direction_name, verts[vertex_4], vertex_4)    
+    local result_5 = self:CheckRayCollision(bshape_collider, direction, direction_name, center_pos, vertex_5)
+
+    local in_contact = result_1 or result_2 or result_3 or result_4 or result_5 
+    self.side_gizmos[direction_name][1].line.visible = in_contact
+    self.side_gizmos[direction_name][1].line.point_a = verts[vertex_1]
+    self.side_gizmos[direction_name][1].line.point_b = verts[vertex_4]
+    self.side_gizmos[direction_name][2].line.visible = in_contact  
+    self.side_gizmos[direction_name][2].line.point_a = verts[vertex_2]
+    self.side_gizmos[direction_name][2].line.point_b = verts[vertex_3] 
+end
+
+function bshape_renderer:GetSideCenterPosition(bshape_collider, vertex_1, vertex_2)
+    if bshape_collider == nil or vertex_1 == nil or vertex_2 == nil then
+        return
+    end
+
+    local pos1 = bshape_collider.world_vertices[vertex_1]
+    local pos2 = bshape_collider.world_vertices[vertex_2]
+    local add = vector():set(pos1):add(pos2)
+    local div = vector():set(add):div(vector():set(2,2,2))
+    return div
+end
+
+function bshape_renderer:CheckRayCollision(bshape_collider, direction, direction_name, position, vertex)
+    local valid = bshape_collider and direction and direction_name and position and vertex
+    if not valid then
+        return
+    end
+
+    local gizmo_name = direction_name .. "_" .. vertex
+    local ray_result = self.ray:get(vec_set(position), vec_set(direction))
+    if ray_result.distance < 0.5 then
+        if self.contact_gizmos[gizmo_name] == nil then
+            self.contact_gizmos[gizmo_name] = self:AddLine(position, ray_result.position, aol_bshape.color_contact)
+        end
+        self.contact_gizmos[gizmo_name].visible = true
+        self.contact_gizmos[gizmo_name].point_a = position
+        self.contact_gizmos[gizmo_name].point_b = ray_result.position
+        return true
+    else
+        if self.contact_gizmos[gizmo_name] ~= nil then
+            self.contact_gizmos[gizmo_name].visible = false
+        end
+        return false
+    end
+end
+
+function bshape_renderer:DrawLegacy(bshape_collider)
+    for i, position in ipairs(bshape_collider.world_vertices) do
+        if self.particles[i] == nil then
+            self.particles[i] = particles_object("_samples_particles_\\place_indicator")
+        end
+
+        local particle = self.particles[i]
+
+        if not particle:playing() then
+            particle:play()
+        end
+        -- Move particles to origin if bbox collides with something
+        if bshape_collider.is_colliding then
+            particle:move_to(bshape_collider.world_origin, VEC_Z)
+        -- Move particles to vertices of bbox if there is no collision
+        else
+            particle:move_to(position, VEC_Z)
+        end
+    end
+end
+
+function bshape_renderer:AddCubeLine(bshape_collider, vertex_1, vertex_2, is_front, is_side)
+    if bshape_collider == nil or vertex_1 == nil or vertex_2 == nil or is_front == nil or is_side == nil then
+        return
+    end
+
+    local pos1 = bshape_collider.world_vertices[vertex_1]
+    local pos2 = bshape_collider.world_vertices[vertex_2]
+    local color = aol_bshape.color_not_colliding
+    if is_front then
+        color = aol_bshape.color_not_colliding_front
+    elseif is_side then
+        color = aol_bshape.color_side
+    end
+    local line = self:AddLine(pos1, pos2, color)
+
+    return {
+        line = line,
+        vertex_1 = vertex_1,
+        vertex_2 = vertex_2,
+        is_front = is_front
+    }
+end
+
+function bshape_renderer:AddLine(position_1, position_2, color)
+    if position_1 == nil or position_2 == nil or color == nil then
+        return
+    end
+
+    aol_bshape.last_gizmo_id = aol_bshape.last_gizmo_id + 1
+    local line = debug_render.add_object(aol_bshape.last_gizmo_id, DBG_ScriptObject.line):cast_dbg_line()
+    line.visible = true
+    line.color = color
+    line.point_a = position_1
+    line.point_b = position_2
+
+    return line
+end
+
+function bshape_renderer:Stop()
+    self:StopParticles()
+    self:StopGizmos()
+    self:StopContactGizmos()
+    self:StopSideGizmos()    
+end
+
+function bshape_renderer:StopParticles()
+    for i, particle in ipairs(self.particles) do
+        if particle then
+            particle:stop_deffered()
+        end
+    end
+end
+
+function bshape_renderer:StopGizmos()
+    for i, gizmo in ipairs(self.gizmos) do
+        gizmo.line.visible = false
+    end
+end
+
+function bshape_renderer:StopContactGizmos()
+    for key, gizmo in pairs(self.contact_gizmos) do
+        gizmo.visible = false
+    end
+end
+
+function bshape_renderer:StopSideGizmos()
+    for side_name, side in pairs(self.side_gizmos) do
+        for i, gizmo in ipairs(side) do
+            gizmo.line.visible = false
+        end        
+    end
+end
+
+-- MCM Options

@@ -1,0 +1,46 @@
+[up_sect_fiftha_colttokarev]
+cost                                     = 1440
+value                                    = "7.62x25"
+ammo_class                  = ammo_7.62x25_p, ammo_7.62x25_p_bad, ammo_7.62x25_p_verybad, ammo_7.62x25_ps, ammo_7.62x25_ps_bad, ammo_7.62x25_ps_verybad
+ammo_elapsed                = +5
+ammo_mag_size               = +5
+
+snd_shoot               = weapons\tt33\tt33_shoot
+snd_shoot1              = weapons\tt33\tt33_shoot1
+
+hit_power                                = 0.45, 0.45, 0.45, 0.45
+
+fire_distance               = +100
+bullet_speed                = +150
+
+shell_particles	 			= weapons\45acp
+
+cam_dispersion                           = -0.2
+zoom_cam_dispersion					= -0.2
+cam_dispersion_frac         			= -0.18
+inv_weight                               = -0.115
+
+
+;----------------------------------------------------------------------------------------------------------------------
+[up_fiftha_colttokarev]
+scheme_index                             = 0, 4
+known                                    = 1
+effects                                  =
+section                                  = up_sect_fiftha_colttokarev
+property                                 = prop_calibre
+
+precondition_functor                     = inventory_upgrades.precondition_functor_a
+precondition_parameter                   = a & b
+effect_functor                           = inventory_upgrades.effect_functor_a
+effect_parameter                         = something_here
+
+prereq_functor                           = inventory_upgrades.prereq_functor_a
+prereq_tooltip_functor                   = inventory_upgrades.prereq_tooltip_functor_a
+prereq_params                            =
+name                                     = st_up_add_colttokarev_name
+description                              = st_up_add_b4_descr
+icon                                     = ui_inGame2_upgrade_Marta_15
+
+;----------------------------------------------------------------------------------------------------------------------
+[up_gr_fifthab_colttokarev]
+elements                                 = up_fiftha_colttokarev

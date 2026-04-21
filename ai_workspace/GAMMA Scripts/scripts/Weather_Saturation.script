@@ -1,0 +1,116 @@
+--==============================================================================================
+-- Dynamic Weather Saturation Script
+-- Created by Hippobot
+-- To be used in Atmospherics 2.68.94+
+--==============================================================================================
+
+-- 1. CONFIGURATION ----------------------------------------------------------------------------
+local console_command = "r__saturation" 
+local transition_speed = 0.005 
+
+local weather_saturation = {
+    -- Specific Overrides
+    ["storm1"]      = 0.70, ["storm2"]      = 1.00, ["storm3"]      = 0.80, 
+    ["rain1"]       = 1.00, ["rain2"]       = 0.60, ["rain3"]       = 1.00, ["rain4"]       = 1.00, 
+    ["foggy1"]      = 1.00, ["foggy2"]      = 1.00, ["foggy3"]      = 1.00,
+    ["cloudy2_dark"]= 0.80, 
+    
+    -- Broad Categories
+    ["storm"]     = 1.00, ["rain"]      = 1.00, ["foggy"]     = 1.00, 
+    ["cloudy"]    = 1.00, ["partly"]    = 1.00, ["clear"]     = 1.00, 
+    
+    -- Specials
+    ["night"]     = 1.00, ["indoor"]    = 1.00, ["fx_psi"]    = 1.00,
+    ["fx_blowout"]= 1.00, ["fx_surge"]  = 1.00, ["default"]   = 1.00 
+}
+
+-- 2. VARIABLES & LOCALS -----------------------------------------------------------------------
+local con = nil 
+local current_sat = 1.0
+local target_sat = 1.0
+local m_abs = math.abs
+local s_find = string.find
+local s_len = string.len
+local s_lower = string.lower
+local s_format = string.format
+
+-- 3. CORE LOGIC -------------------------------------------------------------------------------
+
+-- Only runs when the weather actually changes
+local function update_target_saturation(weather_name)
+    if not weather_name then return end
+    
+    weather_name = s_lower(weather_name)
+    local found_match = false
+    local best_match_len = 0
+    
+
+    for name, value in pairs(weather_saturation) do
+        if s_find(weather_name, name, 1, true) then -- 'true' disables expensive pattern matching
+            local len = s_len(name)
+            if len > best_match_len then
+                target_sat = value
+                best_match_len = len
+                found_match = true
+            end
+        end
+    end
+
+    if not found_match then
+        target_sat = weather_saturation["default"] or 1.0
+    end
+end
+
+-- 4. CALLBACKS --------------------------------------------------------------------------------
+
+function on_game_start()
+    con = get_console()
+    
+    -- Get initial engine value
+    if con then
+        current_sat = con:get_float(console_command) or 1.0
+    end
+    
+    -- Register the update loop for smooth transitions
+    RegisterScriptCallback("actor_on_update", actor_on_update)
+    
+    -- Register a generic check for weather changes
+end
+
+-- 1. 'update_timer' checks the weather name string rarely
+-- 2. 'actor_on_update' handles the float math every frame
+
+local last_weather_check = 0
+local check_interval = 1000 -- Check string only once per second (Huge FPS saver)
+local cached_weather = ""
+
+function actor_on_update()
+    local tg = time_global()
+    
+    -- PHASE 1: Heavy String Logic (Rarely)
+    if tg > last_weather_check then
+        local w_name = level.get_weather()
+        if w_name and w_name ~= cached_weather then
+            cached_weather = w_name
+            update_target_saturation(w_name)
+        end
+        last_weather_check = tg + check_interval
+    end
+
+    local diff = current_sat - target_sat
+    if m_abs(diff) < 0.001 then return end
+
+    -- Move current towards target
+    if current_sat < target_sat then
+        current_sat = current_sat + transition_speed
+        if current_sat > target_sat then current_sat = target_sat end
+    else
+        current_sat = current_sat - transition_speed
+        if current_sat < target_sat then current_sat = target_sat end
+    end
+    
+    -- Execute console command
+    if con then 
+        con:execute(s_format("%s %.3f", console_command, current_sat))
+    end
+end

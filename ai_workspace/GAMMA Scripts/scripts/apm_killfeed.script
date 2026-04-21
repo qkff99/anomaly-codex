@@ -1,0 +1,89 @@
+if ui_popup_messages then
+    local gc = game.translate_string
+
+    function on_game_start()
+        RegisterScriptCallback("actor_on_before_death", actor_on_before_death)
+        RegisterScriptCallback("npc_on_death_callback", npc_on_death_callback)
+	    --RegisterScriptCallback("npc_on_before_hit", npc_on_before_hit)
+    end
+
+    local coms = {
+        bandit      = "bandit_patch",
+        dolg        = "dolg_patch",
+        ecolog      = "ecolog_patch",
+        killer      = "killer_patch",
+        army        = "army_patch",
+        monolith    = "monolith_patch",
+        greh       	= "greh_patch",
+        freedom		= "freedom_patch",
+        stalker     = "stalker_patch",
+        csky        = "csky_patch",
+        isg	        = "isg_patch",
+        renegade 	= "renegade_patch"
+    }
+
+    local option
+
+    local function parseMsg(stringId, ...)
+        if #{...} == 0 then
+            return gc(stringId)
+        end
+        return gc(stringId):format(...)
+    end
+
+    local function printMsg(stringId, icon, strings, validOptions)
+        local valid = true
+        if is_not_empty(validOptions) then
+            valid = false
+            for i, v in ipairs(validOptions) do
+                if option == v then
+                    valid = true
+                    break
+                end
+            end
+        end
+        
+        if valid then
+            ui_popup_messages.GUI:AddMessage(parseMsg(stringId, unpack(strings or {})), icon)
+        end
+    end
+
+    function actor_on_before_death(whoID, flags)
+        if not ui_popup_messages.GUI then return end
+        option = ui_mcm and ui_mcm.get("ui_popup_messages/apm_killfeed/options") or "onlyPlayerKillsAndDeath"
+
+        CreateTimeEvent("apm_killfeed_actor", "apm_killfeed_actor", 0.2, function() 
+            if not (whoID and level.object_by_id(whoID)) then
+                printMsg("st_apm_killfeed_killed_by_no_reason", "ui_inGame2_Vibros")
+            else
+                local who = level.object_by_id(whoID)
+
+                if who:id() == AC_ID then
+                    printMsg("st_apm_killfeed_suicide", db.actor:character_icon())
+                elseif IsStalker(who) then
+                    printMsg("st_apm_killfeed_killed_by", who:character_icon(), {who:character_name(), gc(who:character_community())})
+                else
+                    printMsg("st_apm_killfeed_killed_by_no_reason", "ui_inGame2_Vibros")
+                end
+            end
+            return true
+        end)
+    end
+
+    function npc_on_death_callback(npc, who)
+        if not ui_popup_messages.GUI then return end
+        option = ui_mcm and ui_mcm.get("ui_popup_messages/apm_killfeed/options") or "onlyPlayerKillsAndDeath"
+        
+        if not who then
+            printMsg("st_apm_killfeed_npc_killed_by_no_reason", npc:character_icon(), {npc:character_name(), gc(npc:character_community())}, {"all"})
+        elseif who:id() == npc:id() then
+            printMsg("st_apm_killfeed_npc_suicide", npc:character_icon(), {npc:character_name(), gc(npc:character_community())}, {"all"})
+        elseif who:id() == AC_ID then
+            printMsg("st_apm_killfeed_npc_killed_by_player", npc:character_icon(), {npc:character_name(), gc(npc:character_community())}, {"all", "onlyPlayerKillsAndDeath"})
+        elseif IsStalker(who) then
+            printMsg("st_apm_killfeed_npc_killed_by", npc:character_icon(), {npc:character_name(), gc(npc:character_community()), who:character_name(), gc(who:character_community())}, {"all"})
+        else
+            printMsg("st_apm_killfeed_npc_killed_by_no_reason", npc:character_icon(), {npc:character_name(), gc(npc:character_community())}, {"all"})
+        end
+    end
+end

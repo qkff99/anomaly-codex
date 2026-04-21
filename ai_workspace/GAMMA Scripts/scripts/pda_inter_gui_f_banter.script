@@ -1,0 +1,131 @@
+pmain = pda_inter_gui
+local gt = game.translate_string
+local CustomPDAX = pda_inter_gui.CustomPDAX
+local pr = pda_inter_gui.pr
+
+function CustomPDAX:BuildBanterUpperMenu()
+	local xml = self.xml
+
+	self.picked_banter_option = nil		-- choosen banter option
+
+	-- SOS
+	self.banter_sos_header = xml:InitStatic("mid_container_6:banter_header_sos", self.pda_t[6].mid_cont)
+	pmain.align_element(self, self.banter_sos_header, self.pda_t[6].mid_cont, "c")
+	self.banter_sos_btn = xml:Init3tButton("mid_container_6:banter_btn_sos", self.pda_t[6].mid_cont)
+	self:Register(self.banter_sos_btn, "banter_btn_sos")
+	pmain.align_element(self, self.banter_sos_btn, self.pda_t[6].mid_cont, "c")
+
+	-- Surge
+	self.banter_surge_header = xml:InitStatic("mid_container_6:banter_header_surge", self.pda_t[6].mid_cont)
+	pmain.align_element(self, self.banter_surge_header, self.pda_t[6].mid_cont, "c")
+	self.banter_surge_btn = xml:Init3tButton("mid_container_6:banter_btn_surge", self.pda_t[6].mid_cont)
+	self:Register(self.banter_surge_btn, "banter_btn_surge")
+	pmain.align_element(self, self.banter_surge_btn, self.pda_t[6].mid_cont, "c")
+
+	-- Psi-storm
+	self.banter_psi_header = xml:InitStatic("mid_container_6:banter_header_psi", self.pda_t[6].mid_cont)
+	pmain.align_element(self, self.banter_psi_header, self.pda_t[6].mid_cont, "c")
+	self.banter_psi_btn = xml:Init3tButton("mid_container_6:banter_btn_psi", self.pda_t[6].mid_cont)
+	self:Register(self.banter_psi_btn, "banter_btn_psi")
+	pmain.align_element(self, self.banter_psi_btn, self.pda_t[6].mid_cont, "c")
+
+	-- Status
+	self.banter_status_header = xml:InitStatic("mid_container_6:banter_header_status", self.pda_t[6].mid_cont)
+	pmain.align_element(self, self.banter_status_header, self.pda_t[6].mid_cont, "c")
+	self.banter_status_btn = xml:Init3tButton("mid_container_6:banter_btn_status", self.pda_t[6].mid_cont)
+	self:Register(self.banter_status_btn, "banter_btn_status")
+	pmain.align_element(self, self.banter_status_btn, self.pda_t[6].mid_cont, "c")
+
+end
+
+function CustomPDAX:InitBanterCallbacks()
+	self:AddCallback("banter_btn_sos", ui_events.BUTTON_CLICKED, self.OnClickBanterSOS, self)
+	self:AddCallback("banter_btn_surge", ui_events.BUTTON_CLICKED, self.OnClickBanterSurge, self)
+	self:AddCallback("banter_btn_psi", ui_events.BUTTON_CLICKED, self.OnClickBanterPsi, self)
+	self:AddCallback("banter_btn_status", ui_events.BUTTON_CLICKED, self.OnClickBanterStatus, self)
+end
+
+function CustomPDAX:ResetBanterMenu()
+	self.picked_banter_option = nil
+end
+
+function CustomPDAX:OnClickBanterSOS()
+	-- set choosen option to sos
+	self.picked_banter_option = "sos"
+
+	-- enable send button
+	self.send_btn:Enable(true)
+end
+
+function CustomPDAX:OnClickBanterSurge()
+	-- set choosen option to surge
+	self.picked_banter_option = "surge"
+
+	-- enable send button
+	self.send_btn:Enable(true)
+end
+
+function CustomPDAX:OnClickBanterPsi()
+	-- set choosen option to psi
+	self.picked_banter_option = "psi"
+
+	-- enable send button
+	self.send_btn:Enable(true)
+end
+
+function CustomPDAX:OnClickBanterStatus()
+	-- set choosen option to status
+	self.picked_banter_option = "status"
+
+	-- enable send button
+	self.send_btn:Enable(true)
+end
+
+function CustomPDAX:OnClickSendBanter()
+	-- disable buttons of ALL big menus till cancelled/failed
+	self:UpdMenuButtons()
+
+	-- SOS
+	if self.picked_banter_option == "sos" then
+		-- disable sos button
+		self.banter_sos_btn:Enable(false)
+
+		-- send sos
+		pda_inter_x_banter.send_sos()
+
+	elseif self.picked_banter_option == "surge" then
+		-- disable surge button
+		self.banter_surge_btn:Enable(false)
+
+		-- ask surge
+		pda_inter_x_banter.ask_surge()
+
+	elseif self.picked_banter_option == "psi" then
+		-- disable psi button
+		self.banter_psi_btn:Enable(false)
+
+		-- ask psi-storm
+		pda_inter_x_banter.ask_psi_storm()
+
+	elseif self.picked_banter_option == "status" then
+		-- disable status button
+		self.banter_status_btn:Enable(false)
+
+		-- ask status
+		pda_inter_x_banter.ask_status()
+
+	end
+end
+
+function CustomPDAX:UpdBanterButtons(btn_name)
+	-- enable sos button
+	if btn_name == "sos" then
+		self.banter_sos_btn:Enable(true)
+	elseif btn_name == "surge" then
+		self.banter_surge_btn:Enable(true)
+	elseif btn_name == "psi" then
+		self.banter_psi_btn:Enable(true)
+	elseif btn_name == "status" then
+		self.banter_status_btn:Enable(true)
+	end
+end

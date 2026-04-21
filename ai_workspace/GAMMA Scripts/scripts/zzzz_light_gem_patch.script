@@ -1,0 +1,26 @@
+local STLTHICN = light_gem.StealthIcon
+
+function STLTHICN:NewBarUpd()
+    local gem_val = math.floor(visual_memory_manager.stealth_light_ind[1] * 100 + 0.5)
+    local in_danger = visual_memory_manager.stealth_light_ind[2]
+
+    self.gem:SetProgressPos(gem_val)
+
+    local gem_color_white = GetARGB(255, 255, 255, 255)
+    local gem_color_yellow = GetARGB(255, 255, 255, 0)
+    local gem_color_red = GetARGB(255, 255, 0, 0)
+
+    -- **CORRECTED COLOR LOGIC**
+    if in_danger then
+        -- Condition 1: This flag means the enemy has passed the visibility threshold. It MUST be RED.
+        self.gem:SetColor(gem_color_red)
+    elseif gem_val >= 75 then -- <-- ADJUST THIS VALUE FOR YELLOW
+        -- Condition 2: Not yet "in_danger," but the ratio is high (Caution/Aware).
+        self.gem:SetColor(gem_color_yellow)
+    else
+        -- Condition 3: Safe/Low Visibility.
+        self.gem:SetColor(gem_color_white)
+    end
+end
+
+light_gem.StealthIcon.BarUpd = STLTHICN.NewBarUpd

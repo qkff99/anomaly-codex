@@ -1,0 +1,17 @@
+local cache_first_day = true
+function actor_first_day_in_zone(actor,npc,p)
+	if not cache_first_day then
+		return false
+	end
+	
+	local s_time = level.get_start_time()
+	local seconds = tonumber(game.get_game_time():diffSec(s_time))
+	local days = math.floor(((seconds/60)/60)/24)
+
+    if (days >= 1) then
+        cache_first_day = false
+        return false
+    end
+	
+    return true
+end

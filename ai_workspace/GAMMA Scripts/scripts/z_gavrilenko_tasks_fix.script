@@ -1,0 +1,51 @@
+-- gavrilenko tasks fix v1.1
+-- modified on 2023/12/09 after I discovered mob_trade.GetTalkingNpc()
+-- script written by G_FLAT
+-- I stole all the task stage processing thing from the autocomplete task mod
+-- what this mod does: completes tasks that are pointing to gavrilenko when you talk to him, additionally spartacus and gonta from zaton
+
+-- list of NPCs that don't have task completion dialog option
+local npc_list = {
+	["bar_duty_security_squad_leader"]	= true,		-- gavrilenko from rostok
+	["zat_b7_stalker_victim_1"]			= true,		-- spartacus from zaton
+	["zat_b106_stalker_gonta"]			= true		-- gonta from zaton
+}
+
+function GUI_on_show(gui_name)
+	if (gui_name ~= "Dialog") then return end
+
+	local speaker = mob_trade.GetTalkingNpc()
+
+	if npc_list[speaker:section()] then
+		-- news_manager.send_tip(db.actor, "talking to " .. speaker:section())
+		complete_npc_tasks(speaker)
+	end
+end
+
+function complete_npc_tasks(npc)
+	-- search for the tasks that point to npc for completion
+	local tm = task_manager.get_task_manager()
+	for tid, tsk in pairs(tm.task_info) do
+		if (tsk.task_giver_id and tsk.task_giver_id == npc:id()) then
+			-- filter out finished tasks
+			if tsk.stage ~= 255 then
+				-- check if tasks are in last stage
+				local parsed_data = utils_data.parse_ini_section_to_array(task_manager.task_ini, tid)
+				if tonumber(parsed_data.stage_complete) ~= tonumber(tsk.stage) then 
+					-- news_manager.send_tip(db.actor, "stages are different (" .. tsk.stage .. "/" .. parsed_data.stage_complete .. ")")
+				else
+					-- complete those tasks
+					-- news_manager.send_tip(db.actor, "completing task")
+					CreateTimeEvent("gimme_a_sec", "gimme_a_sec", 1, function ()
+						tm:set_task_completed(tid)
+						return true
+					end)
+				end
+			end
+		end
+	end
+end
+
+function on_game_start()
+	RegisterScriptCallback("GUI_on_show", GUI_on_show)
+end

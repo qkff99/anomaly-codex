@@ -1,0 +1,101 @@
+<w>
+	<backdrop x="0" y="0" width="1024" height="768" stretch="1">
+		<texture r="0" g="0" b="0" a="115">ui_icons_PDA_tooltips</texture>
+	</backdrop>
+
+	<gopro_tuner x="24" y="58" width="760" height="650" stretch="1">
+		<frame_base x="0" y="0" width="760" height="650" stretch="1">
+			<texture r="0" g="0" b="0" a="210">ui_icons_PDA_tooltips</texture>
+		</frame_base>
+
+		<title x="18" y="14" width="724" height="30" stretch="1">
+			<text r="230" g="230" b="230" font="graffiti22" align="c" vert_align="c">st_gopro_tuner_title</text>
+		</title>
+
+		<subtitle x="20" y="50" width="720" height="38" stretch="1">
+			<text complex_mode="1" r="175" g="175" b="175" font="letterica16" align="l" vert_align="c">st_gopro_tuner_subtitle</text>
+		</subtitle>
+
+		<status_frame x="12" y="96" width="436" height="118" stretch="1">
+			<texture r="10" g="10" b="10" a="185">ui_icons_PDA_tooltips</texture>
+		</status_frame>
+
+		<status_scroll x="20" y="104" width="420" height="102" right_ident="0" left_ident="0" top_indent="0" bottom_indent="0" vert_interval="2" always_show_scroll="0"/>
+
+		<scroll_frame x="12" y="226" width="436" height="366" stretch="1">
+			<texture r="20" g="20" b="20" a="185">ui_icons_PDA_tooltips</texture>
+		</scroll_frame>
+
+		<scroll x="20" y="234" width="420" height="350" right_ident="0" left_ident="0" top_indent="0" bottom_indent="0" vert_interval="4" always_show_scroll="0"/>
+
+		<hints_frame x="460" y="96" width="288" height="496" stretch="1">
+			<texture r="12" g="12" b="12" a="185">ui_icons_PDA_tooltips</texture>
+		</hints_frame>
+
+		<hints_title x="472" y="104" width="264" height="24" stretch="1">
+			<text r="215" g="215" b="215" font="letterica16" align="c" vert_align="c">st_gopro_tuner_hints_title</text>
+		</hints_title>
+
+		<hints_scroll x="472" y="134" width="264" height="448" right_ident="0" left_ident="0" top_indent="0" bottom_indent="0" vert_interval="4" always_show_scroll="0"/>
+
+		<btn_defaults x="20" y="606" width="220" height="30" stretch="1">
+			<text align="c" font="letterica16" vert_align="c">st_gopro_tuner_btn_defaults</text>
+			<texture>ui_button_ordinary</texture>
+		</btn_defaults>
+
+		<btn_close x="520" y="606" width="220" height="30" stretch="1">
+			<text align="c" font="letterica16" vert_align="c">st_gopro_tuner_btn_close</text>
+			<texture>ui_button_ordinary</texture>
+		</btn_close>
+	</gopro_tuner>
+
+	<elements>
+		<row x="0" y="0" width="410" height="48" stretch="1"/>
+
+		<cap x="0" y="0" width="160" height="40" stretch="1">
+			<text r="170" g="170" b="170" font="letterica16" align="l" vert_align="c"/>
+		</cap>
+
+		<check_cap x="0" y="0" width="320" height="40" stretch="1">
+			<text r="170" g="170" b="170" font="letterica16" align="l" vert_align="c"/>
+		</check_cap>
+
+		<check x="370" y="8" width="35" height="30" stretch="1">
+			<texture>ui_inGame2_checkbox</texture>
+		</check>
+
+		<list x="170" y="4" width="228" height="9020" stretch="1" list_length="10">
+			<list_font r="170" g="170" b="170" font="letterica16"/>
+			<text_color>
+				<e r="170" g="170" b="170"/>
+				<d r="70" g="70" b="70"/>
+			</text_color>
+		</list>
+
+		<track x="170" y="12" width="180" height="16" stretch="1" step="0.01"/>
+
+		<track_value x="356" y="5" width="52" height="28" stretch="1">
+			<text complex_mode="1" r="200" g="200" b="250" align="c" vert_align="c" font="letterica16"/>
+		</track_value>
+
+		<status_row x="0" y="0" width="410" height="24" stretch="1"/>
+
+		<status_label x="0" y="0" width="128" height="24" stretch="1">
+			<text r="170" g="170" b="170" font="letterica16" align="l" vert_align="c"/>
+		</status_label>
+
+		<status_value x="132" y="0" width="278" height="24" stretch="1">
+			<text complex_mode="1" r="210" g="210" b="210" font="letterica16" align="l" vert_align="c"/>
+		</status_value>
+
+		<hint_row x="0" y="0" width="260" height="38" stretch="1"/>
+
+		<hint_key x="0" y="0" width="88" height="38" stretch="1">
+			<text complex_mode="1" r="220" g="220" b="220" font="letterica16" align="l" vert_align="c"/>
+		</hint_key>
+
+		<hint_desc x="94" y="0" width="166" height="38" stretch="1">
+			<text complex_mode="1" r="185" g="185" b="185" font="letterica16" align="l" vert_align="c"/>
+		</hint_desc>
+	</elements>
+</w>

@@ -1,0 +1,38 @@
+--[[
+	=====================================================================
+	Addon      : Tosox Mini Mods Repo: Dynamic News Task Gossip Fix
+	Link       : https://www.moddb.com/mods/stalker-anomaly/addons/tosox-mini-mods-repo/
+	Author     : Tosox
+	Date       : 07.01.2024
+	Last Edit  : 19.01.2024
+	=====================================================================
+--]]
+
+orig_dnm_gossip_task_repeat_timeout = dynamic_news_manager.DynamicNewsManager.GossipTaskRepeatTimeout
+dynamic_news_manager.DynamicNewsManager.GossipTaskRepeatTimeout = function(self, task_id)
+	--printf(">>> Dyn News: GossipTaskRepeatTimeout - call")
+	local story_id = task_id:sub(1,-8)
+	local obj = get_story_object(story_id)
+	if not (obj) then 
+		return false 
+	end
+	
+	local sender = self:FindSpeakerNoVictim(nil,nil,true)
+	if (not sender) then 
+		return false 
+	end
+	
+	-- Note: used the wrong translations for some reason
+	-- local tbl = utils_data.collect_translations("st_dyn_news_gossip_hostage_",true)
+	local tbl = utils_data.collect_translations("st_dyn_news_gossip_task_",true)
+	if (not tbl) then
+		return false
+	end
+	
+	local Se = strformat("%s, %s",sender:character_name(),dynamic_news_helper.GetCommunityDescription(sender,6))
+	local msg = strformat(tbl[math.random(#tbl)],obj:character_name())
+	
+	self:PushToChannel(sender:character_community(),{Mg=msg,Ic=sender:character_icon(),Snd="news",Se=Se,It="npc"})
+
+	return true
+end

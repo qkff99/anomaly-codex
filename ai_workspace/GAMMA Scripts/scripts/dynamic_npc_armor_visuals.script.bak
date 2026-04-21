@@ -1,0 +1,200 @@
+--[[
+Dynamic NPC Armor Visuals
+06JUN2021
+This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License
+Author: RavenAscendant, XCVB, Sneaky
+Contributors: Lucy/Rezy, Grok, Jurkonov
+--]]
+
+default_visuals = {}
+
+function print_dbg( text , ...)
+	if false then
+		printf( "RAX: | %s |  "..text ,time_global(), ...)
+	end
+end
+
+ini_npcv = ini_file_ex("dynamic_npc_armor_visuals.ltx")
+ini_death = ini_file_ex("items\\settings\\death_outfits.ltx")
+
+
+function npc_on_item_take(npc, item)
+	--print_dbg("DNPCAV:npc on take")
+   if (not(npc and item)) or (not IsOutfit(item)) or (not npc:alive()) then 
+        return
+    end
+    local story_name = get_object_story_id(npc:id())
+    if (story_name ~= nil) then
+        return
+    end
+	
+	if not is_allowed_comm(npc, item) then
+		return
+	end
+	
+    local npc_visual = ini_sys:r_string_ex(item:section(),"npc_visual")
+    if not (npc_visual) then
+        return
+    end
+	
+	if get_visual_prot(npc_visual, item ) <= get_visual_prot(npc:get_visual_name()) then
+		return
+	end
+	
+	
+    if not default_visuals[npc:id()] then
+			default_visuals[npc:id()] = npc:get_visual_name()
+    end
+	print_dbg("DNPCAV:npc on take set:%s id:%s who:%s",default_visuals[npc:id()], npc:id(), npc:character_name() )
+   npc:set_visual_name(npc_visual)
+
+end
+
+
+function npc_armor_visual_update(npc)
+	local id = "NAN"
+	if type(npc) == "number" then
+		id = npc
+		npc = level.object_by_id(npc)
+	end
+	
+	if not npc then
+		print_dbg("DNPCAV:npc_armor_visual_update npc is nil npc id:%s", id)
+		return true
+	end
+
+	if not default_visuals[npc:id()] or not (npc:alive()) then
+		return true
+	end
+	
+	
+	if  npc:get_visual_name() == default_visuals[npc:id()] then
+		return true
+	end
+	
+	item = nil
+	item_prot = 0
+	
+    function get_best_outfit(itm) 
+        if IsOutfit(itm) and is_allowed_comm(npc, itm) then
+			itm_vis = ini_sys:r_string_ex(itm:section(),"npc_visual")
+			itm_prot = get_visual_prot(itm_vis, itm)
+            
+			if item  then		
+				if itm_prot > item_prot then
+					item = itm
+					item_prot = itm_prot
+				end
+			 else
+				 item = itm
+				 item_prot = itm_prot
+			 end
+		end
+    end
+	
+	npc:inventory_for_each(get_best_outfit)
+	
+
+    if not item then
+
+        npc:set_visual_name(default_visuals[npc:id()])
+    else
+		local npc_visual = ini_sys:r_string_ex(item:section(),"npc_visual")
+
+		if  npc_visual and (npc_visual ~= npc:get_visual_name()) then
+			if item_prot > get_visual_prot(default_visuals[npc:id()]) then
+				npc:set_visual_name(npc_visual)
+			else
+				npc:set_visual_name(default_visuals[npc:id()])
+			end
+		end
+	end
+	return true
+end
+
+
+
+function get_visual_prot(vis, item)
+    --bunch of string stuff to change vis into the form used in death_outfits.ltx
+    local outfit, helm
+	if vis then
+		vis_path_list = str_explode(vis, "\\")
+		vis_name_list = vis_path_list and str_explode(vis_path_list[#vis_path_list], "%.")
+		local vis_list = ini_death:r_string_ex("outfit_by_visual", vis_name_list[1])
+		
+		
+		
+		outfit, helm = vis_list and unpack(str_explode(vis_list, ","))
+	end	
+    if outfit then 
+        item = nil -- if there is a visual outfit use it first for consistency incase of miss match.
+    end
+    
+    ballistic     = utils_item.get_outfit_protection(item, outfit, "FireWound") + utils_item.get_outfit_protection(nil, helm, "FireWound")
+    rupture     = utils_item.get_outfit_protection(item, outfit, "Wound") + utils_item.get_outfit_protection(nil, helm, "Wound")
+    explosion     = utils_item.get_outfit_protection(item, outfit, "Explosion") + utils_item.get_outfit_protection(nil, helm, "Explosion")
+
+
+    protection = ini_npcv:r_float_ex("stat_weights","ballistic") * ballistic + ini_npcv:r_float_ex("stat_weights","rupture") * rupture + ini_npcv:r_float_ex("stat_weights","explosion") * explosion
+
+    return protection
+end
+
+function is_allowed_comm(npc, item)
+	
+	if npc:get_visual_name():find("fstalker") then --ignore Dux female stalkers.
+		return false
+	end
+
+	local npc_comm = npc:character_community()
+	local outfit_comm = ini_sys:r_string_ex(item:section(),"community") or "no_community"
+	if outfit_comm == " " or outfit_comm == "" then
+		outfit_comm = "no_community"
+	end
+	
+	if npc:has_info("npcx_is_companion") and ini_npcv:r_bool_ex("npc_companion",outfit_comm) or ini_npcv:r_bool_ex(npc_comm,outfit_comm) then
+		--print_dbg("Good Comm:%s|%s", npc_comm,outfit_comm)
+		return true
+	end
+	--print_dbg("Bad Comm:%s|%s", npc_comm,outfit_comm)
+	return false
+end
+
+
+
+function actor_on_item_take_from_box(npc_id, item)
+	CreateTimeEvent("RAX1"..npc_id, "RAX1"..item:id(),0.5, npc_armor_visual_update, npc_id)
+end
+
+
+
+function on_game_start()
+    RegisterScriptCallback("npc_on_item_take", npc_on_item_take)
+	RegisterScriptCallback("ActorMenu_on_item_after_move", actor_on_item_take_from_box)
+    RegisterScriptCallback("load_state", load_state)
+    RegisterScriptCallback("save_state", save_state)
+    RegisterScriptCallback("server_entity_on_unregister", server_entity_on_unregister)
+
+end
+
+function npc_on_get_all_from_corpse(npc, corpse, item, really_take)
+	if really_take then
+		npc_on_item_take(npc, item)
+	end
+end
+
+
+
+
+function load_state(mdata)
+    default_visuals = mdata.RAX_default_visuals or {}
+end
+
+function save_state(mdata)
+    mdata.RAX_default_visuals = default_visuals
+
+end
+
+function server_entity_on_unregister(se_obj)
+    default_visuals[se_obj.id] = nil
+end

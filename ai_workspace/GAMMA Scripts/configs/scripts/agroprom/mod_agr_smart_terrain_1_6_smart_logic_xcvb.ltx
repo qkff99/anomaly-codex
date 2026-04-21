@@ -1,0 +1,57 @@
+
+;army trader
+![animpoint@trade]
+on_info = {=trader_sleep_time} beh@xcvb_sleep_1
+
+[beh@xcvb_sleep_1]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+path_end = loop
+
+on_info = {!trader_sleep_time} animpoint@trade
+meet = no_meet
+combat_ignore_cond = {=is_warfare} false, {=actor_true_enemy =check_enemy_name(actor)} false, true
+combat_ignore_keep_when_attacked = {=is_warfare} false, true
+invulnerable = {=is_warfare} false, {!actor_true_enemy} true, false
+gather_items_enabled = false
+help_wounded_enabled = false
+corpse_detection_enabled = false
+
+pt1 = 20000, sleep | 		pos: -151.2, 2.108, -166.6 	 	 look: -151.3238, 1.1026, -164.2686 
+
+
+;army mechanic
+![animpoint@stand]
+on_info2 = {=mechanic_sleep_time} beh@xcvb_sleep_2
+
+[beh@xcvb_sleep_2]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+path_end = loop
+
+on_info = {!mechanic_sleep_time} animpoint@stand
+meet = no_meet
+combat_ignore_cond = {=is_warfare} false, {=actor_true_enemy =check_enemy_name(actor)} false, true
+combat_ignore_keep_when_attacked = {=is_warfare} false, true
+invulnerable = {=is_warfare} false, {!actor_true_enemy} true, false
+gather_items_enabled = false
+help_wounded_enabled = false
+corpse_detection_enabled = false
+
+pt1 = 20000, drunk_sit_ass | 		pos: -142.1, 5.999, -203.7 	 	 look: -140.0736, 4.9998, -202.5175 

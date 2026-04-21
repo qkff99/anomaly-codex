@@ -1,0 +1,1273 @@
+-- Weapon cover tilt script
+-- Makes weapon go up when near obstacle to emulate weapon dimensions 
+-- Written by demonized
+
+-- Current version
+VERSION = 15
+
+local dte = demonized_time_events
+local dgr = demonized_geometry_ray
+
+
+local normalize = normalize
+local clamp = clamp
+
+local abs = math.abs
+local min = math.min
+local max = math.max
+local sqrt = math.sqrt
+
+local actor_weapon_lowered = game.actor_weapon_lowered
+
+local get_target_dist = level.get_target_dist
+local get_target_obj = level.get_target_obj
+
+local current_weapon_sec = ""
+local saved_variables = {}
+local saved_time
+
+local function reset_saved_vars()
+	empty_table(saved_variables)
+end
+
+local gizmosInitialized = false
+local gizmos = {}
+local id = 71000
+local idOffset = 0
+
+function initializeGizmos()
+	if gizmosInitialized then return end
+	gizmosInitialized = true
+
+	gizmos.fireBoneSphere = debug_render.add_object(id + idOffset, DBG_ScriptObject.sphere):cast_dbg_sphere()
+	idOffset = idOffset + 1
+
+	gizmos.fireBoneSphereAdjusted = debug_render.add_object(id + idOffset, DBG_ScriptObject.sphere):cast_dbg_sphere()
+	idOffset = idOffset + 1
+
+	gizmos.fireBoneSphereReal = debug_render.add_object(id + idOffset, DBG_ScriptObject.sphere):cast_dbg_sphere()
+	idOffset = idOffset + 1
+
+	gizmos.collisionLine = debug_render.add_object(id + idOffset, DBG_ScriptObject.line):cast_dbg_line()
+	idOffset = idOffset + 1
+
+	gizmos.debugLine1 = debug_render.add_object(id + idOffset, DBG_ScriptObject.line):cast_dbg_line()
+	idOffset = idOffset + 1
+end
+
+function disableGizmos()
+	for k, v in pairs(gizmos) do
+		if type(v) == "table" then
+			for i = 1, #v do
+				local p = v[i]
+				p.visible = false
+			end
+		else
+			v.visible = false
+		end
+	end	
+end
+
+--EMA smoothing for changing values, frame independent
+local default_smoothing = 11.5
+local smoothed_values = {}
+
+local function ema(key, value, def, steps, delta)
+	local steps = steps or default_smoothing
+	local delta = delta or steps
+	local smoothing_alpha = 2.0 / (steps + 1)
+
+	smoothed_values[key] = smoothed_values[key] and smoothed_values[key] + min(smoothing_alpha * (delta / steps), 1) * (value - smoothed_values[key]) or def or value
+
+	--printf("EMA fired, key %s, target %s, current %s, going %s", key, value, smoothed_values[key], (value > smoothed_values[key] and "up" or "down"))
+	return smoothed_values[key]
+end
+
+-- Linear inter/extrapolation
+local function lerp(a, b, f)
+	if a and b and f then
+		return a + f * (b - a)
+	else
+		return a or b or 0
+	end
+end
+
+local intercepts = {
+	["actor_on_weapon_before_tilt"] = {}, -- Params: weapon_object, flags
+	["actor_on_weapon_tilt_start"] = {}, -- Params: weapon_object
+	["actor_on_weapon_tilt_end"] = {}, -- Params: weapon_object
+	["actor_on_weapon_tilting"] = {}, -- Params: weapon_object, coeff
+	["actor_on_weapon_tilting_back"] = {}, -- Params: weapon_object, coeff
+}
+
+function add_intercept(name)
+	if intercepts[name] then return end
+	intercepts[name] = {}
+end
+
+function add_callback(name, func)
+	if not (name and func and intercepts[name]) then return end
+	intercepts[name][func] = true
+end
+
+function remove_callback(name, func)
+	if not (name and func and intercepts[name]) then return end
+	intercepts[name][func] = nil 
+end
+
+function callback(name, ...)
+	if not (name and intercepts[name]) then return end
+	for func, _ in pairs(intercepts[name]) do
+		func(...)
+	end
+end
+
+-- MCM
+-- Load the defaults
+local function load_defaults()
+	local t = {}
+	local op = weapon_cover_tilt_mcm.op
+	for i, v in ipairs(op.gr) do
+		if v.def ~= nil then
+			t[v.id] = v.def
+		end
+	end
+	return t
+end
+
+local settings = load_defaults()
+
+local function load_settings()
+	settings = load_defaults()
+	if ui_mcm then
+		for k, v in pairs(settings) do
+			settings[k] = ui_mcm.get("weapon_cover_tilt/" .. k)
+		end
+	end
+end
+
+function get_setting(key)
+	return settings[key]
+end
+
+
+function toggleDebugMode()
+	if settings.use_fire_bone_debug then
+		initializeGizmos()
+	else
+		disableGizmos()
+	end
+end
+
+function debug_enabled()
+	return DEV_DEBUG or DEV_DEBUG_DEV
+end
+
+local parameters = {
+-- Type: 0 = string | 1 = number | 2 = 3d vector | 3 = 4d vector | 
+	["hands_position"]		            = { name = "Hands Position",         typ = 2, def = {0,0,0}, indx = 1,  min = -180,   max = 180, step = 0.0001, idxa = 0, idxb = 0,  hud = true },
+	["hands_orientation"]	            = { name = "Hands Orientation",      typ = 2, def = {0,0,0}, indx = 2,  min = -180,   max = 180, step = 0.0001, idxa = 1, idxb = 0,  hud = true },
+	["aim_hud_offset_pos"]		        = { name = "Aim Position",           typ = 2, def = {0,0,0}, indx = 3,  min = -180,   max = 180, step = 0.0001, idxa = 0, idxb = 1,  hud = true },
+	["aim_hud_offset_rot"]	            = { name = "Aim Orientation",        typ = 2, def = {0,0,0}, indx = 4,  min = -180,   max = 180, step = 0.0001, idxa = 1, idxb = 1,  hud = true },
+	["gl_hud_offset_pos"]		        = { name = "GL Position",            typ = 2, def = {0,0,0}, indx = 5,  min = -180,   max = 180, step = 0.0001, idxa = 0, idxb = 2,  hud = true },
+	["gl_hud_offset_rot"]		        = { name = "GL Orientation",         typ = 2, def = {0,0,0}, indx = 6,  min = -180,   max = 180, step = 0.0001, idxa = 1, idxb = 2,  hud = true },
+	["aim_hud_offset_alt_pos"]	        = { name = "Alt Position",           typ = 2, def = {0,0,0}, indx = 7,  min = -180,   max = 180, step = 0.0001, idxa = 0, idxb = 3,  hud = true },
+	["aim_hud_offset_alt_rot"]			= { name = "Alt Orientation",        typ = 2, def = {0,0,0}, indx = 8,  min = -180,   max = 180, step = 0.0001, idxa = 1, idxb = 3,  hud = true },
+	["lowered_hud_offset_pos"]			= { name = "Lowered Position",       typ = 2, def = {0,0,0}, indx = 9,  min = -180,   max = 180, step = 0.0001, idxa = 0, idxb = 4,  hud = true },
+	["lowered_hud_offset_rot"]			= { name = "Lowered Orientation",    typ = 2, def = {0,0,0}, indx = 10, min = -180,   max = 180, step = 0.0001, idxa = 1, idxb = 4,  hud = true },
+	["fire_point"]	        			= { name = "Fire Point",           	 typ = 2, def = {0,0,0}, indx = 11, min = -180,   max = 180, step = 0.0001, idxa = 0, idxb = 10, hud = true, no_16x9 = true },
+	["fire_point2"]	       				= { name = "Fire Point 2",           typ = 2, def = {0,0,0}, indx = 12, min = -180,   max = 180, step = 0.0001, idxa = 0, idxb = 11, hud = true, no_16x9 = true },
+	["fire_direction"]					= { name = "Fire Direction",         typ = 2, def = {0,0,1}, indx = 13, min = -180,   max = 180, step = 0.0001, idxa = 1, idxb = 10, hud = true, no_16x9 = true },
+	["shell_point"]						= { name = "Shell Point",        	 typ = 2, def = {0,0,0}, indx = 14, min = -180,   max = 180, step = 0.0001, idxa = 1, idxb = 11, hud = true, no_16x9 = true },
+	["custom_ui_pos"]	       		 	= { name = "UI Position",            typ = 2, def = {0,0,0}, indx = 15, min = -180,   max = 180, step = 0.0001, idxa = 0, idxb = 20 }, --idxb 20 is reserved for device ui
+	["custom_ui_rot"]					= { name = "UI Orientation",         typ = 2, def = {0,0,0}, indx = 16, min = -180,   max = 180, step = 1, 		 idxa = 1, idxb = 20 },
+	["item_position"]	        		= { name = "Item Position",          typ = 2, def = {0,0,0}, indx = 17, min = -180,   max = 180, step = 0.0001, idxa = 0, idxb = 12, hud = true, no_16x9 = true },
+	["item_orientation"]	       		= { name = "Item Orientation",       typ = 2, def = {0,0,0}, indx = 18, min = -180,   max = 180, step = 0.0001, idxa = 1, idxb = 12, hud = true, no_16x9 = true },
+	["scope_zoom_factor"]				= { name = "Zoom Factor",        	 typ = 1, def = 0, 		 indx = 19, min = 0,  	  max = 120, step = 0.1 },
+	["gl_zoom_factor"]					= { name = "GL Zoom Factor",         typ = 1, def = 0, 		 indx = 20, min = 0,  	  max = 120, step = 0.1 },
+	["scope_zoom_factor_alt"]			= { name = "Alt Zoom Factor",        typ = 1, def = 0, 		 indx = 21, min = 0,  	  max = 120, step = 0.1 },
+}
+
+if MODDED_EXES_VERSION >= 20240412 then
+	parameters["base_hud_offset_pos"]	= { name = "Base Position Offset",   typ = 2, def = {0,0,0}, indx = 22,  min = -180,   max = 180, step = 0.0001, idxa = 0, idxb = 5,  hud = true }
+	parameters["base_hud_offset_rot"]	= { name = "base Rotation Offset",   typ = 2, def = {0,0,0}, indx = 23,  min = -180,   max = 180, step = 0.0001, idxa = 1, idxb = 5,  hud = true }
+end
+
+function reset_wpn_hud(sec)
+	local hud_sec = SYS_GetParam(0, sec, "hud")
+	if not hud_sec then return end
+
+	hud_adjust.enabled(true)
+	for k, v in pairs(parameters) do
+		if v.typ == 1 then
+			local p = SYS_GetParam(2, hud_sec, k, v.def)
+			if p then
+				hud_adjust.set_value(k, p)
+			end
+		elseif v.typ == 2 then
+			local function res(str)
+				local str = str or ""
+				local p = SYS_GetParam(0, hud_sec, v.no_16x9 and k or (k .. str))
+
+				if not p then
+					p = table.concat(v.def, ",")
+				end
+
+				if p then
+					p = str_explode(p, ",")
+					for i, d in ipairs(v.def) do
+						p[i] = p[i] and tonumber(p[i]) or d
+					end
+					hud_adjust.set_vector(v.idxa, v.idxb, p[1] or 0, p[2] or 0, p[3] or 0)
+				end
+			end
+			res(utils_xml.is_widescreen() and "_16x9")
+		end
+	end
+	hud_adjust.enabled(false)
+end
+
+function IsBinoc(sec)
+	return 	SYS_GetParam(0, sec, "ammo_class", "") == "ammo_binoc"
+	or 		SYS_GetParam(0, sec, "class", "") == "WP_BINOC"
+end
+
+function IsThrowable(wpn)
+	return IsBolt(wpn) or SYS_GetParam(0, wpn:section(), "class", "") == "II_BOLT"
+end 
+
+local scoped_weapon_zoomed = false
+function isScopedWeapon(wpn)
+	if not wpn then return false end
+
+	local has_scopes_sect = SYS_GetParam(0, wpn:section(), "scopes_sect", "") ~= ""
+	local has_texture = SYS_GetParam(0, wpn:section(), "scope_texture", "") ~= ""
+
+	local cobj = wpn:cast_Weapon()
+
+	-- If old scopes system
+	if has_scopes_sect then
+		if cobj and cobj:IsScopeAttached() or wpn:weapon_is_scope() then
+			return true
+		end
+	else
+		-- If there is fixed scope or no scope defined, but also if there is a scope texture, it will use the texture for zoomin and considered a scoped weapon
+		if  (wpn:weapon_scope_status() == 1 or wpn:weapon_scope_status() == 0) and has_texture then
+			return true
+		end
+
+		-- Usual check
+		if  (cobj and cobj:IsScopeAttached() or wpn:weapon_is_scope()) and has_texture then
+			return true
+		end
+	end
+
+	return false
+end
+
+function isSilencedWeapon(wpn)
+	if not wpn then return false end
+
+	local cobj = wpn:cast_Weapon()
+	return 	wpn:weapon_silencer_status() == 2
+	and 	(cobj and cobj:IsSilencerAttached() or wpn:weapon_is_silencer() or utils_item.addon_attached(wpn, "sl"))
+end
+
+local random_funcs = demonized_randomizing_functions
+local wpn_positions = weapon_cover_tilt_positions or {}
+local wpn_radii = weapon_cover_tilt_gun_trigger_radii and weapon_cover_tilt_gun_trigger_radii.weapon_trigger_radii or {}
+local wpn_radii_fire_bone = weapon_cover_tilt_gun_trigger_radii_fire_bone and weapon_cover_tilt_gun_trigger_radii_fire_bone.weapon_trigger_radii or {}
+
+function getBestMatch(sec)
+	local best_match, best_match_l = nil, 0
+	local function getMatch(k, s1, s2)
+		local a, b = s1:find(s2)
+		if a and b then
+			local l = b - a + 1
+			if l > best_match_l then
+				best_match = k
+				best_match_l = l
+			end
+		end
+	end
+	for k, v in pairs(wpn_radii) do
+		getMatch(k, sec, k)
+		-- getMatch(k, k, sec)
+	end
+	return best_match
+end
+
+-- Test of is material of static geometry is shootable, engine edit required
+--[[
+			
+	Material List
+	flBreakable = (1ul << 0ul),
+	flBounceable = (1ul << 2ul),
+	flSkidmark = (1ul << 3ul),
+	flBloodmark = (1ul << 4ul),
+	flClimable = (1ul << 5ul),
+	flPassable = (1ul << 7ul),
+	flDynamic = (1ul << 8ul),
+	flLiquid = (1ul << 9ul),
+	flSuppressShadows = (1ul << 10ul),
+	flSuppressWallmarks = (1ul << 11ul),
+	flActorObstacle = (1ul << 12ul),
+	flNoRicoshet = (1ul << 13ul),
+
+	flInjurious = (1ul << 28ul),
+	flShootable = (1ul << 29ul),
+	flTransparent = (1ul << 30ul),
+	flSlowDown = (1ul << 31ul)
+
+	// material exports
+	.def_readonly("material_name", &script_rq_result::pMaterialName)
+	.def_readonly("material_flags", &script_rq_result::pMaterialFlags)
+	.def_readonly("material_phfriction", &script_rq_result::fPHFriction)
+	.def_readonly("material_phdamping", &script_rq_result::fPHDamping)
+	.def_readonly("material_phspring", &script_rq_result::fPHSpring)
+	.def_readonly("material_phbounce_start_velocity", &script_rq_result::fPHBounceStartVelocity)
+	.def_readonly("material_phbouncing", &script_rq_result::fPHBouncing)
+	.def_readonly("material_flotation_factor", &script_rq_result::fFlotationFactor)
+	.def_readonly("material_shoot_factor", &script_rq_result::fShootFactor)
+	.def_readonly("material_shoot_factor_mp", &script_rq_result::fShootFactorMP)
+	.def_readonly("material_bounce_damage_factor", &script_rq_result::fBounceDamageFactor)
+	.def_readonly("material_injurious_speed", &script_rq_result::fInjuriousSpeed)
+	.def_readonly("material_vis_transparency_factor", &script_rq_result::fVisTransparencyFactor)
+	.def_readonly("material_snd_occlusion_factor", &script_rq_result::fSndOcclusionFactor)
+	.def_readonly("material_density_factor", &script_rq_result::fDensityFactor)
+
+--]]
+local function lshift(x, by)
+	return x * 2 ^ by
+end
+
+local function test(x, mask)
+	return bit_and(x, mask) == mask
+end
+
+local flags_test = {
+	-- {"flBreakable", lshift(1, 0)},
+	-- {"flBounceable", lshift(1, 2)},
+	-- {"flSkidmark", lshift(1, 3)},
+	-- {"flBloodmark", lshift(1, 4)},
+	-- {"flClimable", lshift(1, 5)},
+	-- {"flPassable", lshift(1, 7)},
+	-- {"flDynamic", lshift(1, 8)},
+	-- {"flLiquid", lshift(1, 9)},
+	-- {"flSuppressShadows", lshift(1, 10)},
+	-- {"flSuppressWallmarks", lshift(1, 11)},
+	-- {"flActorObstacle", lshift(1, 12)},
+	-- {"flNoRicoshet", lshift(1, 13)},
+
+	-- {"flInjurious", lshift(1, 28)},
+	{"flShootable", lshift(1, 29)},
+	-- {"flTransparent", lshift(1, 30)},
+	-- {"flSlowDown", lshift(1, 31)},
+}
+
+function isShootableMaterial(max_dist)
+	local max_dist = max_dist or 10
+	local ray = ray_pick()
+	ray:set_flags(3)
+	ray:set_range(max_dist)
+	ray:set_position(device().cam_pos)
+	ray:set_direction(device().cam_dir)
+	ray:set_ignore_object(db.actor)
+
+	local res = ray:query()
+
+	-- Return false if failed query
+	if not res then
+		return false
+	end
+
+	-- Return false if game object
+	if ray:get_object() then
+		return false
+	end
+
+	local result = ray:get_result()
+
+	-- Return false if engine doesnt have material exports or unknown material
+	if not (
+		result
+	and result.material_name
+	and result.material_flags
+	and result.material_shoot_factor
+	)
+	then
+		return false
+	end
+
+	local flags = result.material_flags
+	local name = result.material_name
+	local shoot_factor = result.material_shoot_factor
+
+	-- Test material flags	
+	local flags_test_result = {}
+	for i, v in ipairs(flags_test) do
+		if test(flags, v[2]) then
+			flags_test_result[v[1]] = true
+		end
+		-- printf("%s, %s test, %s, %s, %s", name, v[1], flags, v[2], test(flags, v[2]))
+	end
+
+	-- printf("%s, material_shoot_factor %s", name, shoot_factor)
+
+	-- If name contains "bush" or material is shootable and low shoot_factor - true 
+	if string.find(name, "bush") then
+		return true
+	end
+
+	if string.find(name, "water") then
+		return false
+	end
+
+	if false
+	-- or (flags_test_result.flShootable and shoot_factor <= 0.01)
+	then
+		return true
+	end
+
+	return false
+end
+
+-- Sections of weapons that have kind "pistol" but they arent pistols
+not_pistol_sec = {
+	wpn_svt40_short = true,
+	wpn_avt40_short = true,
+	wpn_aek919k = true,
+}
+
+-- Adjust gun radii by kind if cant find section in radii table
+wpn_kind_adjustment_table = {
+	w_pistol = -0.3,
+	w_smg = -0.12,
+	w_sniper = 0.12,
+	w_shotgun = -0.05,
+	w_rifle = 0,
+}
+
+local weapon_table = {}
+function add_to_weapon_table(sec, force)
+	if weapon_table[sec] and not force then return end
+	weapon_table[sec] = {
+		hands_position = (function()
+			local hud_sec = SYS_GetParam(0, sec, "hud")
+			local c = str_explode(utils_xml.is_widescreen() and SYS_GetParam(0, hud_sec, "hands_position_16x9") or SYS_GetParam(0, hud_sec, "hands_position") or "0,0,0", ",")
+			return {
+				[0] = tonumber(c[1]) or 0,
+				[1] = tonumber(c[2]) or 0,
+				[2] = tonumber(c[3]) or 0,
+			}
+		end)(),
+		hands_orientation = (function()
+			local hud_sec = SYS_GetParam(0, sec, "hud")
+			local c = str_explode(utils_xml.is_widescreen() and SYS_GetParam(0, hud_sec, "hands_orientation_16x9") or SYS_GetParam(0, hud_sec, "hands_orientation") or "0,0,0", ",")
+			return {
+				[0] = tonumber(c[1]) or 0,
+				[1] = tonumber(c[2]) or 0,
+				[2] = tonumber(c[3]) or 0,
+			}
+		end)(),
+		inv_weight = SYS_GetParam(2, sec, "inv_weight", 0),
+		zoom_rotate_time = SYS_GetParam(2, sec, "zoom_rotate_time", 0.25),
+	}
+end
+
+local target_pos = {
+	hands_position_pistol = {
+		[0] = -0.050912,
+		[1] = -0.646908,
+		[2] = 0.280633,
+	},
+	hands_position_rifle = {
+		[0] = 0.055224,
+		[1] = -0.6,
+		[2] = 0.202598,
+	}
+}
+
+local custom_offsets = {
+	[0] = 0,
+	[1] = 0,
+	[2] = 0,
+}
+
+function set_custom_offsets(x, y, z)
+	custom_offsets[0] = x or 0
+	custom_offsets[1] = y or 0
+	custom_offsets[2] = z or 0
+end
+
+local tilt_enabled = false
+local tilt_key_pressed = false
+local firepos_state = 0
+local yaw
+local roll
+local max_deg = 75
+local grace_threshold = 75
+local grace_time = 0
+
+function set_yaw(deg)
+	yaw = deg
+end
+
+function set_roll(deg)
+	roll = deg
+end
+
+function is_tilt_enabled()
+	return tilt_enabled
+end
+
+function is_tilt_key_pressed()
+	return tilt_key_pressed
+end
+
+function randomize_roll_yaw()
+	if not yaw then
+		local max_yaw = settings.yaw_variation
+		yaw = random_float(-max_yaw, max_yaw)
+	end
+
+	if not roll then
+		local max_roll = settings.roll_variation
+		roll = random_float(-max_roll, max_roll * 0.33)
+	end
+end
+
+function remove_roll_yaw()
+	yaw = nil
+	roll = nil
+end
+
+function enable_tilt(sec, wpn)
+	if scoped_weapon_zoomed then
+		if (get_console():get_bool("wpn_aim_toggle")) then
+			level.press_action(bind_to_dik(key_bindings.kWPN_ZOOM))
+		else
+			level.release_action(bind_to_dik(key_bindings.kWPN_ZOOM))
+		end
+	end
+
+	if not tilt_enabled then
+		-- Dirty AF hack to reset position (unused)
+		-- local wpn_hud = ui_debug_wpn_hud.WpnHudEditor(nil, sec)
+		-- if wpn_hud then
+		-- 	wpn_hud:Reset(true)
+		-- 	wpn_hud:Close()
+		-- end
+		reset_wpn_hud(sec)
+
+		hud_adjust.enabled(true)
+		set_weapon_position(sec, weapon_table[sec].hands_position, weapon_table[sec].hands_orientation)
+		
+		if debug_enabled() then
+			exec_console_cmd("g_firepos 1")
+		end
+
+		tilt_enabled = true
+		callback("actor_on_weapon_tilt_start", wpn)
+	end
+end
+
+function reset(sec)
+	if tilt_enabled then
+		if sec and weapon_table[sec] then reset_wpn_hud(sec) end
+		hud_adjust.enabled(false)
+		
+		if debug_enabled() then
+			exec_console_cmd("g_firepos " .. (firepos_state or 0))
+		end
+
+		smoothed_values.hands_position_x = nil
+		smoothed_values.hands_position_y = nil
+		smoothed_values.hands_position_z = nil
+		smoothed_values.hands_orientation_x = nil
+		smoothed_values.hands_orientation_y = nil
+		smoothed_values.hands_orientation_z = nil
+		smoothed_values.coeff = nil
+		tilt_enabled = false
+		tilt_key_pressed = false
+		grace_time = 0
+		callback("actor_on_weapon_tilt_end", wpn)
+	end
+end
+
+-- Get steps depending on inv_weight, heavier guns have less movement speed
+function get_weapon_weight(wpn, sec)
+	local cobj = wpn and wpn:cast_Weapon()
+	local weight = clamp(cobj and cobj:Weight() or (weapon_table[sec] and weapon_table[sec].inv_weight or 0), 0, 20)
+	return weight
+end
+
+function get_weapon_steps(wpn, sec)
+	return settings.animation_speed * (1 + get_weapon_weight(wpn, sec) * settings.animation_weight_coeff * 0.07)
+end
+
+function set_weapon_position(sec, new_pos, new_ori)
+	-- printf("old_pos for %s: %s, %s, %s", sec, weapon_table[sec].hands_position[0], weapon_table[sec].hands_position[1], weapon_table[sec].hands_position[2])
+	-- printf("new_pos for %s: %s, %s, %s", sec, new_pos[0], new_pos[1], new_pos[2])
+	-- printf("old_ori for %s: %s, %s, %s", sec, weapon_table[sec].hands_orientation[0], weapon_table[sec].hands_orientation[1], weapon_table[sec].hands_orientation[2])
+	-- printf("new_pri for %s: %s, %s, %s", sec, new_ori[0], new_ori[1], new_ori[2])
+
+	hud_adjust.set_vector(0, 0, new_pos[0] or 0, new_pos[1] or 0, new_pos[2] or 0)
+	hud_adjust.set_vector(1, 0, new_ori[0] or 0, new_ori[1] or 0, new_ori[2] or 0)
+	-- hud_adjust.set_vector(parameters[parent].idxa, parameters[parent].idxb, value_1, value_2, value_3)
+end
+
+function soft_reset(wpn, sec, delta)
+	if not weapon_table[sec] then return reset(sec) end
+	local delta = delta or device().time_delta
+
+	if tilt_enabled then
+		-- k is modifier for ema steps to have more inertia in the beginning of movement
+		local k = max(1, 1.5 - (1 - normalize(smoothed_values.hands_orientation_y or max_deg, weapon_table[sec].hands_orientation[1], max_deg)))
+
+		-- Increase speed of return to position when closer to it for zoomed weapons
+		local is_scoped = isScopedWeapon(wpn)
+		local scope_magnitude = 0.105
+		k = k * (is_scoped and normalize(smoothed_values.hands_orientation_y, weapon_table[sec].hands_orientation[1], max_deg) ^ scope_magnitude or 1)
+
+		-- printf("cur %s, min %s, max %s, %s", smoothed_values.hands_orientation_y, weapon_table[sec].hands_orientation[1], max_deg, k)
+		local steps = get_weapon_steps(wpn, sec) * k
+
+		-- Smooth the coeff
+		local coeff_smoothing = steps * 0.5
+		local coeff = ema("coeff", 0, 0, coeff_smoothing, delta)
+
+		-- Remove random roll and yaw if close to end
+		if coeff < 0.5 then
+			remove_roll_yaw()
+		end
+
+		local new_pos = {
+			[0] = ema("hands_position_x", lerp(weapon_table[sec].hands_position[0], smoothed_values.hands_position_x, coeff), weapon_table[sec].hands_position[0], steps, delta),
+			[1] = ema("hands_position_y", lerp(weapon_table[sec].hands_position[1], smoothed_values.hands_position_y, coeff), weapon_table[sec].hands_position[1], steps, delta),
+			[2] = ema("hands_position_z", lerp(weapon_table[sec].hands_position[2], smoothed_values.hands_position_z, coeff), weapon_table[sec].hands_position[2], steps, delta),
+		}
+
+		local new_ori = {
+			[0] = ema("hands_orientation_x", lerp(weapon_table[sec].hands_orientation[0], smoothed_values.hands_orientation_x, coeff), weapon_table[sec].hands_orientation[0], steps, delta),
+			[1] = ema("hands_orientation_y", lerp(weapon_table[sec].hands_orientation[1], smoothed_values.hands_orientation_y, coeff), weapon_table[sec].hands_orientation[1], steps, delta),
+			[2] = ema("hands_orientation_z", lerp(weapon_table[sec].hands_orientation[2], smoothed_values.hands_orientation_z, coeff), weapon_table[sec].hands_orientation[2], steps, delta),
+		}
+
+		local animation_progress = normalize(new_ori[1], weapon_table[sec].hands_orientation[1], max_deg)
+		callback("actor_on_weapon_tilting_back", wpn, animation_progress)
+
+		set_weapon_position(sec, new_pos, new_ori)
+
+		if scoped_weapon_zoomed then
+
+			-- Calculate remaining time for scope aiming
+			local ms = delta / 1000
+			local t = 0
+			local threshold = 0.0007
+			smoothed_values.t = animation_progress
+
+			while t < weapon_table[sec].zoom_rotate_time and smoothed_values.t > threshold do
+				local k = smoothed_values.t ^ scope_magnitude
+				local steps = get_weapon_steps(wpn, sec) * k
+				local old = smoothed_values.t
+				smoothed_values.t = ema("t", 0, 0, steps, delta)
+				t = t + ms
+			end
+
+			local res = smoothed_values.t
+			smoothed_values.t = nil
+
+			if res > threshold then
+				if (get_console():get_bool("wpn_aim_toggle")) then
+					level.press_action(bind_to_dik(key_bindings.kWPN_ZOOM))
+				else
+					level.release_action(bind_to_dik(key_bindings.kWPN_ZOOM))
+				end
+			end
+		end
+
+		for i = 0, 2, 1 do
+			if 	abs(new_pos[i] - weapon_table[sec].hands_position[i]) > 0.055
+			or 	abs(new_ori[i] - weapon_table[sec].hands_orientation[i]) > 0.055
+			then
+				return
+			end
+		end
+
+		-- printf("soft reset complete")
+		-- printf("animation_progress %s", animation_progress)
+		reset(sec)
+	end
+end
+
+function calculate_new_position(wpn, sec, coeff, delta, steps)
+	-- Calculate new position
+	local position_coeff_y = -0.445
+	local position_coeff_z = 0.565
+	local delta = delta or device().time_delta
+
+	-- Get steps depending on inv_weight, heavier guns have less movement speed
+	-- k is modifier for ema steps to have more inertia in the beginning of movement
+	if not steps then
+		local k = max(1, 1.5 - sqrt(normalize(smoothed_values.hands_orientation_y or weapon_table[sec].hands_orientation[1], weapon_table[sec].hands_orientation[1], max_deg)))
+		steps = get_weapon_steps(wpn, sec) * k
+	end
+
+	-- Smooth the coeff
+	local coeff_smoothing = steps * 0.5
+	coeff = ema("coeff", coeff, 0, coeff_smoothing, delta)
+	
+	local is_pistol = SYS_GetParam(0, sec, "kind", "") == "w_pistol" and not not_pistol_sec[sec]
+	local new_pos
+	if wpn_positions.weapon_positions[sec] then
+		local p = wpn_positions.weapon_positions[sec]
+		new_pos = {
+			[0] = lerp(weapon_table[sec].hands_position[0], p.x or weapon_table[sec].hands_position[0], coeff),
+			[1] = lerp(weapon_table[sec].hands_position[1], p.y or weapon_table[sec].hands_position[1], coeff),
+			[2] = lerp(weapon_table[sec].hands_position[2], p.z or weapon_table[sec].hands_position[2], coeff ^ 3.5),
+		}
+	else
+		-- Check for scopes on weapons
+		if not wpn_positions.weapon_offsets[sec] then
+			local parent = SYS_GetParam(0, sec, "parent_section", sec)
+			local scopes = str_explode(SYS_GetParam(0, parent, "scopes", ""), ",")
+			for k, v in pairs(scopes) do
+				if (parent .. "_" .. v) == sec then
+					wpn_positions.weapon_offsets[sec] = wpn_positions.weapon_offsets[parent]
+					break
+				end
+			end
+
+			-- Add table with 0 offsets if no weapon offset found
+			if not wpn_positions.weapon_offsets[sec] then
+				wpn_positions.weapon_offsets[sec] = {
+					x = 0,
+					y = 0,
+					z = 0
+				}
+			end
+		end
+
+		local o = {
+			[0] = wpn_positions.weapon_offsets[sec].x or 0,
+			[1] = wpn_positions.weapon_offsets[sec].y or 0,
+			[2] = wpn_positions.weapon_offsets[sec].z or 0,
+		}
+
+		-- Interpolate between offseted position and desirable closer to obstacle, looks better, mostly
+		-- Different calculations for pistols
+		if is_pistol then
+			local target_pos = {
+				[0] = weapon_table[sec].hands_position[0] + settings.offset_x + custom_offsets[0],
+				[1] = target_pos.hands_position_pistol[1] + settings.offset_y + custom_offsets[1],
+				[2] = target_pos.hands_position_pistol[2] + settings.offset_z + custom_offsets[2],
+			}
+
+			-- local a = {
+			-- 	[0] = weapon_table[sec].hands_position[0] + o[0] * coeff,
+			-- 	[1] = weapon_table[sec].hands_position[1] + (o[1] + position_coeff_y) * coeff,
+			-- 	[2] = weapon_table[sec].hands_position[2] + (o[2] + position_coeff_z) * coeff >= 1 and coeff or coeff ^ 2,
+			-- }
+
+			local b = {
+				[0] = lerp(weapon_table[sec].hands_position[0], (o[0] + target_pos[0]), coeff),
+				[1] = lerp(weapon_table[sec].hands_position[1], (o[1] + target_pos[1]), coeff),
+				[2] = lerp(weapon_table[sec].hands_position[2], (o[2] + target_pos[2]), coeff >= 1 and coeff or coeff ^ 2),
+			}
+
+			-- local c = {
+			-- 	[0] = lerp(b[0], b[0], coeff),
+			-- 	[1] = lerp(b[1], b[1], coeff),
+			-- 	[2] = lerp(b[2], b[2], coeff ^ 2),
+			-- }
+
+			new_pos = b
+		else
+			local target_pos = {
+				[0] = weapon_table[sec].hands_position[0] + settings.offset_x + custom_offsets[0],
+				[1] = target_pos.hands_position_rifle[1] + settings.offset_y + custom_offsets[1],
+				[2] = target_pos.hands_position_rifle[2] + settings.offset_z + custom_offsets[2],
+			}
+
+			local a = {
+				[0] = weapon_table[sec].hands_position[0] + o[0] * coeff,
+				[1] = weapon_table[sec].hands_position[1] + (o[1] + position_coeff_y) * coeff,
+				[2] = weapon_table[sec].hands_position[2] + (o[2] + position_coeff_z) * (coeff >= 1 and coeff or coeff ^ 3.5),
+			}
+
+			local b = {
+				[0] = lerp(weapon_table[sec].hands_position[0], (o[0] + target_pos[0]), coeff),
+				[1] = lerp(weapon_table[sec].hands_position[1], (o[1] + target_pos[1]), coeff),
+				[2] = lerp(weapon_table[sec].hands_position[2], (o[2] + target_pos[2]), coeff >= 1 and coeff or coeff ^ 3.5),
+			}
+
+			local c = {
+				[0] = lerp(a[0], b[0], coeff),
+				[1] = lerp(a[1], b[1], coeff),
+				[2] = lerp(a[2], b[2], coeff >= 1 and coeff or coeff ^ 3.5),
+			}
+
+			new_pos = c
+		end
+	end
+
+	-- Smooth new position
+	new_pos = {
+		[0] = ema("hands_position_x", new_pos[0], weapon_table[sec].hands_position[0], steps, delta),
+		[1] = ema("hands_position_y", new_pos[1], weapon_table[sec].hands_position[1], steps, delta),
+		[2] = ema("hands_position_z", new_pos[2], weapon_table[sec].hands_position[2], steps, delta),
+	}
+
+	-- Randomize roll and yaw
+	randomize_roll_yaw()
+	local new_ori = {
+		[0] = ema("hands_orientation_x", weapon_table[sec].hands_orientation[0] + yaw * coeff, weapon_table[sec].hands_orientation[0], steps, delta),
+		[1] = ema("hands_orientation_y", weapon_table[sec].hands_orientation[1] + max_deg * coeff, weapon_table[sec].hands_orientation[1], steps, delta),
+		[2] = ema("hands_orientation_z", weapon_table[sec].hands_orientation[2] + roll * coeff, weapon_table[sec].hands_orientation[2], steps, delta),
+	}
+	return new_pos, new_ori
+end
+
+local force_disabled = false
+function set_force_disabled(v)
+	force_disabled = v or v == nil
+end
+
+local reset_on_show_done = false
+function actor_on_update(binder, delta)
+	if force_disabled then return end
+
+	local actor = db.actor
+
+	-- Cancel if PDA is active
+	if actor:active_slot() == 8 or actor:active_slot() == 14 then
+		return reset()
+	end
+
+	local wpn = actor:active_item()
+
+	-- printf("%s", delta)
+
+	-- Reset if no wpn
+	if not wpn then
+		return reset()
+	end
+
+	local sec = wpn:section()
+	local hud_sec = SYS_GetParam(0, sec, "hud")
+
+	-- Reset when no hud sec
+	if not hud_sec then
+		return reset(sec)
+	end
+
+	-- Reset if melee weapon or binocs
+	if IsMelee(wpn) or IsItem("fake_ammo_wpn", sec) or IsBinoc(sec) then
+		return reset(sec)
+	end
+
+	-- Reset if throwable weapon (grenade, bolt)
+	if IsBolt(wpn) or IsGrenade(wpn) or IsThrowable(wpn) then
+		return reset(sec)
+	end
+
+	-- Add to weapon table
+	if not weapon_table[sec] then
+		add_to_weapon_table(sec)
+	end
+
+	-- Reset HUD once on weapon raise
+	local state = wpn:get_state()
+	if state == 1 then
+		if not reset_on_show_done then
+			-- printf("reset on show for %s", sec)
+			reset_on_show_done = true
+			reset(sec)
+		end
+	else
+		reset_on_show_done = false
+	end
+
+	-- Reset if callback function set enabled to false
+	local flags = {
+		enabled = true
+	}
+	callback("actor_on_weapon_before_tilt", wpn, flags)
+	if not flags.enabled then
+		return reset(sec)
+	end
+
+	-- Soft reset if weapon is lowered
+	if actor_weapon_lowered() then
+		return soft_reset(wpn, sec, delta)
+	end
+
+	-- Cancel if detector is active
+	if actor:active_detector() then
+		return soft_reset(wpn, sec, delta)
+	end
+
+	-- Soft reset if hiding weapon or reloading
+	if state == 2 or state == 7 then
+		return soft_reset(wpn, sec, delta)
+	end
+
+	local new_pos, new_ori
+	if tilt_key_pressed then
+		new_pos, new_ori = calculate_new_position(wpn, sec, 1, delta)
+	else
+		-- Get max dist based on weapon
+		-- Check for scopes on weapons
+		if not wpn_radii[sec] then
+			local parent = SYS_GetParam(0, sec, "parent_section", sec)
+			local scopes = str_explode(SYS_GetParam(0, parent, "scopes", ""), ",")
+			for k, v in pairs(scopes) do
+				if (parent .. "_" .. v) == sec then
+					wpn_radii[sec] = wpn_radii[parent]
+					break
+				end
+			end
+
+			if not wpn_radii[sec] then
+				local best_match = getBestMatch(sec)
+				if best_match then
+					wpn_radii[sec] = wpn_radii[best_match]
+				end
+			end
+
+			-- Adjust by weapon kind
+			if not wpn_radii[sec] then
+				local wpn_kind = SYS_GetParam(0, sec, "kind", "")
+				local wpn_kind_adjustment = wpn_kind_adjustment_table[wpn_kind] or 0
+				wpn_radii[sec] = wpn_kind_adjustment
+			end
+
+			if not wpn_radii[sec] then
+				wpn_radii[sec] = 0
+			end
+		end
+
+		local max_dist = settings.trigger_radius
+
+		-- Adjust distance
+		local dist_adjustment = (
+			-- Adjust distance based on wpn_radii table
+			(wpn_radii[sec] or 0)
+
+			-- Adjust distance based on silenced weapon
+			+ (settings.consider_silencer and isSilencedWeapon(wpn) and 0.12 or 0)
+		)
+			-- Magnify the adjustment
+			* settings.trigger_radius_magnitude
+
+		-- Adjust the distance
+		max_dist = max_dist + dist_adjustment
+
+		local dist = max(0, get_target_dist() - 0.5)
+
+		if wpn:section() ~= current_weapon_sec then
+			current_weapon_sec = wpn:section()
+			reset_saved_vars()
+			saved_time = time_global()
+		end
+
+		if settings.use_fire_bone and MODDED_EXES_VERSION >= 20250422 then
+			local timeout = 1500
+
+			-- Get fire point bone position where barrel end resides
+			local fire_bone = SYS_GetParam(0, hud_sec, "fire_bone", "wpn_body")
+			local offset = SYS_GetParam(0, hud_sec, "fire_point", "0,0,0")
+			if isSilencedWeapon(wpn) then
+				fire_bone = SYS_GetParam(0, hud_sec, "fire_bone_silencer", fire_bone)
+				offset = SYS_GetParam(0, hud_sec, "fire_point_silencer", offset)
+			end
+			offset = utils_data.string_to_vector(offset)
+			local pos = wpn:bone_position(fire_bone, true)
+			local mat = wpn:bone_transform(fire_bone, true)
+			mat:transform_tiny(pos, offset)
+			pos:hud_to_world()
+
+			-- Get fire direction
+			local fire_dir = utils_data.string_to_vector(SYS_GetParam(0, hud_sec, "fire_direction", "0,0,1"))
+			local item_transform = wpn:xform(true)
+			item_transform:transform_dir(fire_dir)
+			fire_dir:normalize()
+
+			local fire_particles_mat = matrix():identity()
+
+			-- Do it like that
+			local fp_i = fire_particles_mat.i
+			local fp_j = fire_particles_mat.j
+			local fp_k = fire_particles_mat.k
+			fp_k:set(fire_dir)
+
+			vector.generate_orthonormal_basis_normalized(fp_k, fp_j, fp_i)
+			fire_dir:set(fp_k)
+
+			-- If fire_dir looks opposite to device().cam_dir, invert it
+			if fire_dir:dotproduct(device().cam_dir) < 0 then
+				fire_dir:invert()
+			end
+
+			-- Adjust for silencer
+			if settings.consider_silencer and isSilencedWeapon(wpn) and not (SYS_GetParam(0, hud_sec, "fire_bone_silencer") or SYS_GetParam(0, hud_sec, "fire_point_silencer")) then
+				pos:mad(fire_dir, 0.12)
+			end
+
+			-- Adjust from trigger_radii table
+			if wpn_radii_fire_bone[wpn:section()] then
+				pos:mad(fire_dir, wpn_radii_fire_bone[wpn:section()])
+			end
+
+			saved_variables.bone_pos = vector():set(pos)
+
+			-- If position is too close to device().cam_pos, adjust it in opposite direction
+			if vector():set(pos):sub(device().cam_pos):normalize():dotproduct(device().cam_dir) < 0.88 then
+				local projection = vector():project(fire_dir, device().cam_dir)
+				local length = (0.94 - vector():set(pos):sub(device().cam_pos):normalize():dotproduct(device().cam_dir)) / projection:magnitude()
+				pos:mad(projection, length)
+				pos:mad(fire_dir, 0.2)
+				
+				if settings.consider_silencer and isSilencedWeapon(wpn) and not (SYS_GetParam(0, hud_sec, "fire_bone_silencer") or SYS_GetParam(0, hud_sec, "fire_point_silencer")) then
+					pos:mad(fire_dir, 0.12)
+				end
+
+				if wpn_radii_fire_bone[wpn:section()] then
+					pos:mad(fire_dir, wpn_radii_fire_bone[wpn:section()])
+				end
+			end
+
+			-- Slightly move back for some tolerance
+			pos:mad(fire_dir, -0.05)
+
+			saved_variables.pos = vector():set(pos)
+
+			-- Adjust position for correct ray cast after and animation leverage
+			local offset = vector():set(pos):distance_to(device().cam_pos) - 0.22
+			local ray_length = max(0.2, offset)
+			pos:mad(fire_dir, -ray_length)			
+
+			-- If not near wall, save offsets to use when tilt is engaged
+			if time_global() - saved_time > timeout then
+				local offset1 = vector():set(pos):sub(device().cam_pos)
+				local offset2 = vector():mad(pos, fire_dir, 0.5):sub(device().cam_pos)
+				local offset1_length = offset1:magnitude()
+				local offset2_length = offset2:magnitude()
+				local ui_offset1 = game.world2ui(pos, false, true)
+				local ui_offset2 = game.world2ui(vector():mad(pos, fire_dir, 0.5), false, true)
+
+				-- Save parameters when not in tilt and idling
+				if not tilt_enabled and state == 0 then
+					saved_variables.offset1_length = offset1_length
+					saved_variables.offset2_length = offset2_length
+					saved_variables.ui_offset1 = ui_offset1
+					saved_variables.ui_offset2 = ui_offset2
+					saved_variables.ray_length = ray_length
+				end
+			end
+
+			-- disable feature when weapon is zoomed
+			if axr_main.weapon_is_zoomed then
+				reset_saved_vars()
+			end
+
+			-- If saved offsets, get original fire_point position before tilt
+			if saved_variables.offset1_length then
+				local new_pos = game.ui2world_offscreen(saved_variables.ui_offset1)
+				local new_pos_dir = vector():set(new_pos):sub(device().cam_pos):normalize()
+				local pos = device().cam_pos:mad(new_pos_dir, saved_variables.offset1_length)
+
+				local new_pos2 = game.ui2world_offscreen(saved_variables.ui_offset2)
+				local new_pos2_dir = vector():set(new_pos2):sub(device().cam_pos):normalize()
+				local pos2 = device().cam_pos:mad(new_pos2_dir, saved_variables.offset2_length)
+				local fire_dir = vector():set(pos2):sub(pos):normalize()
+
+				-- Ray cast to wall
+				local ray_range = 100
+				local ray = dgr.geometry_ray({
+					ray_range = saved_variables.ray_length,
+					ignore_object = db.actor,
+					flags = 3
+				})
+				local ray_collision_result = ray:get(pos, fire_dir)
+				if ray_collision_result.success then
+					dist = ray_collision_result.distance
+					max_dist = ray.ray_range
+				else
+					dist = ray_range
+				end
+
+				if settings.use_fire_bone_debug then
+					gizmos.fireBoneSphere.visible = true
+					gizmos.fireBoneSphere.color = fcolor():set(0,1,0,1)
+					local scale_mat = matrix():identity():scale(0.01, 0.01, 0.01)
+					local pos_mat = matrix():translate(pos)
+					local mat = matrix():mul(pos_mat, scale_mat)
+					gizmos.fireBoneSphere.matrix = mat
+
+					gizmos.fireBoneSphereAdjusted.visible = true
+					gizmos.fireBoneSphereAdjusted.color = fcolor():set(1,0,0,1)
+					local scale_mat = matrix():identity():scale(0.01, 0.01, 0.01)
+					local pos_mat = matrix():translate(saved_variables.pos)
+					local mat = matrix():mul(pos_mat, scale_mat)
+					gizmos.fireBoneSphereAdjusted.matrix = mat
+
+					gizmos.fireBoneSphereReal.visible = true
+					gizmos.fireBoneSphereReal.color = fcolor():set(1,1,0,1)
+					local scale_mat = matrix():identity():scale(0.01, 0.01, 0.01)
+					local pos_mat = matrix():translate(saved_variables.bone_pos)
+					local mat = matrix():mul(pos_mat, scale_mat)
+					gizmos.fireBoneSphereReal.matrix = mat
+
+					gizmos.collisionLine.visible = true
+					gizmos.collisionLine.color = ray_collision_result.success and fcolor():set(1,0,0,1) or fcolor():set(0,1,0,1)
+					gizmos.collisionLine.point_a = pos
+					gizmos.collisionLine.point_b = ray_collision_result.position
+				end
+			else
+				if settings.use_fire_bone_debug then
+					gizmos.fireBoneSphere.visible = false
+					gizmos.fireBoneSphereAdjusted.visible = false
+					gizmos.fireBoneSphereReal.visible = false
+					gizmos.collisionLine.visible = false
+				end
+			end
+		end
+
+		-- Soft reset if distance is more than max_dist
+		if dist > max_dist then
+			return soft_reset(wpn, sec, delta)
+		end
+
+		-- Soft reset if target is enemy stalker or monster
+		local target_obj = get_target_obj()
+		if target_obj and (IsMonster(target_obj) or (IsStalker(target_obj) and xr_combat_ignore.is_enemy(target_obj, actor, true))) then
+			return soft_reset(wpn, sec, delta)
+		end
+
+		-- Soft reset is material is shootable, engine edit required
+		if isShootableMaterial() then
+			return soft_reset(wpn, sec, delta)
+		end
+
+		-- Don't raise before grace time expired
+		-- if grace_time < grace_threshold then
+		-- 	grace_time = grace_time + device().time_delta
+		-- 	return
+		-- end
+
+		-- Apply non linear coefficient
+		local coeff = random_funcs.CircularEaseOutPowered(1 - dist / max_dist, 0.65)
+
+		-- Calculate new position
+		new_pos, new_ori = calculate_new_position(wpn, sec, coeff, delta)
+	end
+
+	-- Adjust hud
+	enable_tilt(sec, wpn)
+	local animation_progress = normalize(new_ori[1], weapon_table[sec].hands_orientation[1], max_deg)
+	if animation_progress > 0 then
+		callback("actor_on_weapon_tilting", wpn, animation_progress)
+	end
+	set_weapon_position(sec, new_pos, new_ori)
+	
+end
+
+function actor_on_weapon_zoom_in(obj)
+	scoped_weapon_zoomed = isScopedWeapon(obj)
+end
+
+function actor_on_weapon_zoom_out(obj)
+	scoped_weapon_zoomed = false
+end
+
+function on_key_press(dik)
+	if dik == settings.manual_tilt_key_bind then
+		tilt_key_pressed = not tilt_key_pressed
+	else
+		local bind = dik_to_bind(dik)
+		local kb = key_bindings
+
+		if bind == kb.kWPN_ZOOM
+		or bind == kb.kWPN_FIRE
+		then
+			-- Postpone on next tick, needed to not fire on raised state
+			dte.CreateTimeEvent("tilt_key_pressed_postpone", 0, 0, function()
+				tilt_key_pressed = false
+				return true
+			end)
+		end
+	end
+end
+
+function actor_on_weapon_before_fire(flags)
+	if tilt_key_pressed then
+		tilt_key_pressed = false
+		flags.ret_value = false
+	end
+end
+
+function reset_settings()
+	load_settings()
+
+	toggleDebugMode()
+
+	if settings.enable_manual_tilt then
+		RegisterScriptCallback("on_key_press", on_key_press)
+	else
+		tilt_key_pressed = false
+		UnregisterScriptCallback("on_key_press", on_key_press)
+	end
+
+	if settings.enabled then
+		RegisterScriptCallback("actor_on_update", actor_on_update)
+	else
+		local sec
+		if db.actor then
+			local wpn = db.actor:active_item()
+			sec = wpn and wpn:section()
+		end
+		reset(sec)
+		UnregisterScriptCallback("actor_on_update", actor_on_update)
+	end
+end
+
+function actor_on_first_update()
+	-- firepos_state = debug_enabled() and get_console_cmd(0, "g_firepos") or 0
+	firepos_state = 0
+	reset_settings()
+end
+
+-- Reset without parameter, for callbacks
+function reset_func()
+	reset()
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_option_change", reset_settings)
+	RegisterScriptCallback("actor_on_before_death", reset_func)
+	RegisterScriptCallback("actor_on_net_destroy", reset_func)
+	RegisterScriptCallback("on_before_level_changing", reset_func)
+	RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+	RegisterScriptCallback("actor_on_update", actor_on_update)
+	RegisterScriptCallback("actor_on_weapon_zoom_in", actor_on_weapon_zoom_in)
+	RegisterScriptCallback("actor_on_weapon_zoom_out", actor_on_weapon_zoom_out)
+	RegisterScriptCallback("actor_on_weapon_before_fire", actor_on_weapon_before_fire)
+	RegisterScriptCallback("on_key_press", on_key_press)
+end
+
+-- Patches
+-- Safemode when weapon is raised manually
+actor_is_safemode = xr_conditions.actor_is_safemode
+xr_conditions.actor_is_safemode = function(actor, npc)
+	return actor_is_safemode(actor, npc) or (tilt_enabled and tilt_key_pressed)
+end
+
+function muzzle_pos()
+	local item = db.actor:active_item()
+	if not item then return end
+	local pos = utils_obj.safe_bone_pos(item, "muzzle")
+	return game.world2ui(pos, true)
+end
+

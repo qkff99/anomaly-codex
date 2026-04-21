@@ -1,0 +1,172 @@
+![wpn_k98_mod]
+>scopes					= skeet
+
+scope_zoom_factor                = 7.5
+min_scope_zoom_factor			 = 30		
+scope_texture                    =
+			
+	s3ds_reticle_size 	= 4.9
+	s3ds_eye_relief 	= 3.1
+	s3ds_ffp			= 1	
+	s3ds_reticle_type 	= 2
+	ms_count 			= 2
+	ms_colors 			= scope_black, scope_red
+	magnifications		= 4-16
+		
+lewd_lens_hide_enabled       = true
+lewd_lens_hide_bone          = lens
+lewd_lens_hide_delays        = 0.1,0
+lewd_lens_hide_aim_mode      = true, false, false	
+
+![wpn_k98_mod_hud]
+        aim_hud_offset_pos               = -0.077966, -0.00207, -0.137083
+        aim_hud_offset_pos_16x9          = -0.077966, -0.00207, -0.137083
+        aim_hud_offset_rot               = -0.009555, 0.005164, 0
+        aim_hud_offset_rot_16x9          = -0.009555, 0.005164, 0
+		
+;-----------------------------------------------------------------------
+[wpn_k98_mod_skeet]:wpn_k98_mod
+
+1icon_layer                              = skeet_x
+1icon_layer_x                            = 169
+1icon_layer_y                            = 1
+
+hud                                      = wpn_k98_mod_skeet_hud
+
+scope_zoom_factor                = 7.5
+min_scope_zoom_factor			 = 30		
+scope_texture                    =
+			
+	s3ds_reticle_size 	= 4.9
+	s3ds_eye_relief 	= 3.1
+	s3ds_ffp			= 1	
+	s3ds_image_type		= 3
+	s3ds_reticle_type	= 7
+	ms_count 			= 0
+	magnifications		= 4-16
+	
+lewd_lens_hide_enabled       = true
+lewd_lens_hide_bone          = lens
+lewd_lens_hide_delays        = 0.1,0
+lewd_lens_hide_aim_mode      = true, false, false
+
+[wpn_k98_mod_skeet_hud]:wpn_k98_mod_hud
+item_visual		= dynamics\weapons\wpn_k98_mod\wpn_k98_mod_skeet_hud.ogf
+        aim_hud_offset_pos               = -0.077966, -0.00207, -0.137083
+        aim_hud_offset_pos_16x9          = -0.077966, -0.00207, -0.137083
+        aim_hud_offset_rot               = -0.009555, 0.005164, 0
+        aim_hud_offset_rot_16x9          = -0.009555, 0.005164, 0
+		
+;==============================================================================
+![wpn_k98_mod_silen98]
+parent_section			= wpn_k98_mod_silen98
+scopes					= skeet
+
+scope_zoom_factor                = 7.5
+min_scope_zoom_factor			 = 30		
+scope_texture                    =
+			
+	s3ds_reticle_size 	= 4.9
+	s3ds_eye_relief 	= 3.1
+	s3ds_ffp			= 1	
+	s3ds_reticle_type 	= 2
+	ms_count 			= 2
+	ms_colors 			= scope_black, scope_red
+	magnifications		= 4-16
+
+lewd_lens_hide_enabled       = true
+lewd_lens_hide_bone          = lens
+lewd_lens_hide_delays        = 0.1,0
+lewd_lens_hide_aim_mode      = true, false, false	
+
+;-----------------------------------------------------------------------
+[wpn_k98_mod_silen98_skeet]:wpn_k98_mod_silen98
+
+1icon_layer                              = skeet_x
+1icon_layer_x                            = 169
+1icon_layer_y                            = 1
+
+hud                                      = wpn_k98_mod_silen98_skeet_hud
+
+scope_zoom_factor                = 7.5
+min_scope_zoom_factor			 = 30		
+scope_texture                    =
+			
+	s3ds_reticle_size 	= 4.9
+	s3ds_eye_relief 	= 3.1
+	s3ds_ffp			= 1	
+	s3ds_image_type		= 3
+	s3ds_reticle_type	= 7
+	ms_count 			= 0
+	magnifications		= 4-16
+	
+lewd_lens_hide_enabled       = true
+lewd_lens_hide_bone          = lens
+lewd_lens_hide_delays        = 0.1,0
+lewd_lens_hide_aim_mode      = true, false, false
+
+[wpn_k98_mod_silen98_skeet_hud]:wpn_k98_mod_silen98_hud
+item_visual		= dynamics\weapons\wpn_k98_mod\wpn_k98_mod_silen98_skeet_hud.ogf
+        aim_hud_offset_pos               = -0.077966, -0.00207, -0.137083
+        aim_hud_offset_pos_16x9          = -0.077966, -0.00207, -0.137083
+        aim_hud_offset_rot               = -0.009555, 0.005164, 0
+        aim_hud_offset_rot_16x9          = -0.009555, 0.005164, 0
+		
+;==============================================================================
+![wpn_k98_mauser_kit]
+parent_section	= wpn_k98_mauser_kit	
+
+<scopes		= silen98
+scopes		= skeet
+
+scope_zoom_factor                = 7.5
+min_scope_zoom_factor			 = 30		
+scope_texture                    =
+			
+	s3ds_reticle_size 	= 4.9
+	s3ds_eye_relief 	= 3.1
+	s3ds_ffp			= 1	
+	s3ds_min_zoom_fov 	= 14
+	s3ds_max_zoom_fov 	= 5
+	s3ds_reticle_type 	= 2
+	ms_count 			= 2
+	ms_colors 			= scope_black, scope_red
+	magnification		= 16
+	
+lewd_lens_hide_enabled       = true
+lewd_lens_hide_bone          = lens
+lewd_lens_hide_delays        = 0.1,0
+lewd_lens_hide_aim_mode      = true, false, false
+
+;-----------------------------------------------------------------------
+[wpn_k98_mauser_kit_skeet]:wpn_k98_mauser_kit
+
+1icon_layer                              = skeet_x
+1icon_layer_x                            = 169
+1icon_layer_y                            = 1
+
+hud                                      = wpn_k98_mauser_kit_skeet_hud
+
+scope_zoom_factor                = 7.5
+min_scope_zoom_factor			 = 30		
+scope_texture                    =
+			
+	s3ds_reticle_size 	= 4.9
+	s3ds_eye_relief 	= 3.1
+	s3ds_ffp			= 1	
+	s3ds_image_type		= 3
+	s3ds_reticle_type	= 7
+	ms_count 			= 0
+	magnifications		= 4-16
+	
+lewd_lens_hide_enabled       = true
+lewd_lens_hide_bone          = lens
+lewd_lens_hide_delays        = 0.1,0
+lewd_lens_hide_aim_mode      = true, false, false
+
+[wpn_k98_mauser_kit_skeet_hud]:wpn_k98_mauser_kit_hud
+item_visual		= dynamics\weapons\wpn_k98_mod\wpn_k98_mod_silen98_skeet_hud.ogf
+        aim_hud_offset_pos               = -0.077966, -0.00207, -0.137083
+        aim_hud_offset_pos_16x9          = -0.077966, -0.00207, -0.137083
+        aim_hud_offset_rot               = -0.009555, 0.005164, 0
+        aim_hud_offset_rot_16x9          = -0.009555, 0.005164, 0

@@ -1,0 +1,182 @@
+--------------------------------------------------------------------------------
+-- Ashot and Yar's Special Delivery
+--------------------------------------------------------------------------------
+-- 
+-- Restores Ashot and Yar's cut quest
+-- from Anomaly's integrated SZA Freeplay mod.
+-- 
+--------------------------------------------------------------------------------
+-- Implemented by Lhan
+--------------------------------------------------------------------------------
+local get_task_manager = task_manager.get_task_manager
+local fmod = math.fmod
+local min = math.min
+local floor = math.floor
+local random = math.floor
+local ini_aysd = ini_file("plugins\\aysd.ltx")
+
+-- Monkey-patch the dialog generator to correct its misplaced strformat param
+function dialogs_jupiter.dm_ashot_and_yar_generate_dialog(a, b)
+   -- Figure out which party is the NPC
+   local npc = dialogs.who_is_npc(a,b)
+
+   -- Fetch the NPC's story ID
+   local sid = get_object_story_id(npc:id())
+
+   -- If the NPC is neither Ashot nor Yar, throw an error
+   if sid ~= "jup_b19_freedom_yar"
+      and sid ~= "jup_a6_freedom_trader_ashot"
+   then
+      assert(nil, "Invalid Ashot and Yar Story ID")
+   end
+
+   -- Fetch the task manager
+   local tm = get_task_manager()
+
+   -- Fetch the Ashot and Yar task from the task manager
+   local tsk = tm.task_info["jup_b19_freedom_yar_task_1"]
+
+   -- Prepare text and target name vars
+   local text = {}
+   local target_name = ""
+
+   if sid == "jup_b19_freedom_yar" then
+      -- If we're talking to Yar, populate with his dialog
+      for i=1,5 do
+         text[#text+1] = "st_jup_yar_reply_"..i
+      end
+
+      target_name = game.translate_string("jup_a6_freedom_trader_ashot_name")
+   elseif sid == "jup_a6_freedom_trader_ashot" then
+      -- If we're talking to Ashot, populate with his dialog
+      for i=1,5 do
+         text[#text+1] = "st_jup_ashot_reply_"..i
+      end
+
+      target_name = game.translate_string("jup_b19_freedom_yar_name")
+   else
+      assert(nil, "Unreachable")
+   end
+
+   -- Increment task stage
+   tsk.stage = tsk.stage + 1
+
+   -- Format reply and return
+   local reply_id = text[random(#text)]
+   local reply = game.translate_string(reply_id)
+   return strformat(reply, target_name)
+end
+
+-- Monkey-patch message receiver predicate with new stage handling
+function dialogs_jupiter.is_message_receiver(a,b)
+   printf("is_message_receiver")
+
+   -- Fetch the task manager
+   local tm = get_task_manager()
+
+   -- Fetch the Ashot and Yar task from the task manager
+   local tsk = tm.task_info["jup_b19_freedom_yar_task_1"]
+
+   printf("  tsk: %s", tsk)
+
+   -- Early-out if there is no such task
+   if not tsk then
+      return false
+   end
+
+   printf("  stage: %s", tsk.stage)
+
+   -- Figure out which party is the NPC
+   local npc = dialogs.who_is_npc(a,b)
+   printf("  npc: %s", npc)
+
+   -- Fetch the NPC's story ID
+   local sid = get_object_story_id(npc:id())
+   printf("  sid: %s", sid)
+
+   -- Calculate the task stage modulo 2
+   local mod_stage = fmod(tsk.stage, 2)
+   printf("  mod_stage: %s", mod_stage)
+
+   local ashot_receiver = sid == "jup_a6_freedom_trader_ashot"
+                      and mod_stage == 0
+   printf("  ashot_receiver: %s", ashot_receiver)
+
+   local yar_receiver = sid == "jup_b19_freedom_yar"
+                    and mod_stage == 1
+   printf("  yar_receiver: %s", yar_receiver)
+
+   return ashot_receiver or yar_receiver
+end
+
+-- Monkey-patch the task target functor with new stage handling
+function task_functor.jup_b19_freedom_yar_task_target(task_id,field,p,tsk)
+   if task_id ~= "jup_b19_freedom_yar_task_1" then
+      return nil
+   end
+
+   if not tsk then
+      return nil
+   end
+
+   local squad = nil
+   local mod_stage = fmod(tsk.stage, 2)
+
+   if mod_stage == 0 then
+      squad = get_story_squad("jup_a6_freedom_trader_ashot_squad")
+   elseif mod_stage == 1 then
+      squad = get_story_squad("jup_b19_freedom_yar_squad")
+   end
+
+   return squad and squad.id
+end
+
+-- Inject a money reward effect that doesn't use the economy multiplier
+function xr_effects.reward_exact_money(actor,npc,p)
+   dialogs.relocate_money(db.actor, tonumber(p[1] or 1), "in")
+end
+
+-- Inject a special reward handler into xr_effects
+function xr_effects.reward_yar_ashot(actor, npc, p)
+   printf("reward_yar_ashot")
+
+   -- Fetch the task manager
+   local tm = get_task_manager()
+
+   -- Fetch the Ashot and Yar task
+   local tsk = tm.task_info["jup_b19_freedom_yar_task_1"]
+   printf("  tsk.stage: %s", tsk.stage)
+
+   -- Fetch reward tiers from LTX
+   local tiers = utils_data.collect_section(ini_aysd, "rewards", true)
+
+   -- Convert their keys into numbers
+   printf("  tiers:")
+   for k,v in pairs(tiers) do
+      printf("    %s: %s", k, v)
+      tiers[tonumber(k)] = v
+   end
+
+   -- Calculate reward tier index
+   -- One trip to Ashot and back = +1 tier
+   local idx = min(
+      floor((tsk.stage + 1) / 2),
+      #tiers
+   )
+   printf("  idx: %s", idx)
+
+   -- Fetch the reward tier
+   local tier = tiers[idx]
+   printf("  tier: %s", tier)
+
+   -- If there's a reward to be had...
+   if tier then
+      -- Parse the tier into a condlist
+      local condlist = xr_logic.parse_condlist(nil, "rewards", nil, tier)
+      printf("  condlist: %s", tier)
+
+      -- Execute it
+      local result = xr_logic.pick_section_from_condlist(actor, npc, condlist)
+      printf("  result: %s", result)
+   end
+end

@@ -1,0 +1,36 @@
+[logic]
+active = sr_idle
+ 
+[sr_idle]
+on_info = {+bar_deactivate_radar_done} sr_idle@nil
+on_info2 = {=actor_community(actor_monolith)} sr_idle@nil
+on_actor_inside = {+bar_deactivate_radar_done} sr_idle@nil, {=actor_has_item(good_psy_helmet)} sr_timer@1 %=play_sound(rad_hat_1)%, {=actor_has_item(bad_psy_helmet)} sr_timer@2 %=play_sound(rad_hat_1)%, %=kill_actor%
+ 
+[sr_timer@1]
+type = dec
+start_value = 600000
+on_value = 5 | %=play_sound(rad_hat_2)% | 0 | sr_idle@nil %=kill_actor%
+on_actor_outside = sr_idle
+on_info = {+bar_deactivate_radar_done} sr_idle@nil
+on_info2 = {=actor_community(actor_monolith)} sr_idle@nil
+string = st_helmet_countdown
+
+[sr_timer@2]
+type = dec
+start_value = 540000
+on_value = 5 | %=play_sound(rad_hat_2)% | 0 | sr_idle@nil %=kill_actor%
+on_actor_outside = sr_idle
+on_info = {+bar_deactivate_radar_done} sr_idle@nil
+on_info2 = {=actor_community(actor_monolith)} sr_idle@nil
+string = st_helmet_countdown
+
+[sr_timer@no_helmet]
+type = dec
+start_value = 5000
+on_value = 5 | sr_idle@nil %=kill_actor%
+on_actor_outside = sr_idle
+on_info = {+bar_deactivate_radar_done} sr_idle@nil
+on_info2 = {=actor_community(actor_monolith)} sr_idle@nil
+string = st_helmet_countdown
+
+[sr_idle@nil]

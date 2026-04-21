@@ -1,0 +1,44 @@
+enabled = true
+strange_story_sections = {
+	strange_story_agree = [[reactions\story\yes_]],
+	strange_story_action = [[reactions\story\action_right_]],
+	strange_story_belief = [[reactions\story\disbelief_]],
+	strange_story_continue = [[reactions\story\continue_]],
+	strange_story_cool = [[reactions\story\cool_info_]],
+	strange_story_final_happy = [[reactions\story\final_happy_]],
+	strange_story_final_tragic = [[reactions\story\final_tragic_]],
+}
+
+-- enforce using npc prefix sounds for story reactions, fallback to default if not found
+npc_sound_init_npc = sound_theme.npc_sound.init_npc
+sound_theme.npc_sound.init_npc = function(self, npc)
+	if not (enabled and strange_story_sections[self.section]) then
+		if self.init_path then
+			self.path = self.init_path
+			self.prefix = self.init_prefix
+		end
+		return npc_sound_init_npc(self, npc)
+	end
+
+	if not self.init_path then
+		self.init_path = self.path
+		self.init_prefix = self.prefix
+		-- printf("init_path %s", self.init_path)
+		-- printf("init_prefix %s", self.init_prefix)
+	end
+
+	local f = getFS()
+	local num = 1
+	if f:exist("$game_sounds$",npc:sound_prefix()..strange_story_sections[self.section]..num..".ogg") then
+		-- printf("override path %s", npc:sound_prefix()..strange_story_sections[self.section]..num..".ogg")
+		-- printf("override found")
+		self.prefix = true
+		self.path = strange_story_sections[self.section]
+	else
+		-- printf("override path %s", npc:sound_prefix()..strange_story_sections[self.section]..num..".ogg")
+		-- printf("override not found")
+		self.prefix = self.init_prefix
+		self.path = self.init_path
+	end
+	return npc_sound_init_npc(self, npc)
+end

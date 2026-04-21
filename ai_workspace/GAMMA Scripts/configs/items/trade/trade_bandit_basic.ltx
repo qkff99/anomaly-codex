@@ -1,0 +1,171 @@
+#include "presets\trade_discounts.ltx"
+#include "presets\trade_presets.ltx"
+
+[trader]
+buy_condition =  trade_generic_buy
+sell_condition = trade_generic_sell
+buy_supplies = {=actor_goodwill_ge(bandit:700)} supplies_3, {=heavy_pockets_functor()} supplies_3, {=actor_goodwill_ge(bandit:400)} supplies_2,  supplies_1
+buy_item_condition_factor = 0.50		;0.40
+buy_item_exponent = 2.25
+sell_item_exponent = 0.75
+
+discounts = discount_trasher
+
+[trade_generic_buy]:trasher
+
+[trade_generic_sell]:trasher
+
+
+[supplies_1]:common_stock
+itm_backpack		= 1, 1
+equ_small_pack		= 1, 1
+device_flashlight	= 1, 1
+device_torch_dummy	= 1, 1
+batteries_dead		= 6, 1
+device_pda_1		= 1, 1
+bandit_patch		= 3, 1
+guitar_a		= 1, 1
+harmonica_a		= 1, 1
+shovel_old		= 1, 1
+shovel_mili		= 1, 1
+jar			= 3, 1
+welding_goggles		= 2, 1
+jewelry_box		= 1, 1
+radio			= 1, 1
+radio2			= 1, 1
+cards			= 2, 1
+walkie			= 2, 1
+mirror			= 1, 1
+tarpaulin		= 2, 1
+rope			= 2, 1
+synthrope		= 2, 1
+cutlery			= 4, 1
+
+hand_rolling_tobacco	= 3, 1
+matches			= 3, 1
+
+medkit			= 3, 1
+bandage			= 5, 1
+
+mineral_water		= 3, 1
+beer			= 3, 1
+vodka			= 2, 1
+vodka2			= 2, 1
+energy_drink		= 3, 1
+water_drink		= 3, 1
+
+mre			= 2, 1
+bread			= 3, 1
+breadold		= 3, 1
+kolbasa			= 3, 1
+conserva		= 3, 1
+
+lead_box		= 1, 1
+
+broken_detector		= 2, 1
+
+bandit_novice_outfit	= 1, 1
+helm_cloth_mask		= 1, 1
+
+grenade_f1		= 3, 1
+grenade_rgd5		= 3, 1
+grenade_gd-05		= 3, 1
+grenade_smoke		= 3, 1
+
+;[pistols]
+wpn_beretta         			= 1, 0.88
+wpn_colt1911       			= 1, 0.88
+wpn_fort          			= 1, 0.88
+wpn_hpsa           			= 1, 0.88
+wpn_gsh18           			= 1, 0.88
+wpn_pb					= 1, 0.88
+wpn_pm					= 1, 0.88
+wpn_sig220        			= 1, 0.88
+wpn_usp            			= 1, 0.88
+wpn_tt33          			= 1, 0.88
+wpn_walther        			= 1, 0.88
+
+;[shotguns]
+wpn_bm16                		= 1, 0.88
+wpn_bm16_full           		= 1, 0.88
+wpn_bm16          			= 1, 0.88
+wpn_toz34          			= 1, 0.88
+wpn_wincheaster1300			= 1, 0.88
+
+;[rifles]
+wpn_ppsh41            			= 1, 0.88
+wpn_mp5sd				= 1, 0.88
+wpn_ak					= 1, 0.88
+wpn_ak74u				= 1, 0.88
+wpn_kiparis				= 1, 0.88
+wpn_ppsh41_rednew			= 1, 0.88
+wpn_vz61				= 1, 0.88
+
+;[ammo]
+ammo_9x18_fmj 		= 16, 1
+ammo_9x18_pmm 		= 16, 1
+ammo_9x19_pbp 		= 15, 1
+ammo_9x19_fmj 		= 15, 1
+ammo_11.43x23_fmj 	= 14, 1
+ammo_7.62x25_p 		= 16, 1
+ammo_7.62x25_ps 	= 16, 1
+ammo_7.62x39_fmj 	= 15, 1
+ammo_5.45x39_fmj 	= 15, 1
+ammo_5.45x39_ep 	= 15, 1
+ammo_11.43x23_hydro 	= 14, 1
+ammo_11.43x23_fmj 	= 14, 1
+ammo_12x70_buck 	= 10, 1
+
+
+[supplies_2]:supplies_1
+ration_ukr		= 1, 1
+
+explo_balon_gas		= 2, 1
+explo_jerrycan_fuel	= 2, 1
+
+
+[supplies_3]:supplies_2
+equ_small_military_pack	= 1, 1
+equ_military_pack	= 1, 1
+stimpack_army		= 2, 1
+
+helmet_repair_kit	= 1, 1
+sewing_kit_b		= 1, 1
+sharpening_stones	= 1, 1
+light_repair_kit	= 1, 1
+sewing_thread		= 1, 1
+
+bandit_sun_outfit	= 1, 1
+
+;[pistols]
+wpn_aps        	   = 1, 0.88
+wpn_oc33           = 1, 0.88
+
+;[ammo]
+ammo_9x18_ap 		= 16, 1
+ammo_9x19_ap 		= 15, 1
+ammo_11.43x23_hydro 	= 14, 1
+ammo_7.62x39_ap 	= 15, 1
+ammo_5.45x39_ap 	= 15, 1
+
+;[shotguns]
+wpn_mossberg590         = 1, 0.88
+wpn_toz34_obrez         = 1, 0.88
+wpn_mp133		= 1, 0.88
+wpn_toz34_decor		= 1, 0.88
+wpn_sks			= 1, 0.88
+wpn_fort500		= 1, 0.88
+
+;[rifles]
+wpn_9a91		= 1, 0.88
+wpn_akm			= 1, 0.88
+wpn_akms		= 1, 0.88
+wpn_aks			= 1, 0.88
+wpn_aks74		= 1, 0.88
+wpn_mp7			= 1, 0.88
+wpn_rpk			= 1, 0.88
+wpn_vz61_alt		= 1, 0.88
+
+;[snipers]
+wpn_mosin           	= 1, 0.88
+wpn_svt40           	= 1, 0.88

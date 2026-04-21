@@ -1,0 +1,66 @@
+--[[
+	=====================================================================
+	Addon      : Tosox Mini Mods Repo: NPC Wounded Animation Fix
+	Link       : https://www.moddb.com/mods/stalker-anomaly/addons/tosox-mini-mods-repo/
+	Author     : Tosox
+	Date       : 11.01.2024
+	Last Edit  : 27.02.2024
+	=====================================================================
+--]]
+
+orig_action_wounded_initialize = xr_wounded.action_wounded.initialize
+xr_wounded.action_wounded.initialize = function(self)
+	orig_action_wounded_initialize(self)
+	
+	local npc = self.object
+	local item = npc:active_item()
+	local slot = npc:active_slot()
+	if (item) and ((slot == 2) or (slot == 3)) and (npc:dont_has_info("npcx_is_companion")) then
+		local transfer_to_inv = (get_mcm_config("handle_weapon") == 0)
+		if (get_mcm_config("handle_weapon") == 2) then
+			transfer_to_inv = (keep_guns_on_bodies ~= nil)
+		end
+
+		if transfer_to_inv then
+			npc:transfer_item(item, npc)
+		else
+			death_manager.set_weapon_drop_condition(npc, item)
+			npc:drop_item(item)
+		end
+	end
+end
+
+--===========================================================================
+--
+-- MCM
+--
+--===========================================================================
+
+local cc = table.concat
+
+local MCM_ROOT_ID = "tmmr"
+local MCM_MODULE_ID = "npc_wounded_anim_fix"
+
+defaults = {
+	["handle_weapon"] = 0
+}
+
+function get_mcm_config(key)
+	local path = cc({ MCM_ROOT_ID, MCM_MODULE_ID, key }, "/")
+	if ui_mcm then return ui_mcm.get(path) else return defaults[key] end
+end
+
+function on_mcm_load()
+	return {
+		id = MCM_MODULE_ID, sh = true, gr = {
+			{ id = "title", type = "slide", link = "ui_options_slider_player", text = cc({ "ui_mcm", MCM_ROOT_ID, MCM_MODULE_ID, "title" }, "_"), size = { 512, 50 }, spacing = 20 },
+			{ id = "handle_weapon", type = ui_mcm.kb_mod_radio, val = 2, def = defaults["handle_weapon"],
+				content = {
+					{ 0, "tmmr_inv_weapon" },
+					{ 1, "tmmr_drop_weapon" },
+					{ 2, "tmmr_adapt_weapon" }
+				}
+			}
+		}
+	}, MCM_ROOT_ID
+end

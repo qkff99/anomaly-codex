@@ -1,0 +1,1641 @@
+--[[
+    author: qkff99
+
+    This version simulates NPC underbarrel shots entirely in Lua.
+    Special for Anthology project.
+--]]
+
+evid_gl_ready = 18801
+evid_gl_fire = 18802
+evid_gl_reload = 18803
+
+actid_gl_fire = evid_gl_fire
+actid_gl_reload = evid_gl_reload
+
+local CONFIG_PATH = "ai_tweaks\\rx_gl.ltx"
+
+local math_abs = math.abs
+local math_floor = math.floor
+local math_huge = math.huge
+local math_max = math.max
+local math_min = math.min
+local math_random = math.random
+local ipairs = ipairs
+local pairs = pairs
+local pcall = pcall
+local select = select
+local string_format = string.format
+local string_gsub = string.gsub
+local string_match = string.match
+local tostring = tostring
+local type = type
+local vector_ctor = vector
+
+local Enabled = true
+local RUNTIME_LOG_ENABLED = false
+local WEAPON_STATE_IDLE = 0
+local COLLIDE_RQT_STATIC = collide and collide.rqtStatic or 2
+local PROJECTILE_PARTICLES = {
+    "weapons\\rpg_trail_01",
+    "weapons\\rpg_trail_00",
+    "_samples_particles_\\flash_light",
+    "static\\net_baspda_blue",
+    "weapons\\light_signal",
+}
+local DEFAULT_PROJECTILE_SPEED = 26
+local MIN_FLIGHT_TIME_MS = 350
+local MIN_ARC_HEIGHT = 1.5
+local MAX_ARC_HEIGHT = 9
+local LAUNCH_PARTICLE_TTL_MS = 250
+local IMPACT_FX_TTL_MS = 4000
+local RUNTIME_PRUNE_INTERVAL_MS = 2000
+local DEFAULT_LAUNCH_PARTICLE = "weapons\\rpg_trail_00"
+local DEFAULT_IMPACT_SOUND = "weapons\\explo\\frage_grenade_explotion\\frage_grenade_01"
+
+local ready_cfg = {
+    min_dist = 10,
+    max_dist = 75,
+    check_period = 2500,
+    aim_time_ms = 300,
+    successful_shot_cooldown_ms = 15000,
+    reload_safe_dist = 20,
+    reload_cover_min = 0.45,
+    fire_timeout = 2200,
+    switch_timeout = 1200,
+    friendly_radius_padding = 2,
+    forbidden_factions = {},
+    forbidden_npcs = {},
+}
+
+local weapon_cache = {}
+local radius_cache = {}
+local profile_cache = {}
+local gl_runtime = {}
+local next_runtime_prune_tg = 0
+local actor_on_update = nil
+local play_impact_fx = nil
+local apply_impact_damage = nil
+local supported_hit_types = {
+    burn = hit.burn,
+    chemical_burn = hit.chemical_burn,
+    dummy = hit.dummy,
+    explosion = hit.explosion,
+    fire_wound = hit.fire_wound,
+    light_burn = hit.light_burn,
+    radiation = hit.radiation,
+    shock = hit.shock,
+    strike = hit.strike,
+    telepatic = hit.telepatic,
+    wound = hit.wound,
+}
+local RX_GL_LOG_PATHS = {
+    "rx_gl_runtime.log",
+    "logs\\rx_gl_runtime.log",
+    "appdata\\logs\\rx_gl_runtime.log",
+    "..\\appdata\\logs\\rx_gl_runtime.log",
+}
+
+local function log(msg, ...)
+    printf("rx_gl: " .. msg, ...)
+end
+
+local function now_tg()
+    return (time_global and time_global()) or 0
+end
+
+local function new_vector(x, y, z)
+    local v = vector_ctor()
+    v:set(x or 0, y or 0, z or 0)
+    return v
+end
+
+local function copy_vector(src)
+    local v = vector_ctor()
+    if src then
+        v:set(src)
+    else
+        v:set(0, 0, 0)
+    end
+    return v
+end
+
+local function table_from_vector(vec)
+    if not vec then
+        return nil
+    end
+
+    return { x = vec.x, y = vec.y, z = vec.z }
+end
+
+local function vector_from_table(tbl)
+    if not tbl then
+        return nil
+    end
+
+    return new_vector(tbl.x or 0, tbl.y or 0, tbl.z or 0)
+end
+
+local function call_method(obj, method_name, ...)
+    local fn = obj and obj[method_name]
+    if type(fn) ~= "function" then
+        return nil, false
+    end
+
+    local ok, result = pcall(fn, obj, ...)
+    if not ok then
+        return nil, false
+    end
+
+    return result, true
+end
+
+local function safe_state_mgr_lock(npc, locked)
+    if not (npc and state_mgr and type(state_mgr.lock) == "function") then
+        return false
+    end
+
+    return pcall(state_mgr.lock, npc, locked and true or false)
+end
+
+local function write_runtime_log(tag, fmt, ...)
+    if not (RUNTIME_LOG_ENABLED and io and io.open) then
+        return false
+    end
+
+    local line = tostring(fmt or "")
+    if select("#", ...) > 0 then
+        local ok, msg = pcall(string_format, line, ...)
+        if ok and msg ~= nil then
+            line = msg
+        end
+    end
+
+    for i = 1, #RX_GL_LOG_PATHS do
+        local path = RX_GL_LOG_PATHS[i]
+        local file = io.open(path, "a")
+        if file then
+            file:write(string_format("[%d][%s] %s\n", now_tg(), tostring(tag or "RX_GL"), line))
+            if file.flush then
+                pcall(file.flush, file)
+            end
+            file:close()
+            return true
+        end
+    end
+
+    return false
+end
+
+local function breadcrumb(tag, npc, wpn, fmt, ...)
+    if not RUNTIME_LOG_ENABLED then
+        return
+    end
+
+    local npc_id = npc and npc.id and npc:id() or "nil"
+    local npc_name = npc and npc.name and npc:name() or "nil"
+    local wpn_sec = wpn and wpn.section and wpn:section() or "nil"
+    local state = "nil"
+    local pending = "nil"
+
+    if wpn then
+        local state_value, state_ok = call_method(wpn, "get_state")
+        if state_ok then
+            state = tostring(state_value)
+        end
+
+        local pending_value, pending_ok = call_method(wpn, "IsPending")
+        if pending_ok then
+            pending = tostring(pending_value and true or false)
+        end
+    end
+
+    local suffix = ""
+    if fmt ~= nil then
+        suffix = tostring(fmt)
+        if select("#", ...) > 0 then
+            local ok, formatted = pcall(string_format, suffix, ...)
+            if ok and formatted ~= nil then
+                suffix = formatted
+            end
+        end
+        if suffix ~= "" then
+            suffix = " " .. suffix
+        end
+    end
+
+    write_runtime_log(
+        "RX_GL",
+        "%s npc=%s name=%s wpn=%s state=%s pending=%s%s",
+        tostring(tag),
+        tostring(npc_id),
+        tostring(npc_name),
+        tostring(wpn_sec),
+        tostring(state),
+        tostring(pending),
+        suffix
+    )
+end
+
+local function parse_key_set(ini, section, key)
+    local raw = parse_list(ini, section, key)
+    local result = {}
+
+    if not raw then
+        return result
+    end
+
+    for _, value in ipairs(raw) do
+        if value ~= "" and value ~= "none" then
+            result[value] = true
+        end
+    end
+
+    return result
+end
+
+local function parse_token_list(ini, section, key, default)
+    local raw = parse_list(ini, section, key)
+    local result = {}
+
+    if raw then
+        for _, value in ipairs(raw) do
+            local normalized = nil
+            if value and value ~= "" then
+                normalized = string_match(value, "^%s*([^,]+)")
+                if normalized then
+                    normalized = string_gsub(normalized, "^%s+", "")
+                    normalized = string_gsub(normalized, "%s+$", "")
+                    if normalized == "" or normalized == "$no_sound" then
+                        normalized = nil
+                    end
+                end
+            end
+            if normalized then
+                result[#result + 1] = normalized
+            end
+        end
+    end
+
+    if #result > 0 then
+        return result
+    end
+
+    return default
+end
+
+local function read_bool(ini, section, key, default)
+    local ok, value = pcall(ini.r_bool_ex, ini, section, key)
+    if ok and value ~= nil then
+        return value and true or false
+    end
+
+    return default
+end
+
+local function read_number(ini, section, key, default)
+    local ok, value = pcall(ini.r_float_ex, ini, section, key)
+    if ok and value ~= nil then
+        return value
+    end
+
+    return default
+end
+
+local function read_string(ini, section, key, default)
+    local ok, value = pcall(ini.r_string_ex, ini, section, key)
+    if ok and value ~= nil and value ~= "" then
+        return value
+    end
+
+    return default
+end
+
+local function read_ini_string(section, key, default)
+    local ok, value = pcall(ini_sys.r_string_ex, ini_sys, section, key)
+    if ok and value ~= nil and value ~= "" then
+        return value
+    end
+
+    return default
+end
+
+local function read_ini_float(section, key, default)
+    local ok, value = pcall(ini_sys.r_float_ex, ini_sys, section, key)
+    if ok and value ~= nil then
+        return value
+    end
+
+    return default
+end
+
+local function normalize_token_string(value)
+    if not value or value == "" then
+        return nil
+    end
+
+    local normalized = string_match(value, "^%s*([^,]+)")
+    if not normalized then
+        return nil
+    end
+
+    normalized = string_gsub(normalized, "^%s+", "")
+    normalized = string_gsub(normalized, "%s+$", "")
+    if normalized == "" or normalized == "$no_sound" then
+        return nil
+    end
+
+    return normalized
+end
+
+local function on_game_start_read_config()
+    local ini = ini_file(CONFIG_PATH)
+
+    weapon_cache = {}
+    radius_cache = {}
+    profile_cache = {}
+    gl_runtime = {}
+    next_runtime_prune_tg = 0
+
+    if ini and ini:section_exist("main") then
+        Enabled = read_bool(ini, "main", "enabled", Enabled)
+        RUNTIME_LOG_ENABLED = read_bool(ini, "main", "runtime_log_enabled", RUNTIME_LOG_ENABLED)
+        ready_cfg.min_dist = read_number(ini, "main", "min_dist", ready_cfg.min_dist)
+        ready_cfg.max_dist = read_number(ini, "main", "max_dist", ready_cfg.max_dist)
+        ready_cfg.check_period = read_number(ini, "main", "check_period", ready_cfg.check_period)
+        ready_cfg.aim_time_ms = read_number(ini, "main", "aim_time_ms", read_number(ini, "main", "aim_time", ready_cfg.aim_time_ms))
+        ready_cfg.successful_shot_cooldown_ms = read_number(
+            ini,
+            "main",
+            "successful_shot_cooldown_ms",
+            read_number(ini, "main", "repose_time_ms", read_number(ini, "main", "repose_time", ready_cfg.successful_shot_cooldown_ms))
+        )
+        ready_cfg.reload_safe_dist = read_number(ini, "main", "reload_safe_dist", ready_cfg.reload_safe_dist)
+        ready_cfg.reload_cover_min = read_number(ini, "main", "reload_cover_min", ready_cfg.reload_cover_min)
+        ready_cfg.fire_timeout = read_number(ini, "main", "fire_timeout", ready_cfg.fire_timeout)
+        ready_cfg.switch_timeout = read_number(ini, "main", "switch_timeout", ready_cfg.switch_timeout)
+        ready_cfg.friendly_radius_padding = read_number(ini, "main", "friendly_radius_padding", ready_cfg.friendly_radius_padding)
+        ready_cfg.forbidden_factions = parse_key_set(ini, "main", "forbidden_factions")
+        ready_cfg.forbidden_npcs = parse_key_set(ini, "main", "forbidden_npcs")
+        PROJECTILE_PARTICLES = parse_token_list(ini, "main", "projectile_particles", PROJECTILE_PARTICLES)
+        DEFAULT_LAUNCH_PARTICLE = normalize_token_string(read_string(ini, "main", "launch_particle", DEFAULT_LAUNCH_PARTICLE)) or DEFAULT_LAUNCH_PARTICLE
+        DEFAULT_IMPACT_SOUND = normalize_token_string(read_string(ini, "main", "impact_sound", DEFAULT_IMPACT_SOUND)) or DEFAULT_IMPACT_SOUND
+        DEFAULT_PROJECTILE_SPEED = read_number(ini, "main", "projectile_speed", DEFAULT_PROJECTILE_SPEED)
+        MIN_FLIGHT_TIME_MS = read_number(ini, "main", "projectile_min_flight_ms", MIN_FLIGHT_TIME_MS)
+        MIN_ARC_HEIGHT = read_number(ini, "main", "projectile_arc_height_min", MIN_ARC_HEIGHT)
+        MAX_ARC_HEIGHT = read_number(ini, "main", "projectile_arc_height_max", MAX_ARC_HEIGHT)
+        IMPACT_FX_TTL_MS = read_number(ini, "main", "impact_fx_ttl_ms", IMPACT_FX_TTL_MS)
+    else
+        log("config [%s] not found, using defaults", CONFIG_PATH)
+    end
+
+    if MAX_ARC_HEIGHT < MIN_ARC_HEIGHT then
+        MAX_ARC_HEIGHT = MIN_ARC_HEIGHT
+    end
+
+    if state_mgr and state_mgr.combat_action_ids then
+        state_mgr.combat_action_ids[actid_gl_fire] = true
+        state_mgr.combat_action_ids[actid_gl_reload] = true
+    end
+end
+
+function on_game_start()
+    on_game_start_read_config()
+    pcall(UnregisterScriptCallback, "actor_on_update", actor_on_update)
+    RegisterScriptCallback("actor_on_update", actor_on_update)
+    breadcrumb("on_game_start", nil, nil, "enabled=%s", tostring(Enabled))
+end
+
+local function is_forbidden(npc)
+    if not npc then
+        return true
+    end
+
+    local faction = npc.character_community and npc:character_community() or nil
+    local name = npc.name and npc:name() or nil
+    local profile = npc.profile_name and npc:profile_name() or nil
+
+    return (faction and ready_cfg.forbidden_factions[faction] == true) or false
+        or (name and ready_cfg.forbidden_npcs[name] == true) or false
+        or (profile and ready_cfg.forbidden_npcs[profile] == true) or false
+end
+
+local function get_weapon_data(wpn)
+    if not wpn then
+        return nil
+    end
+
+    local section = wpn:section()
+    local data = weapon_cache[section]
+    if data then
+        return data
+    end
+
+    data = {
+        grenade_ammo = parse_list(ini_sys, section, "grenade_class") or {},
+        fire_bone_gl = normalize_token_string(read_ini_string(section, "fire_bone2", nil)),
+        grenade_bone = normalize_token_string(read_ini_string(section, "grenade_bone", nil)),
+        launch_particle = normalize_token_string(read_ini_string(section, "grenade_flame_particles", nil)),
+        launch_sound = normalize_token_string(read_ini_string(section, "snd_shoot_grenade", nil)),
+    }
+    weapon_cache[section] = data
+    return data
+end
+
+local function has_gl_payload(wpn)
+    local data = get_weapon_data(wpn)
+    return data and data.grenade_ammo and #data.grenade_ammo > 0 or false
+end
+
+local function is_gl_weapon(wpn)
+    if not (wpn and IsWeapon(wpn)) then
+        return false
+    end
+
+    return wpn:weapon_is_grenadelauncher() and has_gl_payload(wpn)
+end
+
+local function get_weapon_state(wpn)
+    local state, ok = call_method(wpn, "get_state")
+    if ok and type(state) == "number" then
+        return state
+    end
+
+    return nil
+end
+
+local function is_alive_object(obj)
+    if not obj then
+        return false
+    end
+
+    local ok, alive = pcall(obj.alive, obj)
+    return ok and alive and true or false
+end
+
+local function is_weapon_pending(wpn)
+    local pending, ok = call_method(wpn, "IsPending")
+    if ok then
+        return pending and true or false
+    end
+
+    return false
+end
+
+local function is_active_weapon(npc, wpn)
+    if not (npc and wpn) then
+        return false
+    end
+
+    local active_item = npc:active_item()
+    return active_item and active_item:id() == wpn:id() or false
+end
+
+local function is_gl_weapon_ready(npc, wpn)
+    if not (npc and wpn and is_gl_weapon(wpn)) then
+        return false
+    end
+
+    if not is_active_weapon(npc, wpn) then
+        return false
+    end
+
+    if npc.weapon_unstrapped and not npc:weapon_unstrapped() then
+        return false
+    end
+
+    if get_weapon_state(wpn) ~= WEAPON_STATE_IDLE then
+        return false
+    end
+
+    if is_weapon_pending(wpn) then
+        return false
+    end
+
+    return true
+end
+
+local function has_inventory_gl_ammo(npc, wpn)
+    local data = get_weapon_data(wpn)
+    if not (npc and data and data.grenade_ammo) then
+        return false
+    end
+
+    for _, ammo_section in ipairs(data.grenade_ammo) do
+        if npc:object(ammo_section) then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function get_preferred_gl_ammo_section(npc, wpn)
+    local data = get_weapon_data(wpn)
+    if not (data and data.grenade_ammo and #data.grenade_ammo > 0) then
+        return nil
+    end
+
+    if npc then
+        for _, ammo_section in ipairs(data.grenade_ammo) do
+            if npc:object(ammo_section) then
+                return ammo_section
+            end
+        end
+    end
+
+    return data.grenade_ammo[1]
+end
+
+local function select_gl_weapon(npc)
+    if not npc then
+        return nil
+    end
+
+    local best_weapon = npc:best_weapon()
+    local active_item = npc:active_item()
+    local best_weapon_id = best_weapon and best_weapon:id() or nil
+    local active_item_id = active_item and active_item:id() or nil
+    local selected_weapon = nil
+    local selected_score = -1
+
+    local function consider(item)
+        if not (item and IsWeapon(item) and is_gl_weapon(item)) then
+            return
+        end
+
+        local score = 0
+        local item_id = item:id()
+
+        if active_item_id and item_id == active_item_id then
+            score = score + 100
+        end
+
+        if best_weapon_id and item_id == best_weapon_id then
+            score = score + 80
+        end
+
+        if has_inventory_gl_ammo(npc, item) then
+            score = score + 20
+        end
+
+        local data = get_weapon_data(item)
+        score = score + (data and data.grenade_ammo and #data.grenade_ammo or 0)
+
+        if score > selected_score then
+            selected_weapon = item
+            selected_score = score
+        end
+    end
+
+    if type(npc.iterate_inventory) == "function" then
+        npc:iterate_inventory(function(owner, item)
+            consider(item)
+        end, npc)
+    end
+
+    if selected_weapon then
+        return selected_weapon
+    end
+
+    consider(best_weapon)
+    if selected_weapon then
+        return selected_weapon
+    end
+
+    consider(active_item)
+    return selected_weapon
+end
+
+local function resolve_hit_type(name, fallback)
+    if not name or name == "" then
+        return fallback
+    end
+
+    return supported_hit_types[name] or fallback
+end
+
+local function get_ammo_profile(ammo_section)
+    local cached = profile_cache[ammo_section]
+    if cached then
+        return cached
+    end
+
+    local fake_section = read_ini_string(ammo_section, "fake_grenade_name", "wpn_fake_missile")
+    local impact_sound = normalize_token_string(read_ini_string(fake_section, "snd_explode", nil))
+    if impact_sound == "wpn_fake_vog-25_explode"
+        or impact_sound == "grenade_rgd5_snd_explode"
+        or impact_sound == "grenade_f1_snd_explode"
+    then
+        impact_sound = DEFAULT_IMPACT_SOUND
+    end
+
+    local profile = {
+        ammo_section = ammo_section,
+        fake_section = fake_section,
+        blast = read_ini_float(fake_section, "blast", 1.0),
+        blast_r = read_ini_float(fake_section, "blast_r", 8),
+        blast_impulse = read_ini_float(fake_section, "blast_impulse", 40),
+        frag_hit = read_ini_float(fake_section, "frag_hit", 0.4),
+        frags_r = read_ini_float(fake_section, "frags_r", 12),
+        frag_hit_impulse = read_ini_float(fake_section, "frag_hit_impulse", 10),
+        hit_type_blast = resolve_hit_type(read_ini_string(fake_section, "hit_type_blast", "explosion"), hit.explosion),
+        hit_type_frag = resolve_hit_type(read_ini_string(fake_section, "hit_type_frag", "fire_wound"), hit.fire_wound),
+        explode_particles = read_ini_string(fake_section, "explode_particles", nil),
+        snd_explode = impact_sound or DEFAULT_IMPACT_SOUND,
+    }
+
+    profile.damage_radius = math_max(profile.blast_r or 0, profile.frags_r or 0)
+    profile.safe_radius = profile.damage_radius + (ready_cfg.friendly_radius_padding or 0)
+    profile_cache[ammo_section] = profile
+    return profile
+end
+
+local function get_weapon_radius(wpn)
+    if not wpn then
+        return 8
+    end
+
+    local section = wpn:section()
+    local cached = radius_cache[section]
+    if cached then
+        return cached
+    end
+
+    local data = get_weapon_data(wpn)
+    local radius = 8
+    if data and data.grenade_ammo then
+        for _, ammo_section in ipairs(data.grenade_ammo) do
+            local profile = get_ammo_profile(ammo_section)
+            radius = math_max(radius, profile.safe_radius or 8)
+        end
+    end
+
+    radius_cache[section] = radius
+    return radius
+end
+
+local function get_weapon_profile(npc, wpn)
+    local ammo_section = get_preferred_gl_ammo_section(npc, wpn)
+    if not ammo_section then
+        return nil
+    end
+
+    local profile = get_ammo_profile(ammo_section)
+    if not profile then
+        return nil
+    end
+
+    return {
+        ammo_section = profile.ammo_section,
+        fake_section = profile.fake_section,
+        blast = profile.blast,
+        blast_r = profile.blast_r,
+        blast_impulse = profile.blast_impulse,
+        frag_hit = profile.frag_hit,
+        frags_r = profile.frags_r,
+        frag_hit_impulse = profile.frag_hit_impulse,
+        hit_type_blast = profile.hit_type_blast,
+        hit_type_frag = profile.hit_type_frag,
+        explode_particles = profile.explode_particles,
+        snd_explode = profile.snd_explode,
+        damage_radius = profile.damage_radius,
+        safe_radius = profile.safe_radius,
+        speed = DEFAULT_PROJECTILE_SPEED,
+        launch_particle = DEFAULT_LAUNCH_PARTICLE,
+        launch_sound = (get_weapon_data(wpn) or {}).launch_sound,
+    }
+end
+
+local function is_valid_damage_object(obj)
+    if not obj then
+        return false
+    end
+
+    local obj_id = obj:id()
+    local is_actor = db.actor and obj_id == db.actor:id() or false
+    local is_creature = is_actor or IsStalker(obj) or IsMonster(obj)
+    if not is_creature then
+        return false
+    end
+
+    if not is_alive_object(obj) then
+        return false
+    end
+
+    if is_actor then
+        return true
+    end
+
+    return true
+end
+
+local function safe_relation(npc, obj)
+    if not (npc and obj) then
+        return nil
+    end
+
+    local relation, ok = call_method(npc, "relation", obj)
+    if ok then
+        return relation
+    end
+
+    return nil
+end
+
+local function iterate_nearby(center_pos, radius, callback)
+    local seen = {}
+
+    if db.actor and db.actor:alive() and center_pos:distance_to(db.actor:center()) <= radius then
+        local actor_id = db.actor:id()
+        seen[actor_id] = true
+        if callback(db.actor) == true then
+            return true
+        end
+    end
+
+    local ok = pcall(level.iterate_nearest, center_pos, radius, function(obj)
+        if not obj then
+            return false
+        end
+
+        local obj_id = obj:id()
+        if seen[obj_id] then
+            return false
+        end
+        seen[obj_id] = true
+        return callback(obj) == true
+    end)
+
+    return ok and true or false
+end
+
+local function has_non_enemy_in_radius(npc, center_pos, radius)
+    local blocked = false
+
+    iterate_nearby(center_pos, radius, function(obj)
+        if obj and obj:id() ~= npc:id() and is_valid_damage_object(obj) then
+            local relation = safe_relation(npc, obj)
+            if relation ~= game_object.enemy then
+                blocked = true
+                return true
+            end
+        end
+        return false
+    end)
+
+    return blocked
+end
+
+local function resolve_origin_pos(npc, wpn)
+    local data = get_weapon_data(wpn) or {}
+    local function try_bone(obj, bone_name)
+        if not (obj and bone_name and bone_name ~= "") then
+            return nil
+        end
+
+        local ok, pos = pcall(obj.bone_position, obj, bone_name)
+        if ok and pos then
+            return copy_vector(pos)
+        end
+
+        return nil
+    end
+
+    local pos = try_bone(wpn, data.fire_bone_gl)
+    if pos then
+        return pos
+    end
+
+    pos = try_bone(wpn, data.grenade_bone)
+    if pos then
+        return pos
+    end
+
+    local ok, center = pcall(npc.center, npc)
+    if ok and center then
+        return copy_vector(center)
+    end
+
+    return copy_vector(npc:position())
+end
+
+local function resolve_static_impact(npc, origin_pos, target_pos)
+    local dir = new_vector()
+    dir:sub(target_pos, origin_pos)
+    local dist = dir:magnitude()
+    if dist <= 0.05 then
+        return copy_vector(target_pos), dist
+    end
+
+    dir:div(dist)
+    local query = rq_result()
+    local ok, hit_static = pcall(level.ray_pick, origin_pos, dir, dist, COLLIDE_RQT_STATIC, query, npc)
+    if ok and hit_static then
+        local hit_pos = new_vector()
+        hit_pos:mad(origin_pos, dir, query.range)
+        return hit_pos, query.range
+    end
+
+    return copy_vector(target_pos), dist
+end
+
+local function has_static_line_of_sight(from_pos, to_pos, ignore_obj)
+    local dir = new_vector()
+    dir:sub(to_pos, from_pos)
+    local dist = dir:magnitude()
+    if dist <= 0.15 then
+        return true
+    end
+
+    dir:div(dist)
+    local query = rq_result()
+    local ok, blocked = pcall(level.ray_pick, from_pos, dir, dist, COLLIDE_RQT_STATIC, query, ignore_obj)
+    if ok and blocked and query.range + 0.15 < dist then
+        return false
+    end
+
+    return true
+end
+
+local function evaluate_target(npc, target, wpn)
+    if not (target and target:alive() and not IsWounded(target) and safe_relation(npc, target) == game_object.enemy) then
+        return false, math_huge
+    end
+
+    if not npc:see(target) then
+        return false, math_huge
+    end
+
+    local npc_pos = npc:center()
+    local target_pos = target:center()
+    local dist = npc_pos:distance_to(target_pos)
+    if dist < ready_cfg.min_dist or dist > ready_cfg.max_dist then
+        return false, dist
+    end
+
+    if math_abs(target_pos.y - npc_pos.y) > 6 then
+        return false, dist
+    end
+
+    if has_non_enemy_in_radius(npc, target_pos, get_weapon_radius(wpn)) then
+        return false, dist
+    end
+
+    return true, dist
+end
+
+local function find_target(npc, wpn)
+    local best_target
+    local best_score = math_huge
+    local ideal = (ready_cfg.min_dist + ready_cfg.max_dist) * 0.5
+    local best_enemy = npc:best_enemy()
+    local best_enemy_id = best_enemy and best_enemy:id() or nil
+
+    local function consider(target)
+        local ok, dist = evaluate_target(npc, target, wpn)
+        if ok then
+            local score = math_abs(dist - ideal)
+            if score < best_score then
+                best_target = target
+                best_score = score
+            end
+        end
+    end
+
+    consider(best_enemy)
+
+    for memory_object in npc:memory_visible_objects() do
+        local obj = memory_object and memory_object:object()
+        if obj and obj:id() ~= npc:id() and obj:id() ~= best_enemy_id then
+            if (IsStalker(obj) or IsMonster(obj)) and safe_relation(npc, obj) == game_object.enemy then
+                consider(obj)
+            end
+        end
+    end
+
+    return best_target
+end
+
+local function pack_launch_state(st, origin_pos, impact_pos, flight_time_ms, arc_height, ammo_section)
+    st.launch_tg = now_tg()
+    st.flight_time_ms = flight_time_ms
+    st.origin_pos = table_from_vector(origin_pos)
+    st.impact_pos = table_from_vector(impact_pos)
+    st.arc_height = arc_height
+    st.ammo_section = ammo_section
+end
+
+local function clear_launch_state(st)
+    if not st then
+        return
+    end
+
+    st.launch_tg = nil
+    st.flight_time_ms = nil
+    st.origin_pos = nil
+    st.impact_pos = nil
+    st.arc_height = nil
+    st.ammo_section = nil
+end
+
+local function stop_object_fx(obj)
+    if not obj then
+        return
+    end
+
+    local ok = pcall(obj.stop_deffered, obj)
+    if not ok then
+        pcall(obj.stop, obj)
+    end
+end
+
+local function cleanup_runtime_entry(npc_id, full)
+    local rt = gl_runtime[npc_id]
+    if not rt then
+        return
+    end
+
+    if rt.projectile then
+        stop_object_fx(rt.projectile)
+        rt.projectile = nil
+        rt.projectile_prev_pos = nil
+        rt.projectile_prev_tg = nil
+    end
+
+    if rt.launch_particle then
+        stop_object_fx(rt.launch_particle)
+        rt.launch_particle = nil
+        rt.launch_particle_expire_tg = nil
+    end
+
+    if full then
+        if rt.launch_sound then
+            stop_object_fx(rt.launch_sound)
+            rt.launch_sound = nil
+        end
+        if rt.impact_particle then
+            stop_object_fx(rt.impact_particle)
+            rt.impact_particle = nil
+        end
+        if rt.impact_sound then
+            stop_object_fx(rt.impact_sound)
+            rt.impact_sound = nil
+        end
+        gl_runtime[npc_id] = nil
+    elseif not rt.impact_particle and not rt.impact_sound then
+        gl_runtime[npc_id] = nil
+    end
+end
+
+local function prune_runtime(now)
+    if next_runtime_prune_tg > now then
+        return
+    end
+
+    next_runtime_prune_tg = now + RUNTIME_PRUNE_INTERVAL_MS
+    for npc_id, rt in pairs(gl_runtime) do
+        if rt and not rt.projectile then
+            if (rt.fx_expire_tg or 0) <= now then
+                cleanup_runtime_entry(npc_id, true)
+            end
+        end
+    end
+end
+
+local function calc_flight_time_ms(distance, speed)
+    local safe_speed = math_max(1, speed or DEFAULT_PROJECTILE_SPEED)
+    local base_ms = math_floor((distance / safe_speed) * 1000)
+    return math_max(MIN_FLIGHT_TIME_MS, base_ms)
+end
+
+local function calc_arc_height(distance)
+    return math_min(MAX_ARC_HEIGHT, math_max(MIN_ARC_HEIGHT, distance * 0.18))
+end
+
+local function make_arc_position(origin_pos, impact_pos, progress, arc_height)
+    local t = math_min(1, math_max(0, progress))
+    local one_minus_t = 1 - t
+    local pos = new_vector()
+    pos.x = origin_pos.x * one_minus_t + impact_pos.x * t
+    pos.y = origin_pos.y * one_minus_t + impact_pos.y * t + (arc_height * 4 * t * one_minus_t)
+    pos.z = origin_pos.z * one_minus_t + impact_pos.z * t
+    return pos
+end
+
+local function create_projectile_particle(origin_pos)
+    for i = 1, #PROJECTILE_PARTICLES do
+        local particle_name = PROJECTILE_PARTICLES[i]
+        local ok, particle = pcall(particles_object, particle_name)
+        if ok and particle then
+            pcall(particle.play_at_pos, particle, origin_pos)
+            return particle
+        end
+    end
+
+    return nil
+end
+
+local function play_launch_fx(npc, origin_pos, profile)
+    local rt = gl_runtime[npc:id()] or {}
+    gl_runtime[npc:id()] = rt
+
+    local launch_particle = profile.launch_particle or DEFAULT_LAUNCH_PARTICLE
+    if launch_particle then
+        local ok, particle = pcall(particles_object, launch_particle)
+        if ok and particle then
+            pcall(particle.play_at_pos, particle, origin_pos)
+            rt.launch_particle = particle
+            rt.launch_particle_expire_tg = now_tg() + LAUNCH_PARTICLE_TTL_MS
+        end
+    end
+
+    if profile.launch_sound then
+        local ok, snd = pcall(sound_object, profile.launch_sound, sound_object.s3d)
+        if ok and snd then
+            local played = pcall(snd.play_at_pos, snd, npc, origin_pos, 0, sound_object.s3d)
+            if not played then
+                pcall(snd.play_at_pos, snd, npc, origin_pos)
+            end
+            rt.launch_sound = snd
+        end
+    end
+end
+
+local function launch_projectile(npc, wpn, origin_pos, impact_pos, profile, st)
+    local npc_id = npc:id()
+    local flight_time_ms = calc_flight_time_ms(origin_pos:distance_to(impact_pos), profile.speed)
+    local arc_height = calc_arc_height(origin_pos:distance_to(impact_pos))
+    local rt = gl_runtime[npc_id] or {}
+
+    cleanup_runtime_entry(npc_id, false)
+    gl_runtime[npc_id] = rt
+
+    play_launch_fx(npc, origin_pos, profile)
+    rt.projectile = create_projectile_particle(origin_pos)
+    rt.projectile_prev_pos = copy_vector(origin_pos)
+    rt.projectile_prev_tg = now_tg()
+    rt.launch_tg = now_tg()
+    rt.flight_time_ms = flight_time_ms
+    rt.origin_pos = table_from_vector(origin_pos)
+    rt.impact_pos = table_from_vector(impact_pos)
+    rt.arc_height = arc_height
+    rt.ammo_section = profile.ammo_section
+    rt.impact_done = false
+
+    pack_launch_state(st, origin_pos, impact_pos, flight_time_ms, arc_height, profile.ammo_section)
+
+    breadcrumb("launch", npc, wpn, "flight_ms=%s impact=%s", tostring(flight_time_ms), tostring(profile.ammo_section))
+end
+
+local function apply_successful_shot_cooldown(st)
+    if not st then
+        return
+    end
+
+    st.next_fire_time = now_tg() + math_max(0, ready_cfg.successful_shot_cooldown_ms or 0)
+end
+
+local function update_projectile_flight(rt, now)
+    if not rt then
+        return false, false
+    end
+
+    local origin_pos = vector_from_table(rt.origin_pos)
+    local impact_pos = vector_from_table(rt.impact_pos)
+    if not (origin_pos and impact_pos and rt.launch_tg and rt.flight_time_ms and rt.arc_height) then
+        return false, false
+    end
+
+    local elapsed = now - rt.launch_tg
+    local progress = elapsed / math_max(1, rt.flight_time_ms)
+    local done = progress >= 1
+    if done then
+        progress = 1
+    end
+
+    local pos = make_arc_position(origin_pos, impact_pos, progress, rt.arc_height)
+    if rt.projectile then
+        local dt = math_max(1, now - (rt.projectile_prev_tg or now)) / 1000
+        local vel = new_vector()
+        vel:sub(pos, rt.projectile_prev_pos or origin_pos)
+        vel:div(dt)
+        pcall(rt.projectile.move_to, rt.projectile, pos, vel)
+    end
+
+    rt.projectile_prev_pos = copy_vector(pos)
+    rt.projectile_prev_tg = now
+    return true, done
+end
+
+actor_on_update = function()
+    if not Enabled then
+        return
+    end
+
+    local now = now_tg()
+    prune_runtime(now)
+
+    for npc_id, rt in pairs(gl_runtime) do
+        if rt and rt.launch_particle and (rt.launch_particle_expire_tg or 0) <= now then
+            stop_object_fx(rt.launch_particle)
+            rt.launch_particle = nil
+            rt.launch_particle_expire_tg = nil
+        end
+
+        if rt and rt.projectile and not rt.impact_done then
+            local ok, done = update_projectile_flight(rt, now)
+            if not ok then
+                cleanup_runtime_entry(npc_id, false)
+            elseif done then
+                local npc_entry = db.storage[npc_id]
+                local st = npc_entry and npc_entry.gl
+                local npc = npc_entry and npc_entry.object or level.object_by_id(npc_id)
+                local impact_pos = vector_from_table(rt.impact_pos)
+                local profile = rt.ammo_section and get_ammo_profile(rt.ammo_section) or nil
+
+                if rt.projectile then
+                    stop_object_fx(rt.projectile)
+                    rt.projectile = nil
+                    rt.projectile_prev_pos = nil
+                    rt.projectile_prev_tg = nil
+                end
+
+                if npc and impact_pos and profile and not has_non_enemy_in_radius(npc, impact_pos, profile.safe_radius) then
+                    play_impact_fx(npc, impact_pos, profile)
+                    apply_impact_damage(npc, impact_pos, profile)
+                end
+
+                apply_successful_shot_cooldown(st)
+                rt.impact_done = true
+                rt.fx_expire_tg = rt.fx_expire_tg or (now + IMPACT_FX_TTL_MS)
+            end
+        end
+    end
+end
+
+play_impact_fx = function(npc, impact_pos, profile)
+    local npc_id = npc:id()
+    local rt = gl_runtime[npc_id] or {}
+    gl_runtime[npc_id] = rt
+
+    if profile.explode_particles and profile.explode_particles ~= "" then
+        local ok, particle = pcall(particles_object, profile.explode_particles)
+        if ok and particle then
+            pcall(particle.play_at_pos, particle, impact_pos)
+            rt.impact_particle = particle
+        end
+    end
+
+    if profile.snd_explode and profile.snd_explode ~= "" then
+        local ok, snd = pcall(sound_object, profile.snd_explode, sound_object.s3d)
+        if ok and snd then
+            local played = pcall(snd.play_at_pos, snd, npc, impact_pos, 0, sound_object.s3d)
+            if not played then
+                pcall(snd.play_at_pos, snd, npc, impact_pos)
+            end
+            rt.impact_sound = snd
+        end
+    end
+
+    rt.fx_expire_tg = now_tg() + IMPACT_FX_TTL_MS
+end
+
+local function apply_single_hit(target, draftsman, from_pos, power, impulse, hit_type_name)
+    local h = hit()
+    local direction = new_vector()
+    direction:sub(target:center(), from_pos)
+    if direction:magnitude() <= 0.001 then
+        direction:set(0, 1, 0)
+    else
+        direction:normalize_safe()
+    end
+
+    h.draftsman = draftsman
+    h.direction = direction
+    h.power = power
+    h.impulse = impulse
+    h.type = hit_type_name
+    target:hit(h)
+end
+
+apply_impact_damage = function(npc, impact_pos, profile)
+    local radius = math_max(profile.blast_r or 0, profile.frags_r or 0)
+    if radius <= 0 then
+        return
+    end
+
+    iterate_nearby(impact_pos, radius, function(obj)
+        if not (obj and obj:id() ~= npc:id() and is_valid_damage_object(obj)) then
+            return false
+        end
+
+        if safe_relation(npc, obj) ~= game_object.enemy then
+            return false
+        end
+
+        local obj_pos = obj:center()
+        local dist = impact_pos:distance_to(obj_pos)
+        if dist > radius then
+            return false
+        end
+
+        if not has_static_line_of_sight(impact_pos, obj_pos, npc) then
+            return false
+        end
+
+        if dist <= (profile.blast_r or 0) then
+            apply_single_hit(obj, npc, impact_pos, profile.blast, profile.blast_impulse, profile.hit_type_blast)
+        elseif dist <= (profile.frags_r or 0) then
+            apply_single_hit(obj, npc, impact_pos, profile.frag_hit, profile.frag_hit_impulse, profile.hit_type_frag)
+        end
+
+        return false
+    end)
+end
+
+local function keep_gl_control(npc, target, look_pos)
+    if not npc then
+        return
+    end
+
+    breadcrumb("aim_ctrl_pre", npc, npc:active_item(), "target=%s", tostring(target and target:id() or "nil"))
+    pcall(npc.set_desired_position, npc)
+    pcall(npc.set_desired_direction, npc)
+    pcall(npc.set_mental_state, npc, anim.danger)
+
+    if is_alive_object(target) then
+        pcall(npc.set_sight, npc, target, true, false)
+    elseif look_pos then
+        pcall(npc.set_sight, npc, look.fire_point, look_pos)
+    end
+
+    breadcrumb("aim_ctrl_post", npc, npc:active_item(), "target=%s", tostring(target and target:id() or "nil"))
+end
+
+local function abort_fire_action(st, npc, cooldown_ms)
+    st.next_fire_time = now_tg() + (cooldown_ms or 1000)
+    st.fire_active = nil
+    st.target_id = nil
+    clear_launch_state(st)
+    if npc then
+        cleanup_runtime_entry(npc:id(), false)
+    end
+end
+
+class "evaluator_gl_ready" (property_evaluator)
+function evaluator_gl_ready:__init(npc, name, storage)
+    super(nil, name)
+    self.st = storage
+    self.next_check = 0
+end
+
+function evaluator_gl_ready:evaluate()
+    local npc = self.object
+    if not (Enabled and npc and npc:alive()) then
+        return false
+    end
+
+    if IsWounded(npc) or is_forbidden(npc) then
+        return false
+    end
+
+    local now = now_tg()
+    prune_runtime(now)
+
+    if self.next_check > now and self.st.gl_weapon_id then
+        return self.st.gl_ready == true
+    end
+
+    local wpn = select_gl_weapon(npc)
+    self.st.gl_weapon_id = wpn and wpn:id() or nil
+    self.st.gl_ready = false
+    self.next_check = now + ready_cfg.check_period
+
+    if not wpn then
+        return false
+    end
+
+    self.st.gl_ready = has_gl_payload(wpn)
+    return self.st.gl_ready
+end
+
+class "evaluator_gl_fire" (property_evaluator)
+function evaluator_gl_fire:__init(name, storage)
+    super(nil, name)
+    self.st = storage
+end
+
+function evaluator_gl_fire:evaluate()
+    local npc = self.object
+    if not (self.st.gl_ready and npc and npc:alive()) then
+        return false
+    end
+
+    if self.st.fire_active then
+        return true
+    end
+
+    if (self.st.next_fire_time or 0) > now_tg() then
+        return false
+    end
+
+    local wpn = select_gl_weapon(npc)
+    if not (wpn and is_gl_weapon_ready(npc, wpn)) then
+        return false
+    end
+
+    local target = find_target(npc, wpn)
+    if not target then
+        return false
+    end
+
+    self.st.gl_weapon_id = wpn:id()
+    self.st.target_id = target:id()
+    breadcrumb("fire_eval_ready", npc, wpn, "target=%s", tostring(self.st.target_id))
+    return true
+end
+
+class "evaluator_gl_reload" (property_evaluator)
+function evaluator_gl_reload:__init(name, storage)
+    super(nil, name)
+    self.st = storage
+end
+
+function evaluator_gl_reload:evaluate()
+    return self.st and self.st.fire_active == true or false
+end
+
+local function get_target_object(target_id)
+    local entry = target_id and db.storage[target_id]
+    return entry and entry.object or target_id and level.object_by_id(target_id) or nil
+end
+
+class "action_gl_fire" (action_base)
+function action_gl_fire:__init(npc, name, storage)
+    super(nil, name)
+    self.st = storage
+end
+
+function action_gl_fire:initialize()
+    action_base.initialize(self)
+    self.st.fire_active = true
+    self.stage = "aim"
+    self.last_logged_stage = nil
+    self.aim_until = nil
+    self.end_time = now_tg() + ready_cfg.fire_timeout
+    clear_launch_state(self.st)
+    breadcrumb("fire_init", self.object, select_gl_weapon(self.object), "stage=%s", tostring(self.stage))
+end
+
+function action_gl_fire:execute()
+    action_base.execute(self)
+
+    local npc = self.object
+    local wpn = select_gl_weapon(npc)
+    local target = get_target_object(self.st.target_id)
+
+    if not (npc and npc:alive() and wpn and target and target:alive()) then
+        abort_fire_action(self.st, npc, 1500)
+        return
+    end
+
+    if not is_gl_weapon_ready(npc, wpn) then
+        abort_fire_action(self.st, npc, 750)
+        return
+    end
+
+    if self.last_logged_stage ~= self.stage then
+        self.last_logged_stage = self.stage
+        breadcrumb("fire_stage", npc, wpn, "stage=%s target=%s", tostring(self.stage), tostring(self.st.target_id))
+    end
+
+    if self.stage == "aim" then
+        keep_gl_control(npc, target, target:center())
+        if not self.aim_until then
+            self.aim_until = now_tg() + math_max(0, ready_cfg.aim_time_ms)
+            self.end_time = self.aim_until + ready_cfg.fire_timeout
+        end
+
+        if self.aim_until > now_tg() or npc:is_body_turning() then
+            return
+        end
+
+        self.stage = "launch"
+        return
+    end
+
+    if self.stage == "launch" then
+        local profile = get_weapon_profile(npc, wpn)
+        if not profile then
+            abort_fire_action(self.st, npc, 2000)
+            return
+        end
+
+        breadcrumb("pre_launch", npc, wpn, "ammo=%s", tostring(profile.ammo_section))
+        local origin_pos = resolve_origin_pos(npc, wpn)
+        local impact_pos, dist = resolve_static_impact(npc, origin_pos, target:center())
+        if not impact_pos or dist < ready_cfg.min_dist or dist > ready_cfg.max_dist then
+            abort_fire_action(self.st, npc, 1500)
+            return
+        end
+
+        if has_non_enemy_in_radius(npc, impact_pos, profile.safe_radius) then
+            abort_fire_action(self.st, npc, 1500)
+            return
+        end
+
+        launch_projectile(npc, wpn, origin_pos, impact_pos, profile, self.st)
+        keep_gl_control(npc, target, impact_pos)
+        self.stage = "flight"
+        self.end_time = now_tg() + math_max(ready_cfg.fire_timeout, self.st.flight_time_ms or 0) + 1500
+        return
+    end
+
+    if self.stage == "flight" then
+        local impact_pos = vector_from_table(self.st.impact_pos)
+        keep_gl_control(npc, target, impact_pos or target:center())
+
+        local rt = gl_runtime[npc:id()]
+        if rt and rt.impact_done then
+            self.st.fire_active = nil
+            self.stage = "done"
+            return
+        end
+
+        if not rt then
+            abort_fire_action(self.st, npc, 1500)
+            return
+        end
+
+        if self.end_time <= now_tg() then
+            abort_fire_action(self.st, npc, 2000)
+        end
+        return
+    end
+
+    if self.stage == "impact" then
+        local impact_pos = vector_from_table(self.st.impact_pos)
+        local profile = self.st.ammo_section and get_ammo_profile(self.st.ammo_section) or nil
+
+        cleanup_runtime_entry(npc:id(), false)
+        if impact_pos and profile and not has_non_enemy_in_radius(npc, impact_pos, profile.safe_radius) then
+            play_impact_fx(npc, impact_pos, profile)
+            apply_impact_damage(npc, impact_pos, profile)
+        end
+
+        self.st.fire_active = nil
+        self.stage = "done"
+        return
+    end
+end
+
+function action_gl_fire:finalize()
+    action_base.finalize(self)
+    local npc = self.object
+
+    self.st.fire_active = nil
+    self.st.target_id = nil
+    self.stage = nil
+    self.aim_until = nil
+    self.end_time = nil
+    clear_launch_state(self.st)
+
+    if npc and npc:alive() then
+        cleanup_runtime_entry(npc:id(), false)
+        npc:set_sight(look.direction, npc:direction(), 0)
+        npc:set_desired_position()
+        npc:set_desired_direction()
+        breadcrumb("fire_finalize", npc, select_gl_weapon(npc), "done=true")
+    end
+end
+
+class "action_gl_reload" (action_base)
+function action_gl_reload:__init(npc, name, storage)
+    super(nil, name)
+    self.st = storage
+end
+
+function action_gl_reload:initialize()
+    action_base.initialize(self)
+    self.st.reload_active = nil
+end
+
+function action_gl_reload:execute()
+    action_base.execute(self)
+    self.st.reload_active = nil
+end
+
+function action_gl_reload:finalize()
+    action_base.finalize(self)
+    self.st.reload_active = nil
+end
+
+function setup_generic_scheme(npc, ini, scheme, section, stype, temp)
+    xr_logic.assign_storage_and_bind(npc, ini, "gl", section, temp)
+end
+
+function add_to_binder(npc, ini, scheme, section, storage, temp)
+    if not npc then
+        return
+    end
+
+    local manager = npc:motivation_action_manager()
+    if not manager then
+        return
+    end
+
+    if (not Enabled) or (not npc:alive()) or is_forbidden(npc) then
+        manager:add_evaluator(evid_gl_ready, property_evaluator_const(false))
+        manager:add_evaluator(evid_gl_fire, property_evaluator_const(false))
+        manager:add_evaluator(evid_gl_reload, property_evaluator_const(false))
+        temp.needs_configured = false
+        return
+    end
+
+    storage.reload_active = nil
+
+    manager:add_evaluator(evid_gl_ready, evaluator_gl_ready(npc, "eva_gl_ready", storage))
+    manager:add_evaluator(evid_gl_fire, evaluator_gl_fire("eva_gl_fire", storage))
+    manager:add_evaluator(evid_gl_reload, evaluator_gl_reload("eva_gl_reload", storage))
+
+    local fire_action = action_gl_fire(npc, "act_gl_fire", storage)
+    fire_action:add_precondition(world_property(stalker_ids.property_alive, true))
+    fire_action:add_precondition(world_property(xr_evaluators_id.sidor_wounded_base, false))
+    fire_action:add_precondition(world_property(xr_evaluators_id.wounded_exist, false))
+    fire_action:add_precondition(world_property(evid_gl_ready, true))
+    fire_action:add_precondition(world_property(evid_gl_fire, true))
+    fire_action:add_effect(world_property(evid_gl_fire, false))
+    manager:add_action(actid_gl_fire, fire_action)
+
+end
+
+function configure_actions(npc, ini, scheme, section, stype, temp)
+    if not npc then
+        return
+    end
+
+    local manager = npc:motivation_action_manager()
+    if not manager then
+        return
+    end
+
+    for _, action_id in ipairs({
+        xr_actions_id.alife,
+        stalker_ids.action_combat_planner,
+        stalker_ids.action_danger_planner,
+        xr_actions_id.state_mgr + 2,
+    }) do
+        local action = manager:action(action_id)
+        if action then
+            action:add_precondition(world_property(evid_gl_fire, false))
+            action:add_precondition(world_property(evid_gl_reload, false))
+        end
+    end
+
+    for _, action_id in ipairs({
+        xr_actions_id.corpse_exist,
+        stalker_ids.action_gather_items,
+    }) do
+        local action = manager:action(action_id)
+        if action then
+            action:add_precondition(world_property(evid_gl_reload, false))
+        end
+    end
+end
+
+function npc_add_precondition(action)
+    if not action then
+        return
+    end
+
+    action:add_precondition(world_property(evid_gl_fire, false))
+    action:add_precondition(world_property(evid_gl_reload, false))
+end
+
+function reset_generic_scheme(npc, scheme, section, stype, st)
+    local storage = st and st.gl
+    if storage then
+        storage.fire_active = nil
+        storage.reload_active = nil
+        storage.target_id = nil
+        clear_launch_state(storage)
+    end
+
+    if npc and npc.id then
+        cleanup_runtime_entry(npc:id(), true)
+    end
+end
+
+function disable_generic_scheme(npc, scheme, stype)
+    local storage = npc and db.storage[npc:id()] and db.storage[npc:id()].gl
+    if storage then
+        storage.fire_active = nil
+        storage.reload_active = nil
+        storage.target_id = nil
+        clear_launch_state(storage)
+    end
+
+    if npc and npc.id then
+        cleanup_runtime_entry(npc:id(), true)
+    end
+end

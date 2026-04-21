@@ -1,0 +1,1478 @@
+--[[
+=======================================================================================
+    DevTools UI - Profiler Tab Module
+    
+    Handles profiler tab rendering: module browser, profiling controls, stats table.
+    
+    Depends on:
+    - devtools_ui_common (colors, format helpers)
+=======================================================================================
+--]]
+
+-- Reference to common UI module
+local U = devtools_ui_common
+
+-- ============================================================================
+-- PROFILER TAB STATE
+-- ============================================================================
+
+local hide_fast_functions = false
+local sort_column = 3 -- Default: Avg (ms)
+local sort_ascending = false -- Descending (slowest first)
+local max_visible_rows = 100 -- Limits rows shown for performance (0 = unlimited)
+local show_calls = true
+local show_avg = true
+local show_median = true
+local show_min = false
+local show_max = false
+local show_total = false
+local show_self_total = false
+local show_self_avg = false
+local show_self_median = false
+local show_self_min = false
+local show_self_max = false
+
+local minimal_mode = false -- Hide stats table entirely (for flamegraph collection)
+local high_precision_mode = false -- High precision display mode
+
+-- Rewrap controls
+local auto_rewrap_enabled = false
+local rewrap_interval_ms = 1000
+local last_rewrap_tg = 0
+
+-- Module browser state
+local available_modules = {}
+local last_module_scan = 0
+local MODULE_SCAN_INTERVAL = 5000 -- Rescan every 5 seconds
+local module_search_text = "" -- Search filter for module browser
+
+-- Stats cache for performance (throttles table rebuilding)
+local cached_stats_display = {}
+local cached_total_time = 0
+local cached_total_calls = 0
+local cached_total_names = 0
+local last_stats_update = 0
+local STATS_UPDATE_INTERVAL = 150 -- Update every 150ms
+local cached_sort_column = 3
+local cached_sort_ascending = false
+local cached_hide_fast = false
+local cached_show_calls = true
+local cached_show_avg = true
+local cached_show_median = true
+local cached_show_min = false
+local cached_show_max = false
+local cached_show_total = false
+local cached_show_self_total = false
+local cached_show_self_avg = false
+local cached_show_self_median = false
+local cached_show_self_min = false
+local cached_show_self_max = false
+
+-- Presets state
+local preset_name_input = ""
+local selected_preset_index = 0
+local loaded_preset_name = nil  -- Tracks which preset is currently loaded
+local preset_save_message = nil
+local preset_save_message_time = 0
+
+-- Color picker state
+local color_picker_module = nil
+local color_picker_color = fcolor():set(1, 1, 1, 1)
+
+-- CSV export state
+local last_csv_export_path = nil
+local last_csv_export_time = 0
+local CSV_EXPORT_MESSAGE_DURATION = 5000
+
+-- Call graph export state
+local last_callgraph_export_path = nil
+local last_callgraph_export_time = 0
+local CALLGRAPH_EXPORT_MESSAGE_DURATION = 5000
+local callgraph_min_calls = 1
+local callgraph_min_calls_text = "1"
+local callgraph_min_total_ms = 0
+local callgraph_min_total_ms_text = "0"
+
+-- Flamegraph export state
+local last_flamegraph_export_path = nil
+local last_flamegraph_export_time = 0
+local flamegraph_collect_message = nil
+local flamegraph_collect_message_time = 0
+local FLAMEGRAPH_MESSAGE_DURATION = 3000
+
+-- Timed profiling state (shared with main imgui module)
+devtools_ui_profiler = devtools_ui_profiler or {}
+devtools_ui_profiler.timed_profiling_enabled = false
+devtools_ui_profiler.profiling_duration_sec = 0  -- 0 means unlimited (no auto-stop)
+devtools_ui_profiler.profiling_duration_text = "0"  -- Single input field for time
+devtools_ui_profiler.profiling_start_time = 0
+devtools_ui_profiler.auto_rewrap_enabled = false
+devtools_ui_profiler.rewrap_interval_ms = 1000
+devtools_ui_profiler.last_rewrap_tg = 0
+-- Auto-export state for timed profiling completion
+devtools_ui_profiler.timed_profiling_auto_exported = false  -- Prevents multiple exports from single timed session
+
+-- Helper function to perform auto-export when timed profiling completes
+local function perform_timed_profiling_auto_export()
+	local profiler_ok = (devtools_profiler ~= nil)
+	
+	-- Export CSV
+	if profiler_ok and type(devtools_profiler.export_to_csv) == "function" then
+		local success, path = devtools_profiler.export_to_csv()
+		if success then
+			last_csv_export_path = path
+			last_csv_export_time = time_global()
+			printf("[DEVTOOLS] Auto-exported CSV after timed profiling: " .. tostring(path))
+			else
+			printf("[DEVTOOLS] Failed to auto-export CSV after timed profiling")
+		end
+	end
+	
+	-- Export Flamegraph
+	if profiler_ok and type(devtools_profiler.export_flamegraph) == "function" then
+		local success, path = devtools_profiler.export_flamegraph()
+		if success then
+			last_flamegraph_export_path = path
+			last_flamegraph_export_time = time_global()
+			printf("[DEVTOOLS] Auto-exported flamegraph after timed profiling: " .. tostring(path))
+		else
+			printf("[DEVTOOLS] Failed to auto-export flamegraph after timed profiling")
+		end
+	end
+end
+
+-- Helper function to check and handle timed profiling completion
+local function check_timed_profiling_completion()
+	local P = devtools_ui_profiler
+	if not P.timed_profiling_enabled or P.timed_profiling_auto_exported then
+		return false
+	end
+	
+	local elapsed = (time_global() - P.profiling_start_time) / 1000
+	local remaining = P.profiling_duration_sec - elapsed
+	
+	if remaining <= 0 then
+		-- Time is up - stop profiling and auto-export
+		P.timed_profiling_auto_exported = true
+		
+		-- Stop profiling first
+		if devtools_profiler and type(devtools_profiler.disable) == "function" then
+			devtools_profiler.disable()
+			printf("[DEVTOOLS] Timed profiling completed - stopped after " .. tostring(P.profiling_duration_sec) .. "s")
+		end
+		
+		-- Then export data
+		perform_timed_profiling_auto_export()
+		
+		return true
+	end
+	
+	return false
+end
+
+-- ============================================================================
+-- PROFILER TAB RENDERING
+-- ============================================================================
+
+function render_profiler_tab()
+	if not devtools_profiler then
+		ImGui.TextColored(fcolor():set(1, 0.5, 0.5, 1), "devtools_profiler.script not loaded")
+		return
+	end
+
+	-- Module browser section (includes presets)
+	render_module_browser()
+
+	ImGui.Separator()
+
+	-- Profiling controls
+	render_profiling_controls()
+
+	ImGui.Separator()
+
+	-- Stats table
+	render_stats_table()
+end
+
+function render_module_browser()
+	-- Refresh available modules periodically
+	local tg = time_global()
+	if tg - last_module_scan > MODULE_SCAN_INTERVAL then
+		available_modules = devtools_profiler.discover_modules()
+		last_module_scan = tg
+	end
+
+	-- Collapsible module browser
+	if ImGui.CollapsingHeader("Module Browser - Select modules to profile", 0) then
+		-- =============== WARNING DISCLAIMER ===============
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(1, 0.5, 0.2, 1))
+		ImGui.TextWrapped(
+			"WARNING: Selecting too many modules at once can cause stackoverflows. Use moderation when selecting modules."
+		)
+		ImGui.PopStyleColor(1)
+		ImGui.Spacing()
+
+		-- =============== PRESETS SECTION ===============
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.7, 0.9, 1, 1))
+		ImGui.Text("Presets:")
+		ImGui.PopStyleColor(1)
+		ImGui.SameLine()
+
+		-- Preset selector (dropdown/combo)
+		local preset_names = devtools_profiler.get_preset_names()
+		local preset_display_names = {}
+		table.insert(preset_display_names, "(Select preset...)")
+		for _, name in ipairs(preset_names) do
+			table.insert(preset_display_names, name)
+		end
+		
+		-- Adjust selected index if preset list changed
+		if selected_preset_index > #preset_display_names - 1 then
+			selected_preset_index = 0
+		end
+		
+		-- Determine what to show in the dropdown: loaded preset takes priority
+		local dropdown_display = "(Select preset...)"
+		if loaded_preset_name then
+			dropdown_display = loaded_preset_name
+		elseif selected_preset_index > 0 then
+			dropdown_display = preset_display_names[selected_preset_index + 1] or "(Select preset...)"
+		end
+		
+		if ImGui.BeginCombo("##preset_selector", dropdown_display, 0) then
+			for i = 0, #preset_display_names - 1 do
+				local is_selected = (selected_preset_index == i)
+				if ImGui.Selectable(preset_display_names[i + 1], is_selected, 0, vector2(200, 0)) then
+					selected_preset_index = i
+					-- Don't auto-load on selection anymore - use Load button
+				end
+				if is_selected then
+					ImGui.SetItemDefaultFocus()
+				end
+			end
+			ImGui.EndCombo()
+		end
+		-- Tooltip for preset selector
+		if ImGui.BeginItemTooltip() then
+			ImGui.PushTextWrapPos(ImGui.GetFontSize() * 35)
+			ImGui.Text("Select a preset to load.\nPresets save module selection, flamegraph state, and custom colors.")
+			ImGui.PopTextWrapPos()
+			ImGui.EndTooltip()
+		end
+		
+		ImGui.Spacing()
+		
+		-- =============== PRESET ACTIONS ===============
+		-- Load button - enabled when a preset is selected from dropdown
+		if selected_preset_index > 0 and selected_preset_index <= #preset_names then
+			if ImGui.Button("Load##preset_load", vector2(60, 0)) then
+				local preset_name = preset_names[selected_preset_index]
+				if preset_name then
+					devtools_profiler.load_preset(preset_name)
+					loaded_preset_name = preset_name  -- Track the loaded preset
+					selected_preset_index = 0  -- Reset selection after load
+				end
+			end
+		else
+			ImGui.PushStyleColor(ImGuiCol.Button, fcolor():set(0.3, 0.3, 0.3, 1))
+			ImGui.Button("Load##preset_load", vector2(60, 0))
+			ImGui.PopStyleColor(1)
+		end
+		
+		ImGui.SameLine(0, 5)
+		
+		-- Delete button - enabled when a preset is loaded
+		if loaded_preset_name then
+			ImGui.PushStyleColor(ImGuiCol.Button, fcolor():set(0.5, 0.2, 0.2, 1))
+			ImGui.PushStyleColor(ImGuiCol.ButtonHovered, fcolor():set(0.8, 0.3, 0.3, 1))
+			if ImGui.Button("Delete##preset_delete", vector2(60, 0)) then
+				devtools_profiler.delete_preset(loaded_preset_name)
+				loaded_preset_name = nil  -- Clear loaded preset after deletion
+				selected_preset_index = 0  -- Also reset selection
+			end
+			ImGui.PopStyleColor(2)
+		else
+			ImGui.PushStyleColor(ImGuiCol.Button, fcolor():set(0.3, 0.3, 0.3, 1))
+			ImGui.Button("Delete##preset_delete", vector2(60, 0))
+			ImGui.PopStyleColor(1)
+		end
+		
+		ImGui.SameLine(0, 10)
+
+		-- Save new preset section - grouped together for clarity
+		ImGui.Text("New Preset Name:")
+		ImGui.SameLine()
+		local new_name, name_changed = ImGui.InputText("##preset_name", preset_name_input, 30)
+		if name_changed then
+			preset_name_input = new_name
+		end
+		ImGui.SameLine(0, 5)
+		
+		-- Save preset button - right next to the name input
+		if ImGui.Button("Save##preset_save", vector2(60, 0)) then
+			if preset_name_input ~= "" then
+				local success = devtools_profiler.save_preset(preset_name_input)
+				if success then
+					preset_save_message = "Preset '" .. preset_name_input .. "' saved!"
+					preset_save_message_time = time_global()
+					preset_name_input = ""
+				else
+					preset_save_message = "ERROR: Failed to save. Check console."
+					preset_save_message_time = time_global()
+				end
+			else
+				preset_save_message = "Please enter a preset name"
+				preset_save_message_time = time_global()
+			end
+		end
+		
+		-- Show save message inline with the save controls
+		if preset_save_message and (time_global() - preset_save_message_time) < 5000 then
+			ImGui.SameLine(0, 10)
+			local color = fcolor():set(0.4, 1, 0.4, 1)
+			if preset_save_message:match("ERROR") or preset_save_message:match("Please enter") then
+				color = fcolor():set(1, 0.4, 0.4, 1)
+			end
+			ImGui.PushStyleColor(ImGuiCol.Text, color)
+			ImGui.Text(preset_save_message)
+			ImGui.PopStyleColor(1)
+		elseif preset_save_message then
+			preset_save_message = nil
+		end
+
+		-- Visual separator between preset management and module search
+		ImGui.Separator()
+		ImGui.Spacing()
+
+		-- =============== SEARCH SECTION ===============
+		ImGui.Text("Search:")
+		ImGui.SameLine()
+		local new_search, changed = ImGui.InputText("##module_search", module_search_text, 100)
+		if changed then
+			module_search_text = new_search
+		end
+		ImGui.SameLine()
+		if ImGui.Button("X##clear_search", vector2(20, 0)) then
+			module_search_text = ""
+		end
+
+		-- Filter modules by search
+		local filtered_modules = {}
+		local search_lower = string.lower(module_search_text)
+		for _, mod_name in ipairs(available_modules) do
+			if module_search_text == "" or string.find(string.lower(mod_name), search_lower, 1, true) then
+				table.insert(filtered_modules, mod_name)
+			end
+		end
+
+		ImGui.SameLine(0, 20)
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.5, 0.5, 0.5, 1))
+		if module_search_text ~= "" then
+			ImGui.Text(string.format("Showing %d/%d modules", #filtered_modules, #available_modules))
+		else
+			ImGui.Text(string.format("%d modules found", #available_modules))
+		end
+		ImGui.PopStyleColor(1)
+
+		ImGui.Spacing()
+
+		-- =============== QUICK ACTIONS ===============
+		if ImGui.Button("Refresh", vector2(70, 0)) then
+			available_modules = devtools_profiler.discover_modules()
+		end
+		ImGui.SameLine()
+		if ImGui.Button("Clear Selection", vector2(100, 0)) then
+			for _, mod_name in ipairs(devtools_profiler.get_registered_modules()) do
+				devtools_profiler.unregister_module(mod_name)
+			end
+		end
+		ImGui.SameLine()
+
+		local select_btn_text = (module_search_text == "") and "Select All" or "Select Filtered"
+
+		if ImGui.Button(select_btn_text, vector2(100, 0)) then
+			for _, mod_name in ipairs(filtered_modules) do
+				if not devtools_profiler.is_module_registered(mod_name) then
+					devtools_profiler.register_module(mod_name)
+				end
+			end
+		end
+
+		ImGui.Spacing()
+
+		-- =============== MODULE CHECKBOXES ===============
+		local col = 0
+		local max_cols = 4
+
+		for _, mod_name in ipairs(filtered_modules) do
+			local is_registered = devtools_profiler.is_module_registered(mod_name)
+			local is_wrapped = devtools_profiler.is_module_wrapped(mod_name)
+
+			-- Color based on status
+			if is_wrapped then
+				ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.4, 1, 0.4, 1))
+			elseif is_registered then
+				ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(1, 1, 0.4, 1))
+			end
+
+			local _, new_state = ImGui.Checkbox(mod_name .. "##mod", is_registered)
+			if new_state ~= is_registered then
+				if new_state then
+					devtools_profiler.register_module(mod_name)
+				else
+					devtools_profiler.unregister_module(mod_name)
+				end
+			end
+
+			if is_wrapped or is_registered then
+				ImGui.PopStyleColor(1)
+			end
+
+			-- Color picker button (only for registered/wrapped modules)
+			if is_registered or is_wrapped then
+				ImGui.SameLine(0, 5)
+				
+				local current_color = U.get_module_color_by_name(mod_name)
+				local has_custom_color = U.custom_module_colors[mod_name] ~= nil
+				
+				if ImGui.ColorButton(mod_name .. "##color", current_color, 0, vector2(15, 15)) then
+					color_picker_module = mod_name
+					color_picker_color = fcolor():set(current_color.r, current_color.g, current_color.b, 1)
+				end
+				
+				if ImGui.BeginItemTooltip() then
+					ImGui.PushTextWrapPos(ImGui.GetFontSize() * 35)
+					if has_custom_color then
+						ImGui.Text("Click to change custom color for '" .. mod_name .. "'\nRight-click to reset to auto-assigned color")
+					else
+						ImGui.Text("Click to set custom color for '" .. mod_name .. "'")
+					end
+					ImGui.PopTextWrapPos()
+					ImGui.EndTooltip()
+				end
+				
+				if ImGui.IsItemClicked(1) then
+					if has_custom_color then
+						U.clear_module_color(mod_name)
+					end
+				end
+			end
+
+			col = col + 1
+			if col < max_cols then
+				ImGui.SameLine(0, 20)
+			else
+				col = 0
+			end
+		end
+		
+		-- Color picker popup
+		if color_picker_module then
+			ImGui.OpenPopup("ColorPicker##" .. color_picker_module)
+		end
+		
+		if color_picker_module and ImGui.BeginPopup("ColorPicker##" .. color_picker_module, 0) then
+			ImGui.Text("Set color for: " .. color_picker_module)
+			ImGui.Spacing()
+			
+			local changed, new_color = ImGui.ColorPicker3("Color##picker", color_picker_color, 0)
+			if changed then
+				color_picker_color = new_color
+			end
+			
+			ImGui.Spacing()
+			
+			if ImGui.Button("OK", vector2(80, 0)) then
+				U.set_module_color(color_picker_module, color_picker_color.r, color_picker_color.g, color_picker_color.b)
+				color_picker_module = nil
+				ImGui.CloseCurrentPopup()
+			end
+			
+			ImGui.SameLine()
+			
+			if ImGui.Button("Cancel", vector2(80, 0)) then
+				color_picker_module = nil
+				ImGui.CloseCurrentPopup()
+			end
+			
+			ImGui.SameLine()
+			
+			if ImGui.Button("Reset", vector2(80, 0)) then
+				U.clear_module_color(color_picker_module)
+				color_picker_module = nil
+				ImGui.CloseCurrentPopup()
+			end
+			
+			ImGui.EndPopup()
+		end
+
+		if col ~= 0 then
+			ImGui.Text("")
+		end
+
+		-- Legend
+		ImGui.Spacing()
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.5, 0.5, 0.5, 1))
+		ImGui.Text("Legend:")
+		ImGui.PopStyleColor(1)
+		ImGui.SameLine()
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.4, 1, 0.4, 1))
+		ImGui.Text("Active")
+		ImGui.PopStyleColor(1)
+		ImGui.SameLine()
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(1, 1, 0.4, 1))
+		ImGui.Text("Registered")
+		ImGui.PopStyleColor(1)
+		ImGui.SameLine()
+		ImGui.Text("Available")
+	end
+end
+
+function render_profiling_controls()
+	local profiler_ok = (devtools_profiler ~= nil)
+
+	local is_enabled = false
+	if profiler_ok and type(devtools_profiler.is_enabled) == "function" then
+		is_enabled = devtools_profiler.is_enabled()
+	end
+
+	local wrapped_count = 0
+	if profiler_ok and type(devtools_profiler.get_wrapped_function_count) == "function" then
+		wrapped_count = devtools_profiler.get_wrapped_function_count()
+	end
+
+	local wrapped_modules = {}
+	if profiler_ok and type(devtools_profiler.get_wrapped_modules) == "function" then
+		wrapped_modules = devtools_profiler.get_wrapped_modules() or {}
+	end
+	if #wrapped_modules > 0 then
+		U.sync_module_colors(wrapped_modules)
+	end
+
+	local registered = {}
+	if profiler_ok and type(devtools_profiler.get_registered_modules) == "function" then
+		registered = devtools_profiler.get_registered_modules() or {}
+	end
+
+	if profiler_ok and type(devtools_profiler.is_enabled) ~= "function" then
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(1, 0.5, 0.5, 1))
+		ImGui.Text("Profiler API incomplete: is_enabled() missing")
+		ImGui.PopStyleColor(1)
+
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.6, 0.6, 0.6, 1))
+		ImGui.TextWrapped(
+			"The UI is running, but devtools_profiler.script did not expose is_enabled/enable/disable correctly."
+		)
+		ImGui.PopStyleColor(1)
+
+		ImGui.Spacing()
+	end
+
+	-- Status
+	if is_enabled then
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.4, 1, 0.4, 1))
+		ImGui.Text("PROFILING ACTIVE")
+		ImGui.PopStyleColor(1)
+		ImGui.SameLine(0, 10)
+		ImGui.Text(string.format("(%d functions in %d modules)", wrapped_count, #wrapped_modules))
+	else
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.6, 0.6, 0.6, 1))
+		ImGui.Text("PROFILING INACTIVE")
+		ImGui.PopStyleColor(1)
+		ImGui.SameLine(0, 10)
+		ImGui.Text(string.format("(%d modules selected)", #registered))
+	end
+
+	ImGui.Spacing()
+
+	-- References to shared state
+	local P = devtools_ui_profiler
+
+	-- Enable/Disable button
+	if is_enabled then
+		if ImGui.Button("Stop Profiling", vector2(120, 0)) then
+			if profiler_ok and type(devtools_profiler.disable) == "function" then
+				devtools_profiler.disable()
+			end
+			P.timed_profiling_enabled = false
+		end
+		if ImGui.BeginItemTooltip() then
+			ImGui.PushTextWrapPos(ImGui.GetFontSize() * 35)
+			ImGui.Text("Stop profiling and restore original functions.\nStatistics remain visible until Reset Stats is clicked.")
+			ImGui.PopTextWrapPos()
+			ImGui.EndTooltip()
+		end
+
+		-- Check for timed profiling completion (auto-stop and auto-export)
+		if P.timed_profiling_enabled and P.profiling_duration_sec > 0 then
+			check_timed_profiling_completion()
+		end
+		
+		-- Show remaining time if timed profiling is active with a time limit
+		if P.timed_profiling_enabled and P.profiling_duration_sec > 0 then
+			ImGui.SameLine()
+			local elapsed = (time_global() - P.profiling_start_time) / 1000
+			local remaining = math.max(0, P.profiling_duration_sec - elapsed)
+			ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(1, 0.8, 0.3, 1))
+			ImGui.Text(string.format("Auto-stop in %.1fs", remaining))
+			ImGui.PopStyleColor(1)
+		end
+	else
+		local can_start = (#registered > 0) and profiler_ok and (type(devtools_profiler.enable) == "function")
+		if not can_start then
+			ImGui.PushStyleColor(ImGuiCol.Button, fcolor():set(0.3, 0.3, 0.3, 1))
+		end
+
+		if ImGui.Button("Start Profiling", vector2(120, 0)) then
+			if can_start then
+				-- Enable timed profiling if a duration > 0 is set
+				if P.profiling_duration_sec > 0 then
+					P.timed_profiling_enabled = true
+					P.profiling_start_time = time_global()
+					P.timed_profiling_auto_exported = false  -- Reset auto-export flag
+					printf("[DEVTOOLS] Timed profiling started - will stop in " .. tostring(P.profiling_duration_sec) .. "s")
+				else
+					-- Duration is 0/unlimited - no auto-stop
+					P.timed_profiling_enabled = false
+					printf("[DEVTOOLS] Profiling started - unlimited duration (manual stop required)")
+				end
+				devtools_profiler.enable()
+			end
+		end
+		if ImGui.BeginItemTooltip() then
+			ImGui.PushTextWrapPos(ImGui.GetFontSize() * 35)
+			ImGui.Text("Start profiling selected modules.\nWraps functions to collect timing statistics.\nRequires at least one module to be selected.")
+			ImGui.PopTextWrapPos()
+			ImGui.EndTooltip()
+		end
+
+		if not can_start then
+			ImGui.PopStyleColor(1)
+			ImGui.SameLine()
+			ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(1, 0.5, 0.5, 1))
+
+			if not profiler_ok then
+				ImGui.Text("Profiler not loaded")
+			elseif #registered == 0 then
+				ImGui.Text("Select modules above first")
+			elseif type(devtools_profiler.enable) ~= "function" then
+				ImGui.Text("Profiler enable() missing")
+			else
+				ImGui.Text("Cannot start profiling")
+			end
+
+			ImGui.PopStyleColor(1)
+		end
+
+		-- Timed profiling controls (single input field - 0 or empty = unlimited)
+		ImGui.SameLine(0, 20)
+		ImGui.Text("Time (sec):")
+		ImGui.SameLine()
+		local new_text, text_changed = ImGui.InputText("##duration", P.profiling_duration_text, 6)
+		if text_changed then
+			P.profiling_duration_text = new_text
+			local num = tonumber(new_text)
+			if num then
+				-- Allow 0-300 seconds (0 = unlimited/no auto-stop)
+				P.profiling_duration_sec = math.max(0, math.min(300, math.floor(num)))
+			else
+				-- Empty or invalid = 0 (unlimited)
+				P.profiling_duration_sec = 0
+			end
+		end
+		if ImGui.BeginItemTooltip() then
+			ImGui.PushTextWrapPos(ImGui.GetFontSize() * 35)
+			ImGui.Text("Profiling duration in seconds.\n0 or empty = unlimited (manual stop required).\n>0 = auto-stop and auto-export after N seconds.\nRange: 0-300 seconds (5 minutes max).")
+			ImGui.PopTextWrapPos()
+			ImGui.EndTooltip()
+		end
+	end
+
+	ImGui.SameLine(0, 20)
+
+	if ImGui.Button("Reset Stats", vector2(100, 0)) then
+		if profiler_ok and type(devtools_profiler.reset_all) == "function" then
+			devtools_profiler.reset_all()
+		end
+	end
+	if ImGui.BeginItemTooltip() then
+		ImGui.PushTextWrapPos(ImGui.GetFontSize() * 35)
+		ImGui.Text("Clear all collected statistics.\nUseful for starting a fresh profiling session.\nDoes not stop profiling - use Stop Profiling to do that.")
+		ImGui.PopTextWrapPos()
+		ImGui.EndTooltip()
+	end
+
+	ImGui.SameLine()
+
+	if ImGui.Button("Export CSV", vector2(100, 0)) then
+		if profiler_ok and type(devtools_profiler.export_to_csv) == "function" then
+			local success, path = devtools_profiler.export_to_csv()
+			if success then
+				last_csv_export_path = path
+				last_csv_export_time = time_global()
+			else
+				last_csv_export_path = nil
+				last_csv_export_time = 0
+			end
+		end
+	end
+	if ImGui.BeginItemTooltip() then
+		ImGui.PushTextWrapPos(ImGui.GetFontSize() * 35)
+		ImGui.Text("Export all statistics to a CSV file.\nIncludes: Function name, call count, avg/median/min/max/total times.\nSaved to appdata folder. Open in Excel or any spreadsheet tool.")
+		ImGui.PopTextWrapPos()
+		ImGui.EndTooltip()
+	end
+
+	ImGui.SameLine()
+
+	if ImGui.Button("Export Call Graph", vector2(140, 0)) then
+		if devtools_profiler_export and type(devtools_profiler_export.export_callgraph_dot) == "function" then
+			local options = {
+				min_calls = callgraph_min_calls,
+				min_total_ms = callgraph_min_total_ms,
+			}
+			local success, path = devtools_profiler_export.export_callgraph_dot(nil, options)
+			if success then
+				last_callgraph_export_path = path
+				last_callgraph_export_time = time_global()
+			else
+				last_callgraph_export_path = nil
+				last_callgraph_export_time = 0
+			end
+		end
+	end
+	if ImGui.BeginItemTooltip() then
+		ImGui.PushTextWrapPos(ImGui.GetFontSize() * 35)
+		ImGui.Text("Export call graph to Graphviz DOT format.\nUses min calls and min total ms filters below.\nSaved to appdata folder as devtools_callgraph.dot.")
+		ImGui.PopTextWrapPos()
+		ImGui.EndTooltip()
+	end
+
+	ImGui.Spacing()
+	ImGui.Text("Call Graph Filters:")
+	ImGui.SameLine()
+	ImGui.Text("Min Calls:")
+	ImGui.SameLine()
+	local new_min_calls_text, min_calls_changed = ImGui.InputText("##callgraph_min_calls", callgraph_min_calls_text, 6)
+	if min_calls_changed then
+		callgraph_min_calls_text = new_min_calls_text
+		local num = tonumber(new_min_calls_text)
+		if num then
+			callgraph_min_calls = math.max(1, math.floor(num))
+		end
+	end
+	if ImGui.BeginItemTooltip() then
+		ImGui.PushTextWrapPos(ImGui.GetFontSize() * 35)
+		ImGui.Text("Minimum number of calls required to include an edge in the graph.\nDefault: 1")
+		ImGui.PopTextWrapPos()
+		ImGui.EndTooltip()
+	end
+
+	ImGui.SameLine()
+	ImGui.Text("Min Total (ms):")
+	ImGui.SameLine()
+	local new_min_total_text, min_total_changed = ImGui.InputText("##callgraph_min_total", callgraph_min_total_ms_text, 8)
+	if min_total_changed then
+		callgraph_min_total_ms_text = new_min_total_text
+		local num = tonumber(new_min_total_text)
+		if num then
+			callgraph_min_total_ms = math.max(0, num)
+		end
+	end
+	if ImGui.BeginItemTooltip() then
+		ImGui.PushTextWrapPos(ImGui.GetFontSize() * 35)
+		ImGui.Text("Minimum total time (ms) required to include a node in the graph.\nDefault: 0")
+		ImGui.PopTextWrapPos()
+		ImGui.EndTooltip()
+	end
+
+	ImGui.Spacing()
+	ImGui.Separator()
+	ImGui.Spacing()
+
+	-- Rewrap controls
+	if profiler_ok and type(devtools_profiler.rewrap_registered_modules) == "function" then
+		if ImGui.Button("Re-scan Now", vector2(100, 0)) then
+			local added = devtools_profiler.rewrap_registered_modules()
+			if added and added > 0 then
+				if DEVTOOLS_VERBOSE then
+					printf("[DEVTOOLS] Re-scan wrapped %d new functions", added)
+				end
+			end
+		end
+		if ImGui.BeginItemTooltip() then
+			ImGui.PushTextWrapPos(ImGui.GetFontSize() * 35)
+			ImGui.Text("Manually scan registered modules for newly added or overwritten functions.\nUseful when hot-reloading scripts during development.")
+			ImGui.PopTextWrapPos()
+			ImGui.EndTooltip()
+		end
+		
+		ImGui.SameLine(0, 20)
+		local _, new_auto = ImGui.Checkbox("Auto rewrap", P.auto_rewrap_enabled)
+		if new_auto ~= P.auto_rewrap_enabled then
+			P.auto_rewrap_enabled = new_auto
+			P.last_rewrap_tg = 0
+		end
+		if ImGui.BeginItemTooltip() then
+			ImGui.PushTextWrapPos(ImGui.GetFontSize() * 35)
+			ImGui.Text("Automatically re-scan modules at the specified interval.\nUseful for development when scripts are being hot-reloaded.\nWARNING: Adds CPU overhead (~5-50ms per scan).")
+			ImGui.PopTextWrapPos()
+			ImGui.EndTooltip()
+		end
+		
+		ImGui.SameLine()
+		ImGui.Text("Interval (ms):")
+		ImGui.SameLine()
+		local new_text, changed = ImGui.InputText("##rewrap_interval", tostring(P.rewrap_interval_ms), 8)
+		if changed then
+			local num = tonumber(new_text)
+			if num and num >= 100 and num <= 10000 then
+				P.rewrap_interval_ms = math.floor(num)
+			end
+		end
+		if ImGui.BeginItemTooltip() then
+			ImGui.PushTextWrapPos(ImGui.GetFontSize() * 35)
+			ImGui.Text("Time between automatic re-scans in milliseconds.\nRange: 100-10000ms (1-10 seconds).\nHigher values = less CPU overhead but slower detection of new functions.")
+			ImGui.PopTextWrapPos()
+			ImGui.EndTooltip()
+		end
+		ImGui.Spacing()
+	end
+
+	ImGui.Text("Flamegraph Export:")
+	ImGui.SameLine()
+
+	local fg_enabled = false
+	if profiler_ok and type(devtools_profiler.is_flamegraph_enabled) == "function" then
+		fg_enabled = devtools_profiler.is_flamegraph_enabled()
+	end
+
+	local _, new_fg_enabled = ImGui.Checkbox("Collect Data##flamegraph", fg_enabled)
+	if new_fg_enabled ~= fg_enabled then
+		if profiler_ok then
+			if new_fg_enabled and type(devtools_profiler.enable_flamegraph) == "function" then
+				devtools_profiler.enable_flamegraph()
+				flamegraph_collect_message = "Flamegraph data collection ENABLED"
+				flamegraph_collect_message_time = time_global()
+			elseif (not new_fg_enabled) and type(devtools_profiler.disable_flamegraph) == "function" then
+				devtools_profiler.disable_flamegraph()
+				flamegraph_collect_message = "Flamegraph data collection DISABLED"
+				flamegraph_collect_message_time = time_global()
+			end
+		end
+	end
+	if ImGui.BeginItemTooltip() then
+		ImGui.PushTextWrapPos(ImGui.GetFontSize() * 35)
+		ImGui.Text("Enable flamegraph data collection.\nCaptures call stack traces for each function call.\nUseful for visualizing performance bottlenecks.\nExported in .folded format for external tools.")
+		ImGui.PopTextWrapPos()
+		ImGui.EndTooltip()
+	end
+
+	ImGui.SameLine()
+
+	local sample_count = 0
+	if profiler_ok and type(devtools_profiler.get_flamegraph_sample_count) == "function" then
+		sample_count = devtools_profiler.get_flamegraph_sample_count() or 0
+	end
+
+	local has_flamegraph_data = (sample_count > 0)
+	local can_export_flamegraph = fg_enabled or has_flamegraph_data
+
+	if not can_export_flamegraph then
+		ImGui.PushStyleColor(ImGuiCol.Button, fcolor():set(0.3, 0.3, 0.3, 1))
+	end
+
+	if ImGui.Button("Export Flamegraph", vector2(130, 0)) then
+		if can_export_flamegraph and profiler_ok and type(devtools_profiler.export_flamegraph) == "function" then
+			local success, path = devtools_profiler.export_flamegraph()
+			if success then
+				last_flamegraph_export_path = path
+				last_flamegraph_export_time = time_global()
+			else
+				last_flamegraph_export_path = nil
+				last_flamegraph_export_time = 0
+			end
+		end
+	end
+
+	if not can_export_flamegraph then
+		ImGui.PopStyleColor(1)
+		ImGui.SameLine()
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.5, 0.5, 0.5, 1))
+		ImGui.Text("(enable collection first)")
+		ImGui.PopStyleColor(1)
+	end
+	if ImGui.BeginItemTooltip() then
+		ImGui.PushTextWrapPos(ImGui.GetFontSize() * 35)
+		ImGui.Text("Export flamegraph data to a .folded file.\nVisualize in tools like FlameGraph.pl, speedscope, or Inferno.\nRequires 'Collect Data' to be enabled first.")
+		ImGui.PopTextWrapPos()
+		ImGui.EndTooltip()
+	end
+
+	ImGui.Spacing()
+
+	-- Auto-start checkbox
+	local auto_start = false
+	if profiler_ok and type(devtools_profiler.preset_exists) == "function" then
+		auto_start = devtools_profiler.preset_exists("_AUTOLOAD_")
+	end
+
+	local _, new_auto_start = ImGui.Checkbox("Profile on Load", auto_start)
+	if ImGui.BeginItemTooltip() then
+		ImGui.PushTextWrapPos(ImGui.GetFontSize() * 35)
+		ImGui.Text("Automatically start profiling when the game loads.\nSaves current module selection and flamegraph state to _AUTOLOAD_ preset.\nUseful for consistent profiling sessions.")
+		ImGui.PopTextWrapPos()
+		ImGui.EndTooltip()
+	end
+
+	if new_auto_start ~= auto_start then
+		if profiler_ok then
+			if new_auto_start then
+				if type(devtools_profiler.save_preset) == "function" then
+					devtools_profiler.save_preset("_AUTOLOAD_")
+				end
+			else
+				if type(devtools_profiler.delete_preset) == "function" then
+					devtools_profiler.delete_preset("_AUTOLOAD_")
+				end
+			end
+		end
+	end
+
+	ImGui.SameLine()
+
+	local _, new_hide = ImGui.Checkbox("Hide fast (<0.01ms)", hide_fast_functions)
+	if ImGui.BeginItemTooltip() then
+		ImGui.PushTextWrapPos(ImGui.GetFontSize() * 35)
+		ImGui.Text("Hide functions with average execution time < 0.01ms.\nHelps focus on slower functions that may need optimization.\nFast functions are still being profiled, just hidden from view.")
+		ImGui.PopTextWrapPos()
+		ImGui.EndTooltip()
+	end
+
+	-- Performance controls
+	ImGui.Spacing()
+	ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.7, 0.7, 0.7, 1))
+	ImGui.Text("Display:")
+	ImGui.PopStyleColor(1)
+	ImGui.SameLine()
+
+	-- Row limit control
+	ImGui.Text("Max rows:")
+	ImGui.SameLine()
+	if ImGui.Button("All##rows", vector2(30, 0)) then
+		max_visible_rows = 0
+	end
+	if ImGui.BeginItemTooltip() then
+		ImGui.PushTextWrapPos(ImGui.GetFontSize() * 35)
+		ImGui.Text("Show all functions in the stats table.\nMay impact performance with many functions.")
+		ImGui.PopTextWrapPos()
+		ImGui.EndTooltip()
+	end
+	ImGui.SameLine(0, 2)
+	if ImGui.Button("50##rows", vector2(25, 0)) then
+		max_visible_rows = 50
+	end
+	ImGui.SameLine(0, 2)
+	if ImGui.Button("100##rows", vector2(30, 0)) then
+		max_visible_rows = 100
+	end
+	ImGui.SameLine(0, 2)
+	if ImGui.Button("200##rows", vector2(30, 0)) then
+		max_visible_rows = 200
+	end
+
+	ImGui.SameLine(0, 15)
+	local _, new_minimal = ImGui.Checkbox("Minimal mode", minimal_mode)
+	if ImGui.BeginItemTooltip() then
+		ImGui.PushTextWrapPos(ImGui.GetFontSize() * 35)
+		ImGui.Text("Hide the stats table entirely during profiling.\nMaximum FPS while still collecting data.\nPerfect for flamegraph collection without UI overhead.")
+		ImGui.PopTextWrapPos()
+		ImGui.EndTooltip()
+	end
+	if new_minimal ~= minimal_mode then
+		minimal_mode = new_minimal
+	end
+
+	ImGui.SameLine(0, 15)
+	local _, new_precision = ImGui.Checkbox("High precision", high_precision_mode)
+	if new_precision ~= high_precision_mode then
+		high_precision_mode = new_precision
+	end
+	if ImGui.BeginItemTooltip() then
+		ImGui.PushTextWrapPos(ImGui.GetFontSize() * 35)
+		ImGui.Text("Display timing values with 6 decimal places.\nDefault mode uses compact formatting (0-2 decimals) for better performance.\nHigh precision may reduce FPS slightly due to increased string formatting overhead.")
+		ImGui.PopTextWrapPos()
+		ImGui.EndTooltip()
+	end
+
+	ImGui.Spacing()
+	ImGui.Text("Columns:")
+	ImGui.SameLine()
+	local _, new_calls = ImGui.Checkbox("Calls", show_calls)
+	if new_calls ~= show_calls then
+		show_calls = new_calls
+	end
+	ImGui.SameLine()
+	local _, new_avg = ImGui.Checkbox("Avg", show_avg)
+	if new_avg ~= show_avg then
+		show_avg = new_avg
+	end
+	ImGui.SameLine()
+	local _, new_median = ImGui.Checkbox("Median", show_median)
+	if new_median ~= show_median then
+		show_median = new_median
+	end
+	ImGui.SameLine()
+	local _, new_min = ImGui.Checkbox("Min", show_min)
+	if new_min ~= show_min then
+		show_min = new_min
+	end
+	ImGui.SameLine()
+	local _, new_max = ImGui.Checkbox("Max", show_max)
+	if new_max ~= show_max then
+		show_max = new_max
+	end
+	ImGui.SameLine()
+	local _, new_total = ImGui.Checkbox("Total", show_total)
+	if new_total ~= show_total then
+		show_total = new_total
+	end
+
+	ImGui.SameLine()
+	local _, new_self_total = ImGui.Checkbox("Self Total", show_self_total)
+	if new_self_total ~= show_self_total then
+		show_self_total = new_self_total
+	end
+
+	ImGui.SameLine()
+	local _, new_self_avg = ImGui.Checkbox("Self Avg", show_self_avg)
+	if new_self_avg ~= show_self_avg then
+		show_self_avg = new_self_avg
+	end
+
+	ImGui.SameLine()
+	local _, new_self_median = ImGui.Checkbox("Self Median", show_self_median)
+	if new_self_median ~= show_self_median then
+		show_self_median = new_self_median
+	end
+
+	ImGui.SameLine()
+	local _, new_self_min = ImGui.Checkbox("Self Min", show_self_min)
+	if new_self_min ~= show_self_min then
+		show_self_min = new_self_min
+	end
+
+	ImGui.SameLine()
+	local _, new_self_max = ImGui.Checkbox("Self Max", show_self_max)
+	if new_self_max ~= show_self_max then
+		show_self_max = new_self_max
+	end
+
+	-- CSV export path display
+	if last_csv_export_path and (time_global() - last_csv_export_time) < CSV_EXPORT_MESSAGE_DURATION then
+		ImGui.Spacing()
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.4, 1, 0.4, 1))
+		ImGui.Text("CSV exported to:")
+		ImGui.PopStyleColor(1)
+		ImGui.SameLine()
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.7, 0.7, 0.7, 1))
+		ImGui.TextWrapped(last_csv_export_path)
+		ImGui.PopStyleColor(1)
+	elseif last_csv_export_path then
+		ImGui.Spacing()
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.5, 0.5, 0.5, 1))
+		ImGui.Text("Last export:")
+		ImGui.PopStyleColor(1)
+		ImGui.SameLine()
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.6, 0.6, 0.6, 1))
+		ImGui.TextWrapped(last_csv_export_path)
+		ImGui.PopStyleColor(1)
+	end
+
+	-- Show flamegraph collection status message
+	if flamegraph_collect_message and (time_global() - flamegraph_collect_message_time) < FLAMEGRAPH_MESSAGE_DURATION then
+		ImGui.Spacing()
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.4, 1, 0.4, 1))
+		ImGui.Text(flamegraph_collect_message)
+		ImGui.PopStyleColor(1)
+	else
+		flamegraph_collect_message = nil
+	end
+
+	-- Show flamegraph export path message
+	if last_flamegraph_export_path and (time_global() - last_flamegraph_export_time) < CSV_EXPORT_MESSAGE_DURATION then
+		ImGui.Spacing()
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.4, 1, 0.4, 1))
+		ImGui.Text("Flamegraph exported to:")
+		ImGui.PopStyleColor(1)
+		ImGui.SameLine()
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.7, 0.7, 0.7, 1))
+		ImGui.TextWrapped(last_flamegraph_export_path)
+		ImGui.PopStyleColor(1)
+	elseif last_flamegraph_export_path then
+		ImGui.Spacing()
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.5, 0.5, 0.5, 1))
+		ImGui.Text("Last flamegraph export:")
+		ImGui.PopStyleColor(1)
+		ImGui.SameLine()
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.6, 0.6, 0.6, 1))
+		ImGui.TextWrapped(last_flamegraph_export_path)
+		ImGui.PopStyleColor(1)
+	end
+
+	-- Show call graph export path message
+	if last_callgraph_export_path and (time_global() - last_callgraph_export_time) < CALLGRAPH_EXPORT_MESSAGE_DURATION then
+		ImGui.Spacing()
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.4, 1, 0.4, 1))
+		ImGui.Text("Call graph exported to:")
+		ImGui.PopStyleColor(1)
+		ImGui.SameLine()
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.7, 0.7, 0.7, 1))
+		ImGui.TextWrapped(last_callgraph_export_path)
+		ImGui.PopStyleColor(1)
+	elseif last_callgraph_export_path then
+		ImGui.Spacing()
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.5, 0.5, 0.5, 1))
+		ImGui.Text("Last call graph export:")
+		ImGui.PopStyleColor(1)
+		ImGui.SameLine()
+		ImGui.PushStyleColor(ImGuiCol.Text, fcolor():set(0.6, 0.6, 0.6, 1))
+		ImGui.TextWrapped(last_callgraph_export_path)
+		ImGui.PopStyleColor(1)
+	end
+
+	if new_hide ~= hide_fast_functions then
+		hide_fast_functions = new_hide
+	end
+
+	-- Show wrapped modules
+	if is_enabled and #wrapped_modules > 0 then
+		ImGui.Spacing()
+		ImGui.Text("Active:")
+		ImGui.SameLine()
+		for i, mod_name in ipairs(wrapped_modules) do
+			if i > 1 then
+				ImGui.SameLine(0, 5)
+			end
+			ImGui.PushStyleColor(ImGuiCol.Text, U.get_module_color_by_name(mod_name))
+			ImGui.Text(mod_name)
+			ImGui.PopStyleColor(1)
+		end
+	end
+end
+
+function render_stats_table()
+	local names = devtools_profiler.get_tracked_functions()
+
+	if #names == 0 then
+		ImGui.TextColored(fcolor():set(0.5, 0.5, 0.5, 1), "No data yet. Select modules and start profiling.")
+		return
+	end
+
+	local profiler_ok = (devtools_profiler ~= nil)
+	local is_profiling_active = false
+	if profiler_ok and type(devtools_profiler.is_enabled) == "function" then
+		is_profiling_active = devtools_profiler.is_enabled()
+	end
+
+	-- Throttle stats rebuilding for performance
+	local tg = time_global()
+	local display_list
+	local total_time
+	local total_calls
+
+	-- Force refresh if sort/filter settings changed
+	local settings_changed = (sort_column ~= cached_sort_column)
+		or (sort_ascending ~= cached_sort_ascending)
+		or (hide_fast_functions ~= cached_hide_fast)
+		or (show_calls ~= cached_show_calls)
+		or (show_avg ~= cached_show_avg)
+		or (show_median ~= cached_show_median)
+		or (show_min ~= cached_show_min)
+		or (show_max ~= cached_show_max)
+		or (show_total ~= cached_show_total)
+		or (show_self_total ~= cached_show_self_total)
+		or (show_self_avg ~= cached_show_self_avg)
+		or (show_self_median ~= cached_show_self_median)
+		or (show_self_min ~= cached_show_self_min)
+		or (show_self_max ~= cached_show_self_max)
+
+	if settings_changed or (tg - last_stats_update > STATS_UPDATE_INTERVAL) then
+		local all_stats = devtools_profiler.get_all_stats()
+		display_list = {}
+		total_time = 0
+		total_calls = 0
+
+		for _, name in ipairs(names) do
+			local s = all_stats[name]
+			if s then
+				local include = true
+				if hide_fast_functions and s.avg_ms < 0.01 then
+					include = false
+				end
+				if include then
+					table.insert(display_list, { name = name, stats = s })
+					total_time = total_time + s.total_ms
+					total_calls = total_calls + s.call_count
+				end
+			end
+		end
+
+		-- Sort (dynamic by visible columns)
+		local columns = {
+			{ name = "Function", width = 260, key = "name" },
+		}
+		if show_calls then table.insert(columns, { name = "Calls", width = 55, key = "call_count" }) end
+		if show_avg then table.insert(columns, { name = "Avg (ms)", width = 65, key = "avg_ms" }) end
+		if show_median then table.insert(columns, { name = "Median (ms)", width = 75, key = "median_ms" }) end
+		if show_min then table.insert(columns, { name = "Min (ms)", width = 65, key = "min_ms" }) end
+		if show_max then table.insert(columns, { name = "Max (ms)", width = 65, key = "max_ms" }) end
+		if show_total then table.insert(columns, { name = "Total (ms)", width = 75, key = "total_ms" }) end
+		if show_self_total then table.insert(columns, { name = "Self Total (ms)", width = 85, key = "self_total_ms" }) end
+		if show_self_avg then table.insert(columns, { name = "Self Avg (ms)", width = 75, key = "self_avg_ms" }) end
+		if show_self_median then table.insert(columns, { name = "Self Median (ms)", width = 85, key = "self_median_ms" }) end
+		if show_self_min then table.insert(columns, { name = "Self Min (ms)", width = 75, key = "self_min_ms" }) end
+		if show_self_max then table.insert(columns, { name = "Self Max (ms)", width = 75, key = "self_max_ms" }) end
+
+		if sort_column > #columns then
+			sort_column = 1
+			sort_ascending = true
+		end
+		local sort_key = columns[sort_column].key
+
+		table.sort(display_list, function(a, b)
+			local val_a, val_b
+			if sort_key == "name" then
+				val_a, val_b = a.name, b.name
+			else
+				val_a, val_b = a.stats[sort_key], b.stats[sort_key]
+			end
+			if sort_ascending then
+				return val_a < val_b
+			else
+				return val_a > val_b
+			end
+		end)
+
+		-- Cache results
+		cached_stats_display = display_list
+		cached_total_time = total_time
+		cached_total_calls = total_calls
+		cached_total_names = #names
+		cached_sort_column = sort_column
+		cached_sort_ascending = sort_ascending
+		cached_hide_fast = hide_fast_functions
+		cached_show_calls = show_calls
+		cached_show_avg = show_avg
+		cached_show_median = show_median
+		cached_show_min = show_min
+		cached_show_max = show_max
+		cached_show_total = show_total
+		cached_show_self_total = show_self_total
+		cached_show_self_avg = show_self_avg
+		cached_show_self_median = show_self_median
+		cached_show_self_min = show_self_min
+		cached_show_self_max = show_self_max
+		last_stats_update = tg
+	else
+		display_list = cached_stats_display
+		total_time = cached_total_time
+		total_calls = cached_total_calls
+	end
+
+	-- Apply row limit for rendering
+	local render_count = #display_list
+	if max_visible_rows > 0 and render_count > max_visible_rows then
+		render_count = max_visible_rows
+	end
+
+	-- Summary
+	local limit_text = ""
+	if max_visible_rows > 0 and #display_list > max_visible_rows then
+		limit_text = string.format(" (showing top %d)", max_visible_rows)
+	end
+	
+	local elapsed_text = ""
+	if profiler_ok and is_profiling_active and type(devtools_profiler.get_elapsed_time_seconds) == "function" then
+		local elapsed_sec = devtools_profiler.get_elapsed_time_seconds()
+		if elapsed_sec and elapsed_sec > 0 then
+			elapsed_text = string.format(" (elapsed: %.1fs)", elapsed_sec)
+		end
+	end
+	
+	ImGui.Text(
+		string.format(
+			"Showing %d/%d functions%s | Total: %.1fms across %d calls%s",
+			#display_list,
+			cached_total_names,
+			limit_text,
+			total_time,
+			total_calls,
+			elapsed_text
+		)
+	)
+	ImGui.Spacing()
+
+	-- Minimal mode: skip table rendering entirely
+	if minimal_mode then
+		ImGui.PushStyleColor(ImGuiCol.Text, U.COLOR_GRAY)
+		ImGui.Text("(Minimal mode - table hidden for performance)")
+		ImGui.PopStyleColor(1)
+		return
+	end
+
+	-- Column definitions (dynamic)
+	local columns = {
+		{ name = "Function", width = 260 },
+	}
+	if show_calls then table.insert(columns, { name = "Calls", width = 55 }) end
+	if show_avg then table.insert(columns, { name = "Avg (ms)", width = 65 }) end
+	if show_median then table.insert(columns, { name = "Median (ms)", width = 75 }) end
+	if show_min then table.insert(columns, { name = "Min (ms)", width = 65 }) end
+	if show_max then table.insert(columns, { name = "Max (ms)", width = 65 }) end
+	if show_total then table.insert(columns, { name = "Total (ms)", width = 75 }) end
+	if show_self_total then table.insert(columns, { name = "Self Total (ms)", width = 85 }) end
+	if show_self_avg then table.insert(columns, { name = "Self Avg (ms)", width = 75 }) end
+	if show_self_median then table.insert(columns, { name = "Self Median (ms)", width = 85 }) end
+	if show_self_min then table.insert(columns, { name = "Self Min (ms)", width = 75 }) end
+	if show_self_max then table.insert(columns, { name = "Self Max (ms)", width = 75 }) end
+
+	local col_count = #columns
+
+	-- Table
+	if ImGui.BeginTable("DevToolsStats", col_count, 4, vector2(0, 0), 0) then
+		for _, col in ipairs(columns) do
+			ImGui.TableSetupColumn(col.name, 0, col.width, 0)
+		end
+
+		-- Header row with sorting
+		ImGui.TableNextRow()
+		for i, col in ipairs(columns) do
+			ImGui.TableNextColumn()
+			local label = col.name
+			local sort_idx = i
+			if sort_column == sort_idx then
+				label = label .. (sort_ascending and " ^" or " v")
+			end
+			if sort_column == sort_idx then
+				ImGui.PushStyleColor(ImGuiCol.Button, fcolor():set(0.3, 0.5, 0.8, 1))
+			end
+			if ImGui.Button(label .. "##col" .. i, vector2(col.width - 8, 0)) then
+				if sort_column == sort_idx then
+					sort_ascending = not sort_ascending
+				else
+					sort_column = sort_idx
+					sort_ascending = (sort_idx == 1)
+				end
+			end
+			if sort_column == sort_idx then
+				ImGui.PopStyleColor(1)
+			end
+		end
+
+		-- Data rows
+		for i = 1, render_count do
+			local item = display_list[i]
+			if not item then
+				break
+			end
+			local s = item.stats
+			ImGui.TableNextRow()
+
+			-- Function name (colored by module)
+			ImGui.TableNextColumn()
+			ImGui.PushStyleColor(ImGuiCol.Text, U.get_module_color(item.name))
+			ImGui.Text(item.name)
+			ImGui.PopStyleColor(1)
+
+			-- Calls
+			if show_calls then
+				ImGui.TableNextColumn()
+				ImGui.Text(tostring(s.call_count))
+			end
+
+			-- Avg (colored by timing)
+			if show_avg then
+				ImGui.TableNextColumn()
+				ImGui.PushStyleColor(ImGuiCol.Text, U.get_timing_color(s.avg_ms))
+				ImGui.Text(high_precision_mode and U.format_precise(s.avg_ms) or U.format_compact(s.avg_ms))
+				ImGui.PopStyleColor(1)
+			end
+
+			-- Median (colored by timing)
+			if show_median then
+				ImGui.TableNextColumn()
+				ImGui.PushStyleColor(ImGuiCol.Text, U.get_timing_color(s.median_ms))
+				ImGui.Text(high_precision_mode and U.format_precise(s.median_ms) or U.format_compact(s.median_ms))
+				ImGui.PopStyleColor(1)
+			end
+
+			-- Min
+			if show_min then
+				ImGui.TableNextColumn()
+				ImGui.Text(high_precision_mode and U.format_precise(s.min_ms) or U.format_compact(s.min_ms))
+			end
+
+			-- Max (colored by timing)
+			if show_max then
+				ImGui.TableNextColumn()
+				ImGui.PushStyleColor(ImGuiCol.Text, U.get_timing_color(s.max_ms))
+				ImGui.Text(high_precision_mode and U.format_precise(s.max_ms) or U.format_compact(s.max_ms))
+				ImGui.PopStyleColor(1)
+			end
+
+		-- Total
+		if show_total then
+			ImGui.TableNextColumn()
+			ImGui.Text(high_precision_mode and U.format_precise(s.total_ms) or U.format_compact(s.total_ms))
+		end
+
+		-- Self Total
+		if show_self_total then
+			ImGui.TableNextColumn()
+			ImGui.Text(high_precision_mode and U.format_precise(s.self_total_ms) or U.format_compact(s.self_total_ms))
+		end
+
+		-- Self Avg (colored by timing)
+		if show_self_avg then
+			ImGui.TableNextColumn()
+			ImGui.PushStyleColor(ImGuiCol.Text, U.get_timing_color(s.self_avg_ms))
+			ImGui.Text(high_precision_mode and U.format_precise(s.self_avg_ms) or U.format_compact(s.self_avg_ms))
+			ImGui.PopStyleColor(1)
+		end
+
+		-- Self Median (colored by timing)
+		if show_self_median then
+			ImGui.TableNextColumn()
+			ImGui.PushStyleColor(ImGuiCol.Text, U.get_timing_color(s.self_median_ms))
+			ImGui.Text(high_precision_mode and U.format_precise(s.self_median_ms) or U.format_compact(s.self_median_ms))
+			ImGui.PopStyleColor(1)
+		end
+
+		-- Self Min
+		if show_self_min then
+			ImGui.TableNextColumn()
+			ImGui.Text(high_precision_mode and U.format_precise(s.self_min_ms) or U.format_compact(s.self_min_ms))
+		end
+
+		-- Self Max (colored by timing)
+		if show_self_max then
+			ImGui.TableNextColumn()
+			ImGui.PushStyleColor(ImGuiCol.Text, U.get_timing_color(s.self_max_ms))
+			ImGui.Text(high_precision_mode and U.format_precise(s.self_max_ms) or U.format_compact(s.self_max_ms))
+			ImGui.PopStyleColor(1)
+		end
+	end
+
+	ImGui.EndTable()
+	end
+end
+
+-- ============================================================================
+-- MODULE EXPORTS
+-- ============================================================================
+
+devtools_ui_profiler.render_profiler_tab = render_profiler_tab
+devtools_ui_profiler.render_module_browser = render_module_browser
+devtools_ui_profiler.render_profiling_controls = render_profiling_controls
+devtools_ui_profiler.render_stats_table = render_stats_table

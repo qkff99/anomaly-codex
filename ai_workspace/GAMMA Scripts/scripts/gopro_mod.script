@@ -1,0 +1,3368 @@
+local table_concat = table.concat
+local string_format = string.format
+local string_lower = string.lower
+local math_pi = math.pi
+local math_floor = math.floor
+local math_exp = math.exp
+
+local MOD_LABEL = "[GoPro MOD]"
+local UI_NAME = "GoProTuner"
+local UI_SCRIPT_PATH = "gopro_mod"
+local UI_XML_PATH = "ui_gopro_mod.xml"
+local SAVE_VERSION = 2
+local BONE_ID_NONE = 65535
+local CAMERA_SMOOTHING = 2
+local DEG_TO_RAD = math_pi / 180
+local DEFAULT_VIEWPORT_NEAR = 0.2
+local RESUME_RETRY_INTERVAL = 750
+local RESUME_START_DELAY = 1000
+local RESUME_TIMEOUT = 15000
+local MAIN_MENU_RESUME_RETRY_INTERVAL = 100
+local MAIN_MENU_RESUME_TIMEOUT = 5000
+
+local MCM_ROOT = "gopro_mod"
+local MCM_PATH_ENABLED = MCM_ROOT .. "/enabled"
+local MCM_PATH_TOGGLE_KEY = MCM_ROOT .. "/toggle_key"
+local MCM_PATH_UI_TOGGLE_KEY = MCM_ROOT .. "/ui_toggle_key"
+local MCM_PATH_FREE_LOOK_KEY = MCM_ROOT .. "/free_look_key"
+local MCM_PATH_FOLLOW_ACTOR = MCM_ROOT .. "/follow_actor"
+local MCM_PATH_HIDE_HEAD_IN_POV = MCM_ROOT .. "/hide_head_in_pov"
+local MCM_PATH_DEATH_CAM = MCM_ROOT .. "/death_cam"
+local MCM_PATH_DEATH_AUTO_SWITCH = MCM_ROOT .. "/death_auto_switch"
+local MCM_PATH_DEATH_AUTO_SWITCH_MODE = MCM_ROOT .. "/death_auto_switch_mode"
+local MCM_PATH_POV_FOV = MCM_ROOT .. "/pov_fov"
+local MCM_PATH_CAMERA_UPDATE_HZ = MCM_ROOT .. "/camera_update_hz"
+local MCM_PATH_CAMERA_EMA_STRENGTH = MCM_ROOT .. "/camera_ema_strength"
+local MCM_PATH_CAMERA_LAG_COMPENSATION = MCM_ROOT .. "/camera_lag_compensation"
+local MCM_PATH_CAMERA_BONE = MCM_ROOT .. "/camera_bone"
+local MCM_PATH_ROLL_OFFSET_DEG = MCM_ROOT .. "/roll_offset_deg"
+local MCM_PATH_VIEWPORT_NEAR = MCM_ROOT .. "/viewport_near"
+local MCM_PATH_FORWARD_OFFSET = MCM_ROOT .. "/forward_offset"
+local MCM_PATH_UP_OFFSET = MCM_ROOT .. "/up_offset"
+local MCM_PATH_RIGHT_OFFSET = MCM_ROOT .. "/right_offset"
+
+local DEFAULT_TOGGLE_KEY = (DIK_keys and DIK_keys.DIK_G) or 34
+local LEGACY_UI_TOGGLE_KEY = (DIK_keys and DIK_keys.DIK_F6) or 64
+local DEFAULT_UI_TOGGLE_KEY = (DIK_keys and DIK_keys.DIK_J) or 36
+local DEFAULT_FREE_LOOK_KEY = (DIK_keys and DIK_keys.DIK_LMENU) or 56
+local POV_NAV_KEYS = {
+	up = (DIK_keys and DIK_keys.DIK_UP) or 200,
+	down = (DIK_keys and DIK_keys.DIK_DOWN) or 208,
+	left = (DIK_keys and DIK_keys.DIK_LEFT) or 203,
+	right = (DIK_keys and DIK_keys.DIK_RIGHT) or 205,
+}
+local DEFAULT_ENABLED = true
+local DEFAULT_FOLLOW_ACTOR = true
+local DEFAULT_HIDE_HEAD_IN_POV = true
+local DEFAULT_DEATH_CAM = true
+local DEFAULT_DEATH_AUTO_SWITCH = true
+local DEFAULT_DEATH_AUTO_SWITCH_MODE = "auto"
+local DEFAULT_POV_FOV = 55.0
+local DEFAULT_CAMERA_UPDATE_HZ = 30.0
+local DEFAULT_CAMERA_EMA_STRENGTH = 0.35
+local DEFAULT_CAMERA_LAG_COMPENSATION = 1.0
+local DEFAULT_CAMERA_BONE = "bip01_head"
+local DEFAULT_ROLL_OFFSET_DEG = 90.0
+local DEFAULT_GOPRO_VIEWPORT_NEAR = 0.02
+local DEFAULT_CAMERA_FORWARD_OFFSET = 0.03
+local DEFAULT_CAMERA_UP_OFFSET = 0.0
+local DEFAULT_CAMERA_RIGHT_OFFSET = 0.0
+local FOLLOW_ACTOR_HEIGHT = 10.0
+local FOLLOW_ACTOR_EPSILON_SQR = 0.04
+local OBSERVER_ACTOR_COMMUNITY = "trader"
+local TWO_PI = math_pi * 2
+local DEATH_CAM_DURATION_MS = 5000
+local CAMERA_VELOCITY_FILTER_ALPHA = 0.35
+local MAX_CAMERA_PREDICTION_DISTANCE = 0.75
+
+local DEATH_AUTO_SWITCH_MODES = {
+	"auto",
+	"killer",
+}
+
+local DEATH_AUTO_SWITCH_MODE_INDEX = {}
+for index, mode_name in ipairs(DEATH_AUTO_SWITCH_MODES) do
+	DEATH_AUTO_SWITCH_MODE_INDEX[mode_name] = index
+end
+
+local CAMERA_BONES = {
+	"bip01_head",
+	"eye_left",
+	"eye_right",
+	"bip01_neck",
+	"bip01_spine2",
+	"bip01_spine1",
+	"bip01_spine",
+	"bip01_pelvis",
+	"pelvis",
+	"head",
+	"head_boss",
+}
+
+local HEAD_HIDE_ROOT_BONES = {
+	"bip01_head",
+	"head",
+	"head_boss",
+}
+
+local HEAD_CAMERA_BONE_SET = {
+	bip01_head = true,
+	eye_left = true,
+	eye_right = true,
+	head = true,
+	head_boss = true,
+}
+
+local CAMERA_BONE_SET = {}
+local CAMERA_BONE_INDEX = {}
+for index, bone_name in ipairs(CAMERA_BONES) do
+	CAMERA_BONE_SET[bone_name] = true
+	CAMERA_BONE_INDEX[bone_name] = index
+end
+
+local CONFIG = {
+	enabled = DEFAULT_ENABLED,
+	toggle_key = DEFAULT_TOGGLE_KEY,
+	ui_toggle_key = DEFAULT_UI_TOGGLE_KEY,
+	free_look_key = DEFAULT_FREE_LOOK_KEY,
+	follow_actor = DEFAULT_FOLLOW_ACTOR,
+	hide_head_in_pov = DEFAULT_HIDE_HEAD_IN_POV,
+	death_cam = DEFAULT_DEATH_CAM,
+	death_auto_switch = DEFAULT_DEATH_AUTO_SWITCH,
+	death_auto_switch_mode = DEFAULT_DEATH_AUTO_SWITCH_MODE,
+	pov_fov = DEFAULT_POV_FOV,
+	camera_update_hz = DEFAULT_CAMERA_UPDATE_HZ,
+	camera_ema_strength = DEFAULT_CAMERA_EMA_STRENGTH,
+	camera_lag_compensation = DEFAULT_CAMERA_LAG_COMPENSATION,
+	camera_bone = DEFAULT_CAMERA_BONE,
+	roll_offset_deg = DEFAULT_ROLL_OFFSET_DEG,
+	viewport_near = DEFAULT_GOPRO_VIEWPORT_NEAR,
+	forward_offset = DEFAULT_CAMERA_FORWARD_OFFSET,
+	up_offset = DEFAULT_CAMERA_UP_OFFSET,
+	right_offset = DEFAULT_CAMERA_RIGHT_OFFSET,
+}
+
+local STATE = {
+	active = false,
+	target_id = nil,
+	selected_bone_name = nil,
+	selected_bone_id = nil,
+	resolved_bone_name = nil,
+	resolved_bone_id = nil,
+	prev_invulnerable = false,
+	prev_hit_marks_disabled = false,
+	prev_hud_shown = true,
+	prev_actor_community = nil,
+	prev_fov = DEFAULT_POV_FOV,
+	prev_viewport_near = DEFAULT_VIEWPORT_NEAR,
+	follow_actor_active = false,
+	free_look_active = false,
+	free_look_hpb = nil,
+	hidden_head_target_id = nil,
+	hidden_head_bone_name = nil,
+	hidden_head_prev_visible = nil,
+	death_transition_active = false,
+	death_cam_active = false,
+	death_cam_until = 0,
+	death_target_kind = nil,
+	death_target_group_id = nil,
+	death_target_position = nil,
+	death_killer_id = nil,
+	last_attacker_id = nil,
+	sampled_position = nil,
+	sampled_hpb = nil,
+	sampled_velocity = nil,
+	filtered_position = nil,
+	filtered_hpb = nil,
+	previous_raw_position = nil,
+	previous_raw_sample_time = 0,
+	last_sample_time = 0,
+	last_filter_time = 0,
+}
+
+local RESUME = {
+	pending = false,
+	target_id = nil,
+	target_level_id = nil,
+	travel_requested = false,
+	prev_invulnerable = false,
+	prev_hit_marks_disabled = false,
+	prev_hud_shown = true,
+	hidden_head_target_id = nil,
+	hidden_head_bone_name = nil,
+	hidden_head_prev_visible = nil,
+	next_retry_at = 0,
+	expires_at = 0,
+}
+
+local MAIN_MENU_RESUME = {
+	pending = false,
+	target_id = nil,
+	next_retry_at = 0,
+	expires_at = 0,
+}
+
+local HEAD_RESTORE = {
+	pending = false,
+	target_id = nil,
+	bone_name = nil,
+	prev_visible = nil,
+}
+
+local TUNER_UI = nil
+local UI_VISIBLE = false
+local POV_NAV = {}
+local INI_LOC = ini_file_ex and ini_file_ex("localization.ltx") or nil
+local INI_MCM_KEY = ini_file_ex and ini_file_ex("mcm_key_localization.ltx") or nil
+
+local function log_message(message)
+	log(string_format("%s %s", MOD_LABEL, message))
+end
+
+local function clamp_number(value, minimum, maximum)
+	if value < minimum then
+		return minimum
+	end
+
+	if value > maximum then
+		return maximum
+	end
+
+	return value
+end
+
+local function round_to(value, precision)
+	local multiplier = 10 ^ (precision or 0)
+
+	if value >= 0 then
+		return math_floor((value * multiplier) + 0.5) / multiplier
+	end
+
+	return -math_floor((-value * multiplier) + 0.5) / multiplier
+end
+
+local function format_number(value, precision)
+	return string_format("%." .. tostring(precision or 0) .. "f", value)
+end
+
+local set_camera_fov
+local set_viewport_near
+local get_object_by_id
+local deactivate_mode
+local activate_mode
+local restore_input_lock
+local restore_standard_view
+local remove_custom_camera_if_safe
+local should_block_input_for_free_look
+local install_level_input_mouse_hook
+local sample_camera_anchor_pose
+local build_camera_transform_from_pose
+local initialize_camera_filter
+local previous_level_input_on_mouse_move = nil
+
+local function clone_vector(source)
+	local result
+
+	if not source then
+		return nil
+	end
+
+	result = vector()
+	result:set(source)
+	return result
+end
+
+local function get_now_ms()
+	return time_global and time_global() or 0
+end
+
+local function wrap_angle(value)
+	while value > math_pi do
+		value = value - TWO_PI
+	end
+
+	while value < -math_pi do
+		value = value + TWO_PI
+	end
+
+	return value
+end
+
+local function coerce_boolean(value, default_value)
+	local value_type = type(value)
+
+	if value_type == "boolean" then
+		return value
+	end
+
+	if value_type == "number" then
+		return value ~= 0
+	end
+
+	if value_type == "string" then
+		value = string_lower(value)
+
+		if value == "true" or value == "1" or value == "yes" then
+			return true
+		end
+
+		if value == "false" or value == "0" or value == "no" then
+			return false
+		end
+	end
+
+	return default_value and true or false
+end
+
+local function translate(id, fallback)
+	local text = game and game.translate_string and game.translate_string(id) or id
+
+	if text == id then
+		return fallback or id
+	end
+
+	return text
+end
+
+local function display_key_name(dik)
+	local lang
+	local text
+
+	if dik == nil then
+		return "?"
+	end
+
+	if INI_LOC and INI_MCM_KEY then
+		lang = INI_LOC:r_value("string_table", "language")
+		lang = INI_MCM_KEY:section_exist(lang) and lang or "eng"
+		text = INI_MCM_KEY:r_value(lang, dik, 0, nil)
+
+		if text and text ~= "" then
+			return text
+		end
+	end
+
+	return tostring(dik)
+end
+
+local function reset_state()
+	STATE.active = false
+	STATE.target_id = nil
+	STATE.selected_bone_name = nil
+	STATE.selected_bone_id = nil
+	STATE.resolved_bone_name = nil
+	STATE.resolved_bone_id = nil
+	STATE.prev_invulnerable = false
+	STATE.prev_hit_marks_disabled = false
+	STATE.prev_hud_shown = true
+	STATE.prev_actor_community = nil
+	STATE.prev_fov = DEFAULT_POV_FOV
+	STATE.prev_viewport_near = DEFAULT_VIEWPORT_NEAR
+	STATE.follow_actor_active = false
+	STATE.free_look_active = false
+	STATE.free_look_hpb = nil
+	STATE.hidden_head_target_id = nil
+	STATE.hidden_head_bone_name = nil
+	STATE.hidden_head_prev_visible = nil
+	STATE.death_transition_active = false
+	STATE.death_cam_active = false
+	STATE.death_cam_until = 0
+	STATE.death_target_kind = nil
+	STATE.death_target_group_id = nil
+	STATE.death_target_position = nil
+	STATE.death_killer_id = nil
+	STATE.last_attacker_id = nil
+	STATE.sampled_position = nil
+	STATE.sampled_hpb = nil
+	STATE.sampled_velocity = nil
+	STATE.filtered_position = nil
+	STATE.filtered_hpb = nil
+	STATE.previous_raw_position = nil
+	STATE.previous_raw_sample_time = 0
+	STATE.last_sample_time = 0
+	STATE.last_filter_time = 0
+end
+
+local function reset_resume_state()
+	RESUME.pending = false
+	RESUME.target_id = nil
+	RESUME.target_level_id = nil
+	RESUME.travel_requested = false
+	RESUME.prev_invulnerable = false
+	RESUME.prev_hit_marks_disabled = false
+	RESUME.prev_hud_shown = true
+	RESUME.hidden_head_target_id = nil
+	RESUME.hidden_head_bone_name = nil
+	RESUME.hidden_head_prev_visible = nil
+	RESUME.next_retry_at = 0
+	RESUME.expires_at = 0
+end
+
+local function reset_main_menu_resume_state()
+	MAIN_MENU_RESUME.pending = false
+	MAIN_MENU_RESUME.target_id = nil
+	MAIN_MENU_RESUME.next_retry_at = 0
+	MAIN_MENU_RESUME.expires_at = 0
+end
+
+local function reset_head_restore_state()
+	HEAD_RESTORE.pending = false
+	HEAD_RESTORE.target_id = nil
+	HEAD_RESTORE.bone_name = nil
+	HEAD_RESTORE.prev_visible = nil
+end
+
+local function level_is_present()
+	return level and level.present and level.present()
+end
+
+local function actor_is_ready()
+	return level_is_present() and db and db.actor
+end
+
+local function tuner_is_visible()
+	return UI_VISIBLE and TUNER_UI and TUNER_UI:IsShown()
+end
+
+local function get_server_object_by_id(id)
+	local sim = alife and alife()
+
+	if not (sim and id) then
+		return nil
+	end
+
+	return sim:object(id)
+end
+
+local function get_level_id_from_game_vertex_id(game_vertex_id)
+	local graph = game_graph and game_graph()
+	local vertex
+
+	if not (graph and game_vertex_id) then
+		return nil
+	end
+
+	vertex = graph:vertex(game_vertex_id)
+	return vertex and vertex:level_id() or nil
+end
+
+local function get_server_object_level_id(server_object)
+	if not server_object then
+		return nil
+	end
+
+	return get_level_id_from_game_vertex_id(server_object.m_game_vertex_id)
+end
+
+local function get_actor_level_id()
+	local sim = alife and alife()
+	local actor = sim and sim:actor()
+
+	if not actor then
+		return nil
+	end
+
+	return get_level_id_from_game_vertex_id(actor.m_game_vertex_id)
+end
+
+local function get_mcm_value(path, default_value)
+	if ui_mcm and ui_mcm.get then
+		local value = ui_mcm.get(path)
+		if value ~= nil then
+			return value
+		end
+	end
+
+	if axr_main and axr_main.config then
+		local default_type = type(default_value)
+		local value_type = 0
+
+		if default_type == "number" then
+			value_type = 2
+		elseif default_type == "boolean" then
+			value_type = 1
+		end
+
+		local value = axr_main.config:r_value("mcm", path, value_type, nil)
+		if value ~= nil then
+			return value
+		end
+	end
+
+	return default_value
+end
+
+local function is_alt_key(dik)
+	return dik == ((DIK_keys and DIK_keys.DIK_LMENU) or 56) or dik == ((DIK_keys and DIK_keys.DIK_RMENU) or 184)
+end
+
+local function is_free_look_key(dik)
+	if not dik then
+		return false
+	end
+
+	if is_alt_key(CONFIG.free_look_key) then
+		return is_alt_key(dik)
+	end
+
+	return dik == CONFIG.free_look_key
+end
+
+local function set_mcm_value(path, value)
+	if ui_mcm and ui_mcm.set then
+		ui_mcm.set(path, value)
+		return
+	end
+
+	if axr_main and axr_main.config then
+		axr_main.config:w_value("mcm", path, value)
+		axr_main.config:save()
+	end
+end
+
+local function clear_follow_actor_state()
+	STATE.follow_actor_active = false
+end
+
+local function clear_hidden_head_state()
+	STATE.hidden_head_target_id = nil
+	STATE.hidden_head_bone_name = nil
+	STATE.hidden_head_prev_visible = nil
+end
+
+local function queue_hidden_head_restore(target_id, bone_name, prev_visible)
+	if not (target_id and bone_name) then
+		return
+	end
+
+	HEAD_RESTORE.pending = true
+	HEAD_RESTORE.target_id = target_id
+	HEAD_RESTORE.bone_name = bone_name
+	HEAD_RESTORE.prev_visible = prev_visible
+end
+
+local function take_carried_hidden_head_visibility(target_id, bone_name)
+	local prev_visible
+
+	if RESUME.hidden_head_target_id == target_id and RESUME.hidden_head_bone_name == bone_name then
+		prev_visible = RESUME.hidden_head_prev_visible
+		RESUME.hidden_head_target_id = nil
+		RESUME.hidden_head_bone_name = nil
+		RESUME.hidden_head_prev_visible = nil
+		return prev_visible, true
+	end
+
+	if HEAD_RESTORE.pending and HEAD_RESTORE.target_id == target_id and HEAD_RESTORE.bone_name == bone_name then
+		prev_visible = HEAD_RESTORE.prev_visible
+		reset_head_restore_state()
+		return prev_visible, true
+	end
+
+	return nil, false
+end
+
+local function stash_hidden_target_head_for_resume()
+	if not (STATE.hidden_head_target_id and STATE.hidden_head_bone_name) then
+		clear_hidden_head_state()
+		return
+	end
+
+	RESUME.hidden_head_target_id = STATE.hidden_head_target_id
+	RESUME.hidden_head_bone_name = STATE.hidden_head_bone_name
+	RESUME.hidden_head_prev_visible = STATE.hidden_head_prev_visible
+	clear_hidden_head_state()
+end
+
+local function restore_hidden_target_head(target)
+	if not STATE.hidden_head_bone_name then
+		clear_hidden_head_state()
+		return
+	end
+
+	if target and (not STATE.hidden_head_target_id or target:id() == STATE.hidden_head_target_id) then
+		target:set_bone_visible(STATE.hidden_head_bone_name, STATE.hidden_head_prev_visible ~= false, true)
+	else
+		queue_hidden_head_restore(STATE.hidden_head_target_id, STATE.hidden_head_bone_name, STATE.hidden_head_prev_visible)
+	end
+
+	clear_hidden_head_state()
+end
+
+local function try_restore_queued_hidden_head()
+	local target
+
+	if not HEAD_RESTORE.pending then
+		return false
+	end
+
+	target = get_object_by_id(HEAD_RESTORE.target_id)
+	if not target then
+		return false
+	end
+
+	target:set_bone_visible(HEAD_RESTORE.bone_name, HEAD_RESTORE.prev_visible ~= false, true)
+	reset_head_restore_state()
+	return true
+end
+
+local function restore_followed_actor_position(target)
+	local actor = db and db.actor
+	local release_position
+
+	if actor and STATE.follow_actor_active then
+		if target then
+			release_position = clone_vector(target:position())
+		else
+			release_position = clone_vector(actor:position())
+
+			if release_position then
+				release_position.y = release_position.y - FOLLOW_ACTOR_HEIGHT
+			end
+		end
+
+		if release_position then
+			actor:set_actor_position(release_position)
+		end
+	end
+
+	clear_follow_actor_state()
+end
+
+local function restore_resume_actor_state()
+	local actor = db and db.actor
+
+	if not actor then
+		return
+	end
+
+	pcall(function()
+		actor:restore_weapon()
+	end)
+	pcall(function()
+		actor:disable_hit_marks(RESUME.prev_hit_marks_disabled)
+	end)
+	pcall(function()
+		actor:invulnerable(RESUME.prev_invulnerable)
+	end)
+	restore_standard_view(RESUME.prev_hud_shown)
+end
+
+local function capture_actor_community(actor)
+	if not (actor and STATE.prev_actor_community == nil) then
+		return
+	end
+
+	STATE.prev_actor_community = actor:character_community()
+end
+
+local function apply_observer_actor_community(actor)
+	if not actor then
+		return
+	end
+
+	capture_actor_community(actor)
+
+	if actor:character_community() ~= OBSERVER_ACTOR_COMMUNITY then
+		actor:set_character_community(OBSERVER_ACTOR_COMMUNITY, 0, 0)
+	end
+end
+
+local function restore_actor_community(actor)
+	if actor and STATE.prev_actor_community and actor:character_community() ~= STATE.prev_actor_community then
+		actor:set_character_community(STATE.prev_actor_community, 0, 0)
+	end
+
+	STATE.prev_actor_community = nil
+end
+
+local function apply_actor_follow(target)
+	local actor = db and db.actor
+	local desired_position
+
+	if not (actor and target) then
+		return
+	end
+
+	desired_position = clone_vector(target:position())
+	desired_position.y = desired_position.y + FOLLOW_ACTOR_HEIGHT
+
+	if actor:position():distance_to_sqr(desired_position) > FOLLOW_ACTOR_EPSILON_SQR then
+		actor:set_actor_position(desired_position)
+	end
+
+	STATE.follow_actor_active = true
+end
+
+local function request_object_online(id)
+	local sim = alife and alife()
+	local server_object
+
+	if not (sim and id) then
+		return
+	end
+
+	sim:set_switch_online(id, true)
+	sim:set_switch_offline(id, false)
+
+	server_object = sim:object(id)
+	if server_object and server_object.switch_online then
+		server_object:switch_online()
+	end
+end
+
+local function initialize_pending_resume_timers()
+	local now = time_global and time_global() or 0
+
+	if RESUME.next_retry_at <= 0 then
+		RESUME.next_retry_at = now + RESUME_START_DELAY
+	end
+
+	if RESUME.expires_at <= 0 then
+		RESUME.expires_at = now + RESUME_TIMEOUT
+	end
+end
+
+local function initialize_main_menu_resume_timers()
+	local now = time_global and time_global() or 0
+
+	if MAIN_MENU_RESUME.next_retry_at <= 0 then
+		MAIN_MENU_RESUME.next_retry_at = now
+	end
+
+	if MAIN_MENU_RESUME.expires_at <= 0 then
+		MAIN_MENU_RESUME.expires_at = now + MAIN_MENU_RESUME_TIMEOUT
+	end
+end
+
+local function queue_main_menu_resume(target_id)
+	MAIN_MENU_RESUME.pending = target_id ~= nil
+	MAIN_MENU_RESUME.target_id = target_id
+	MAIN_MENU_RESUME.next_retry_at = 0
+	MAIN_MENU_RESUME.expires_at = 0
+end
+
+local function clear_main_menu_resume(reason)
+	if not MAIN_MENU_RESUME.pending then
+		return
+	end
+
+	reset_main_menu_resume_state()
+
+	if reason then
+		log_message("Pause-resume cleared: " .. reason)
+	end
+end
+
+local function clear_pending_resume(reason, restore_previous_state)
+	if not RESUME.pending then
+		return
+	end
+
+	if RESUME.hidden_head_target_id and RESUME.hidden_head_bone_name then
+		queue_hidden_head_restore(RESUME.hidden_head_target_id, RESUME.hidden_head_bone_name, RESUME.hidden_head_prev_visible)
+	end
+
+	if restore_previous_state ~= false then
+		restore_resume_actor_state()
+	end
+
+	reset_resume_state()
+	restore_input_lock()
+
+	if reason then
+		log_message("Auto-resume cleared: " .. reason)
+	end
+end
+
+local function suspend_mode_for_cross_level_resume()
+	local actor = db and db.actor
+	local prev_invulnerable = STATE.prev_invulnerable
+	local prev_hit_marks_disabled = STATE.prev_hit_marks_disabled
+	local prev_hud_shown = STATE.prev_hud_shown
+	local hidden_target = get_object_by_id(STATE.hidden_head_target_id or STATE.target_id)
+
+	if hidden_target then
+		restore_hidden_target_head(hidden_target)
+	elseif STATE.hidden_head_bone_name then
+		stash_hidden_target_head_for_resume()
+	end
+
+	remove_custom_camera_if_safe()
+	set_camera_fov(STATE.prev_fov)
+	set_viewport_near(STATE.prev_viewport_near)
+	clear_follow_actor_state()
+
+	if actor then
+		restore_actor_community(actor)
+		pcall(function()
+			actor:restore_weapon()
+		end)
+		pcall(function()
+			actor:disable_hit_marks(true)
+		end)
+		pcall(function()
+			actor:invulnerable(true)
+		end)
+	end
+
+	if level and level.hide_indicators_safe then
+		level.hide_indicators_safe()
+	end
+
+	if level and level.show_weapon then
+		level.show_weapon(false)
+	end
+
+	if _g and _g.show_all_ui then
+		_g.show_all_ui(false)
+	end
+
+	if level and level.disable_input then
+		level.disable_input()
+	end
+
+	reset_state()
+
+	return prev_invulnerable, prev_hit_marks_disabled, prev_hud_shown
+end
+
+local function queue_pending_resume(server_target, prev_invulnerable, prev_hit_marks_disabled, prev_hud_shown)
+	RESUME.pending = true
+	RESUME.target_id = server_target and server_target.id or nil
+	RESUME.target_level_id = get_server_object_level_id(server_target)
+	RESUME.travel_requested = false
+	RESUME.prev_invulnerable = prev_invulnerable and true or false
+	RESUME.prev_hit_marks_disabled = prev_hit_marks_disabled and true or false
+	RESUME.prev_hud_shown = prev_hud_shown ~= false
+	RESUME.next_retry_at = 0
+	RESUME.expires_at = 0
+	initialize_pending_resume_timers()
+end
+
+local function carry_resume_state_into_active_mode()
+	STATE.prev_invulnerable = RESUME.prev_invulnerable
+	STATE.prev_hit_marks_disabled = RESUME.prev_hit_marks_disabled
+	STATE.prev_hud_shown = RESUME.prev_hud_shown
+	reset_resume_state()
+end
+
+local function refresh_config()
+	local previous_enabled = CONFIG.enabled
+	local toggle_key = tonumber(get_mcm_value(MCM_PATH_TOGGLE_KEY, DEFAULT_TOGGLE_KEY))
+	local ui_toggle_key = tonumber(get_mcm_value(MCM_PATH_UI_TOGGLE_KEY, DEFAULT_UI_TOGGLE_KEY))
+	local free_look_key = tonumber(get_mcm_value(MCM_PATH_FREE_LOOK_KEY, DEFAULT_FREE_LOOK_KEY))
+	local previous_follow_actor = CONFIG.follow_actor
+	local previous_hide_head_in_pov = CONFIG.hide_head_in_pov
+	local previous_death_cam = CONFIG.death_cam
+	local previous_death_auto_switch = CONFIG.death_auto_switch
+	local previous_pov_fov = CONFIG.pov_fov
+	local previous_camera_update_hz = CONFIG.camera_update_hz
+	local previous_camera_ema_strength = CONFIG.camera_ema_strength
+	local previous_camera_lag_compensation = CONFIG.camera_lag_compensation
+	local previous_camera_bone = CONFIG.camera_bone
+	local previous_roll_offset_deg = CONFIG.roll_offset_deg
+	local previous_forward_offset = CONFIG.forward_offset
+	local previous_up_offset = CONFIG.up_offset
+	local previous_right_offset = CONFIG.right_offset
+	local enabled = coerce_boolean(get_mcm_value(MCM_PATH_ENABLED, DEFAULT_ENABLED), DEFAULT_ENABLED)
+	local follow_actor = coerce_boolean(get_mcm_value(MCM_PATH_FOLLOW_ACTOR, DEFAULT_FOLLOW_ACTOR), DEFAULT_FOLLOW_ACTOR)
+	local hide_head_in_pov = coerce_boolean(get_mcm_value(MCM_PATH_HIDE_HEAD_IN_POV, DEFAULT_HIDE_HEAD_IN_POV), DEFAULT_HIDE_HEAD_IN_POV)
+	local death_cam = coerce_boolean(get_mcm_value(MCM_PATH_DEATH_CAM, DEFAULT_DEATH_CAM), DEFAULT_DEATH_CAM)
+	local death_auto_switch = coerce_boolean(get_mcm_value(MCM_PATH_DEATH_AUTO_SWITCH, DEFAULT_DEATH_AUTO_SWITCH), DEFAULT_DEATH_AUTO_SWITCH)
+	local death_auto_switch_mode = tostring(get_mcm_value(MCM_PATH_DEATH_AUTO_SWITCH_MODE, DEFAULT_DEATH_AUTO_SWITCH_MODE) or DEFAULT_DEATH_AUTO_SWITCH_MODE)
+	local pov_fov = tonumber(get_mcm_value(MCM_PATH_POV_FOV, DEFAULT_POV_FOV))
+	local camera_bone = tostring(get_mcm_value(MCM_PATH_CAMERA_BONE, DEFAULT_CAMERA_BONE) or DEFAULT_CAMERA_BONE)
+
+	if ui_toggle_key == LEGACY_UI_TOGGLE_KEY then
+		ui_toggle_key = DEFAULT_UI_TOGGLE_KEY
+		set_mcm_value(MCM_PATH_UI_TOGGLE_KEY, ui_toggle_key)
+		log_message("Migrated tuner hotkey from F6 to J to avoid engine conflicts")
+	end
+
+	CONFIG.enabled = enabled
+	CONFIG.toggle_key = toggle_key or DEFAULT_TOGGLE_KEY
+	CONFIG.ui_toggle_key = ui_toggle_key or DEFAULT_UI_TOGGLE_KEY
+	CONFIG.free_look_key = free_look_key or DEFAULT_FREE_LOOK_KEY
+	CONFIG.follow_actor = follow_actor
+	CONFIG.hide_head_in_pov = hide_head_in_pov
+	CONFIG.death_cam = death_cam
+	CONFIG.death_auto_switch = death_auto_switch
+	CONFIG.death_auto_switch_mode = DEATH_AUTO_SWITCH_MODE_INDEX[death_auto_switch_mode] and death_auto_switch_mode or DEFAULT_DEATH_AUTO_SWITCH_MODE
+	CONFIG.pov_fov = clamp_number(pov_fov or DEFAULT_POV_FOV, 5.0, 180.0)
+	CONFIG.camera_update_hz = clamp_number(tonumber(get_mcm_value(MCM_PATH_CAMERA_UPDATE_HZ, DEFAULT_CAMERA_UPDATE_HZ)) or DEFAULT_CAMERA_UPDATE_HZ, 1.0, 60.0)
+	CONFIG.camera_ema_strength = clamp_number(tonumber(get_mcm_value(MCM_PATH_CAMERA_EMA_STRENGTH, DEFAULT_CAMERA_EMA_STRENGTH)) or DEFAULT_CAMERA_EMA_STRENGTH, 0.0, 1.0)
+	CONFIG.camera_lag_compensation = clamp_number(tonumber(get_mcm_value(MCM_PATH_CAMERA_LAG_COMPENSATION, DEFAULT_CAMERA_LAG_COMPENSATION)) or DEFAULT_CAMERA_LAG_COMPENSATION, 0.0, 2.0)
+	CONFIG.camera_bone = CAMERA_BONE_SET[camera_bone] and camera_bone or DEFAULT_CAMERA_BONE
+	CONFIG.roll_offset_deg = clamp_number(tonumber(get_mcm_value(MCM_PATH_ROLL_OFFSET_DEG, DEFAULT_ROLL_OFFSET_DEG)) or DEFAULT_ROLL_OFFSET_DEG, -180, 180)
+	CONFIG.viewport_near = clamp_number(tonumber(get_mcm_value(MCM_PATH_VIEWPORT_NEAR, DEFAULT_GOPRO_VIEWPORT_NEAR)) or DEFAULT_GOPRO_VIEWPORT_NEAR, 0.005, 0.2)
+	CONFIG.forward_offset = clamp_number(tonumber(get_mcm_value(MCM_PATH_FORWARD_OFFSET, DEFAULT_CAMERA_FORWARD_OFFSET)) or DEFAULT_CAMERA_FORWARD_OFFSET, -0.15, 0.15)
+	CONFIG.up_offset = clamp_number(tonumber(get_mcm_value(MCM_PATH_UP_OFFSET, DEFAULT_CAMERA_UP_OFFSET)) or DEFAULT_CAMERA_UP_OFFSET, -0.15, 0.15)
+	CONFIG.right_offset = clamp_number(tonumber(get_mcm_value(MCM_PATH_RIGHT_OFFSET, DEFAULT_CAMERA_RIGHT_OFFSET)) or DEFAULT_CAMERA_RIGHT_OFFSET, -0.15, 0.15)
+
+	if STATE.active then
+		STATE.selected_bone_name = CONFIG.camera_bone
+
+		if previous_follow_actor ~= CONFIG.follow_actor then
+			if not CONFIG.follow_actor then
+				restore_followed_actor_position(get_object_by_id(STATE.target_id))
+			end
+		end
+
+		if previous_hide_head_in_pov ~= CONFIG.hide_head_in_pov and not CONFIG.hide_head_in_pov then
+			restore_hidden_target_head(get_object_by_id(STATE.target_id))
+		end
+
+		if STATE.death_transition_active then
+			if previous_death_cam ~= CONFIG.death_cam and not CONFIG.death_cam then
+				STATE.death_cam_active = false
+				STATE.death_cam_until = get_now_ms()
+			end
+
+			if previous_death_auto_switch ~= CONFIG.death_auto_switch and not CONFIG.death_auto_switch then
+				STATE.death_cam_until = get_now_ms()
+			end
+		end
+
+		if previous_pov_fov ~= CONFIG.pov_fov then
+			set_camera_fov(CONFIG.pov_fov)
+		end
+
+		if previous_camera_update_hz ~= CONFIG.camera_update_hz
+			or previous_camera_ema_strength ~= CONFIG.camera_ema_strength
+			or previous_camera_lag_compensation ~= CONFIG.camera_lag_compensation
+			or previous_camera_bone ~= CONFIG.camera_bone
+			or previous_roll_offset_deg ~= CONFIG.roll_offset_deg
+			or previous_forward_offset ~= CONFIG.forward_offset
+			or previous_up_offset ~= CONFIG.up_offset
+			or previous_right_offset ~= CONFIG.right_offset
+		then
+			STATE.last_sample_time = 0
+			STATE.sampled_velocity = nil
+			STATE.previous_raw_position = nil
+			STATE.previous_raw_sample_time = 0
+		end
+	end
+
+	return previous_enabled ~= CONFIG.enabled
+end
+
+get_object_by_id = function(id)
+	local level_object
+	local storage
+
+	if not id then
+		return nil
+	end
+
+	if level and level.object_by_id then
+		level_object = level.object_by_id(id)
+		if level_object then
+			return level_object
+		end
+	end
+
+	storage = db and db.storage and db.storage[id]
+	if storage and storage.object then
+		return storage.object
+	end
+
+	return nil
+end
+
+local function get_target_kind(target)
+	if not target then
+		return nil
+	end
+
+	if target:is_stalker() then
+		return "stalker"
+	end
+
+	if target:is_monster() then
+		return "monster"
+	end
+
+	return nil
+end
+
+local function is_observable_target(target)
+	if not (target and db and db.actor) then
+		return false
+	end
+
+	if target:id() == db.actor:id() then
+		return false
+	end
+
+	return get_target_kind(target) ~= nil
+end
+
+local function is_supported_target(target)
+	return is_observable_target(target) and target:alive()
+end
+
+local function get_target_group_id(target)
+	local server_target
+	local group_id
+
+	if not target then
+		return nil
+	end
+
+	group_id = target.group_id
+	if group_id and group_id ~= 65535 then
+		return group_id
+	end
+
+	server_target = get_server_object_by_id(target:id())
+	group_id = server_target and server_target.group_id or nil
+
+	if group_id and group_id ~= 65535 then
+		return group_id
+	end
+
+	return nil
+end
+
+function POV_NAV.wrap_index(index, count)
+	if count <= 0 then
+		return nil
+	end
+
+	while index < 1 do
+		index = index + count
+	end
+
+	while index > count do
+		index = index - count
+	end
+
+	return index
+end
+
+function POV_NAV.is_key(dik)
+	return dik == POV_NAV_KEYS.left
+		or dik == POV_NAV_KEYS.right
+		or dik == POV_NAV_KEYS.up
+		or dik == POV_NAV_KEYS.down
+end
+
+function POV_NAV.get_online_squad_members(group_id, target_kind)
+	local squad
+	local members = {}
+	local candidate
+
+	if not group_id then
+		return members
+	end
+
+	squad = get_server_object_by_id(group_id)
+	if not (squad and squad.squad_members) then
+		return members
+	end
+
+	for member in squad:squad_members() do
+		candidate = member and member.id and get_object_by_id(member.id) or nil
+
+		if candidate and is_supported_target(candidate) and (not target_kind or get_target_kind(candidate) == target_kind) then
+			members[#members + 1] = candidate
+		end
+	end
+
+	table.sort(members, function(left, right)
+		return left:id() < right:id()
+	end)
+
+	return members
+end
+
+function POV_NAV.find_target_index(targets, target_id)
+	local index
+
+	for index, candidate in ipairs(targets) do
+		if candidate and candidate:id() == target_id then
+			return index
+		end
+	end
+
+	return nil
+end
+
+function POV_NAV.build_sorted_squad_entries(preferred_kind)
+	local by_group = {}
+	local entries = {}
+	local candidate
+	local group_id
+	local entry
+
+	if not (db and db.storage) then
+		return entries
+	end
+
+	for _, storage in pairs(db.storage) do
+		candidate = storage and storage.object or nil
+
+		if candidate and is_supported_target(candidate) then
+			group_id = get_target_group_id(candidate)
+
+			if group_id and (not preferred_kind or get_target_kind(candidate) == preferred_kind) then
+				entry = by_group[group_id]
+
+				if not entry then
+					by_group[group_id] = {
+						group_id = group_id,
+						target = candidate,
+						target_id = candidate:id(),
+					}
+				elseif candidate:id() < entry.target_id then
+					entry.target = candidate
+					entry.target_id = candidate:id()
+				end
+			end
+		end
+	end
+
+	for _, value in pairs(by_group) do
+		entries[#entries + 1] = value
+	end
+
+	table.sort(entries, function(left, right)
+		if left.group_id == right.group_id then
+			return left.target_id < right.target_id
+		end
+
+		return left.group_id < right.group_id
+	end)
+
+	return entries
+end
+
+function POV_NAV.cycle_target_in_current_squad(target, step)
+	local group_id = get_target_group_id(target)
+	local target_kind = get_target_kind(target)
+	local squad_members
+	local current_index
+	local next_index
+
+	if not group_id then
+		return nil
+	end
+
+	squad_members = POV_NAV.get_online_squad_members(group_id, target_kind)
+	if #squad_members <= 1 then
+		return nil
+	end
+
+	current_index = POV_NAV.find_target_index(squad_members, target:id())
+	if not current_index then
+		return nil
+	end
+
+	next_index = POV_NAV.wrap_index(current_index + step, #squad_members)
+	return squad_members[next_index]
+end
+
+function POV_NAV.cycle_target_in_nearest_squads(target, step)
+	local current_group_id = get_target_group_id(target)
+	local target_kind = get_target_kind(target)
+	local squad_entries = POV_NAV.build_sorted_squad_entries(target_kind)
+	local current_index = nil
+	local index
+	local next_index
+
+	if #squad_entries <= 1 then
+		squad_entries = POV_NAV.build_sorted_squad_entries(nil)
+	end
+
+	if #squad_entries <= 1 then
+		return nil
+	end
+
+	for index, entry in ipairs(squad_entries) do
+		if entry.group_id == current_group_id then
+			current_index = index
+			break
+		end
+	end
+
+	if not current_index then
+		return squad_entries[step > 0 and 1 or #squad_entries].target
+	end
+
+	next_index = POV_NAV.wrap_index(current_index + step, #squad_entries)
+	return squad_entries[next_index] and squad_entries[next_index].target or nil
+end
+
+function POV_NAV.get_switch_target(target, dik)
+	if not target then
+		return nil
+	end
+
+	if dik == POV_NAV_KEYS.left then
+		return POV_NAV.cycle_target_in_current_squad(target, -1)
+	end
+
+	if dik == POV_NAV_KEYS.right then
+		return POV_NAV.cycle_target_in_current_squad(target, 1)
+	end
+
+	if dik == POV_NAV_KEYS.up then
+		return POV_NAV.cycle_target_in_nearest_squads(target, 1)
+	end
+
+	if dik == POV_NAV_KEYS.down then
+		return POV_NAV.cycle_target_in_nearest_squads(target, -1)
+	end
+
+	return nil
+end
+
+local function clear_death_transition()
+	STATE.death_transition_active = false
+	STATE.death_cam_active = false
+	STATE.death_cam_until = 0
+	STATE.death_target_kind = nil
+	STATE.death_target_group_id = nil
+	STATE.death_target_position = nil
+	STATE.death_killer_id = nil
+	STATE.last_attacker_id = nil
+end
+
+local function cache_death_transition_context(target, killer)
+	local killer_id = STATE.last_attacker_id
+
+	STATE.death_transition_active = true
+	STATE.death_cam_active = CONFIG.death_cam
+	STATE.death_cam_until = CONFIG.death_cam and (get_now_ms() + DEATH_CAM_DURATION_MS) or get_now_ms()
+	STATE.death_target_kind = get_target_kind(target)
+	STATE.death_target_group_id = get_target_group_id(target)
+	STATE.death_target_position = target and clone_vector(target:position()) or nil
+
+	if killer and is_supported_target(killer) then
+		killer_id = killer:id()
+	end
+
+	STATE.death_killer_id = killer_id
+end
+
+local function find_nearest_valid_target(origin_position, predicate, excluded_id)
+	local best_target = nil
+	local best_distance = nil
+	local candidate
+	local candidate_position
+	local distance
+
+	if not (origin_position and db and db.storage) then
+		return nil
+	end
+
+	for id, storage in pairs(db.storage) do
+		candidate = storage and storage.object or nil
+
+		if candidate and id ~= excluded_id and is_supported_target(candidate) and (not predicate or predicate(candidate)) then
+			candidate_position = candidate:position()
+
+			if candidate_position then
+				distance = origin_position:distance_to_sqr(candidate_position)
+
+				if best_distance == nil or distance < best_distance then
+					best_target = candidate
+					best_distance = distance
+				end
+			end
+		end
+	end
+
+	return best_target
+end
+
+local function find_nearest_squad_member_target(group_id, origin_position, excluded_id)
+	local squad
+	local best_target = nil
+	local best_distance = nil
+	local candidate
+	local candidate_position
+	local distance
+
+	if not group_id then
+		return nil
+	end
+
+	squad = get_server_object_by_id(group_id)
+	if not (squad and squad.squad_members) then
+		return nil
+	end
+
+	for member in squad:squad_members() do
+		candidate = member and member.id and get_object_by_id(member.id) or nil
+
+		if candidate and candidate:id() ~= excluded_id and is_supported_target(candidate) then
+			candidate_position = candidate:position()
+
+			if candidate_position and origin_position then
+				distance = origin_position:distance_to_sqr(candidate_position)
+
+				if best_distance == nil or distance < best_distance then
+					best_target = candidate
+					best_distance = distance
+				end
+			elseif candidate_position then
+				return candidate
+			end
+		end
+	end
+
+	return best_target
+end
+
+local function resolve_death_auto_switch_target()
+	local origin_position = clone_vector(STATE.death_target_position)
+	local excluded_id = STATE.target_id
+	local target_kind = STATE.death_target_kind
+	local group_id = STATE.death_target_group_id
+	local mode = CONFIG.death_auto_switch_mode
+	local killer
+	local squad_target
+	local same_kind_target
+
+	if not CONFIG.death_auto_switch then
+		return nil
+	end
+
+	if mode == "killer" then
+		killer = get_object_by_id(STATE.death_killer_id)
+
+		if killer and killer:id() ~= excluded_id and is_supported_target(killer) then
+			return killer
+		end
+	end
+
+	squad_target = find_nearest_squad_member_target(group_id, origin_position, excluded_id)
+	if squad_target then
+		return squad_target
+	end
+
+	if target_kind then
+		same_kind_target = find_nearest_valid_target(origin_position, function(candidate)
+			return get_target_kind(candidate) == target_kind
+		end, excluded_id)
+
+		if same_kind_target then
+			return same_kind_target
+		end
+	end
+
+	return find_nearest_valid_target(origin_position, nil, excluded_id)
+end
+
+local function should_keep_death_cam()
+	return STATE.death_transition_active and STATE.death_cam_active and get_now_ms() < STATE.death_cam_until
+end
+
+local function begin_death_transition(target, killer)
+	if STATE.death_transition_active then
+		return
+	end
+
+	cache_death_transition_context(target, killer)
+	log_message(string_format(
+		"Death cam started: %s",
+		target and tostring(target:name()) or "<nil>"
+	))
+end
+
+local function finish_death_transition(target)
+	local switch_target = resolve_death_auto_switch_target()
+
+	if switch_target then
+		return switch_target
+	end
+
+	deactivate_mode(target and "death cam finished" or "death target disappeared", true)
+	return nil
+end
+
+local function remember_target_attacker(victim, who)
+	if not (STATE.active and victim and who and STATE.target_id and victim:id() == STATE.target_id) then
+		return
+	end
+
+	if STATE.death_transition_active then
+		return
+	end
+
+	if who:id() ~= db.actor:id() and is_supported_target(who) then
+		STATE.last_attacker_id = who:id()
+	end
+end
+
+local function build_bone_candidates(primary_bone)
+	local candidates = {}
+
+	if primary_bone and primary_bone ~= "" then
+		candidates[#candidates + 1] = primary_bone
+	end
+
+	for _, bone_name in ipairs(CAMERA_BONES) do
+		if bone_name ~= primary_bone then
+			candidates[#candidates + 1] = bone_name
+		end
+	end
+
+	return candidates
+end
+
+local function resolve_bone(target, primary_bone)
+	local candidates = build_bone_candidates(primary_bone)
+	local bone_id
+
+	for _, bone_name in ipairs(candidates) do
+		bone_id = target:get_bone_id(bone_name)
+		if bone_id ~= BONE_ID_NONE then
+			return bone_name, bone_id
+		end
+	end
+
+	return nil, BONE_ID_NONE
+end
+
+local function resolve_head_hide_bone(target)
+	local bone_id
+
+	for _, bone_name in ipairs(HEAD_HIDE_ROOT_BONES) do
+		bone_id = target:get_bone_id(bone_name)
+		if bone_id ~= BONE_ID_NONE then
+			return bone_name
+		end
+	end
+
+	return nil
+end
+
+local function should_hide_target_head(resolved_bone_name)
+	return CONFIG.hide_head_in_pov and HEAD_CAMERA_BONE_SET[resolved_bone_name] == true
+end
+
+local function sync_target_head_visibility(target, resolved_bone_name)
+	local hide_bone_name
+	local target_id
+	local target_bone_visible
+	local carried_prev_visible
+	local has_carried_prev_visible
+
+	if not target then
+		clear_hidden_head_state()
+		return
+	end
+
+	target_id = target:id()
+
+	if not should_hide_target_head(resolved_bone_name) then
+		restore_hidden_target_head(target)
+		return
+	end
+
+	hide_bone_name = resolve_head_hide_bone(target)
+	if not hide_bone_name then
+		restore_hidden_target_head(target)
+		return
+	end
+
+	if STATE.hidden_head_target_id == target_id and STATE.hidden_head_bone_name == hide_bone_name then
+		return
+	end
+
+	restore_hidden_target_head(target)
+	target_bone_visible = target:bone_visible(hide_bone_name)
+	carried_prev_visible, has_carried_prev_visible = take_carried_hidden_head_visibility(target_id, hide_bone_name)
+	STATE.hidden_head_target_id = target_id
+	STATE.hidden_head_bone_name = hide_bone_name
+	STATE.hidden_head_prev_visible = has_carried_prev_visible and carried_prev_visible or target_bone_visible
+
+	if target_bone_visible then
+		target:set_bone_visible(hide_bone_name, false, true)
+	end
+end
+
+local function switch_active_target(target, reason)
+	local resolved_bone_name
+	local resolved_bone_id
+	local pos
+	local hpb
+	local previous_target = get_object_by_id(STATE.target_id)
+
+	if not is_supported_target(target) then
+		return false
+	end
+
+	resolved_bone_name, resolved_bone_id = resolve_bone(target, CONFIG.camera_bone)
+	if not resolved_bone_name then
+		return false
+	end
+
+	restore_hidden_target_head(previous_target)
+	clear_death_transition()
+	STATE.free_look_active = false
+	STATE.free_look_hpb = nil
+	STATE.target_id = target:id()
+	STATE.selected_bone_name = CONFIG.camera_bone
+	STATE.selected_bone_id = target:get_bone_id(CONFIG.camera_bone)
+	STATE.resolved_bone_name = resolved_bone_name
+	STATE.resolved_bone_id = resolved_bone_id
+	STATE.last_sample_time = 0
+	STATE.last_filter_time = 0
+	STATE.sampled_velocity = nil
+	STATE.previous_raw_position = nil
+	STATE.previous_raw_sample_time = 0
+
+	if CONFIG.follow_actor then
+		apply_actor_follow(target)
+	end
+
+	sync_target_head_visibility(target, resolved_bone_name)
+	pos, hpb = sample_camera_anchor_pose(target, resolved_bone_id)
+	initialize_camera_filter(pos, hpb)
+	pos, hpb = build_camera_transform_from_pose(pos, hpb)
+	level.set_cam_custom_position_direction(pos, hpb, CAMERA_SMOOTHING, false, false)
+
+	if reason then
+		log_message(string_format("POV switched: %s (%s)", tostring(target:name()), reason))
+	end
+
+	return true
+end
+
+local function reject_activation(reason)
+	log_message("Activation refused: " .. reason)
+	return false
+end
+
+local function reject_tuner(reason)
+	log_message("Tuner refused: " .. reason)
+	return false
+end
+
+local function get_viewport_near()
+	if get_console_cmd then
+		local value = tonumber(get_console_cmd(2, "viewport_near"))
+		if value then
+			return value
+		end
+	end
+
+	return DEFAULT_VIEWPORT_NEAR
+end
+
+local function get_camera_fov()
+	if get_console_cmd then
+		local value = tonumber(get_console_cmd(2, "fov"))
+		if value then
+			return value
+		end
+	end
+
+	return DEFAULT_POV_FOV
+end
+
+set_viewport_near = function(value)
+	if exec_console_cmd and value then
+		exec_console_cmd(string_format("viewport_near %.3f", value))
+	end
+end
+
+set_camera_fov = function(value)
+	if exec_console_cmd and value then
+		exec_console_cmd(string_format("fov %.1f", value))
+	end
+end
+
+restore_input_lock = function()
+	if not level then
+		return
+	end
+
+	if (STATE.active or RESUME.pending) and not tuner_is_visible() and level.disable_input then
+		level.disable_input()
+	elseif level.enable_input then
+		level.enable_input()
+	end
+end
+
+local function apply_camera_rotation_offset(hpb)
+	hpb.z = hpb.z + (CONFIG.roll_offset_deg * DEG_TO_RAD)
+	return hpb
+end
+
+local function apply_camera_position_offset(position, hpb)
+	local adjusted_position = vector()
+	local dir = vector()
+	local dir_up = vector()
+	local dir_right = vector()
+
+	adjusted_position:set(position)
+	dir:setHP(hpb.x, hpb.y)
+	vector.generate_orthonormal_basis_normalized(dir, dir_up, dir_right)
+
+	if CONFIG.forward_offset ~= 0 then
+		adjusted_position:mad(dir, CONFIG.forward_offset)
+	end
+
+	if CONFIG.up_offset ~= 0 then
+		adjusted_position:mad(dir_up, CONFIG.up_offset)
+	end
+
+	if CONFIG.right_offset ~= 0 then
+		adjusted_position:mad(dir_right, CONFIG.right_offset)
+	end
+
+	return adjusted_position
+end
+
+sample_camera_anchor_pose = function(target, bone_id)
+	local hpb = apply_camera_rotation_offset(target:bone_direction(bone_id))
+	local position = clone_vector(target:bone_position(bone_id))
+
+	return position, hpb
+end
+
+build_camera_transform_from_pose = function(position, offset_hpb, view_hpb)
+	return apply_camera_position_offset(position, offset_hpb), view_hpb or offset_hpb
+end
+
+initialize_camera_filter = function(position, hpb)
+	STATE.sampled_position = clone_vector(position)
+	STATE.sampled_hpb = clone_vector(hpb)
+	STATE.sampled_velocity = nil
+	STATE.filtered_position = clone_vector(position)
+	STATE.filtered_hpb = clone_vector(hpb)
+	STATE.last_sample_time = get_now_ms()
+	STATE.last_filter_time = STATE.last_sample_time
+	STATE.previous_raw_position = clone_vector(position)
+	STATE.previous_raw_sample_time = STATE.last_sample_time
+end
+
+local function get_camera_sample_interval_ms()
+	return 1000 / clamp_number(CONFIG.camera_update_hz, 1.0, 60.0)
+end
+
+local function get_camera_ema_tau_seconds()
+	if CONFIG.camera_ema_strength <= 0 then
+		return 0.0
+	end
+
+	return 0.005 + (CONFIG.camera_ema_strength * 0.2)
+end
+
+local function get_camera_ema_alpha(delta_ms)
+	local delta_seconds
+	local tau
+
+	if delta_ms <= 0 then
+		return 1.0
+	end
+
+	if CONFIG.camera_ema_strength <= 0 then
+		return 1.0
+	end
+
+	delta_seconds = clamp_number(delta_ms / 1000, 0.0, 0.25)
+	tau = get_camera_ema_tau_seconds()
+
+	return clamp_number(1.0 - math_exp(-delta_seconds / tau), 0.0, 1.0)
+end
+
+local function get_camera_position_lead_seconds()
+	if CONFIG.camera_lag_compensation <= 0 then
+		return 0.0
+	end
+
+	return clamp_number(get_camera_ema_tau_seconds() * CONFIG.camera_lag_compensation, 0.0, 0.25)
+end
+
+local function smooth_camera_velocity(raw_velocity)
+	local alpha = CAMERA_VELOCITY_FILTER_ALPHA
+
+	if not STATE.sampled_velocity then
+		STATE.sampled_velocity = clone_vector(raw_velocity)
+		return STATE.sampled_velocity
+	end
+
+	STATE.sampled_velocity.x = STATE.sampled_velocity.x + ((raw_velocity.x - STATE.sampled_velocity.x) * alpha)
+	STATE.sampled_velocity.y = STATE.sampled_velocity.y + ((raw_velocity.y - STATE.sampled_velocity.y) * alpha)
+	STATE.sampled_velocity.z = STATE.sampled_velocity.z + ((raw_velocity.z - STATE.sampled_velocity.z) * alpha)
+
+	return STATE.sampled_velocity
+end
+
+local function predict_camera_anchor_position(position, sample_time)
+	local previous_position = STATE.previous_raw_position
+	local previous_time = STATE.previous_raw_sample_time
+	local delta_seconds
+	local raw_velocity
+	local predicted_position
+	local lead_delta
+	local lead_seconds
+	local lead_distance_sqr
+
+	STATE.previous_raw_position = clone_vector(position)
+	STATE.previous_raw_sample_time = sample_time
+
+	if not previous_position or previous_time <= 0 then
+		STATE.sampled_velocity = nil
+		return position
+	end
+
+	delta_seconds = (sample_time - previous_time) / 1000
+	if delta_seconds <= 0 or delta_seconds > 0.25 then
+		STATE.sampled_velocity = nil
+		return position
+	end
+
+	raw_velocity = clone_vector(position)
+	raw_velocity:sub(previous_position)
+	raw_velocity:mul(1 / delta_seconds)
+	raw_velocity = smooth_camera_velocity(raw_velocity)
+	lead_seconds = get_camera_position_lead_seconds()
+
+	if lead_seconds <= 0 then
+		return position
+	end
+
+	lead_delta = clone_vector(raw_velocity)
+	lead_delta:mul(lead_seconds)
+	lead_distance_sqr = (lead_delta.x * lead_delta.x) + (lead_delta.y * lead_delta.y) + (lead_delta.z * lead_delta.z)
+
+	if lead_distance_sqr > (MAX_CAMERA_PREDICTION_DISTANCE * MAX_CAMERA_PREDICTION_DISTANCE) then
+		lead_delta:mul(MAX_CAMERA_PREDICTION_DISTANCE / math.sqrt(lead_distance_sqr))
+	end
+
+	predicted_position = clone_vector(position)
+	predicted_position:add(lead_delta)
+	return predicted_position
+end
+
+local function update_camera_filter(target, bone_id)
+	local now = get_now_ms()
+	local position
+	local hpb
+	local alpha
+	local delta_ms
+
+	if not STATE.sampled_position or not STATE.sampled_hpb or STATE.last_sample_time <= 0 or (now - STATE.last_sample_time) >= get_camera_sample_interval_ms() then
+		position, hpb = sample_camera_anchor_pose(target, bone_id)
+		position = predict_camera_anchor_position(position, now)
+		STATE.sampled_position = clone_vector(position)
+		STATE.sampled_hpb = clone_vector(hpb)
+		STATE.last_sample_time = now
+	end
+
+	if not STATE.filtered_position or not STATE.filtered_hpb or STATE.last_filter_time <= 0 then
+		STATE.filtered_position = clone_vector(STATE.sampled_position)
+		STATE.filtered_hpb = clone_vector(STATE.sampled_hpb)
+		STATE.last_filter_time = now
+	end
+
+	delta_ms = now - STATE.last_filter_time
+	STATE.last_filter_time = now
+	alpha = get_camera_ema_alpha(delta_ms)
+
+	if alpha >= 1.0 then
+		STATE.filtered_position:set(STATE.sampled_position)
+		STATE.filtered_hpb:set(STATE.sampled_hpb)
+	else
+		STATE.filtered_position.x = STATE.filtered_position.x + ((STATE.sampled_position.x - STATE.filtered_position.x) * alpha)
+		STATE.filtered_position.y = STATE.filtered_position.y + ((STATE.sampled_position.y - STATE.filtered_position.y) * alpha)
+		STATE.filtered_position.z = STATE.filtered_position.z + ((STATE.sampled_position.z - STATE.filtered_position.z) * alpha)
+		STATE.filtered_hpb.x = wrap_angle(STATE.filtered_hpb.x + (wrap_angle(STATE.sampled_hpb.x - STATE.filtered_hpb.x) * alpha))
+		STATE.filtered_hpb.y = wrap_angle(STATE.filtered_hpb.y + (wrap_angle(STATE.sampled_hpb.y - STATE.filtered_hpb.y) * alpha))
+		STATE.filtered_hpb.z = wrap_angle(STATE.filtered_hpb.z + (wrap_angle(STATE.sampled_hpb.z - STATE.filtered_hpb.z) * alpha))
+	end
+
+	return clone_vector(STATE.filtered_position), clone_vector(STATE.filtered_hpb)
+end
+
+local function get_free_look_hpb(default_hpb)
+	if not STATE.free_look_active then
+		return default_hpb
+	end
+
+	if not STATE.free_look_hpb and default_hpb then
+		STATE.free_look_hpb = clone_vector(default_hpb)
+	end
+
+	if not STATE.free_look_hpb then
+		return default_hpb
+	end
+
+	if default_hpb then
+		STATE.free_look_hpb.z = default_hpb.z
+	end
+
+	return STATE.free_look_hpb
+end
+
+local function get_console_number(command, fallback)
+	if get_console_cmd then
+		local value = tonumber(get_console_cmd(2, command))
+		if value ~= nil then
+			return value
+		end
+	end
+
+	return fallback
+end
+
+local function get_console_bool(command, fallback)
+	local value = get_console_number(command, nil)
+
+	if value == nil then
+		return fallback and true or false
+	end
+
+	return value ~= 0
+end
+
+local function apply_free_look_mouse_delta(dx, dy)
+	local yaw_scale
+	local pitch_scale
+	local invert_multiplier
+
+	if not (STATE.active and STATE.free_look_active and not tuner_is_visible()) then
+		return false
+	end
+
+	if not STATE.free_look_hpb then
+		if STATE.filtered_hpb then
+			STATE.free_look_hpb = clone_vector(STATE.filtered_hpb)
+		else
+			return true
+		end
+	end
+
+	yaw_scale = get_console_number("mouse_sens", 0.12) / 50.0
+	pitch_scale = yaw_scale * get_console_number("mouse_sens_vertical", 1.0) * 0.75
+	invert_multiplier = get_console_bool("mouse_invert", false) and -1 or 1
+
+	if dx and dx ~= 0 then
+		STATE.free_look_hpb.x = wrap_angle(STATE.free_look_hpb.x - (dx * yaw_scale))
+	end
+
+	if dy and dy ~= 0 then
+		STATE.free_look_hpb.y = clamp_number(
+			STATE.free_look_hpb.y - (invert_multiplier * dy * pitch_scale),
+			-1.45,
+			1.45
+		)
+	end
+
+	return true
+end
+
+local function sync_free_look_state()
+	if not STATE.active or tuner_is_visible() then
+		if STATE.free_look_active then
+			STATE.free_look_active = false
+			STATE.free_look_hpb = nil
+		end
+		return
+	end
+end
+
+install_level_input_mouse_hook = function()
+	if not level_input then
+		log_message("Mouse free-look hook was not installed: level_input namespace is unavailable")
+		return
+	end
+
+	if level_input._gopro_mod_mouse_hook_installed then
+		return
+	end
+
+	previous_level_input_on_mouse_move = level_input.on_mouse_move
+	level_input.on_mouse_move = function(dx, dy, dis)
+		if apply_free_look_mouse_delta(dx, dy) then
+			return true
+		end
+
+		if previous_level_input_on_mouse_move then
+			return previous_level_input_on_mouse_move(dx, dy, dis)
+		end
+
+		return false
+	end
+	level_input._gopro_mod_mouse_hook_installed = true
+end
+
+restore_standard_view = function(show_hud)
+	if level and level.enable_input then
+		level.enable_input()
+	end
+
+	if show_hud == nil then
+		show_hud = true
+	end
+
+	if actor_is_ready() and _g and _g.show_all_ui then
+		_g.show_all_ui(show_hud)
+	elseif show_hud and level and level.show_indicators then
+		level.show_indicators()
+	elseif (not show_hud) and level and level.hide_indicators_safe then
+		level.hide_indicators_safe()
+	end
+
+	if level and level.show_weapon then
+		level.show_weapon(true)
+	end
+end
+
+remove_custom_camera_if_safe = function()
+	if actor_is_ready() and level and level.remove_cam_custom_position_direction then
+		level.remove_cam_custom_position_direction()
+	end
+end
+
+local function close_tuner()
+	UI_VISIBLE = false
+
+	if TUNER_UI then
+		TUNER_UI:HideDialog()
+		TUNER_UI:Show(false)
+	end
+
+	Unregister_UI(UI_NAME)
+	TUNER_UI = nil
+
+	restore_input_lock()
+end
+
+local function build_change_level_angle()
+	local angle = vector()
+
+	angle:set(0, 0, 0)
+	return angle
+end
+
+local function get_server_target_name(server_target)
+	if not server_target then
+		return "<nil>"
+	end
+
+	if server_target.name then
+		return tostring(server_target:name())
+	end
+
+	return tostring(server_target.id)
+end
+
+local function begin_cross_level_travel(server_target)
+	local actor_level_id
+	local target_level_id
+	local prev_invulnerable
+	local prev_hit_marks_disabled
+	local prev_hud_shown
+	local target_position
+
+	if not (server_target and server_target.m_level_vertex_id and server_target.m_game_vertex_id) then
+		deactivate_mode("target left current level without valid travel data", true)
+		return false
+	end
+
+	if not CONFIG.follow_actor then
+		deactivate_mode("target left current level", true)
+		return false
+	end
+
+	if not ChangeLevel then
+		deactivate_mode("ChangeLevel helper is unavailable", true)
+		return false
+	end
+
+	target_level_id = get_server_object_level_id(server_target) or RESUME.target_level_id
+	actor_level_id = get_actor_level_id()
+
+	if RESUME.pending and RESUME.travel_requested then
+		if not (target_level_id and actor_level_id and actor_level_id == target_level_id) then
+			return true
+		end
+
+		RESUME.travel_requested = false
+	end
+
+	if STATE.active then
+		close_tuner()
+		prev_invulnerable, prev_hit_marks_disabled, prev_hud_shown = suspend_mode_for_cross_level_resume()
+		queue_pending_resume(server_target, prev_invulnerable, prev_hit_marks_disabled, prev_hud_shown)
+	elseif RESUME.pending then
+		RESUME.target_id = server_target.id
+		RESUME.target_level_id = target_level_id
+		RESUME.next_retry_at = 0
+		RESUME.expires_at = 0
+		initialize_pending_resume_timers()
+	else
+		queue_pending_resume(server_target, false, false, true)
+	end
+
+	target_position = clone_vector(server_target.position)
+	if not target_position then
+		clear_pending_resume("target travel position is unavailable", true)
+		return false
+	end
+
+	log_message(string_format(
+		"Target moved to another level, travelling to resume POV: %s",
+		get_server_target_name(server_target)
+	))
+
+	RESUME.travel_requested = true
+	ChangeLevel(target_position, server_target.m_level_vertex_id, server_target.m_game_vertex_id, build_change_level_angle(), true)
+	return true
+end
+
+local function handle_missing_active_target()
+	local server_target = get_server_object_by_id(STATE.target_id)
+	local target_level_id
+	local actor_level_id
+
+	if not server_target then
+		deactivate_mode("target server object disappeared", true)
+		return
+	end
+
+	if server_target.alive and not server_target:alive() then
+		deactivate_mode("target died", true)
+		return
+	end
+
+	target_level_id = get_server_object_level_id(server_target)
+	actor_level_id = get_actor_level_id()
+
+	if target_level_id and actor_level_id and target_level_id ~= actor_level_id then
+		begin_cross_level_travel(server_target)
+		return
+	end
+
+	deactivate_mode("target went offline", true)
+end
+
+local function try_resume_after_level_change()
+	local now = time_global and time_global() or 0
+	local actor = db and db.actor
+	local server_target
+	local target
+	local target_level_id
+	local actor_level_id
+
+	if not RESUME.pending then
+		return
+	end
+
+	if not CONFIG.enabled then
+		clear_pending_resume("mod disabled during auto-resume", true)
+		return
+	end
+
+	if not (level_is_present() and actor and actor:alive()) then
+		return
+	end
+
+	initialize_pending_resume_timers()
+
+	if device and device():is_paused() then
+		return
+	end
+
+	actor_level_id = get_actor_level_id()
+	if RESUME.travel_requested and RESUME.target_level_id and actor_level_id == RESUME.target_level_id then
+		RESUME.travel_requested = false
+	end
+
+	if now < RESUME.next_retry_at then
+		return
+	end
+
+	if now > RESUME.expires_at then
+		clear_pending_resume("resume timed out", true)
+		return
+	end
+
+	server_target = get_server_object_by_id(RESUME.target_id)
+	if not server_target then
+		RESUME.next_retry_at = now + RESUME_RETRY_INTERVAL
+		return
+	end
+
+	if server_target.alive and not server_target:alive() then
+		clear_pending_resume("target died before POV could resume", true)
+		return
+	end
+
+	target_level_id = get_server_object_level_id(server_target)
+	actor_level_id = get_actor_level_id()
+
+	if target_level_id and actor_level_id and target_level_id ~= actor_level_id then
+		begin_cross_level_travel(server_target)
+		return
+	end
+
+	target = get_object_by_id(RESUME.target_id)
+	if not target then
+		request_object_online(RESUME.target_id)
+		RESUME.next_retry_at = now + RESUME_RETRY_INTERVAL
+		return
+	end
+
+	if not is_supported_target(target) then
+		clear_pending_resume("target is no longer valid", true)
+		return
+	end
+
+	if actor_menu and actor_menu.is_hud_free and not actor_menu.is_hud_free() then
+		RESUME.next_retry_at = now + RESUME_RETRY_INTERVAL
+		return
+	end
+
+	if activate_mode(target) then
+		carry_resume_state_into_active_mode()
+		log_message("POV resumed after level travel")
+		return
+	end
+
+	RESUME.next_retry_at = now + RESUME_RETRY_INTERVAL
+end
+
+local function try_resume_after_main_menu()
+	local now = time_global and time_global() or 0
+	local actor = db and db.actor
+	local target
+
+	if not MAIN_MENU_RESUME.pending then
+		return
+	end
+
+	if not CONFIG.enabled then
+		clear_main_menu_resume("mod disabled during pause-resume")
+		return
+	end
+
+	if not (level_is_present() and actor and actor:alive()) then
+		return
+	end
+
+	initialize_main_menu_resume_timers()
+
+	if device and device():is_paused() then
+		return
+	end
+
+	if now < MAIN_MENU_RESUME.next_retry_at then
+		return
+	end
+
+	if now > MAIN_MENU_RESUME.expires_at then
+		clear_main_menu_resume("pause-resume timed out")
+		return
+	end
+
+	if actor_menu and actor_menu.is_hud_free and not actor_menu.is_hud_free() then
+		MAIN_MENU_RESUME.next_retry_at = now + MAIN_MENU_RESUME_RETRY_INTERVAL
+		return
+	end
+
+	target = get_object_by_id(MAIN_MENU_RESUME.target_id)
+	if not target then
+		clear_main_menu_resume("target is gone after pause")
+		return
+	end
+
+	if not is_supported_target(target) then
+		clear_main_menu_resume("target is no longer valid after pause")
+		return
+	end
+
+	if activate_mode(target) then
+		reset_main_menu_resume_state()
+		log_message("POV resumed after pause menu")
+		return
+	end
+
+	MAIN_MENU_RESUME.next_retry_at = now + MAIN_MENU_RESUME_RETRY_INTERVAL
+end
+
+deactivate_mode = function(reason, restore_previous_state)
+	if not STATE.active then
+		reset_state()
+		restore_input_lock()
+		return
+	end
+
+	local actor = db and db.actor
+	local target = get_object_by_id(STATE.target_id)
+	local show_hud = true
+
+	if restore_previous_state ~= false then
+		show_hud = STATE.prev_hud_shown
+	end
+
+	restore_hidden_target_head(target)
+	remove_custom_camera_if_safe()
+	set_camera_fov(STATE.prev_fov)
+	set_viewport_near(STATE.prev_viewport_near)
+	restore_standard_view(show_hud)
+
+	if actor then
+		restore_actor_community(actor)
+
+		if restore_previous_state ~= false then
+			restore_followed_actor_position(target)
+		else
+			clear_follow_actor_state()
+		end
+
+		pcall(function()
+			actor:restore_weapon()
+		end)
+		pcall(function()
+			actor:disable_hit_marks(STATE.prev_hit_marks_disabled)
+		end)
+		pcall(function()
+			actor:invulnerable(STATE.prev_invulnerable)
+		end)
+	else
+		clear_follow_actor_state()
+	end
+
+	clear_death_transition()
+	reset_state()
+	restore_input_lock()
+
+	if reason then
+		log_message("POV disabled: " .. reason)
+	end
+end
+
+activate_mode = function(target)
+	local actor = db and db.actor
+	local resolved_bone_name
+	local resolved_bone_id
+	local target_name
+	local pos
+	local hpb
+	local hud_shown = true
+
+	if not actor then
+		return reject_activation("actor is not ready")
+	end
+
+	resolved_bone_name, resolved_bone_id = resolve_bone(target, CONFIG.camera_bone)
+	if not resolved_bone_name then
+		return reject_activation("target has no supported camera bone")
+	end
+
+	STATE.active = true
+	STATE.target_id = target:id()
+	STATE.selected_bone_name = CONFIG.camera_bone
+	STATE.selected_bone_id = target:get_bone_id(CONFIG.camera_bone)
+	STATE.resolved_bone_name = resolved_bone_name
+	STATE.resolved_bone_id = resolved_bone_id
+	if _g and _g.main_hud_shown then
+		hud_shown = _g.main_hud_shown()
+	end
+	STATE.prev_hud_shown = hud_shown
+	STATE.prev_actor_community = nil
+	STATE.prev_fov = get_camera_fov()
+	STATE.prev_viewport_near = get_viewport_near()
+	STATE.last_sample_time = 0
+	STATE.last_filter_time = 0
+	clear_death_transition()
+
+	do
+		local ok_invulnerable, prev_invulnerable = pcall(function()
+			return actor:invulnerable()
+		end)
+		local ok_hit_marks, prev_hit_marks_disabled = pcall(function()
+			return actor:disable_hit_marks()
+		end)
+
+		STATE.prev_invulnerable = ok_invulnerable and prev_invulnerable or false
+		STATE.prev_hit_marks_disabled = ok_hit_marks and prev_hit_marks_disabled or false
+	end
+
+	pcall(function()
+		actor:invulnerable(true)
+	end)
+	pcall(function()
+		actor:disable_hit_marks(true)
+	end)
+	pcall(function()
+		actor:hide_weapon()
+	end)
+	apply_observer_actor_community(actor)
+
+	if level and level.hide_indicators_safe then
+		level.hide_indicators_safe()
+	end
+
+	if level and level.show_weapon then
+		level.show_weapon(false)
+	end
+
+	if _g and _g.show_all_ui then
+		_g.show_all_ui(false)
+	end
+
+	restore_input_lock()
+	set_camera_fov(CONFIG.pov_fov)
+	set_viewport_near(CONFIG.viewport_near)
+
+	if CONFIG.follow_actor then
+		apply_actor_follow(target)
+	end
+
+	sync_target_head_visibility(target, resolved_bone_name)
+
+	pos, hpb = sample_camera_anchor_pose(target, resolved_bone_id)
+	initialize_camera_filter(pos, hpb)
+	pos, hpb = build_camera_transform_from_pose(pos, hpb)
+	level.set_cam_custom_position_direction(pos, hpb, CAMERA_SMOOTHING, false, false)
+
+	target_name = target:name()
+	log_message(string_format(
+		"POV enabled: %s (selected=%s resolved=%s)",
+		tostring(target_name),
+		tostring(STATE.selected_bone_name),
+		tostring(STATE.resolved_bone_name)
+	))
+	return true
+end
+
+local function try_activate(disabled_input)
+	local actor
+	local target
+
+	refresh_config()
+
+	if RESUME.pending then
+		return reject_activation("auto-resume is already in progress")
+	end
+
+	if not CONFIG.enabled then
+		return reject_activation("mod is disabled")
+	end
+
+	if disabled_input and not tuner_is_visible() then
+		return reject_activation("input is already disabled")
+	end
+
+	if not level_is_present() then
+		return reject_activation("level is not ready")
+	end
+
+	actor = db and db.actor
+	if not actor then
+		return reject_activation("actor is not ready")
+	end
+
+	if not actor:alive() then
+		return reject_activation("actor is dead")
+	end
+
+	if device and device():is_paused() then
+		return reject_activation("game is paused")
+	end
+
+	if not tuner_is_visible() and not (actor_menu and actor_menu.is_hud_free and actor_menu.is_hud_free()) then
+		return reject_activation("HUD is busy")
+	end
+
+	if not level.get_target_obj then
+		return reject_activation("target lookup is unavailable")
+	end
+
+	target = level.get_target_obj()
+	if not target then
+		return reject_activation("no target under crosshair")
+	end
+
+	if not is_supported_target(target) then
+		return reject_activation("target is not a living stalker or monster")
+	end
+
+	return activate_mode(target)
+end
+
+local function get_status_rows()
+	local rows = {}
+	local target = get_object_by_id(STATE.target_id)
+
+	if not STATE.active or not target then
+		rows[#rows + 1] = {
+			label = "",
+			value = translate("st_gopro_tuner_status_inactive", "POV inactive."),
+		}
+		return rows
+	end
+
+	rows[#rows + 1] = {
+		label = translate("st_gopro_tuner_status_target", "Target"),
+		value = tostring(target:name()),
+	}
+	rows[#rows + 1] = {
+		label = translate("st_gopro_tuner_status_follow_actor", "Player Follows NPC"),
+		value = translate(CONFIG.follow_actor and "st_gopro_tuner_status_on" or "st_gopro_tuner_status_off", CONFIG.follow_actor and "On" or "Off"),
+	}
+	rows[#rows + 1] = {
+		label = translate("st_gopro_tuner_status_selected", "Selected Bone"),
+		value = tostring(CONFIG.camera_bone),
+	}
+	rows[#rows + 1] = {
+		label = translate("st_gopro_tuner_status_resolved", "Resolved Bone"),
+		value = tostring(STATE.resolved_bone_name or "-"),
+	}
+
+	return rows
+end
+
+local function get_hint_rows()
+	return {
+		{
+			key = display_key_name(CONFIG.toggle_key),
+			text = translate("ui_mcm_gopro_mod_toggle_key", "Toggle NPC POV"),
+		},
+		{
+			key = display_key_name(CONFIG.ui_toggle_key),
+			text = translate("ui_mcm_gopro_mod_ui_toggle_key", "Open Tuner UI"),
+		},
+		{
+			key = display_key_name(CONFIG.free_look_key),
+			text = translate("ui_mcm_gopro_mod_free_look_key", "Free Look Hold Key"),
+		},
+		{
+			key = display_key_name(POV_NAV_KEYS.left),
+			text = translate("st_gopro_tuner_hint_prev_member", "Previous squad member"),
+		},
+		{
+			key = display_key_name(POV_NAV_KEYS.right),
+			text = translate("st_gopro_tuner_hint_next_member", "Next squad member"),
+		},
+		{
+			key = display_key_name(POV_NAV_KEYS.up),
+			text = translate("st_gopro_tuner_hint_next_squad", "Next squad on level"),
+		},
+		{
+			key = display_key_name(POV_NAV_KEYS.down),
+			text = translate("st_gopro_tuner_hint_prev_squad", "Previous squad on level"),
+		},
+		{
+			key = display_key_name((DIK_keys and DIK_keys.DIK_ESCAPE) or 1),
+			text = translate("st_gopro_tuner_hint_close", "Close tuner"),
+		},
+	}
+end
+
+local function make_row_signature(rows, key_field, value_field)
+	local parts = {}
+	local row
+
+	for _, row in ipairs(rows) do
+		parts[#parts + 1] = tostring(row[key_field] or "")
+		parts[#parts + 1] = tostring(row[value_field] or "")
+	end
+
+	return table_concat(parts, "\n")
+end
+
+class "GoProTuner" (CUIScriptWnd)
+
+function GoProTuner:__init() super()
+	self:SetWndRect(Frect():set(0, 0, 1024, 768))
+	self:SetAutoDelete(true)
+
+	self.xml = CScriptXmlInit()
+	self.xml:ParseFile(UI_XML_PATH)
+	self.backdrop = self.xml:InitStatic("backdrop", self)
+	self.dialog = self.xml:InitStatic("gopro_tuner", self)
+	self.status_scroll = self.xml:InitScrollView("gopro_tuner:status_scroll", self.dialog)
+	self.status_scroll:Clear()
+	self.hints_scroll = self.xml:InitScrollView("gopro_tuner:hints_scroll", self.dialog)
+	self.hints_scroll:Clear()
+	self.scroll = self.xml:InitScrollView("gopro_tuner:scroll", self.dialog)
+	self.scroll:Clear()
+	self.status_signature = nil
+	self.hints_signature = nil
+
+	self.track_controls = {}
+	self.bone_combo = nil
+	self.bone_combo_value = nil
+	self.follow_actor_check = nil
+	self.hide_head_in_pov_check = nil
+	self.death_cam_check = nil
+	self.death_auto_switch_check = nil
+	self.death_auto_switch_mode_combo = nil
+	self.death_auto_switch_mode_value = nil
+
+	self.btn_defaults = self.xml:Init3tButton("gopro_tuner:btn_defaults", self.dialog)
+	self.btn_close = self.xml:Init3tButton("gopro_tuner:btn_close", self.dialog)
+
+	self:Register(self.btn_defaults, "btn_defaults")
+	self:Register(self.btn_close, "btn_close")
+	self:AddCallback("btn_defaults", ui_events.BUTTON_CLICKED, self.OnButtonDefaults, self)
+	self:AddCallback("btn_close", ui_events.BUTTON_CLICKED, self.OnButtonClose, self)
+
+	self:BuildRows()
+	self:SyncFromConfig()
+	self:UpdateStatus()
+end
+
+function GoProTuner:AddCheckRow(control_id, caption_id, field_name, callback)
+	local row = self.xml:InitStatic("elements:row", nil)
+	local cap = self.xml:InitStatic("elements:check_cap", row)
+	local check = self.xml:InitCheck("elements:check", row)
+
+	cap:TextControl():SetText(translate(caption_id, caption_id))
+
+	self[field_name] = check
+	self:Register(check, control_id)
+	self:AddCallback(control_id, ui_events.BUTTON_CLICKED, callback, self)
+
+	self.scroll:AddWindow(row, true)
+	row:SetAutoDelete(true)
+end
+
+function GoProTuner:AddComboRow()
+	local row = self.xml:InitStatic("elements:row", nil)
+	local cap = self.xml:InitStatic("elements:cap", row)
+	local combo = self.xml:InitComboBox("elements:list", row)
+
+	cap:TextControl():SetText(translate("st_gopro_tuner_camera_bone", "Camera Bone"))
+
+	for index, bone_name in ipairs(CAMERA_BONES) do
+		combo:AddItem(translate("ui_mcm_lst_gopro_mod_bone_" .. bone_name, bone_name), index)
+	end
+
+	self.bone_combo = combo
+	self:Register(combo, "bone_combo")
+	self:AddCallback("bone_combo", ui_events.LIST_ITEM_SELECT, self.OnBoneChanged, self)
+
+	self.scroll:AddWindow(row, true)
+	row:SetAutoDelete(true)
+end
+
+function GoProTuner:AddDeathModeComboRow()
+	local row = self.xml:InitStatic("elements:row", nil)
+	local cap = self.xml:InitStatic("elements:cap", row)
+	local combo = self.xml:InitComboBox("elements:list", row)
+
+	cap:TextControl():SetText(translate("st_gopro_tuner_death_auto_switch_mode", "Death Auto Switch Mode"))
+
+	for index, mode_name in ipairs(DEATH_AUTO_SWITCH_MODES) do
+		combo:AddItem(translate("ui_mcm_lst_gopro_mod_death_auto_switch_mode_" .. mode_name, mode_name), index)
+	end
+
+	self.death_auto_switch_mode_combo = combo
+	self:Register(combo, "death_auto_switch_mode_combo")
+	self:AddCallback("death_auto_switch_mode_combo", ui_events.LIST_ITEM_SELECT, self.OnDeathAutoSwitchModeChanged, self)
+
+	self.scroll:AddWindow(row, true)
+	row:SetAutoDelete(true)
+end
+
+function GoProTuner:AddTrackRow(control_id, caption_id, path, config_key, minimum, maximum, step, precision)
+	local row = self.xml:InitStatic("elements:row", nil)
+	local cap = self.xml:InitStatic("elements:cap", row)
+	local track = self.xml:InitTrackBar("elements:track", row)
+	local value = self.xml:InitTextWnd("elements:track_value", row)
+
+	cap:TextControl():SetText(translate(caption_id, caption_id))
+	track:SetStep(step)
+	track:SetOptFBounds(minimum, maximum)
+
+	self.track_controls[control_id] = {
+		ctrl = track,
+		txt = value,
+		path = path,
+		config_key = config_key,
+		min = minimum,
+		max = maximum,
+		step = step,
+		precision = precision,
+		value = nil,
+	}
+
+	self.scroll:AddWindow(row, true)
+	row:SetAutoDelete(true)
+end
+
+function GoProTuner:BuildRows()
+	self:AddCheckRow("follow_actor_check", "st_gopro_tuner_follow_actor", "follow_actor_check", self.OnFollowActorChanged)
+	self:AddCheckRow("hide_head_in_pov_check", "st_gopro_tuner_hide_head_in_pov", "hide_head_in_pov_check", self.OnHideHeadInPovChanged)
+	self:AddCheckRow("death_cam_check", "st_gopro_tuner_death_cam", "death_cam_check", self.OnDeathCamChanged)
+	self:AddCheckRow("death_auto_switch_check", "st_gopro_tuner_death_auto_switch", "death_auto_switch_check", self.OnDeathAutoSwitchChanged)
+	self:AddDeathModeComboRow()
+	self:AddTrackRow("pov_fov", "st_gopro_tuner_pov_fov", MCM_PATH_POV_FOV, "pov_fov", 5.0, 180.0, 1.0, 0)
+	self:AddTrackRow("camera_update_hz", "st_gopro_tuner_camera_update_hz", MCM_PATH_CAMERA_UPDATE_HZ, "camera_update_hz", 1.0, 60.0, 1.0, 0)
+	self:AddTrackRow("camera_ema_strength", "st_gopro_tuner_camera_ema_strength", MCM_PATH_CAMERA_EMA_STRENGTH, "camera_ema_strength", 0.0, 1.0, 0.01, 2)
+	self:AddTrackRow("camera_lag_compensation", "st_gopro_tuner_camera_lag_compensation", MCM_PATH_CAMERA_LAG_COMPENSATION, "camera_lag_compensation", 0.0, 2.0, 0.05, 2)
+	self:AddComboRow()
+	self:AddTrackRow("roll_offset_deg", "st_gopro_tuner_roll_offset", MCM_PATH_ROLL_OFFSET_DEG, "roll_offset_deg", -180.0, 180.0, 1.0, 0)
+	self:AddTrackRow("viewport_near", "st_gopro_tuner_viewport_near", MCM_PATH_VIEWPORT_NEAR, "viewport_near", 0.005, 0.2, 0.005, 3)
+	self:AddTrackRow("forward_offset", "st_gopro_tuner_forward_offset", MCM_PATH_FORWARD_OFFSET, "forward_offset", -0.15, 0.15, 0.005, 3)
+	self:AddTrackRow("up_offset", "st_gopro_tuner_up_offset", MCM_PATH_UP_OFFSET, "up_offset", -0.15, 0.15, 0.005, 3)
+	self:AddTrackRow("right_offset", "st_gopro_tuner_right_offset", MCM_PATH_RIGHT_OFFSET, "right_offset", -0.15, 0.15, 0.005, 3)
+end
+
+function GoProTuner:UpdateStatus()
+	local rows = get_status_rows()
+	local signature = make_row_signature(rows, "label", "value")
+	local row
+	local label
+	local value
+
+	if signature == self.status_signature then
+		return
+	end
+
+	self.status_signature = signature
+	self.status_scroll:Clear()
+
+	for _, entry in ipairs(rows) do
+		row = self.xml:InitStatic("elements:status_row", nil)
+		label = self.xml:InitTextWnd("elements:status_label", row)
+		value = self.xml:InitTextWnd("elements:status_value", row)
+		label:SetText(entry.label or "")
+		value:SetText(entry.value or "")
+		self.status_scroll:AddWindow(row, true)
+		row:SetAutoDelete(true)
+	end
+end
+
+function GoProTuner:UpdateHints()
+	local rows = get_hint_rows()
+	local signature = make_row_signature(rows, "key", "text")
+	local row
+	local key
+	local desc
+
+	if signature == self.hints_signature then
+		return
+	end
+
+	self.hints_signature = signature
+	self.hints_scroll:Clear()
+
+	for _, entry in ipairs(rows) do
+		row = self.xml:InitStatic("elements:hint_row", nil)
+		key = self.xml:InitTextWnd("elements:hint_key", row)
+		desc = self.xml:InitTextWnd("elements:hint_desc", row)
+		key:SetText(entry.key or "")
+		desc:SetText(entry.text or "")
+		self.hints_scroll:AddWindow(row, true)
+		row:SetAutoDelete(true)
+	end
+end
+
+function GoProTuner:SyncFromConfig()
+	local combo_index
+	local combo_text
+
+	refresh_config()
+
+	if self.follow_actor_check then
+		self.follow_actor_check:SetCheck(CONFIG.follow_actor)
+	end
+
+	if self.hide_head_in_pov_check then
+		self.hide_head_in_pov_check:SetCheck(CONFIG.hide_head_in_pov)
+	end
+
+	if self.death_cam_check then
+		self.death_cam_check:SetCheck(CONFIG.death_cam)
+	end
+
+	if self.death_auto_switch_check then
+		self.death_auto_switch_check:SetCheck(CONFIG.death_auto_switch)
+	end
+
+	if self.death_auto_switch_mode_combo then
+		combo_index = DEATH_AUTO_SWITCH_MODE_INDEX[CONFIG.death_auto_switch_mode] or DEATH_AUTO_SWITCH_MODE_INDEX[DEFAULT_DEATH_AUTO_SWITCH_MODE]
+		combo_text = translate("ui_mcm_lst_gopro_mod_death_auto_switch_mode_" .. DEATH_AUTO_SWITCH_MODES[combo_index], DEATH_AUTO_SWITCH_MODES[combo_index])
+		self.death_auto_switch_mode_combo:enable_id(combo_index)
+		self.death_auto_switch_mode_combo:SetText(combo_text)
+		self.death_auto_switch_mode_value = combo_index
+	end
+
+	if self.bone_combo then
+		combo_index = CAMERA_BONE_INDEX[CONFIG.camera_bone] or CAMERA_BONE_INDEX[DEFAULT_CAMERA_BONE]
+		combo_text = translate("ui_mcm_lst_gopro_mod_bone_" .. CAMERA_BONES[combo_index], CAMERA_BONES[combo_index])
+		self.bone_combo:enable_id(combo_index)
+		self.bone_combo:SetText(combo_text)
+		self.bone_combo_value = combo_index
+	end
+
+	for _, entry in pairs(self.track_controls) do
+		local current_value = round_to(CONFIG[entry.config_key], entry.precision)
+		entry.value = current_value
+		entry.ctrl:SetFValue(current_value)
+		entry.txt:SetText(format_number(current_value, entry.precision))
+	end
+
+	self:UpdateStatus()
+	self:UpdateHints()
+end
+
+function GoProTuner:ApplyTrackValue(entry, value)
+	local rounded_value = round_to(clamp_number(value, entry.min, entry.max), entry.precision)
+
+	if rounded_value == entry.value then
+		return
+	end
+
+	entry.value = rounded_value
+	entry.txt:SetText(format_number(rounded_value, entry.precision))
+	set_mcm_value(entry.path, rounded_value)
+	refresh_config()
+	self:UpdateStatus()
+end
+
+function GoProTuner:Update()
+	CUIScriptWnd.Update(self)
+
+	for _, entry in pairs(self.track_controls) do
+		if entry.ctrl:IsCursorOverWindow() then
+			self:ApplyTrackValue(entry, entry.ctrl:GetFValue())
+		end
+	end
+
+	self:UpdateStatus()
+end
+
+function GoProTuner:OnFollowActorChanged()
+	if not self.follow_actor_check then
+		return
+	end
+
+	set_mcm_value(MCM_PATH_FOLLOW_ACTOR, self.follow_actor_check:GetCheck())
+	self:SyncFromConfig()
+end
+
+function GoProTuner:OnHideHeadInPovChanged()
+	if not self.hide_head_in_pov_check then
+		return
+	end
+
+	set_mcm_value(MCM_PATH_HIDE_HEAD_IN_POV, self.hide_head_in_pov_check:GetCheck())
+	self:SyncFromConfig()
+end
+
+function GoProTuner:OnDeathCamChanged()
+	if not self.death_cam_check then
+		return
+	end
+
+	set_mcm_value(MCM_PATH_DEATH_CAM, self.death_cam_check:GetCheck())
+	self:SyncFromConfig()
+end
+
+function GoProTuner:OnDeathAutoSwitchChanged()
+	if not self.death_auto_switch_check then
+		return
+	end
+
+	set_mcm_value(MCM_PATH_DEATH_AUTO_SWITCH, self.death_auto_switch_check:GetCheck())
+	self:SyncFromConfig()
+end
+
+function GoProTuner:OnDeathAutoSwitchModeChanged()
+	local index = self.death_auto_switch_mode_combo and self.death_auto_switch_mode_combo:CurrentID()
+	local mode_name = index and DEATH_AUTO_SWITCH_MODES[index]
+
+	if not mode_name then
+		return
+	end
+
+	if self.death_auto_switch_mode_value == index then
+		return
+	end
+
+	self.death_auto_switch_mode_value = index
+	set_mcm_value(MCM_PATH_DEATH_AUTO_SWITCH_MODE, mode_name)
+	self:SyncFromConfig()
+end
+
+function GoProTuner:OnBoneChanged()
+	local index = self.bone_combo and self.bone_combo:CurrentID()
+	local bone_name = index and CAMERA_BONES[index]
+
+	if not bone_name then
+		return
+	end
+
+	if self.bone_combo_value == index then
+		return
+	end
+
+	self.bone_combo_value = index
+	set_mcm_value(MCM_PATH_CAMERA_BONE, bone_name)
+	self:SyncFromConfig()
+end
+
+function GoProTuner:OnButtonDefaults()
+	set_mcm_value(MCM_PATH_FOLLOW_ACTOR, DEFAULT_FOLLOW_ACTOR)
+	set_mcm_value(MCM_PATH_HIDE_HEAD_IN_POV, DEFAULT_HIDE_HEAD_IN_POV)
+	set_mcm_value(MCM_PATH_DEATH_CAM, DEFAULT_DEATH_CAM)
+	set_mcm_value(MCM_PATH_DEATH_AUTO_SWITCH, DEFAULT_DEATH_AUTO_SWITCH)
+	set_mcm_value(MCM_PATH_DEATH_AUTO_SWITCH_MODE, DEFAULT_DEATH_AUTO_SWITCH_MODE)
+	set_mcm_value(MCM_PATH_POV_FOV, DEFAULT_POV_FOV)
+	set_mcm_value(MCM_PATH_CAMERA_UPDATE_HZ, DEFAULT_CAMERA_UPDATE_HZ)
+	set_mcm_value(MCM_PATH_CAMERA_EMA_STRENGTH, DEFAULT_CAMERA_EMA_STRENGTH)
+	set_mcm_value(MCM_PATH_CAMERA_LAG_COMPENSATION, DEFAULT_CAMERA_LAG_COMPENSATION)
+	set_mcm_value(MCM_PATH_CAMERA_BONE, DEFAULT_CAMERA_BONE)
+	set_mcm_value(MCM_PATH_ROLL_OFFSET_DEG, DEFAULT_ROLL_OFFSET_DEG)
+	set_mcm_value(MCM_PATH_VIEWPORT_NEAR, DEFAULT_GOPRO_VIEWPORT_NEAR)
+	set_mcm_value(MCM_PATH_FORWARD_OFFSET, DEFAULT_CAMERA_FORWARD_OFFSET)
+	set_mcm_value(MCM_PATH_UP_OFFSET, DEFAULT_CAMERA_UP_OFFSET)
+	set_mcm_value(MCM_PATH_RIGHT_OFFSET, DEFAULT_CAMERA_RIGHT_OFFSET)
+	self:SyncFromConfig()
+end
+
+function GoProTuner:OnButtonClose()
+	close_tuner()
+end
+
+function GoProTuner:OnKeyboard(dik, keyboard_action)
+	local res = CUIScriptWnd.OnKeyboard(self, dik, keyboard_action)
+
+	if res == false and keyboard_action == ui_events.WINDOW_KEY_PRESSED and dik == DIK_keys.DIK_ESCAPE then
+		close_tuner()
+	end
+
+	return res
+end
+
+local function show_tuner(disabled_input)
+	local actor = db and db.actor
+
+	if tuner_is_visible() then
+		close_tuner()
+		return true
+	end
+
+	refresh_config()
+
+	if not CONFIG.enabled then
+		return reject_tuner("mod is disabled")
+	end
+
+	if RESUME.pending then
+		return reject_tuner("POV auto-resume is in progress")
+	end
+
+	if not STATE.active then
+		return reject_tuner("POV is not active")
+	end
+
+	if disabled_input and not STATE.active then
+		return reject_tuner("input is already disabled")
+	end
+
+	if not level_is_present() then
+		return reject_tuner("level is not ready")
+	end
+
+	if not actor then
+		return reject_tuner("actor is not ready")
+	end
+
+	if not actor:alive() then
+		return reject_tuner("actor is dead")
+	end
+
+	if device and device():is_paused() then
+		return reject_tuner("game is paused")
+	end
+
+	if STATE.active and level and level.enable_input then
+		level.enable_input()
+	end
+
+	TUNER_UI = TUNER_UI or GoProTuner()
+	TUNER_UI:ShowDialog(true)
+	Register_UI(UI_NAME)
+	UI_VISIBLE = true
+	TUNER_UI:SyncFromConfig()
+
+	return true
+end
+
+local function cleanup_for_main_menu(reason)
+	if tuner_is_visible() then
+		close_tuner()
+	end
+
+	if RESUME.pending then
+		return
+	end
+
+	if STATE.active then
+		if not STATE.death_transition_active then
+			queue_main_menu_resume(STATE.target_id)
+		end
+		deactivate_mode(reason or "main menu opened", true)
+		return
+	end
+end
+
+local function cleanup_for_game_end()
+	local target = get_object_by_id(STATE.target_id)
+
+	if tuner_is_visible() then
+		close_tuner()
+	end
+
+	restore_hidden_target_head(target)
+	remove_custom_camera_if_safe()
+	reset_state()
+	reset_resume_state()
+	reset_main_menu_resume_state()
+	reset_head_restore_state()
+end
+
+function actor_on_update()
+	local target
+	local death_switch_target
+	local selected_bone_name
+	local resolved_bone_name
+	local resolved_bone_id
+	local pos
+	local hpb
+	local view_hpb
+
+	try_restore_queued_hidden_head()
+
+	if RESUME.pending and not STATE.active then
+		try_resume_after_level_change()
+	end
+
+	if MAIN_MENU_RESUME.pending and not STATE.active then
+		try_resume_after_main_menu()
+	end
+
+	if not STATE.active then
+		return
+	end
+
+	sync_free_look_state()
+
+	if not CONFIG.enabled then
+		deactivate_mode("mod disabled", true)
+		return
+	end
+
+	target = get_object_by_id(STATE.target_id)
+	if not target then
+		if STATE.death_transition_active then
+			death_switch_target = finish_death_transition(nil)
+
+			if death_switch_target then
+				if not switch_active_target(death_switch_target, "death auto-switch") then
+					deactivate_mode("death auto-switch failed", true)
+				end
+			end
+
+			return
+		end
+
+		handle_missing_active_target()
+		return
+	end
+
+	if not is_observable_target(target) then
+		deactivate_mode("target is no longer valid", true)
+		return
+	end
+
+	if not target:alive() then
+		if not STATE.death_transition_active then
+			begin_death_transition(target, nil)
+		end
+
+		if not should_keep_death_cam() then
+			death_switch_target = finish_death_transition(target)
+
+			if death_switch_target then
+				if not switch_active_target(death_switch_target, "death auto-switch") then
+					deactivate_mode("death auto-switch failed", true)
+				end
+			end
+
+			return
+		end
+	elseif STATE.death_transition_active then
+		clear_death_transition()
+	end
+
+	selected_bone_name = CONFIG.camera_bone
+	resolved_bone_name, resolved_bone_id = resolve_bone(target, selected_bone_name)
+	if not resolved_bone_name then
+		deactivate_mode("target lost camera bone", true)
+		return
+	end
+
+	STATE.selected_bone_name = selected_bone_name
+	STATE.selected_bone_id = target:get_bone_id(selected_bone_name)
+	STATE.resolved_bone_name = resolved_bone_name
+	STATE.resolved_bone_id = resolved_bone_id
+
+	sync_target_head_visibility(target, resolved_bone_name)
+	set_viewport_near(CONFIG.viewport_near)
+	pos, hpb = update_camera_filter(target, resolved_bone_id)
+	view_hpb = get_free_look_hpb(hpb)
+	pos, view_hpb = build_camera_transform_from_pose(pos, hpb, view_hpb)
+	level.set_cam_custom_position_direction(pos, view_hpb, CAMERA_SMOOTHING, false, false)
+
+	if CONFIG.follow_actor then
+		apply_actor_follow(target)
+	elseif STATE.follow_actor_active then
+		restore_followed_actor_position(target)
+	end
+end
+
+function npc_on_hit_callback(victim, amount, local_direction, who, bone_index)
+	remember_target_attacker(victim, who)
+end
+
+function monster_on_hit_callback(victim, amount, local_direction, who, bone_index)
+	remember_target_attacker(victim, who)
+end
+
+function npc_on_death_callback(victim, who)
+	if not (STATE.active and victim and STATE.target_id and victim:id() == STATE.target_id) then
+		return
+	end
+
+	begin_death_transition(victim, who)
+end
+
+function monster_on_death_callback(victim, who)
+	if not (STATE.active and victim and STATE.target_id and victim:id() == STATE.target_id) then
+		return
+	end
+
+	begin_death_transition(victim, who)
+end
+
+function on_enemy_eval(obj, enemy, flags)
+	if not ((STATE.active or RESUME.pending) and db and db.actor and enemy and flags) then
+		return
+	end
+
+	if enemy:id() ~= db.actor:id() then
+		return
+	end
+
+	flags.override = true
+	flags.result = false
+end
+
+function on_before_key_release(dik, bind, dis, flags)
+	local target
+	local switch_target
+
+	refresh_config()
+
+	if is_free_look_key(dik) then
+		if STATE.free_look_active then
+			STATE.free_look_active = false
+			STATE.free_look_hpb = nil
+		end
+
+		if flags then
+			flags.ret_value = false
+		end
+		return
+	end
+
+	if should_block_input_for_free_look(dik) then
+		if flags then
+			flags.ret_value = false
+		end
+		return
+	end
+
+	if STATE.active and not STATE.death_transition_active and not tuner_is_visible() and POV_NAV.is_key(dik) then
+		if flags then
+			flags.ret_value = false
+		end
+
+		target = get_object_by_id(STATE.target_id)
+		switch_target = POV_NAV.get_switch_target(target, dik)
+
+		if switch_target then
+			switch_active_target(switch_target, "manual squad navigation")
+		end
+
+		return
+	end
+
+	if dik == CONFIG.ui_toggle_key then
+		if flags then
+			flags.ret_value = false
+		end
+
+		if not CONFIG.enabled then
+			if tuner_is_visible() then
+				close_tuner()
+			end
+			return
+		end
+
+		show_tuner(dis)
+		return
+	end
+
+	if dik ~= CONFIG.toggle_key then
+		return
+	end
+
+	if flags then
+		flags.ret_value = false
+	end
+
+	if STATE.active then
+		deactivate_mode("manual toggle", true)
+		return
+	end
+
+	if RESUME.pending then
+		clear_pending_resume("manual toggle", true)
+		return
+	end
+
+	if MAIN_MENU_RESUME.pending then
+		clear_main_menu_resume("manual toggle")
+		return
+	end
+
+	if not CONFIG.enabled then
+		return
+	end
+
+	try_activate(dis)
+end
+
+should_block_input_for_free_look = function(dik)
+	if not (STATE.active and STATE.free_look_active and not tuner_is_visible()) then
+		return false
+	end
+
+	return not is_free_look_key(dik)
+end
+
+function on_before_key_press(dik, bind, dis, flags)
+	if is_free_look_key(dik) and STATE.active and not tuner_is_visible() then
+		if not STATE.free_look_active then
+			STATE.free_look_active = true
+			STATE.free_look_hpb = clone_vector(STATE.filtered_hpb)
+		end
+
+		if flags then
+			flags.ret_value = false
+		end
+		return
+	end
+
+	if should_block_input_for_free_look(dik) and flags then
+		flags.ret_value = false
+	end
+end
+
+function on_before_key_hold(dik, bind, dis, flags)
+	if is_free_look_key(dik) and STATE.active and not tuner_is_visible() then
+		if not STATE.free_look_active then
+			STATE.free_look_active = true
+			STATE.free_look_hpb = clone_vector(STATE.filtered_hpb)
+		end
+
+		if flags then
+			flags.ret_value = false
+		end
+		return
+	end
+
+	if should_block_input_for_free_look(dik) and flags then
+		flags.ret_value = false
+	end
+end
+
+function on_option_change()
+	refresh_config()
+
+	if not CONFIG.enabled then
+		if tuner_is_visible() then
+			close_tuner()
+		end
+
+		if STATE.active then
+			deactivate_mode("mod disabled", true)
+		end
+
+		if RESUME.pending then
+			clear_pending_resume("mod disabled", true)
+		end
+
+		if MAIN_MENU_RESUME.pending then
+			clear_main_menu_resume("mod disabled")
+		end
+
+		return
+	end
+
+	if tuner_is_visible() then
+		TUNER_UI:SyncFromConfig()
+	end
+end
+
+function main_menu_on_init()
+	cleanup_for_main_menu("main menu opened")
+end
+
+function main_menu_on_quit()
+	if RESUME.pending then
+		RESUME.next_retry_at = 0
+		RESUME.expires_at = 0
+		initialize_pending_resume_timers()
+	end
+
+	if not MAIN_MENU_RESUME.pending then
+		return
+	end
+
+	initialize_main_menu_resume_timers()
+	MAIN_MENU_RESUME.next_retry_at = 0
+end
+
+function save_state(m_data)
+	if tuner_is_visible() then
+		close_tuner()
+	end
+
+	if STATE.active and not RESUME.pending then
+		deactivate_mode("save_state", true)
+	end
+
+	m_data.gopro_mod = {
+		version = SAVE_VERSION,
+		active = false,
+		pending_resume = RESUME.pending and {
+			target_id = RESUME.target_id,
+			target_level_id = RESUME.target_level_id,
+			prev_invulnerable = RESUME.prev_invulnerable,
+			prev_hit_marks_disabled = RESUME.prev_hit_marks_disabled,
+			prev_hud_shown = RESUME.prev_hud_shown,
+			hidden_head_target_id = RESUME.hidden_head_target_id,
+			hidden_head_bone_name = RESUME.hidden_head_bone_name,
+			hidden_head_prev_visible = RESUME.hidden_head_prev_visible,
+			travel_requested = RESUME.travel_requested,
+		} or nil,
+	}
+end
+
+function load_state(m_data)
+	local data = m_data and m_data.gopro_mod
+	local pending_resume = data and data.pending_resume
+
+	if data and data.version ~= SAVE_VERSION then
+		log_message("Loaded save with different GoPro MOD state version")
+	end
+
+	close_tuner()
+	reset_state()
+	reset_resume_state()
+	reset_main_menu_resume_state()
+
+	if pending_resume and pending_resume.target_id then
+		RESUME.pending = true
+		RESUME.target_id = pending_resume.target_id
+		RESUME.target_level_id = pending_resume.target_level_id
+		RESUME.travel_requested = coerce_boolean(pending_resume.travel_requested, false)
+		RESUME.prev_invulnerable = coerce_boolean(pending_resume.prev_invulnerable, false)
+		RESUME.prev_hit_marks_disabled = coerce_boolean(pending_resume.prev_hit_marks_disabled, false)
+		RESUME.prev_hud_shown = coerce_boolean(pending_resume.prev_hud_shown, true)
+		RESUME.hidden_head_target_id = pending_resume.hidden_head_target_id
+		RESUME.hidden_head_bone_name = pending_resume.hidden_head_bone_name
+		RESUME.hidden_head_prev_visible = pending_resume.hidden_head_prev_visible
+	end
+
+	refresh_config()
+end
+
+function on_game_load()
+	close_tuner()
+	reset_state()
+	reset_main_menu_resume_state()
+
+	if RESUME.pending then
+		initialize_pending_resume_timers()
+	end
+
+	refresh_config()
+end
+
+function actor_on_first_update()
+	if RESUME.pending then
+		RESUME.next_retry_at = 0
+		RESUME.expires_at = 0
+		initialize_pending_resume_timers()
+	end
+end
+
+function on_level_changing()
+	close_tuner()
+	reset_main_menu_resume_state()
+
+	if STATE.active then
+		deactivate_mode("level change", false)
+		return
+	end
+
+	reset_state()
+end
+
+function actor_on_net_destroy()
+	close_tuner()
+	reset_main_menu_resume_state()
+
+	if STATE.active then
+		deactivate_mode("actor net destroy", false)
+		return
+	end
+
+	reset_state()
+end
+
+function on_game_end()
+	cleanup_for_game_end()
+end
+
+function on_game_start()
+	refresh_config()
+	install_level_input_mouse_hook()
+	RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+	RegisterScriptCallback("actor_on_update", actor_on_update)
+	RegisterScriptCallback("on_enemy_eval", on_enemy_eval)
+	RegisterScriptCallback("on_before_key_press", on_before_key_press)
+	RegisterScriptCallback("on_before_key_hold", on_before_key_hold)
+	RegisterScriptCallback("on_before_key_release", on_before_key_release)
+	RegisterScriptCallback("npc_on_hit_callback", npc_on_hit_callback)
+	RegisterScriptCallback("monster_on_hit_callback", monster_on_hit_callback)
+	RegisterScriptCallback("npc_on_death_callback", npc_on_death_callback)
+	RegisterScriptCallback("monster_on_death_callback", monster_on_death_callback)
+	RegisterScriptCallback("on_option_change", on_option_change)
+	RegisterScriptCallback("save_state", save_state)
+	RegisterScriptCallback("load_state", load_state)
+	RegisterScriptCallback("on_game_load", on_game_load)
+	RegisterScriptCallback("on_level_changing", on_level_changing)
+	RegisterScriptCallback("actor_on_net_destroy", actor_on_net_destroy)
+	RegisterScriptCallback("main_menu_on_init", main_menu_on_init)
+	RegisterScriptCallback("main_menu_on_quit", main_menu_on_quit)
+	RegisterScriptCallback("on_game_end", on_game_end)
+end

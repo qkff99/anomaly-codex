@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="windows-1252"?>
+
+<string_table>
+
+<!--
+F.R.I.T.E.S | Thundard
+Dernière révision : 24 novembre 2025
+-->
+	
+<string id="ui_mcm_menu_psy_stress">
+	<text>Stress psy</text>
+</string>
+<string id="ui_mcm_menu_psy_stress_title_gameplay">
+	<text>Modes de jeu</text>
+</string>
+<string id="ui_mcm_psy_stress_cozy_campfire_enabled">
+	<text>Utiliser Cozy Campfires (Voland33)</text>
+</string>
+<string id="ui_mcm_psy_stress_cozy_campfire_enabled_desc">
+	<text>\n
+	Utilise "Régénération psy près du feu" à la place de "Réduction du stress près du feu".</text>
+</string>
+<string id="ui_mcm_psy_stress_phantoms_enabled">
+	<text>Apparitions de fantômes hallucinatoires</text>
+</string>
+<string id="ui_mcm_psy_stress_phantoms_enabled_desc">
+	<text>\n
+	Des fantômes hallucinatoires apparaissent quand la santé psy descend sous un % défini dans le menu Stades du stress.</text>
+</string>
+<string id="ui_mcm_psy_stress_telepatic_protection_overhaul">
+	<text>Refonte calcul psy-protection</text>
+</string>
+<string id="ui_mcm_psy_stress_telepatic_protection_overhaul_desc">
+	<text>\n
+	Active une méthode alternative pour l'usage de la psy-protection contre les attaques psy.\n
+	La psy-protection est utilisée comme réduction proportionnelle, plutôt qu'une soustraction fixe.\n
+	Réduit les cas où certains dégâts psy sont nuls tandis que d'autres sont à peine atténués.</text>
+</string>
+<string id="ui_mcm_psy_stress_zombfication_enabled">
+	<text>Zombification</text>
+</string>
+<string id="ui_mcm_psy_stress_zombfication_enabled_desc">
+	<text>\n
+	Active la possibilité que le joueur devienne un zombie après une mort due à des dégâts psy.</text>
+</string>
+<string id="ui_mcm_psy_stress_sound_mods_compatibility">
+	<text>Compatibilité avec les mods vocaux/sonores</text>
+</string>
+<string id="ui_mcm_psy_stress_sound_mods_compatibility_desc">
+	<text>\n
+	Supprime les effets vocaux à faible santé psy pour la compatibilité avec d'autres mods audio du personnage joueur.</text>
+</string>
+<string id="ui_mcm_psy_stress_psy_debug">
+	<text>Mode DEBUG pour Stress psy</text>
+</string>
+<string id="ui_mcm_psy_stress_psy_debug_desc">
+	<text>\n
+	Fonctionne avec le mode debug Anomaly activé, génère des logs détaillés pour le script Stress psy.</text>
+</string>
+<string id="ui_mcm_menu_psy_stress_title_generalconfig">
+	<text>Configuration générale</text>
+</string>
+<string id="ui_mcm_psy_stress_regen">
+	<text>Régénération psy basique (X % en 6 h)</text>
+</string>
+<string id="ui_mcm_psy_stress_regen_desc">
+	<text>\n
+	Régénération psy basique, s'ajoute aux autres effets de récupération du stress.</text>
+</string>
+<string id="ui_mcm_psy_stress_drain">
+	<text>Drain psy basique (X % en 6 h)</text>
+</string>
+<string id="ui_mcm_psy_stress_drain_desc">
+	<text>\n
+	Drain de santé psy causé par le stress, modulé par l'environnement. Réglable dans le menu Évaluation environnementale.</text>
+</string>
+<string id="ui_mcm_psy_stress_hit_stress">
+	<text>Stress psy en recevant des dégâts (X % des dégâts)</text>
+</string>
+<string id="ui_mcm_psy_stress_hit_stress_desc">
+	<text>\n
+	Pourcentage des dégâts physiques converti en dégâts psy à cause de la douleur.</text>
+</string>
+<string id="ui_mcm_psy_stress_wounded_stress">
+	<text>Stress psy en cas de blessure (pour 10 % de PV perdus X % en 10 min)</text>
+</string>
+<string id="ui_mcm_psy_stress_wounded_stress_desc">
+	<text>\n
+	Drain psy continu dû aux blessures. Pour chaque 10 % de santé perdue, X % de santé psy drainés en 10 min.</text>
+</string>
+<string id="ui_mcm_menu_psy_stress_title_enviromentevaluation">
+	<text>Configuration de l'évaluation environnementale</text>
+</string>
+<string id="ui_mcm_psy_stress_safe_distance_to_camp">
+	<text>Distance de sécurité au camp (mètres)</text>
+</string>
+<string id="ui_mcm_psy_stress_safe_distance_to_camp_desc">
+	<text>\n
+	Distance du joueur au centre du camp. Il est considéré "au camp" sous cette distance. Un camp d'ennemis n'est pas sûr.</text>
+</string>
+<string id="ui_mcm_psy_stress_campfire_distance">
+	<text>Rayon d'apaisement du feu de camp (mètres)</text>
+</string>
+<string id="ui_mcm_psy_stress_campfire_distance_desc">
+	<text>\n
+	Distance à laquelle le feu de camp actif prodigue ses effets réconfortants.</text>
+</string>
+<string id="ui_mcm_psy_stress_danger_distance_static_anomaly">
+	<text>Rayon de zone anormale statique (mètres)</text>
+</string>
+<string id="ui_mcm_psy_stress_danger_distance_static_anomaly_desc">
+	<text>\n
+	Distance depuis le centre d'une anomalie statique, où l'effet "anomalie" commence à s'appliquer.</text>
+</string>
+<string id="ui_mcm_psy_stress_emission_cover_stress_reduction">
+	<text>Réduction stress à couvert durant une vague (-X %)</text>
+</string>
+<string id="ui_mcm_psy_stress_emission_cover_stress_reduction_desc">
+	<text>\n
+	Récupération psy en abri sécurisé lors d'une onde. Calcul du résultat : (100–X) %.\n
+	Valeur négative : récupération de santé psy. Ex : (100–125) % = –25 %  ? 25 % de récupération.</text>
+</string>
+<string id="ui_mcm_psy_stress_safe_camp_stress_reduction">
+	<text>Réduction stress en camp non hostile (-X %)</text>
+</string>
+<string id="ui_mcm_psy_stress_safe_camp_stress_reduction_desc">
+	<text>\n
+	Récupération psy en camp ami ou neutre.\n
+	Calcul du résultat : (100–X) %.\n
+	Valeur négative : récupération de santé psy. Ex : (100–125) % = –25 %  ? 25 % de récupération.</text>
+</string>
+<string id="ui_mcm_psy_stress_campfire_stress_reduction">
+	<text>Réduction stress au feu de camp (-X %)</text>
+</string>
+<string id="ui_mcm_psy_stress_campfire_stress_reduction_desc">
+	<text>\n
+	Récupération psy autour d'un feu, désactivé si 'Cozy Campfires by Voland33' est utilisé.\n
+	Calcul du résultat : (100–X) %.\n
+	Valeur négative : récupération de santé psy. Ex : (100–125) % = –25 %  ? 25 % de récupération.</text>
+</string>
+<string id="ui_mcm_psy_stress_surge_stress_increase">
+	<text>Augmentation stress durant une onde (X %)</text>
+</string>
+<string id="ui_mcm_psy_stress_surge_stress_increase_desc">
+	<text>\n
+	Augmentation du drain psy lors des ondes.</text>
+</string>
+<string id="ui_mcm_psy_stress_ungerground_stress_increase">
+	<text>Augmentation stress sous terre (X %)</text>
+</string>
+<string id="ui_mcm_psy_stress_ungerground_stress_increase_desc">
+	<text>\n
+	Augmentation du drain psy lorsque le joueur est sous terre. Négatif : réduction du stress.</text>
+</string>
+<string id="ui_mcm_psy_stress_azone_close_stress_increase">
+	<text>Augmentation stress en zone anormale (X %)</text>
+</string>
+<string id="ui_mcm_psy_stress_azone_close_stress_increase_desc">
+	<text>\n
+	Augmentation du drain psy près d'une zone anormale statique.</text>
+</string>
+<string id="ui_mcm_psy_stress_anomaly_sense_stress_increase">
+	<text>Augmentation stress près d'une anomalie (X %)</text>
+</string>
+<string id="ui_mcm_psy_stress_anomaly_sense_stress_increase_desc">
+	<text>\n
+	Augmentation du drain psy à proximité d'une anomalie active.</text>
+</string>
+<string id="ui_mcm_psy_stress_combat_stress_increase">
+	<text>Augmentation stress en combat (X %)</text>
+</string>
+<string id="ui_mcm_psy_stress_combat_stress_increase_desc">
+	<text>\n
+	Augmentation du drain psy quand le joueur est en combat.</text>
+</string>
+<string id="ui_mcm_psy_stress_nighttime_stress_increase">
+	<text>Augmentation stress la nuit (X %)</text>
+</string>
+<string id="ui_mcm_psy_stress_nighttime_stress_increase_desc">
+	<text>\n
+	Augmentation du drain psy entre 20 :00 et 06 :00.</text>
+</string>
+<string id="ui_mcm_psy_stress_hunger_stress_increase">
+	<text>Augmentation stress faim (X %)</text>
+</string>
+<string id="ui_mcm_psy_stress_hunger_stress_increase_desc">
+	<text>\n
+	Augmentation du drain psy en cas de faim, multiplié par le niveau de faim courant.</text>
+</string>
+<string id="ui_mcm_psy_stress_thirst_stress_increase">
+	<text>Augmentation stress soif (X %)</text>
+</string>
+<string id="ui_mcm_psy_stress_thirst_stress_increase_desc">
+	<text>\n
+	Augmentation du drain psy en cas de déshydratation, multiplié par le niveau de soif courant.</text>
+</string>
+<string id="ui_mcm_psy_stress_sleepness_stress_increase">
+	<text>Augmentation stress manque de sommeil (X %)</text>
+</string>
+<string id="ui_mcm_psy_stress_sleepness_stress_increase_desc">
+	<text>\n
+	Augmentation du drain psy quand le joueur manque de sommeil, multiplié par le niveau de fatigue.</text>
+</string>
+<string id="ui_mcm_psy_stress_campfire_regen">
+	<text>Régénération psy près du feu (X % en 10 min)</text>
+</string>
+<string id="ui_mcm_psy_stress_campfire_regen_desc">
+	<text>\n
+	Régénération psy au contact d'un feu de camp avec Cozy Campfires activé. Désactive 'Réduction stress au feu'.</text>
+</string>
+<string id="ui_mcm_menu_psy_stress_title_stressstages">
+	<text>Stades du stress</text>
+</string>
+<string id="ui_mcm_psy_stress_stage_1">
+	<text>Premier stade de stress (X % de santé psy)</text>
+</string>
+<string id="ui_mcm_psy_stress_stage_1_desc">
+	<text>\n
+	Les premiers effets visuels apparaissent à ce seuil de santé psy.</text>
+</string>
+<string id="ui_mcm_psy_stress_stage_2">
+	<text>Second stade de stress (X % de santé psy)</text>
+</string>
+<string id="ui_mcm_psy_stress_stage_2_desc">
+	<text>\n
+	Les effets visuels prononcés commencent à ce seuil de santé psy.</text>
+</string>
+<string id="ui_mcm_psy_stress_voices">
+	<text>Voix : début (X % de santé psy)</text>
+</string>
+<string id="ui_mcm_psy_stress_voices_desc">
+	<text>\n
+	Les hallucinations auditives (en sont-elles bien ?) démarrent à ce seuil de santé psy.</text>
+</string>
+<string id="ui_mcm_psy_stress_voices_volume_max">
+	<text>Voix : volume maximum</text>
+</string>
+<string id="ui_mcm_psy_stress_voices_volume_max_desc">
+	<text>\n
+	Volume max des hallucinations auditives. Le volume sera atteint à 20 % de santé psy.</text>
+</string>
+<string id="ui_mcm_psy_stress_voices_volume_min">
+	<text>Voix : volume minimal</text>
+</string>
+<string id="ui_mcm_psy_stress_voices_volume_min_desc">
+	<text>\n
+	Volume min des hallucinations auditives, appliqué au seuil "début des voix".</text>
+</string>
+<string id="ui_mcm_psy_stress_max_phantoms">
+	<text>Nombre max. de fantômes</text>
+</string>
+<string id="ui_mcm_psy_stress_max_phantoms_desc">
+	<text>\n
+	Nombre maximal de fantômes hallucinatoires.</text>
+</string>
+<string id="ui_mcm_psy_stress_stage_phantoms">
+	<text>Début hallucinations (X % de santé psy)</text>
+</string>
+<string id="ui_mcm_psy_stress_stage_phantoms_desc">
+	<text>\n
+	Les hallucinations visuelles commencent à ce seuil de santé psy.</text>
+</string>
+<string id="ui_mcm_menu_psy_stress_title_additionaloptions">
+	<text>Options supplémentaires</text>
+</string>
+<string id="ui_mcm_psy_stress_zombfication_chance">
+	<text>Taux de zombification (X %)</text>
+</string>
+<string id="ui_mcm_psy_stress_zombfication_chance_desc">
+	<text>\n
+	Probabilité que le joueur devienne zombie plutôt que de mourir par dégâts psy.</text>
+</string>
+<string id="ui_mcm_psy_stress_controller_damage_multiplier">
+	<text>Multiplicateur dégâts psy Contrôleur (X % de base)</text>
+</string>
+<string id="ui_mcm_psy_stress_controller_damage_multiplier_desc">
+	<text>\n
+	Équilibre des dégâts psy du Contrôleur. Appliqué après la protection psy pour préserver les calculs.</text>
+</string>
+<string id="ui_mcm_psy_stress_controller_damage_max_distance">
+	<text>Distance max. attaque psy Contrôleur (mètres)</text>
+</string>
+<string id="ui_mcm_psy_stress_controller_damage_max_distance_desc">
+	<text>\n
+	Au-delà de cette distance, l'attaque psy du Contrôleur inflige 0 dégât.\n
+	À 0.1 de la distance max, l'attaque inflige la totalité des dégâts.\n
+	Après ce seuil, les dégâts décroissent linéairement vers 10 % à la distance max.</text>
+</string>
+
+	<!-- 
+	<string id="ui_mcm_psy_stress_XXX">
+		<text>Xxx</text>
+	</string>
+	<string id="ui_mcm_psy_stress_XXX_desc">
+		<text>\n
+		Xxx</text>
+	</string>
+	-->
+
+</string_table>

@@ -1,0 +1,124 @@
+local defaults = {
+    ["tc_main/compass_sc_pos"] = 0,
+    ["tc_markers/show_quest"] = true,
+    ["tc_markers/is_quest_dist"] = true,
+    ["tc_markers/is_quest_av"] = true,
+    ["tc_markers/show_quest_dist"] = 400.0,
+    ["tc_markers/show_unique"] = true,
+    ["tc_markers/is_unique_dist"] = false,
+    ["tc_markers/is_unique_av"] = false,
+    ["tc_markers/show_unique_dist"] = 60.0,
+    ["tc_markers/show_sleep"] = true,
+    ["tc_markers/is_sleep_dist"] = false,
+    ["tc_markers/is_sleep_av"] = false,
+    ["tc_markers/show_sleep_dist"] = 50.0,
+    ["tc_markers/show_stashes"] = true,
+    ["tc_markers/is_stashes_dist"] = true,
+    ["tc_markers/is_stashes_av"] = false,
+    ["tc_markers/show_stashes_dist"] = 100.0,
+    ["tc_markers/show_transitions"] = true,
+    ["tc_markers/is_transitions_dist"] = true,
+    ["tc_markers/is_transitions_av"] = false,
+    ["tc_markers/show_transitions_dist"] = 300.0,
+    ["tc_markers/show_squads"] = false,
+    ["tc_markers/is_squads_dist"] = false,
+    ["tc_markers/is_squads_av"] = false,
+    ["tc_markers/show_squads_dist"] = 50.0,
+    ["tc_markers/show_corpses"] = false,
+    ["tc_markers/is_corpses_dist"] = false,
+    ["tc_markers/is_corpses_av"] = false,
+    ["tc_markers/show_corpses_dist"] = 35.0,
+    ["tc_markers/show_campf"] = false,
+    ["tc_markers/is_campf_dist"] = false,
+    ["tc_markers/is_campf_av"] = false,
+    ["tc_markers/show_campf_dist"] = 30.0,
+    ["tc_markers/show_pump"] = false,
+    ["tc_markers/is_pump_dist"] = false,
+    ["tc_markers/is_pump_av"] = false,
+    ["tc_markers/show_pump_dist"] = 40.0,
+    ["tc_keybinds/keybind"] = DIK_keys.DIK_M
+}
+
+local table_compass_sc_pos = {
+    { 0, "ui_mcm_compass_state_up" },
+    { 1, "ui_mcm_compass_state_down" }
+}
+
+function get_config(key)
+    if ui_mcm then return ui_mcm.get("tactic_compass/" .. key) else return defaults[key] end
+end
+
+function on_mcm_load()
+    op = {
+        id = "tactic_compass",
+        gr = {
+            {
+                id = "tc_main", sh = true, gr = {
+                    { id = "title", type = "slide", text = "ui_mcm_compass_title", link = "ui_options_slider_player", size = { 512, 50 }, spacing = 20 },
+                    { id = "compass_sc_pos", type = "list", val = 2, def = 0, content = table_compass_sc_pos, no_str = true }
+                }
+            },
+            {
+                id = "tc_markers", sh = true, gr = {
+                    { id = "markers_title", type = "slide", text = "ui_mcm_markers_title", link = "ui_options_slider_player", size = { 512, 50 }, spacing = 20 },
+                    { id = "m_desc", type = "desc", clr = { 255, 255, 255, 0 }, text = "ui_mcm_tc_markers_marker_m_desc" },
+                    { id = "show_quest", type = "check", val = 1, def = true },
+                    { id = "is_quest_dist", type = "check", val = 1, def = true },
+                    { id = "is_quest_av", type = "check", val = 1, def = true },
+                    { id = "show_quest_dist", type = "track", val = 2, min = 10.0, max = 1000.0, step = 10.0, def = 400.0 },
+                    { id = "divider", type = "line" },
+                    { id = "show_unique", type = "check", val = 1, def = true },
+                    { id = "is_unique_dist", type = "check", val = 1, def = false },
+                    { id = "is_unique_av", type = "check", val = 1, def = false },
+                    { id = "show_unique_dist", type = "track", val = 2, min = 10.0, max = 1000.0, step = 10.0, def = 60.0 },
+                    { id = "divider", type = "line" },
+                    { id = "show_sleep", type = "check", val = 1, def = true },
+                    { id = "is_sleep_dist", type = "check", val = 1, def = false },
+                    { id = "is_sleep_av", type = "check", val = 1, def = false },
+                    { id = "show_sleep_dist", type = "track", val = 2, min = 10.0, max = 1000.0, step = 10.0, def = 50.0 },
+                    { id = "divider", type = "line" },
+                    { id = "show_stashes", type = "check", val = 1, def = true },
+                    { id = "is_stashes_dist", type = "check", val = 1, def = true },
+                    { id = "is_stashes_av", type = "check", val = 1, def = false },
+                    { id = "show_stashes_dist", type = "track", val = 2, min = 10.0, max = 1000.0, step = 10.0, def = 100.0 },
+                    { id = "divider", type = "line" },
+                    { id = "show_transitions", type = "check", val = 1, def = true },
+                    { id = "is_transitions_dist", type = "check", val = 1, def = true },
+                    { id = "is_transitions_av", type = "check", val = 1, def = false },
+                    { id = "show_transitions_dist", type = "track", val = 2, min = 10.0, max = 1000.0, step = 10.0, def = 300.0 },
+                    { id = "divider", type = "line" },
+                    { id = "show_squads", type = "check", val = 1, def = false },
+                    { id = "is_squads_dist", type = "check", val = 1, def = false },
+                    { id = "is_squads_av", type = "check", val = 1, def = false },
+                    { id = "show_squads_dist", type = "track", val = 2, min = 10.0, max = 1000.0, step = 10.0, def = 50.0 },
+                    { id = "divider", type = "line" },
+                    { id = "m_corpses_desc", type = "desc", clr = { 255, 255, 255, 0 }, text = "ui_mcm_tc_markers_marker_m_corpses_desc" },
+                    { id = "show_corpses", type = "check", val = 1, def = false },
+                    { id = "is_corpses_dist", type = "check", val = 1, def = false },
+                    { id = "is_corpses_av", type = "check", val = 1, def = false },
+                    { id = "show_corpses_dist", type = "track", val = 2, min = 10.0, max = 1000.0, step = 10.0, def = 35.0 },
+                    { id = "divider", type = "line" },
+                    { id = "m_campf_desc", type = "desc", clr = { 255, 255, 255, 0 }, text = "ui_mcm_tc_markers_marker_m_campf_desc" },
+                    { id = "show_campf", type = "check", val = 1, def = false },
+                    { id = "is_campf_dist", type = "check", val = 1, def = false },
+                    { id = "is_campf_av", type = "check", val = 1, def = false },
+                    { id = "show_campf_dist", type = "track", val = 2, min = 10.0, max = 1000.0, step = 10.0, def = 30.0 },
+                    { id = "divider", type = "line" },
+                    { id = "m_pump_desc", type = "desc", clr = { 255, 255, 255, 0 }, text = "ui_mcm_tc_markers_marker_m_pump_desc" },
+                    { id = "show_pump", type = "check", val = 1, def = false },
+                    { id = "is_pump_dist", type = "check", val = 1, def = false },
+                    { id = "is_pump_av", type = "check", val = 1, def = false },
+                    { id = "show_pump_dist", type = "track", val = 2, min = 10.0, max = 1000.0, step = 10.0, def = 40.0 },
+                }
+            },
+            {
+                id = "tc_keybinds", sh = true, gr = {
+                    { id = "markers_title", type = "slide", text = "ui_mcm_keybinds_title", link = "ui_options_slider_player", size = { 512, 50 }, spacing = 20 },
+                    { id = "keybind", type = "key_bind", val = 2, def = DIK_keys.DIK_M},
+                }
+            }
+        }
+    }
+
+    return op
+end

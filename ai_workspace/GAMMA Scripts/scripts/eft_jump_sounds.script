@@ -1,0 +1,48 @@
+available_materials = {"wood", "earth", "dirt", "metal", "water", "tin", "grass", "gravel", "asphalt", "tile", "concrete", "shifer",}
+
+current_available = "default"
+
+function actor_on_footstep(mat)
+    local sf = string.find
+    local current_material = tostring(mat)
+
+    for n, val in next, available_materials do
+        -- checking the current material and seeing if we have the sound for it
+        if sf(current_material, val) then
+            current_available = val -- we do :)
+            break
+        else
+            current_available = "default" -- darn, we don't :(
+        end
+    end
+    --printf(current_available)
+end
+
+local land_sound = sound_object("eft_jump_sound\\land_default")
+local jump_sound
+local volume
+
+function actor_on_jump()
+    jump_sound = sound_object("eft_jump_sound\\jump_" .. current_available)
+	jump_sound:play(db.actor, 0, sound_object.s2d)
+	jump_sound.volume = volume
+end
+
+function actor_on_land(landing_speed)
+	if landing_speed > 5 then
+		land_sound:play(db.actor, 0, sound_object.s2d)
+		land_sound.volume = volume * (landing_speed / 5)
+	end
+end
+
+function on_option_change()
+	volume = eft_jump_sounds_mcm.get_config("volume")
+end
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_footstep", actor_on_footstep)
+    RegisterScriptCallback("actor_on_jump", actor_on_jump)
+    RegisterScriptCallback("actor_on_land", actor_on_land)
+	RegisterScriptCallback("on_option_change", on_option_change)
+	on_option_change()
+end

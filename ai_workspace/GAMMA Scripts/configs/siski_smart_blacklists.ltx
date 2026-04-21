@@ -1,0 +1,107 @@
+; SISKI smart blacklists
+; Формат правила: faction/level = value1, value2 или all
+; Rule format: faction/level = value1, value2 or all
+; =============================================
+
+[siski_smart_blacklists]
+; =============================================
+; l05_bar = smart_a, smart_b   | l05_bar = all
+; =============================================
+k00_marsh = mar_smart_terrain_doc
+pripyat = pri_a28_base, pri_a16, pri_a16_mlr_copy
+
+[siski_global_level_blacklists]
+; =============================================
+; level = true|1|yes|on
+; Completely excludes a level from SISKI world views and from `siski_memory`
+; squad admission. Squads resolved on these levels are purged / skipped before
+; they can enter managed state.
+; =============================================
+y04_pole = true
+station_digger = true
+digger_stash = true
+
+
+[siski_faction_level_blacklists]
+; =============================================
+; freedom = l05_bar, l06_rostok
+; aliases (killer=merc, dolg=duty, mutant/mutants=monster).
+; monsters example: monster = l05_bar
+; =============================================
+
+bandit = l05_bar
+freedom = l05_bar
+merc = l05_bar
+army = l05_bar
+monolith = l05_bar
+renegade = l05_bar
+greh = l05_bar
+isg = l05_bar
+monster = l05_bar
+
+[siski_faction_smart_blacklists]
+; =============================================
+; monolith = mil_smart_terrain_5_2, mil_smart_terrain_5_3
+; monsters example: monster = mil_smart_terrain_5_2
+; =============================================
+
+monolith = mil_smart_terrain_7_10, mil_smart_terrain_7_7, mil_smart_terrain_7_12, mil_smart_terrain_2_10, mil_smart_terrain_2_4, mil_smart_terrain_7_4
+duty = mil_smart_terrain_7_10, mil_smart_terrain_7_7, mil_smart_terrain_7_12, mil_smart_terrain_2_10, mil_smart_terrain_2_4, mil_smart_terrain_7_4, jup_a6, jup_b41, jup_sim3, jup_b46, jup_sim_14, jup_b202, jup_b207_depot_attack, jup_sim_15, jup_b206, jup_sim_13
+monster = mar_smart_terrain_base, ds2_domik_st, esc_smart_terrain_5_7, esc_smart_terrain_2_12, esc_smart_terrain_7_11, gar_smart_terrain_3_7, gar_smart_terrain_3_5, gar_smart_terrain_6_3, gar_smart_terrain_5_2, agr_smart_terrain_6_4, agr_smart_terrain_4_4, agr_smart_terrain_1_6, agr_smart_terrain_1_6_near_1, agr_smart_terrain_1_6_near_2, val_smart_terrain_7_4, val_smart_terrain_9_4, val_smart_terrain_7_3, val_smart_terrain_9_6, val_smart_terrain_1_2, val_smart_terrain_4_0, mil_smart_terrain_7_10, mil_smart_terrain_7_7, mil_smart_terrain_7_12, mil_smart_terrain_2_10, mil_smart_terrain_7_4, yan_smart_terrain_6_4, yan_smart_terrain_3_6, cit_killers, cit_killers_vs_bandits, red_bridge_bandit_smart_skirmish, red_smart_terrain_bridge, red_smart_terrain_4_2, zat_b40_smart_terrain, zat_stalker_base_smart, zat_b103_merc_smart, zat_b5_smart_terrain, jup_a12, jup_b200, jup_b41, jup_a6, pri_a28_base, pri_a16, pri_a18_smart_terrain, pri_b301, pri_b306, pri_b36_smart_terrain
+
+[siski_section_level_blacklists]
+; =============================================
+; section = l05_bar, l03_agroprom or all
+; examples:
+; simulation_fracture = l01_escape, l02_garbage
+; simulation_chimera = l01_escape, l02_garbage
+; =============================================
+
+simulation_gigant = l01_escape, l02_garbage
+simulation_controller = l01_escape, l02_garbage
+simulation_chimera = l01_escape
+
+
+[siski_section_smart_blacklists]
+; =============================================
+; section = smart_a, smart_b or all
+; examples:
+; simulation_fracture = mil_smart_terrain_5_2
+; simulation_chimera = mil_smart_terrain_5_2
+; =============================================
+
+simulation_controller = mar_smart_terrain_base, agr_smart_terrain_1_6, val_smart_terrain_7_3, val_smart_terrain_7_4, ds2_domik_st, yan_smart_terrain_6_4, mil_smart_terrain_7_12, bar_visitors, bar_dolg_general, cit_killers, pri_a16, pri_a18_smart_terrain, jup_a6, jup_b41, zat_b40_smart_terrain, zat_stalker_base_smart, red_smart_terrain_3_2, esc_smart_terrain_2_12, gar_smart_terrain_3_5, gar_smart_terrain_6_3
+simulation_chimera = mar_smart_terrain_base, val_smart_terrain_7_3, val_smart_terrain_7_4, ds2_domik_st, bar_visitors, bar_dolg_general, pri_a16, pri_a18_smart_terrain, jup_a6, jup_b41, zat_b40_smart_terrain, zat_stalker_base_smart, red_smart_terrain_3_2, esc_smart_terrain_2_12, gar_smart_terrain_3_5, gar_smart_terrain_6_3
+simulation_gigant =  mar_smart_terrain_base, val_smart_terrain_7_3, val_smart_terrain_7_4, ds2_domik_st, bar_visitors, bar_dolg_general, pri_a16, pri_a18_smart_terrain, jup_a6, jup_b41, zat_b40_smart_terrain, zat_stalker_base_smart, red_smart_terrain_3_2, esc_smart_terrain_2_12, gar_smart_terrain_3_5, gar_smart_terrain_6_3
+
+
+
+
+
+
+; =============================================
+; Уровни
+; k00_marsh - Болота
+; k01_darkscape - Тёмная лощина
+; k02_trucks_cemetery - Кладбище техники
+; l01_escape - Кордон
+; l02_garbage - Свалка
+; l03_agroprom - Агропром
+; l04_darkvalley - Тёмная долина
+; l05_bar - Бар
+; l06_rostok - Дикая территория
+; l07_military - Армейские склады
+; l08_yantar - Янтарь
+; l09_deadcity - Мёртвый город
+; l10_limansk - Лиманск
+; l10_red_forest - Рыжий лес
+; l10_radar - Радар
+; l11_pripyat - Центр припяти
+; l11_hospital - Госпиталь
+; l12_stancia - ЧАЭС
+; l12_stancia_2 - ЧАЭС 2
+; l13_generators - Генераторы
+; zaton - Затон
+; jupiter - Юпитер
+; pripyat - Окраины припяти
+; =============================================

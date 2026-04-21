@@ -1,0 +1,34 @@
+defaults = {
+  ['use_mousewheel'] = true,
+  ['mwheel_switch_ads_only'] = true,
+  ['switch_bind'] = bind_to_dik(key_bindings.kWPN_FUNC),
+  ['modifier'] = 0, --none (none, shift, ctrl, alt), requires MCM
+  ['press_type'] = 1, --single (single, double, hold), requires MCM
+  ['keep_aim_toggle'] = true,
+  ['switch_sound'] = true,
+  ['debug'] = false,
+}
+
+local opt = {id = 'magnifier_switch', sh = true, gr = {
+  {id = 'title', type = 'slide', link = 'ui_options_slider_player', text = 'ui_mcm_menu_magnifier_switch', size = {512, 50}, spacing = 20},
+  {id = 'use_mousewheel', type = 'check', val = 1, def = defaults.use_mousewheel},
+  {id = 'mwheel_switch_ads_only', type = 'check', val = 1, def = defaults.mwheel_switch_ads_only},
+  {id = 'mwheel_weapon_swap', type = 'check', val = 1, cmd = 'mouse_wheel_change_weapon', def = false, bool_to_num = true},
+  {id = 'divider', type = 'line'},
+  {id = 'switch_bind', type = 'key_bind', val = 2, def = defaults.switch_bind},
+  {id = 'modifier', type = ui_mcm.kb_mod_radio, val = 2, def = defaults.modifier, hint = 'mcm_kb_modifier', content = {
+    {0, 'mcm_kb_mod_none'}, {1, 'mcm_kb_mod_shift'}, {2, 'mcm_kb_mod_ctrl'}, {3, 'mcm_kb_mod_alt'}
+  }},
+  {id = 'press_type', type = ui_mcm.kb_mod_radio, val = 2, def = defaults.press_type, hint = 'mcm_kb_mode', content = {
+    {0, 'mcm_kb_mode_press'}, {1, 'mcm_kb_mode_dtap'}, {2, 'mcm_kb_mode_hold'}
+  }},
+  {id = 'divider', type = 'line'},
+  {id = 'keep_aim_toggle', type = 'check', val = 1, def = defaults.keep_aim_toggle},
+  {id = 'switch_sound', type = 'check', val = 1, def = defaults.switch_sound},
+  {id = 'divider', type = 'line'},
+  {id = 'debug', type = 'check', val = 1, def = defaults.debug}
+}}
+
+function on_mcm_load()
+  return opt
+end

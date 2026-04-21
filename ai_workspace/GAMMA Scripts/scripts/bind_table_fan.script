@@ -1,0 +1,64 @@
+--[[
+	Functionality and interactivity for table fan furniture
+	Author: HarukaSai (visit us at: https://discord.com/invite/efp)
+	Credits: Aoldri
+	19-06-2023
+]]
+
+function toggle_fan(obj_id)
+	local section = alife_object(obj_id):section_name()
+	local is_on = hf_obj_manager.get_data(obj_id).is_on
+
+	hf_obj_manager.update_data(obj_id, {is_on = (not is_on)})
+end
+
+function init(obj)
+    obj:bind_object(haru_placeable_fan_wrapper(obj).binder)
+end
+
+--------------------------------------------------------------------------------
+-- Class "placeable_digital_clock_binder"
+--------------------------------------------------------------------------------
+class "haru_placeable_fan_wrapper" (bind_hf_base.hf_binder_wrapper)
+-- Class constructor
+function haru_placeable_fan_wrapper:__init(obj) super(obj)
+    self.first_update = true
+
+    self.snd_switch = sound_object([[efp_props\fan_switch]])
+    self.snd_idle = sound_object([[efp_props\fan_idle]])
+end
+
+-- Class update
+function haru_placeable_fan_wrapper:update(delta)
+    bind_hf_base.hf_binder_wrapper.update(self, delta)
+
+    local is_on = hf_obj_manager.get_data(self.object:id()).is_on
+
+    if (self.last_state ~= is_on) or self.first_update then
+        self.object:play_cycle(is_on and "fan_movement" or "fan_static")
+
+        if (not self.first_update) then
+            self.snd_switch:play_no_feedback(self.object, sound_object.s3d, 0, self.object:position(), 0.5, random_float(0.9, 1.1))
+        end
+
+        if is_on then
+            if (not self.snd_idle:playing()) then
+		
+				self.snd_idle:play_at_pos(self.object, self.object:position(), 0, sound_object.s3d + sound_object.looped)
+				self.snd_idle.volume = self.first_update and 0.5 or 0
+				self.snd_idle_max = time_global() + (not self.first_update and 2000 or 0)
+			end
+        else
+			if self.snd_idle:playing() then
+				self.snd_idle:stop()
+			end
+        end
+    end
+    
+    if self.snd_idle:playing() and (self.snd_idle_max > time_global()) then
+		self.snd_idle.volume = 0.5 - (self.snd_idle_max - time_global()) / 2000
+	end
+    
+    self.last_state = is_on
+    self.first_update = false
+end

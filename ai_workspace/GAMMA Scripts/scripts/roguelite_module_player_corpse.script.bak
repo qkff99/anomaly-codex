@@ -1,0 +1,399 @@
+--[[
+	Jabbers
+	27MAR2023
+	Jabbers Ironman Roguelite - Player Corpse Module
+--]]
+
+local m_data = {
+    corpse_version = 2,
+    corpse = nil,
+    is_looted = false,
+    item_uses_data = {}
+}
+
+local function get_time_elapsed()
+    return math.floor(game.get_game_time():diffSec(level.get_start_time()) / level.get_time_factor() * 10) * 0.1
+end
+
+local function get_corpse_data() 
+    local sim = alife()
+    local actor = db.actor    
+	local se_actor = alife():actor()
+    local level_name = level.name()
+	
+    roguelite_manager.debug_write("Gathering corpse data.")
+
+    local pos = actor:position()
+    local corpse_data = { 
+        position = {
+            x = pos.x,
+            y = pos.y,
+            z = pos.z
+        }, 
+        m_level_vertex_id = actor:level_vertex_id(),
+        m_game_vertex_id = actor:game_vertex_id(),
+        character_name = actor:character_name(),
+        profile_name = se_actor:profile_name(),
+        visual = actor:get_visual_name(),
+        character_icon = actor:character_icon(),
+        level_name = level_name,
+        items = {}
+    }
+
+    roguelite_manager.debug_write("Iterating items.")
+
+    for i=1,65534 do 
+		local se_obj = sim:object(i)
+		if (se_obj and se_obj.parent_id == AC_ID) then
+			local sec = se_obj:section_name()
+			if not ini_sys:r_bool_ex(sec, "quest_item", false) then
+                roguelite_manager.debug_write("Found corpse item " .. se_obj:name() .. " " .. se_obj.id ..".")
+
+                local section = se_obj:section_name()
+                local corpse_item_data = {
+                    id = se_obj.id,
+                    name = se_obj:name(),
+                    clsid = get_clsid(se_obj),
+                    section = section
+                }
+
+                if IsWeapon(se_obj) then
+                    roguelite_manager.debug_write("Gathering weapon data for " .. se_obj:name() .. " " ..se_obj.id .. ".")
+                    local data = utils_stpk.get_weapon_data(se_obj)
+
+                    corpse_item_data.ammo_current = data.ammo_current
+                    corpse_item_data.ammo_elapsed = data.ammo_elapsed
+                    corpse_item_data.weapon_state = data.weapon_state
+                    corpse_item_data.addon_flags = data.addon_flags
+                    corpse_item_data.ammo_type = data.ammo_type
+
+                    corpse_item_data.condition = data.condition
+                    corpse_item_data.upgrades = data.upgrades
+
+                    corpse_item_data.visual_name = data.visual_name
+                    corpse_item_data.visual_flags = data.visual_flags
+
+                    corpse_item_data.object_flags = data.object_flags
+                    corpse_item_data.custom_data = data.custom_data
+                elseif IsAmmo(se_obj) then
+                    roguelite_manager.debug_write("Gathering ammo data for " .. se_obj:name() .. " " ..se_obj.id .. ".")
+                    local data = utils_stpk.get_ammo_data(se_obj)
+
+                    corpse_item_data.condition = data.condition
+                    corpse_item_data.upgrades = data.upgrades
+
+                    corpse_item_data.visual_name = data.visual_name
+                    corpse_item_data.visual_flags = data.visual_flags
+
+                    corpse_item_data.object_flags = data.object_flags
+                    corpse_item_data.custom_data = data.custom_data
+
+                    corpse_item_data.ammo_left = data.ammo_left
+                else
+                    roguelite_manager.debug_write("Gathering item data " .. se_obj:name() .. " " ..se_obj.id .. ".")
+                    local data = utils_stpk.get_item_data(se_obj)
+
+                    corpse_item_data.condition = data.condition
+                    corpse_item_data.upgrades = data.upgrades
+
+                    corpse_item_data.visual_name = data.visual_name
+                    corpse_item_data.visual_flags = data.visual_flags
+
+                    corpse_item_data.object_flags = data.object_flags
+                    corpse_item_data.custom_data = data.custom_data
+
+                    if IsItem("multiuse", section) and m_data.item_uses_data[se_obj.id] then
+                        corpse_item_data.uses = m_data.item_uses_data[se_obj.id]
+                    end
+                end
+
+                corpse_data.items[se_obj.id] = corpse_item_data
+			end
+		end
+	end
+
+    return corpse_data
+end
+
+local function empty_function ()
+end
+
+local function spawn_corpse(data) 
+    roguelite_manager.debug_write("Spawning player corpse from prior playthrough.")
+
+	local pos = vector():set(data.position.x, data.position.y, data.position.z)
+    local se_mimic = alife_create("stalker_azazel", pos, data.m_level_vertex_id, data.m_game_vertex_id)
+
+	if (se_mimic) then 
+		se_mimic:set_character_name(data.character_name)
+		se_mimic:set_profile_name(data.profile_name)    
+        se_mimic:kill() 
+
+        data.id = se_mimic.id;
+		
+		local state = alife_storage_manager.get_se_obj_state(se_mimic, true)
+
+		if state then
+			state.icon_name = data.character_icon
+            -- TODO: setting visual puts character in a t-pose.... 
+            --state.visual = data.visual
+		end    
+
+        -- HACK: Add a quest item to the corpse so it doesn't despawn
+        alife_create("sl_ht_walkie_talkie", pos, data.m_level_vertex_id, data.m_game_vertex_id, se_mimic.id, false)
+        
+        if roguelite_manager_mcm.get_config("show_stashes_on_pda", true) then
+            level.map_add_object_spot_ser(se_mimic.id, "treasure_player", data.character_name .. " corpse")
+        end
+	end
+end
+
+-- local function update_corpse_id()
+--     if not m_data.corpse_id_updated and m_data.corpse then
+--         local sim = alife()
+--         roguelite_manager.debug_write("Updating player corpse id")
+--         for i=1,65534 do 
+--             local se_obj = sim:object(i)
+--             if se_obj and 
+--                se_obj.section_name == "stalker_azazel" and
+--                se_obj:character_name() == m_data.corpse.character_name and
+--                se_obj:profile_name() == m_data.corpse then
+--                 roguelite_manager.debug_write("Player corpse id updated to "..tostring(se_obj.id))
+--                 m_data.corpse.id = se_obj.id
+--                 m_data.corpse_id_updated = true
+--             end
+--         end
+--     end   
+-- end
+
+--------------------------------
+-- Game Callbacks
+--------------------------------
+local function save_state(data)
+    if not IsHardcoreMode() then
+        return
+    end
+
+    roguelite_manager.debug_write("Saving corpse data.")
+
+    if not data.roguelite_manager then
+        data.roguelite_manager = {}
+    end
+
+    data.roguelite_manager.corpse_version = m_data.corpse_version
+    data.roguelite_manager.corpse = m_data.corpse
+    data.roguelite_manager.is_looted = m_data.is_looted
+end
+
+local function load_state(data)
+    if not IsHardcoreMode() then
+        return
+    end
+
+    if not data.roguelite_manager then
+        return
+    end
+
+    roguelite_manager.debug_write("Loading corpse data.")
+
+    m_data.corpse_version = data.roguelite_manager.corpse_version
+    m_data.corpse = data.roguelite_manager.corpse
+    m_data.is_looted = data.roguelite_manager.is_looted
+
+    roguelite_manager.debug_write(m_data)
+    
+    data.roguelite_manager.corpse_version = nil
+    data.roguelite_manager.corpse = nil
+    data.roguelite_manager.is_looted = nil
+end
+
+local function restore_prior_state_corpse_v1(data)
+    if roguelite_manager_mcm.get_config("drop_player_inventory_on_death_enabled", true) then
+        roguelite_manager.debug_write("Restoring corpse data.")
+        m_data.corpse = data.corpse
+        if m_data.corpse then
+            roguelite_manager.debug_write("Player corpse restored.")
+        end
+    end
+end
+
+function roguelite_load_state(save_data)
+    if roguelite_manager_mcm.get_config("drop_player_inventory_on_death_enabled", true) then
+        if save_data.corpse_version and save_data.corpse_version >= 1 then
+            restore_prior_state_corpse_v1(save_data)
+        end
+    end
+    
+    if m_data.corpse then
+        spawn_corpse(m_data.corpse)
+    end
+end
+
+function roguelite_save_state(save_data)
+    save_data.corpse_version = m_data.corpse_version
+    save_data.corpse = get_corpse_data()
+end
+
+function append_mcm_options(gr)
+    roguelite_manager.debug_write("Appending corpse module mcm options.")
+    table.insert(gr, { id = "line" , type = "line" })
+    table.insert(gr, {
+        id = "desc_mcm",
+        type = "desc",
+        text = "ui_mcm_roguelite_drop_player_inventory_description",
+        clr = {255, 255 ,255 ,0},
+    })
+    table.insert(gr, {
+        id = "drop_player_inventory_on_death_enabled",
+        type = "check",
+        val = 1,
+        def = true
+    }) 
+    table.insert(gr, {
+        id = "drop_player_inventory_item_loss_chance",
+        type = "track",
+        val = 2,
+        min = 0,
+        max = 1,
+        step = 0.01,
+        def = 0.25
+    })
+    table.insert(gr, {
+        id = "drop_player_inventory_item_loss_max_ingame_time_enabled",
+        type = "check",
+        val = 1,
+        def = true
+    }) 
+    table.insert(gr, {
+        id = "drop_player_inventory_item_loss_max_ingame_time_seconds",
+        type = "track",
+        val = 2,
+        min = 600,
+        max = 86400,
+        step = 1,
+        def = 3600
+    })
+end
+
+function on_option_change()
+    local get_config = roguelite_manager_mcm.get_config  
+    
+    roguelite_manager.debug_write("drop_player_inventory_on_death = "..tostring(get_config("drop_player_inventory_on_death_enabled", true)))  
+    roguelite_manager.debug_write("drop_player_inventory_item_loss_chance = "..tostring(get_config("drop_player_inventory_item_loss_chance", 0.25)))
+    roguelite_manager.debug_write("drop_player_inventory_item_loss_max_ingame_time_enabled = "..tostring(get_config("drop_player_inventory_item_loss_max_ingame_time_enabled", true)))
+    roguelite_manager.debug_write("drop_player_inventory_item_loss_max_ingame_time_seconds = "..tostring(get_config("drop_player_inventory_item_loss_max_ingame_time_seconds", 3600)))
+end
+
+function on_game_load()
+    if ui_mcm then
+	    on_option_change()
+    end
+end
+
+-- function actor_on_update()
+--     update_corpse_id()
+-- end
+
+-- --------------------------------
+-- -- BEGIN FOR DEBUGGING 
+-- local function get_time_elapsed()
+--     return math.floor(game.get_game_time():diffSec(level.get_start_time()) /level.get_time_factor() * 10) * 0.1
+-- end
+
+-- local function onKeyPress(dik)
+--     if dik == DIK_keys.DIK_M then
+-- 		news_manager.send_tip(db.actor, string.format("Total Playtime: %s Seconds", get_time_elapsed()), 0, nil, 1500)
+-- 	end
+-- end
+-- -- END FOR DEBUGGING 
+-- --------------------------------
+
+function on_game_start()
+	RegisterScriptCallback("on_game_load", on_game_load)
+    RegisterScriptCallback("save_state", save_state)
+    RegisterScriptCallback("load_state", load_state)
+	-- RegisterScriptCallback("actor_on_update", actor_on_update)
+    
+    --TODO: Comment out before release
+    --RegisterScriptCallback("on_key_press", onKeyPress)
+
+    roguelite_manager.debug_write("Corpse module callbacks registered")
+end
+
+local old_keep_item = death_manager.keep_item
+
+local function new_keep_item(npc, item)
+    if not m_data.corpse then
+        old_keep_item(npc, item)
+        return
+    end
+
+    if not m_data.is_looted and m_data.corpse and m_data.corpse.id == npc:id() then   
+        return
+    else
+        old_keep_item(npc, item)
+    end
+end
+
+
+local old_create_release_item = death_manager.create_release_item
+local function new_create_release_item(npc)
+    roguelite_manager.debug_write("new_create_release_item npc.id(" .. tostring(npc:id()) .. ")")
+
+    if not m_data.corpse then
+        old_create_release_item(npc)
+        return
+    end
+
+    roguelite_manager.debug_write("Create release item hook checking npc.id(" .. tostring(npc:id()) .. ") == corpse.id("..tostring(m_data.corpse.id)..").")
+    
+    if not m_data.is_looted and m_data.corpse and m_data.corpse.id == npc:id() then        
+        m_data.is_looted = true
+        
+        local loss_chance = 100 - (roguelite_manager_mcm.get_config("drop_player_inventory_item_loss_chance", 0.25) * 100)
+
+        if(roguelite_manager_mcm.get_config("drop_player_inventory_item_loss_max_ingame_time_enabled", true)) then
+            local tg = get_time_elapsed()
+            local min_tg = 5*60 -- 5 minute grace period
+            local max_tg = roguelite_manager_mcm.get_config("drop_player_inventory_item_loss_max_ingame_time_seconds", 3600)
+            
+            loss_chance = (math.max(tg - min_tg, 0)) / (max_tg - min_tg)
+            
+            --roguelite_manager.debug_write("tg="..tostring(tg))
+            --roguelite_manager.debug_write("min_tg="..tostring(min_tg))
+            --roguelite_manager.debug_write("max_tg="..tostring(max_tg))
+            --roguelite_manager.debug_write("loss_chance="..tostring(loss_chance))
+        
+            loss_chance = 100 - ((roguelite_manager_mcm.get_config("drop_player_inventory_item_loss_chance", 0.25) * loss_chance) * 100);
+        end
+
+        roguelite_manager.debug_write("final_loss_chance="..tostring(loss_chance))
+
+        -- Delete all items since we will recreate
+		local function release_actor_item(temp, item)
+			alife_release_id(item:id())
+		end
+
+		npc:iterate_inventory(release_actor_item,nil)
+
+        for _, item_data in pairs(m_data.corpse.items) do
+            local section = item_data.section
+            local loot_dice_roll = math.random(0, 100)
+            --roguelite_manager.debug_write("loot_dice_roll="..tostring(loot_dice_roll).." < "..tostring(loss_chance).." for item "..section)
+            if loot_dice_roll < loss_chance then
+                roguelite_manager.restore_item(section, npc:position(), npc:level_vertex_id(), npc:game_vertex_id(), item_data, npc:id(), false)
+            else
+                roguelite_manager.debug_write(section.." was not restored due to dice roll.")
+            end
+        end
+    else
+        old_create_release_item(npc)
+    end    
+end
+
+death_manager.keep_item = new_keep_item
+death_manager.create_release_item = new_create_release_item
+
+
+
+

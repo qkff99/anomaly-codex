@@ -1,0 +1,713 @@
+<?xml version="1.0" encoding="windows-1251" ?>
+
+<string_table>
+	
+	<string id="st_ui_dbg_help">
+		<text>%c[pda_white]Available main menu keybinds on debug mode:\n \n
+		%c[d_orange]LOADED GAME ONLY:\n
+		%c[pda_blue]• %c[pda_white]F7:%c[ui_gray_2] Start Anomaly Debugger\n
+		%c[pda_blue]• %c[pda_white]1:%c[ui_gray_2] Debug HUD - Switch Left Panel Info Feedback\n
+		%c[pda_blue]• %c[pda_white]2:%c[ui_gray_2] Debug HUD - Switch Middle Panel Info Feedback\n
+		%c[pda_blue]• %c[pda_white]3:%c[ui_gray_2] Debug HUD - Switch Right Panel Info Feedback\n \n
+		%c[d_orange]WITHOUT LOADED GAME:\n
+		%c[pda_blue]• %c[pda_white]F2:%c[ui_gray_2] Launch Test Map\n \n
+		%c[d_orange]BOTH CASES:\n
+		%c[pda_blue]• %c[pda_white]Numpad 0:%c[ui_gray_2] Reload system_ini()\n
+		</text>
+	</string>
+
+	<!-- DEBUGGERS -->
+	<string id="st_ui_dbg_weather_about">
+		<text>%c[pda_white]Anomaly Weather Editor 2.0\n \n
+		%c[pda_green]Information:\n
+		The Weather editor allows the changing of weather values in real-time.\n
+		The GUI is interactive and easy to use, with the ability to modify or create weather files on the fly.\n
+		Modified values are temporarily cached for the weathers and hours that were worked on.\n
+		These may be returned to in case the editor was turned off (Avoid exiting or reloading when with unsaved values).\n
+		In (Viewer) mode, weather changes may be seen in real-time via the time slider.\n \n
+		%c[pda_blue]Keybinds:\n
+		%c[d_purple]• %c[pda_white]ARROW KEYS: %c[ui_gray_2]Parameter Navigation\n
+		%c[d_purple]• %c[pda_white]LSHIFT (Hold): %c[ui_gray_2]x10 Value Step / Jump 2 Parameters\n
+		%c[d_purple]• %c[pda_white]LALT (Hold): %c[ui_gray_2]x50 Value Step / Jump 3 Parameters\n
+		%c[d_purple]• %c[pda_white]R/F: %c[ui_gray_2]Increase/Reduce Selected Value\n
+		%c[d_purple]• %c[pda_white]T/G: %c[ui_gray_2]Increase/Reduce All Selected Values\n
+		%c[d_purple]• %c[pda_white]Q/A: %c[ui_gray_2]Select Next/Previous Hour\n
+		%c[d_purple]• %c[pda_white]W/S: %c[ui_gray_2]Select Next/Previous Minute\n
+		%c[d_purple]• %c[pda_white]E/D: %c[ui_gray_2]Select Next/Previous Saved Moment\n
+		%c[d_purple]• %c[pda_white]Z: %c[ui_gray_2]Start Viewer Mode\n
+		%c[d_purple]• %c[pda_white]C: %c[ui_gray_2]Copy Select Parameter Value\n
+		%c[d_purple]• %c[pda_white]C + CTRL: %c[ui_gray_2]Copy Current Settings\n
+		%c[d_purple]• %c[pda_white]V: %c[ui_gray_2]Paste/Apply Copied Parameter Value\n
+		%c[d_purple]• %c[pda_white]V + CTRL: %c[ui_gray_2]Paste/Apply Current Settings\n
+		%c[d_purple]• %c[pda_white]DELETE: %c[ui_gray_2]Reset Current Modified Moment\n
+		%c[d_purple]• %c[pda_white]DELETE + CTRL: %c[ui_gray_2]Reset All Modified Moments\n
+		%c[d_purple]• %c[pda_white]H: %c[ui_gray_2]Toggle Help Window\n
+		%c[d_purple]• %c[pda_white]ESC or HOME: %c[ui_gray_2]Turn Off Editor\n
+		</text>
+	</string>
+	<string id="st_ui_dbg_weather_title">
+		<text>Weather Editor 2.0</text>
+	</string>
+	<string id="st_ui_dbg_weather_file">
+		<text>Select Weather File</text>
+	</string>
+	<string id="st_ui_dbg_weather_time">
+		<text>Select Time</text>
+	</string>
+	<string id="st_ui_dbg_weather_copy">
+		<text>Copy Settings</text>
+	</string>
+	<string id="st_ui_dbg_weather_paste">
+		<text>Paste Settings</text>
+	</string>
+	<string id="st_ui_dbg_weather_viewer">
+		<text>Viewer Mode</text>
+	</string>
+	<string id="st_ui_dbg_weather_save">
+		<text>Save to new file if the name was indicated in the box below, otherwise save to current file.\n
+		Custom file names must start with "w_".
+		</text>
+	</string>
+	<string id="st_ui_dbg_weather_resume">
+		<text>Resume Weather &amp; Exit</text>
+	</string>
+	<string id="st_ui_dbg_weather_clear">
+		<text>Clear Cached Values</text>
+	</string>
+	<string id="st_ui_dbg_weather_help">
+		<text>About</text>
+	</string>
+	<string id="st_ui_dbg_weather_exit">
+		<text>Exit (weather will still pause in engine)</text>
+	</string>
+	<string id="st_ui_dbg_weather_save_msg_error">
+		<text>New file (%s) is not valid.\n
+		File name must start with "w_".\n
+		Tip: Empty names will save to the current file.
+		</text>
+	</string>
+	<string id="st_ui_dbg_weather_save_msg_old">
+		<text>Saving to Existing File (%s), Continue?</text>
+	</string>
+	<string id="st_ui_dbg_weather_save_msg_new">
+		<text>Saving to New File (%s), Continue?</text>
+	</string>
+	<string id="st_ui_dbg_weather_playing">
+		<text>Autoplay</text>
+	</string>
+	
+	<string id="st_ui_dbg_lighting_title">
+		<text>Lighting Editor</text>
+	</string>
+	
+	<string id="st_ui_dbg_hud_title">
+		<text>Weapon HUD Editor</text>
+	</string>
+	<string id="st_ui_dbg_hud_alignment">
+		<text>Toggle Crosshair</text>
+	</string>
+	<string id="st_ui_dbg_hud_ratio">
+		<text>Apply to 4:3 &amp; 16:9 Parameters</text>
+	</string>
+	<string id="st_ui_dbg_hud_copy">
+		<text>Copy Settings</text>
+	</string>
+	<string id="st_ui_dbg_hud_paste">
+		<text>Paste Settings</text>
+	</string>
+	<string id="st_ui_dbg_hud_current_file">
+		<text>Save to File</text>
+	</string>
+	<string id="st_ui_dbg_hud_resume">
+		<text>Resume</text>
+	</string>
+	<string id="st_ui_dbg_hud_about">
+		<text>%c[pda_white]Weapon HUD Editor\n \n
+		%c[pda_green]About:\n
+		The Weapon HUD editor allows alteration of the weapon HUD position and orientation in real-time.\n
+		The GUI is interactive and easy to use, with the ability to save adjusted pos to a temp file "temp_hud.ltx".\n
+		Edited values are temporarily cached for weapons that were worked on.\n
+		These may be returned to in case the editor was turned off (Avoid exiting or reloading when with unsaved values).\n \n
+		%c[pda_red]Attention:\n
+		Weapons configs must be unpacked before working with the editor and must be located in (%c[pda_white]gamedata/configs/items/weapons%c[ui_gray_2]).\n
+		Changes saved to HUD parameters will not take effect until the game is restarted.\n
+		For parameters that affect aiming positioning, first enable 'aim toggle' in options and aim with the weapon, then use the editor to see your changes.\n
+		(%c[pda_white]gamedata/configs/cache_dbg.ltx%c[ui_gray_2]) will keep track of the original parameters upon changing, so they may be reset with the 'Reset' button.\n
+		Do not forget to make a backup of the configs for reference.\n \n
+		%c[pda_blue]Keybinds:\n
+		%c[d_purple]• %c[pda_white]ARROW KEYS: %c[ui_gray_2]Parameter Navigation\n
+		%c[d_purple]• %c[pda_white]NUMPAD 8/2: %c[ui_gray_2]Increase/Reduce Selected Value\n
+		%c[d_purple]• %c[pda_white]NUMPAD 9/3: %c[ui_gray_2]Increase/Reduce All Selected Values\n
+		%c[d_purple]• %c[pda_white]LSHIFT (Hold): %c[ui_gray_2]x10 Value Step / Jump 2 Parameters\n
+		%c[d_purple]• %c[pda_white]LALT (Hold): %c[ui_gray_2]x50 Value Step / Jump 3 Parameters\n
+		%c[d_purple]• %c[pda_white]NUMPAD 5: %c[ui_gray_2]Copy Current Stats\n
+		%c[d_purple]• %c[pda_white]NUMPAD 6: %c[ui_gray_2]Paste Stored Stats\n
+		%c[d_purple]• %c[pda_white]G: %c[ui_gray_2]Toggle Crosshair\n
+		%c[d_purple]• %c[pda_white]H: %c[ui_gray_2]Show Help Window\n
+		%c[d_purple]• %c[pda_white]ESC: %c[ui_gray_2]Turn Off Editor\n
+		</text>
+	</string>
+	
+	<string id="st_ui_dbg_launcher_console">
+		<text>Console</text>
+	</string>
+	<string id="st_ui_dbg_launcher_target">
+		<text>Execute on Target</text>
+	</string>
+	<string id="st_ui_dbg_launcher_action">
+		<text>Execute Action</text>
+	</string>
+	<string id="st_ui_dbg_launcher_toggle">
+		<text>Toggle Command</text>
+	</string>
+	<string id="st_ui_dbg_launcher_editor">
+		<text>Editors List</text>
+	</string>
+	
+	<string id="st_ui_dbg_spawn_type">
+		<text>Item Type</text>
+	</string>
+	<string id="st_ui_dbg_spawn_list">
+		<text>By List</text>
+	</string>
+	<string id="st_ui_dbg_spawn_icon">
+		<text>By Icon</text>
+	</string>
+	<string id="st_ui_dbg_spawn_btn">
+		<text>Spawn</text>
+	</string>
+	<string id="st_ui_dbg_spawn_name">
+		<text>Spawn (By Section)</text>
+	</string>
+	<string id="st_ui_dbg_spawn_smart">
+		<text>Spawn (At Smart Terrain)</text>
+	</string>
+	<string id="st_ui_dbg_spawn_smart_lvl">
+		<text>Select Level</text>
+	</string>
+	<string id="st_ui_dbg_spawn_smart_list">
+		<text>Select Smart</text>
+	</string>
+	<string id="st_ui_dbg_spawn_point">
+		<text>Spawn (At Cursor)</text>
+	</string>
+	<string id="st_ui_dbg_spawn_nearby">
+		<text>Spawn (At Player)</text>
+	</string>
+	<string id="st_ui_dbg_spawn_inv">
+		<text>Spawn (In Inventory)</text>
+	</string>
+	<string id="st_ui_dbg_spawn_log">
+		<text>Log</text>
+	</string>
+
+	<string id="st_ui_dbg_logic">
+		<text>NPC Logic</text>
+	</string>
+	<string id="st_ui_dbg_logic_section">
+		<text>Active Section</text>
+	</string>
+	<string id="st_ui_dbg_logic_logic">
+		<text>Active Logic</text>
+	</string>
+	<string id="st_ui_dbg_logic_file">
+		<text>INI Filename</text>
+	</string>
+	<string id="st_ui_dbg_logic_set">
+		<text>Set Logic</text>
+	</string>
+	<string id="st_ui_dbg_logic_revert">
+		<text>Revert Logic</text>
+	</string>
+
+	<string id="st_ui_dbg_exec">
+		<text>Function Executer</text>
+	</string>
+	<string id="st_ui_dbg_exec_btn">
+		<text>Execute</text>
+	</string>
+	
+	<string id="st_ui_dbg_item_stats">
+		<text>Stats</text>
+	</string>
+	<string id="st_ui_dbg_item_list">
+		<text>List</text>
+	</string>
+	<string id="st_ui_dbg_item_compare">
+		<text>Comparison</text>
+	</string>
+	<string id="st_ui_dbg_item_btn_copy">
+		<text>Copy</text>
+	</string>
+	<string id="st_ui_dbg_item_btn_paste">
+		<text>Paste</text>
+	</string>
+	<string id="st_ui_dbg_item_btn_apply">
+		<text>Apply</text>
+	</string>
+	<string id="st_ui_dbg_item_btn_Reset">
+		<text>Reset</text>
+	</string>
+	<string id="st_ui_dbg_item_about">
+		<text>%c[pda_white]Item Editor\n \n
+		%c[pda_green]About:\n
+		The Item Editor allows the editing of item configs and the ability to directly save/test changes in-game.\n
+		The GUI is interactive and easy to use, supporting weapons, outfits and artefact editing.\n
+		You may select a relative item in the list to compare its stats to the active item.\n
+		Modified values are temporarily cached for the items that were worked on.\n
+		These may be returned to in case the editor was turned off (Avoid exiting or reloading when with unsaved values).\n \n
+		%c[pda_red]Attention:\n
+		Item configs must be unpacked before working with the editor and must be located in (%c[pda_white]gamedata/configs/items%c[ui_gray_2]).\n
+		(%c[pda_white]gamedata/configs/cache_dbg.ltx%c[ui_gray_2]) will keep track of the original parameters upon changing, so they may be reset with the 'Reset' button.\n
+		Don't forget to make a backup of the configs for reference.\n \n
+		n%c[pda_blue]Keybinds:\n
+		%c[d_purple]• %c[pda_white]ARROW KEYS: %c[ui_gray_2]Parameter Navigation\n
+		%c[d_purple]• %c[pda_white]NUMPAD 8/2: %c[ui_gray_2]Increase/Reduce Selected Value\n
+		%c[d_purple]• %c[pda_white]NUMPAD 9/3: %c[ui_gray_2]Increase/Reduce All Selected Values\n
+		%c[d_purple]• %c[pda_white]LSHIFT (hold): %c[ui_gray_2]x10 Value Step / Jump 2 Parameters\n
+		%c[d_purple]• %c[pda_white]LALT (hold): %c[ui_gray_2]x50 Value Step / Jump 3 Parameters\n
+		%c[d_purple]• %c[pda_white]NUMPAD 5: %c[ui_gray_2]Copy Current Stats\n
+		%c[d_purple]• %c[pda_white]NUMPAD 6: %c[ui_gray_2]Paste Stored Stats\n
+		%c[d_purple]• %c[pda_white]H: %c[ui_gray_2]Show Help Window\n
+		%c[d_purple]• %c[pda_white]ESC: %c[ui_gray_2]Turn Off Editor\n
+		</text>
+	</string>
+
+	<string id="st_desc_hit_power">
+		<text>%c[pda_green]Description:\N
+		%c[ui_gray_2]The amount of damage incurred by the bullet.\n \n
+		%c[pda_red]Range:\n
+		%c[ui_gray_2]$range\n
+		%c[d_cyan](!)%c[ui_gray_2] This is a statistic parameter.\n \n
+		%c[pda_blue]Notes:\n
+		%c[ui_gray_2]Each value for this parameter is used for a different difficulty:\n
+		Master -> Veteran -> Stalker -> Novice\n
+		Vanilla difficulty is not used in Anomaly. Use the same value for all.\n
+		</text>
+	</string>
+	<string id="st_desc_hit_impulse">
+		<text>%c[pda_green]Description
+		%c[ui_gray_2]The physical force of a round. Higher values cause more dramatic ragdoll deaths.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_fire_distance">
+		<text>%c[pda_green]Description
+		%c[ui_gray_2]The distance in meters before the bullet 'dies' - anything beyond this range will not be hit.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_bullet_speed">
+		<text>%c[pda_green]Description
+		%c[ui_gray_2]The velocity, in meters per second.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_rpm">
+		<text>%c[pda_green]Description
+		%c[ui_gray_2]The rate of fire, in rounds per minute.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_rpm_empty_click">
+		<text>%c[pda_green]Description
+		%c[ui_gray_2]The rate at which the 'empty' sound file will play, if a weapon is fired while empty.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<!--string id="st_desc_time_to_aim">
+		<text>%c[pda_green]Description\n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string-->
+	<string id="st_desc_zoom_dof">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]Depth of field modifier when using iron-sights.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_reload_dof">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]Depth of field during reload.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_control_inertion_factor">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]The amount of 'brakes' applied to the gun - how difficult it is to turn quickly and reliably. Notable on the PKm and SVD. Affects the handling statistic.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		%c[d_cyan](!)%c[ui_gray_2] This is a statistic parameter.\n
+		</text>
+	</string>
+	<string id="st_desc_crosshair_inertion">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]The amount of inertia from maneuvering the camera - how likely your aim is to drift off target if you jerk the mouse. Affects the handling statistic.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_fire_dispersion_base">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]The basic cone of fire in degrees - how accurate the gun's first burst will be. Affects basic accuracy and the displayed accuracy statistic.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		%c[d_cyan](!)%c[ui_gray_2] This is a statistic parameter.\n
+		</text>
+	</string>
+	<string id="st_desc_misfire_probability">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]The probability of a misfire occurring at ANY time (This parameter is not used).\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_misfire_start_condition">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]Weapon condition at which the misfire chance starts to rise - misfires won't happen at a higher condition.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n \n
+		%c[pda_blue]Jamming Chance Calculation:\n
+		%c[pda_white]Misfire Chance Per Shot = start_prop + ( (start_con - condition) x (end_prop - start_prop) / factor ).\n \n
+		%c[d_purple]• %c[pda_white]Condition:%c[ui_gray_2] current weapon condition.\n
+		%c[d_purple]• %c[pda_white]start_prop:%c[ui_gray_2] "misfire_start_prob" value.\n
+		%c[d_purple]• %c[pda_white]end_prop:%c[ui_gray_2] "misfire_end_prob" value.\n
+		%c[d_purple]• %c[pda_white]start_con:%c[ui_gray_2] "misfire_start_condition" value.\n
+		%c[d_purple]• %c[pda_white]end_con:%c[ui_gray_2] "misfire_end_condition" value.\n
+		%c[d_purple]• %c[pda_white]factor:%c[ui_gray_2] (start_con - end_con) when those values are different, or (start_con) only if they are identical.\n
+		</text>
+	</string>
+	<string id="st_desc_misfire_end_condition">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]Weapon's condition where misfiring chance stops rising. Misfire chance will cap at "misfire_end_prob" on lower condition.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		%c[pda_blue]Jamming Chance Calculation:\n
+		%c[pda_white]Misfire chance on shot = start_prop + ( (start_con - condition) x (end_prop - start_prop) / factor )\n
+		%c[d_purple]• %c[pda_white]condition:%c[ui_gray_2] current weapon condition\n
+		%c[d_purple]• %c[pda_white]start_prop:%c[ui_gray_2] "misfire_start_prob" value\n
+		%c[d_purple]• %c[pda_white]end_prop:%c[ui_gray_2] "misfire_end_prob" value\n
+		%c[d_purple]• %c[pda_white]start_con:%c[ui_gray_2] "misfire_start_condition" value\n
+		%c[d_purple]• %c[pda_white]end_con:%c[ui_gray_2] "misfire_end_condition" value\n
+		%c[d_purple]• %c[pda_white]factor:%c[ui_gray_2] (start_con - end_con) when those values are different, or (start_con) only if they are identical.\n
+		</text>
+	</string>
+	<string id="st_desc_misfire_start_prob">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]The starting chance of misfiring.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		%c[pda_blue]Jamming Chance Calculation:\n
+		%c[pda_white]Misfire Chance Per Shot = start_prop + ( (start_con - condition) x (end_prop - start_prop) / factor )\n
+		%c[d_purple]• %c[pda_white]condition:%c[ui_gray_2] current weapon condition\n
+		%c[d_purple]• %c[pda_white]start_prop:%c[ui_gray_2] "misfire_start_prob" value\n
+		%c[d_purple]• %c[pda_white]end_prop:%c[ui_gray_2] "misfire_end_prob" value\n
+		%c[d_purple]• %c[pda_white]start_con:%c[ui_gray_2] "misfire_start_condition" value\n
+		%c[d_purple]• %c[pda_white]end_con:%c[ui_gray_2] "misfire_end_condition" value\n
+		%c[d_purple]• %c[pda_white]factor:%c[ui_gray_2] (start_con - end_con) when those values are different, or (start_con) only if they are identical.\n
+		</text>
+	</string>
+	<string id="st_desc_misfire_end_prob">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]The ending chance of misfiring.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		%c[pda_blue]Jamming Chance Calculation:\n
+		%c[pda_white]Misfire Chance Per Shot = start_prop + ( (start_con - condition) x (end_prop - start_prop) / factor )\n
+		%c[d_purple]• %c[pda_white]condition:%c[ui_gray_2] current weapon condition\n
+		%c[d_purple]• %c[pda_white]start_prop:%c[ui_gray_2] "misfire_start_prob" value\n
+		%c[d_purple]• %c[pda_white]end_prop:%c[ui_gray_2] "misfire_end_prob" value\n
+		%c[d_purple]• %c[pda_white]start_con:%c[ui_gray_2] "misfire_start_condition" value\n
+		%c[d_purple]• %c[pda_white]end_con:%c[ui_gray_2] "misfire_end_condition" value\n
+		%c[d_purple]• %c[pda_white]factor:%c[ui_gray_2] (start_con - end_con) when those values are different, or (start_con) only if they are identical.\n
+		</text>
+	</string>
+	<string id="st_desc_condition_shot_dec">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]How much condition is lost per shot.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		%c[pda_blue]Calculation:\n
+		%c[pda_white]Condition Loss Per Shot = (condition_shot_dec) x (weapon_degredation) x (impair) x (condition_shot_dec_k)\n
+		\n \n%c[d_purple]• %c[pda_white]"condition_shot_dec"%c[ui_gray_2] is defined per weapon section. Set "condition_queue_shot_dec" to the same value\n
+		\n%c[d_purple]• %c[pda_white]"weapon_degredation"%c[ui_gray_2] is a console command, allowing in-game control for degradation in general (defaulted to 1)\n
+		\n%c[d_purple]• %c[pda_white]"impair"%c[ui_gray_2] is a parameter defined in the ammo section the weapon is currently using\n
+		\n%c[d_purple]• %c[pda_white]"condition_shot_dec_k"%c[ui_gray_2] is a parameter defined in the suppressor section attached to the weapon (defaulted to 1 if it's missing)\n
+		</text>
+	</string>
+	<string id="st_desc_condition_queue_shot_dec">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]How much condition is lost per shot during full-auto fire.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		%c[pda_blue]Calculation:\n
+		%c[pda_white]Condition Loss Per Shot = (condition_shot_dec) x (weapon_degredation) x (impair) x (condition_shot_dec_k)\n \n
+		%c[d_purple]• %c[pda_white]"condition_shot_dec"%c[ui_gray_2] is defined per weapon section. Set "condition_queue_shot_dec" to the same value\n
+		%c[d_purple]• %c[pda_white]"weapon_degredation"%c[ui_gray_2] is a console command, allowing in-game control for degradation in general (defaulted to 1)\n
+		%c[d_purple]• %c[pda_white]"impair"%c[ui_gray_2] is a parameter defined in the ammo section the weapon is currently using\n
+		%c[d_purple]• %c[pda_white]"condition_shot_dec_k"%c[ui_gray_2] is a parameter defined in the suppressor section attached to the weapon (defaulted to 1 if it's missing)\n
+		</text>
+	</string>
+	<string id="st_desc_cam_return">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]Whether or not the camera returns to your target afterwards.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_cam_relax_speed">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]The speed at which the crosshair return to "neutral"\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n (degree)
+		</text>
+	</string>
+	<string id="st_desc_cam_dispersion">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]Dispersion upon shooting (no aim).\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n (degree)
+		%c[pda_blue]Notes:\n
+		%c[ui_gray_2]This value is not capped in engine, negative values will caused negative recoil.\n 
+		</text>
+	</string>
+	<string id="st_desc_cam_dispersion_inc">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]How much is added to dispersion with each shot.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n (degree)
+		%c[pda_blue]Notes:\n
+		%c[ui_gray_2]This value is not capped in engine, negative values will cause negative recoil.\n
+		</text>
+	</string>
+	<string id="st_desc_cam_dispersion_frac">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]Another factor into dispersion.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_cam_max_angle">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]The maximum angle recoil can carry the crosshair from origin - in this case, 50 degrees up.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_cam_max_angle_horz">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]Maximum horizontal offset.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_cam_step_angle_horz">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]Horizontal recoil caused by firing. 0 will cause vertical recoil, negative will recoil to the left.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_zoom_cam_relax_speed">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]The speed at which iron sights/scopes return to neutral.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n (degree)
+		%c[pda_blue]Notes:\n
+		%c[ui_gray_2]If this parameter is not defined in the weapon section, the engine will use "cam_relax_speed" value instead.\n
+		</text>
+	</string>
+	<string id="st_desc_zoom_cam_dispersion">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]Dispersion (only affects iron sights/scopes).\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n (degree)
+		%c[pda_blue]Notes:\n
+		%c[ui_gray_2]If this parameter is not defined in the weapon section, the engine will use "cam_dispersion" value instead.\n
+		This value is not capped in engine - negative values will cause negative recoil.\n
+		</text>
+	</string>
+	<string id="st_desc_zoom_cam_dispersion_inc">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]How much is added to dispersion with each shot (only affects iron sights/scopes).\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range (degree)\n
+		%c[pda_blue]Notes:\n
+		%c[ui_gray_2]If this parameter is not defined in the weapon section, the engine will use "cam_dispersion_inc" value instead.\n
+		This value is not capped in engine - negative values will cause negative recoil.\n
+		</text>
+	</string>
+	<string id="st_desc_zoom_cam_dispersion_frac">
+		<text>
+		%c[pda_green]Description:\n
+		%c[ui_gray_2]Another factor into dispersion (only affects iron sights/scopes).\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		%c[pda_blue]Notes:\n
+		%c[ui_gray_2]If this parameter is not defined in the weapon section, the engine will use "cam_dispersion_frac" value instead.\n
+		</text>
+	</string>
+	<string id="st_desc_zoom_cam_max_angle">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]The maximum angle that recoil can carry the crosshair from its origin - in this case, 50 degrees up (only affects iron sights/scopes).\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		%c[pda_blue]Notes:\n
+		%c[ui_gray_2]If this parameter is not defined in the weapon section, the engine will use "cam_max_angle" value instead.\n
+		</text>
+	</string>
+	<string id="st_desc_zoom_cam_max_angle_horz">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]Maximum horizontal offset (only affects iron sights/scopes).\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		%c[pda_blue]Notes:\n
+		%c[ui_gray_2]If this parameter is not defined in the weapon section, the engine will use "cam_max_angle_horz" value instead.\n
+		</text>
+	</string>
+	<string id="st_desc_zoom_cam_step_angle_horz">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]Horizontal recoil caused by firing. 0 will cause vertical recoil, negative will recoil to the left (only affects iron sights/scopes).\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		%c[pda_blue]Notes:\n
+		%c[ui_gray_2]If this parameter is not defined in the weapon section, the engine will use "cam_step_angle_horz" value instead.\n
+		</text>
+	</string>
+	<string id="st_desc_PDM_disp_base">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]Base "PDM". This effects accuracy similar to how fire_dispersion_base does. Lower values makes it more accurate. Also effects the handling stat of the weapon, alongside control_inertion_factor.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		%c[d_cyan](!)%c[ui_gray_2] This is a statistic parameter.\n
+		</text>
+	</string>
+	<string id="st_desc_PDM_disp_vel_factor">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]Multiplier that increases bullet spread based on the player's velocity.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_PDM_disp_accel_factor">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]Multiplier that increases bullet spread as the player accelerates.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_PDM_disp_crouch">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]Multiplier that effects spread while the player is crouched.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_PDM_disp_crouch_no_acc">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]Multiplier that effects spread while the player is crouched, and not moving (basically at the player's most accurate).\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_fire_dispersion_condition_factor">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]How much condition effects dispersion - higher numbers result in more dramatic degradation.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_cam_relax_speed_ai">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]How quickly the AI's aim restores after a burst fire.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_zoom_cam_relax_speed_ai">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]The speed at which an AI restores aim after firing using iron sights/scopes.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_holder_range_modifier">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]An AI's effective seeing range when carrying the weapon.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_holder_fov_modifier">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]An AI's field of view when carrying the weapon. 1.0 gives ~180 field of view.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_min_radius">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]Minimum radius in which you may be seen, in meters. Can cause interesting hijinks.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_max_radius">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]Maximum radius at which AI can distinguish friend or foe.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_zoom_enabled">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]Whether or not to allow iron sights.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_zoom_rotate_time">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]How long it takes to aim down the sights.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_scope_zoom_factor">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]How much the FOV "zooms in" while aiming down the sights. 1 is default.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_ammo_elapsed">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]The size of the magazine.\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_ammo_mag_size">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]This number must equal the 'elapsed' variable - otherwise the value may not be either!\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+	<string id="st_desc_cost">
+		<text>%c[pda_green]Description:\n
+		%c[ui_gray_2]Weapon Base Cost (bear in mind that this is affected by a lot of economic aspects)\n \n
+		%c[pda_red]Range\n
+		%c[ui_gray_2]$range\n
+		</text>
+	</string>
+
+</string_table>

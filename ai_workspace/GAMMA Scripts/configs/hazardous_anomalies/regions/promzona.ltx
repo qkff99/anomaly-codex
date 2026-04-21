@@ -1,0 +1,58 @@
+;Determines the spawn percentage per each anomaly and max number of them
+[spawn_properties]
+spawn_percent = 0.35
+anomaly_max_number = 16
+anomaly_max_active = 38 ; Unused
+
+;Determines the range of anomaly radius
+[radius_properties]
+min_radius = 2
+max_radius = 3
+
+;Determines the list of anomalies that can be spawned
+[anomaly_types]
+;zone_mine_acid
+;zone_mine_electra
+;zone_mine_zharka
+zone_mine_vapour
+zone_mine_vortex
+zone_mine_springboard
+zone_mine_blast
+zone_mine_ghost
+zone_mine_point
+zone_mine_gold
+zone_mine_flash
+zone_field_radioactive_weak
+zone_field_radioactive_average
+; zone_field_radioactive_strong
+; zone_radioactive_weak
+;zone_radioactive_average
+;zone_radioactive_strong
+zone_mine_acidic_weak
+;zone_mine_acidic_average
+;zone_mine_acidic_strong
+zone_mine_electric_weak
+;zone_mine_electric_average
+;zone_mine_electric_strong
+zone_mine_thermal_weak
+;zone_mine_thermal_average
+;zone_mine_thermal_strong
+zone_mine_gravitational_weak
+zone_mine_gravitational_average
+zone_mine_gravitational_strong
+
+;Determines the smarts around which anomalies will be created
+[available_smarts]
+prom_15
+; prom_8
+; prom_6
+
+;Determines the smarts around which anomalies will be created, with reduced amount (see script for how much)
+[available_smarts_reduced]
+prom_12
+prom_11
+prom_14
+prom_13
+prom_7
+prom_1
+prom_2

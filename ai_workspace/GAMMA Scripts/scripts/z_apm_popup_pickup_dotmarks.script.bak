@@ -1,0 +1,48 @@
+-- =======================================================================
+--[[      ITEM PICKUP CONTROL - APM MONKEYPATCH
+-- =======================================================================
+    Author: Catspaw
+    Source: https://github.com/CatspawMods/Anomaly-Addon-Archive
+-- =======================================================================
+    The Anomaly Popup Messages addon does not check whether it has already
+    notified the player about a specific ID--it only tracks section names.
+    This causes duplicate messages to appear.
+
+    This script does nothing whatsoever when APM is not installed.
+
+    If the author of APM fixes this behavior in some future release of 
+    theirs, this file can be safely hidden or deleted, or the author can
+    set popup_pickup.ignore_dotmarks_fix to true.
+-- =======================================================================
+    Feel free to crib code from this or include a copy of it in your own 
+    addon, but in the interest of avoiding any possibility of conflicts:
+
+            PLEASE DO NOT MAKE CHANGES TO THIS SCRIPT ITSELF.
+
+    Seriously. Just copy the code into yours if you want to mess with it.
+-- =====================================================================]]
+local apm_actor_on_item_take = popup_pickup and popup_pickup.actor_on_item_take
+timeout = 2000
+pickups = {}
+
+if popup_pickup and not popup_pickup.ignore_dotmarks_fix then
+    local _ = (DEV_DEBUG or (ui_hud_dotmarks and ui_hud_dotmarks.debuglogs)) and printf("z_apm_popup_pickup_dotmarks is monkeypatching APM to fix duplicate pop-up messages")
+    function popup_pickup.actor_on_item_take(item)
+        
+        local now = time_global()
+        local id = item and item:id()
+        if pickups[id] then
+            -- Checking whether we've recently picked up this ID
+            if pickups[id] < now  then
+                -- Timeout expired, clear record and allow callback
+                pickups[id] = nil
+            else
+                -- Too soon, assume dupe and abort callback
+                return
+            end
+        end
+        pickups[id] = time_global() + timeout
+        -- Note the time of pickup, set timeout, and pass through the callback
+        apm_actor_on_item_take(item)
+    end
+end

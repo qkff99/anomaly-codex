@@ -1,0 +1,1335 @@
+siski = siski or {}
+
+local function tg()
+    return (time_global and time_global()) or 0
+end
+
+local function cfg_get(key, default)
+    if not (siski.config and siski.config.get) then return default end
+    local ok, v = pcall(siski.config.get, key, default)
+    if ok then return v end
+    return default
+end
+
+local function cfg_num(key, default, min_v)
+    local v = tonumber(cfg_get(key, default)) or tonumber(default) or 0
+    if min_v ~= nil and v < min_v then
+        v = min_v
+    end
+    return v
+end
+
+local function cfg_bool(key, default)
+    local v = cfg_get(key, default)
+    if v == true or v == false then
+        return v
+    end
+    if tonumber(v) ~= nil then
+        return tonumber(v) ~= 0
+    end
+    if type(v) == "string" then
+        if v == "true" then return true end
+        if v == "false" then return false end
+    end
+    return default == true
+end
+
+local function payload_args(payload)
+    if type(payload) ~= "table" then
+        return {}
+    end
+    return type(payload.args) == "table" and payload.args or {}
+end
+
+local LOOT_CFG_SNAPSHOT_TTL_MS = 1000
+local LOOT_OVERRIDE_THROTTLE_MS = 1500
+local LOOT_PASSIVE_CLEANUP_STRIDE_MS = 1000
+local QUEST_CORPSE_CLUSTER_RADIUS_M = 20
+local QUEST_CORPSE_FLAG = "siski_quest_corpse"
+local VANILLA_DEATH_DROPPED_FLAG = "death_dropped"
+
+local inst = {
+    RUNTIME = {
+        saved_npc_loot_distance = nil,
+        loot_distance_overridden = false,
+        corpse_events = {},
+        corpse_ids = {},
+        corpse_index = {},
+        corpse_queue = {},
+        corpse_head = 1,
+        corpse_size = 0,
+        item_events = {},
+        item_ids = {},
+        item_index = {},
+        item_queue = {},
+        item_head = 1,
+        item_size = 0,
+        last_cleanup_tg = 0,
+        last_surge_seen_tg = 0,
+        surge_cache_active = false,
+        surge_cache_next_tg = 0,
+        cfg_snapshot = nil,
+        cfg_snapshot_next_tg = 0,
+        loot_override_next_tg = 0,
+        rioc_patch_applied = false,
+        quest_corpse_pending = {},
+        quest_corpse_full_sync = false,
+        quest_corpse_service_next_tg = 0,
+    }
+}
+
+local remove_event_id
+local sync_protected_corpse_lootability
+local is_protected_corpse
+local mark_nearby_corpses_protected
+
+local function apply_actor_loot_distance_override(enabled)
+    if not (ui_options and ui_options.get and ui_options.set) then return end
+    if tg() <= 0 then return end
+    if not (db and db.actor and db.actor.alive) then return end
+    local ok_alive, alive = pcall(function() return db.actor:alive() end)
+    if not (ok_alive and alive) then return end
+
+    if enabled == true then
+        if inst.RUNTIME.loot_distance_overridden == true then return end
+        local ok, cur = pcall(function() return ui_options.get("gameplay/general/npc_loot_distance") end)
+        if ok then
+            inst.RUNTIME.saved_npc_loot_distance = cur
+        end
+        pcall(function() ui_options.set("gameplay/general/npc_loot_distance", 0) end)
+        inst.RUNTIME.loot_distance_overridden = true
+        return
+    end
+
+    if inst.RUNTIME.loot_distance_overridden ~= true then return end
+    if inst.RUNTIME.saved_npc_loot_distance ~= nil then
+        pcall(function() ui_options.set("gameplay/general/npc_loot_distance", inst.RUNTIME.saved_npc_loot_distance) end)
+    end
+    inst.RUNTIME.loot_distance_overridden = false
+end
+
+local function should_run()
+    return cfg_bool("enabled", true) and cfg_bool("loot_enabled", true)
+end
+
+local function quest_corpse_protection_enabled()
+    return cfg_bool("enabled", true) and cfg_bool("loot_protect_quest_corpses_enabled", true)
+end
+
+local function get_server_object(id)
+    id = tonumber(id) or 0
+    if id <= 0 or id == 65535 then
+        return nil
+    end
+
+    local storage = db and db.storage and db.storage[id]
+    if storage and storage.object then
+        return storage.object
+    end
+
+    if level and level.object_by_id then
+        local ok_obj, obj = pcall(function()
+            return level.object_by_id(id)
+        end)
+        if ok_obj and obj then
+            return obj
+        end
+    end
+
+    if alife_object then
+        local ok_obj, obj = pcall(function()
+            return alife_object(id)
+        end)
+        if ok_obj and obj then
+            return obj
+        end
+    end
+
+    return nil
+end
+
+local function object_id(obj)
+    return tonumber(obj and obj.id and (type(obj.id) == "function" and obj:id() or obj.id)) or nil
+end
+
+local function object_name(obj)
+    if not obj then
+        return nil
+    end
+    if type(obj.name) == "function" then
+        local ok, name = pcall(function()
+            return obj:name()
+        end)
+        if ok and type(name) == "string" and name ~= "" then
+            return name
+        end
+    end
+    return nil
+end
+
+local function object_section(obj)
+    if not obj then
+        return nil
+    end
+
+    if type(obj.section_name) == "function" then
+        local ok, sect = pcall(function()
+            return obj:section_name()
+        end)
+        if ok and type(sect) == "string" and sect ~= "" then
+            return sect
+        end
+    end
+
+    if type(obj.section) == "function" then
+        local ok, sect = pcall(function()
+            return obj:section()
+        end)
+        if ok and type(sect) == "string" and sect ~= "" then
+            return sect
+        end
+    end
+
+    return nil
+end
+
+local function object_position(obj)
+    if siski.safe and siski.safe.safe_position then
+        return siski.safe.safe_position(obj)
+    end
+    if not obj then
+        return nil
+    end
+    if type(obj.position) == "function" then
+        local ok, pos = pcall(function()
+            return obj:position()
+        end)
+        if ok and pos then
+            return pos
+        end
+    end
+    return nil
+end
+
+local function is_dead_object(obj)
+    if not obj then
+        return false
+    end
+
+    if type(obj.is_entity_alive) == "function" then
+        local ok, entity_alive = pcall(function()
+            return obj:is_entity_alive()
+        end)
+        if ok and entity_alive == false then
+            return false
+        end
+    end
+
+    local is_valid_type = false
+    pcall(function()
+        if IsStalker and IsStalker(obj) then is_valid_type = true end
+        if IsMonster and IsMonster(obj) then is_valid_type = true end
+        if obj.clsid and clsid and obj:clsid() == clsid.script_actor then is_valid_type = true end
+    end)
+    if not is_valid_type then
+        return false
+    end
+
+    if type(obj.alive) ~= "function" then
+        return false
+    end
+
+    local ok, alive = pcall(function()
+        return obj:alive()
+    end)
+    return ok and alive == false
+end
+
+local function is_quest_item_object(obj)
+    if not obj then
+        return false
+    end
+
+    if type(obj.IsQuestItem) == "function" then
+        local ok, res = pcall(function()
+            return obj:IsQuestItem()
+        end)
+        if ok and res ~= nil then
+            return res == true
+        end
+    end
+
+    local section = object_section(obj)
+    if not section then
+        return false
+    end
+
+    if SYS_GetParam then
+        local ok, res = pcall(function()
+            return SYS_GetParam(1, section, "quest_item")
+        end)
+        if ok and res ~= nil then
+            return res == true
+        end
+    end
+
+    if ini_sys and ini_sys.r_bool_ex then
+        local ok, res = pcall(function()
+            return ini_sys:r_bool_ex(section, "quest_item", false)
+        end)
+        if ok then
+            return res == true
+        end
+    end
+
+    return false
+end
+
+local function apply_corpse_valuable_loot(id, can_loot)
+    id = tonumber(id) or 0
+    if id <= 0 or id == 65535 then
+        return false
+    end
+    if not (xr_corpse_detection and xr_corpse_detection.set_valuable_loot) then
+        return false
+    end
+    return pcall(function()
+        xr_corpse_detection.set_valuable_loot(id, can_loot == true)
+    end)
+end
+
+local function corpse_has_save_flag(id, key)
+    id = tonumber(id) or 0
+    if id <= 0 or id == 65535 then
+        return false
+    end
+    if type(key) ~= "string" or key == "" then
+        return false
+    end
+
+    if not (alife_storage_manager and alife_storage_manager.get_state) then
+        return false
+    end
+
+    local m_data = alife_storage_manager.get_state()
+    local se_object = m_data and m_data.se_object or nil
+    if type(se_object) ~= "table" then
+        return false
+    end
+
+    local data = se_object[id]
+    return data and data[key] == true or false
+end
+
+local function corpse_save_flagged(id)
+    return corpse_has_save_flag(id, QUEST_CORPSE_FLAG) == true
+end
+
+local function corpse_has_death_dropped_flag(id, name)
+    id = tonumber(id) or 0
+    if id <= 0 or id == 65535 then
+        return false
+    end
+
+    if corpse_has_save_flag(id, VANILLA_DEATH_DROPPED_FLAG) then
+        return true
+    end
+
+    local loaded = false
+    if se_load_var then
+        local ok, res = pcall(function()
+            return se_load_var(id, name, VANILLA_DEATH_DROPPED_FLAG)
+        end)
+        if ok then
+            loaded = (res == true or tostring(res) == "true" or tonumber(res) == 1)
+        end
+    end
+    return loaded == true
+end
+
+local function corpse_has_quest_item(corpse)
+    if not corpse then
+        return false
+    end
+
+    if type(corpse.cast_InventoryOwner) == "function" then
+        local ok_cast, inv_owner = pcall(function()
+            return corpse:cast_InventoryOwner()
+        end)
+        if not (ok_cast and inv_owner) then
+            return false
+        end
+    end
+
+    local found = false
+    local function inspect(_, item)
+        if found or not item then
+            return
+        end
+        if is_quest_item_object(item) then
+            found = true
+        end
+    end
+
+    local ok = pcall(function()
+        if corpse.iterate_inventory then
+            corpse:iterate_inventory(inspect, corpse)
+        elseif corpse.inventory_for_each then
+            corpse:inventory_for_each(function(item)
+                inspect(nil, item)
+            end)
+        end
+    end)
+
+    if not ok then
+        return false
+    end
+
+    return found == true
+end
+
+local function is_inventory_owner_object(obj)
+    if not obj then
+        return false
+    end
+    if type(obj.cast_InventoryOwner) ~= "function" then
+        return false
+    end
+    local ok, inv_owner = pcall(function()
+        return obj:cast_InventoryOwner()
+    end)
+    return ok and inv_owner ~= nil
+end
+
+local function queue_quest_corpse_candidate(id, reason, now)
+    id = tonumber(id) or 0
+    if id <= 0 or id == 65535 then
+        return false
+    end
+
+    now = tonumber(now) or tg()
+    local pending = inst.RUNTIME.quest_corpse_pending
+    if type(pending) ~= "table" then
+        pending = {}
+        inst.RUNTIME.quest_corpse_pending = pending
+    end
+
+    local entry = pending[id]
+    if not entry then
+        entry = {
+            reason = reason or "-",
+            next_tg = now,
+            expires_tg = now + cfg_num("loot_quest_corpse_retry_ttl_ms", 15000, 1000),
+            attempts = 0,
+        }
+        pending[id] = entry
+    else
+        entry.reason = reason or entry.reason or "-"
+        entry.next_tg = math.min(tonumber(entry.next_tg) or now, now)
+        entry.expires_tg = math.max(tonumber(entry.expires_tg) or 0, now + cfg_num("loot_quest_corpse_retry_ttl_ms", 15000, 1000))
+    end
+
+    return true
+end
+
+local function service_quest_corpse_candidates(now)
+    now = tonumber(now) or tg()
+    local next_tg = tonumber(inst.RUNTIME.quest_corpse_service_next_tg) or 0
+    if now < next_tg and inst.RUNTIME.quest_corpse_full_sync ~= true then
+        return
+    end
+    inst.RUNTIME.quest_corpse_service_next_tg = now + cfg_num("loot_quest_corpse_service_ms", 250, 0)
+
+    if inst.RUNTIME.quest_corpse_full_sync == true then
+        inst.RUNTIME.quest_corpse_full_sync = false
+        sync_protected_corpse_lootability()
+    end
+
+    local pending = inst.RUNTIME.quest_corpse_pending
+    if type(pending) ~= "table" then
+        return
+    end
+
+    local max_runs = 8
+    local ran = 0
+    local stale = {}
+
+    for id, entry in pairs(pending) do
+        if ran >= max_runs then
+            break
+        end
+
+        local pid = tonumber(id) or 0
+        local next_tg = tonumber(entry and entry.next_tg) or 0
+        local expires_tg = tonumber(entry and entry.expires_tg) or 0
+
+        if pid <= 0 then
+            stale[#stale + 1] = id
+        elseif expires_tg > 0 and now > expires_tg then
+            stale[#stale + 1] = id
+        elseif now >= next_tg then
+            local corpse = get_server_object(pid)
+            local corpse_name = corpse and object_name(corpse) or nil
+            local before = corpse_save_flagged(pid) == true or corpse_has_death_dropped_flag(pid, corpse_name) == true
+            local changed = sync_protected_corpse_lootability(pid) == true
+            local protected = false
+            if corpse then
+                protected = is_protected_corpse(corpse) == true
+            else
+                protected = corpse_save_flagged(pid) == true or corpse_has_death_dropped_flag(pid) == true
+            end
+
+            entry.attempts = (tonumber(entry.attempts) or 0) + 1
+            if changed == true or protected == true or before == true then
+                stale[#stale + 1] = id
+            else
+                entry.next_tg = now + 1000
+            end
+            ran = ran + 1
+        end
+    end
+
+    for _, id in ipairs(stale) do
+        pending[id] = nil
+    end
+end
+
+local function mark_protected_corpse(corpse, reason, skip_cluster)
+    if not quest_corpse_protection_enabled() then
+        return false
+    end
+    if not corpse then
+        return false
+    end
+
+    local id = object_id(corpse)
+    local name = object_name(corpse)
+    if not id or id <= 0 or id == 65535 then
+        return false
+    end
+
+    se_save_var(id, name, QUEST_CORPSE_FLAG, true)
+    apply_corpse_valuable_loot(id, false)
+
+    if inst and inst.has_corpse_event_id and inst.has_corpse_event_id(id) then
+        remove_event_id("corpse", id)
+    end
+
+    if skip_cluster ~= true then
+        mark_nearby_corpses_protected(corpse, tostring(reason or "quest_corpse") .. "_cluster")
+    end
+
+    return true
+end
+
+local function mark_protected_corpse_id(id, reason)
+    if not quest_corpse_protection_enabled() then
+        return false
+    end
+
+    id = tonumber(id) or 0
+    if id <= 0 or id == 65535 then
+        return false
+    end
+
+    local corpse = get_server_object(id)
+    if corpse then
+        return mark_protected_corpse(corpse, reason or "id")
+    end
+
+    se_save_var(id, nil, QUEST_CORPSE_FLAG, true)
+    apply_corpse_valuable_loot(id, false)
+
+    if inst and inst.has_corpse_event_id and inst.has_corpse_event_id(id) then
+        remove_event_id("corpse", id)
+    end
+
+    return true
+end
+
+mark_nearby_corpses_protected = function(anchor_corpse, reason)
+    if not quest_corpse_protection_enabled() then
+        return 0
+    end
+    if not (level and level.iterate_nearest) then
+        return 0
+    end
+    if not anchor_corpse then
+        return 0
+    end
+
+    local anchor_id = object_id(anchor_corpse) or 0
+    local anchor_pos = object_position(anchor_corpse)
+    if anchor_id <= 0 or not anchor_pos then
+        return 0
+    end
+
+    local marked = 0
+    level.iterate_nearest(anchor_pos, QUEST_CORPSE_CLUSTER_RADIUS_M, function(obj)
+        if not obj then
+            return false
+        end
+
+        local obj_id = object_id(obj) or 0
+        if obj_id <= 0 or obj_id == anchor_id then
+            return false
+        end
+        if not is_dead_object(obj) then
+            return false
+        end
+        if not is_inventory_owner_object(obj) then
+            return false
+        end
+
+        if mark_protected_corpse(obj, reason or "cluster", true) == true then
+            marked = marked + 1
+        end
+        return false
+    end)
+
+    return marked
+end
+
+sync_protected_corpse_lootability = function(id)
+    if not (alife_storage_manager and alife_storage_manager.get_state) then
+        return false
+    end
+
+    local enable = quest_corpse_protection_enabled()
+    local changed = false
+    if id ~= nil then
+        id = tonumber(id) or nil
+        if id then
+            local corpse = get_server_object(id)
+            local corpse_name = corpse and object_name(corpse) or nil
+            local save_flagged = corpse_save_flagged(id) == true
+            local death_dropped = corpse_has_death_dropped_flag(id, corpse_name) == true
+            local live_quest_item = corpse and corpse_has_quest_item(corpse) == true
+            if enable == true and corpse and live_quest_item then
+                mark_protected_corpse(corpse, "sync_quest_item")
+                return true
+            end
+            if save_flagged or death_dropped then
+                apply_corpse_valuable_loot(id, not enable)
+                if enable == true and corpse then
+                    mark_protected_corpse(corpse, "sync_id")
+                end
+                changed = true
+            end
+        end
+        return changed
+    end
+
+    local m_data = alife_storage_manager.get_state()
+    local se_object = m_data and m_data.se_object or nil
+    if type(se_object) ~= "table" then
+        return false
+    end
+
+    for sid, data in pairs(se_object) do
+        if data and data[QUEST_CORPSE_FLAG] == true then
+            apply_corpse_valuable_loot(sid, not enable)
+            changed = true
+        elseif data and data[VANILLA_DEATH_DROPPED_FLAG] == true then
+            apply_corpse_valuable_loot(sid, not enable)
+            if enable == true then
+                local obj = db and db.storage and db.storage[sid] and db.storage[sid].object or nil
+                if obj then
+                    mark_protected_corpse(obj, "sync_death_dropped")
+                end
+            end
+            changed = true
+        elseif enable == true and db and db.storage and db.storage[sid] and db.storage[sid].object then
+            local obj = db.storage[sid].object
+            local obj_name = object_name(obj)
+            local death_dropped = corpse_has_death_dropped_flag(sid, obj_name)
+            local live_quest_item = corpse_has_quest_item(obj)
+            if death_dropped then
+                mark_protected_corpse(obj, "sync_marker_scan")
+                changed = true
+            elseif is_dead_object(obj) and live_quest_item then
+                mark_protected_corpse(obj, "sync_scan")
+                changed = true
+            end
+        end
+    end
+    return changed
+end
+
+local function can_mark_quest_corpse(corpse)
+    if not quest_corpse_protection_enabled() then
+        return false
+    end
+    if not corpse then
+        return false
+    end
+
+    local id = object_id(corpse)
+    if not id or id <= 0 or id == 65535 then
+        return false
+    end
+
+    local name = object_name(corpse)
+    local save_flagged = corpse_save_flagged(id)
+    local loaded_flagged = name and se_load_var(id, name, QUEST_CORPSE_FLAG) == true
+    local death_dropped = corpse_has_death_dropped_flag(id, name)
+    local live_quest_item = corpse_has_quest_item(corpse)
+
+    if save_flagged or loaded_flagged then
+        apply_corpse_valuable_loot(id, false)
+        return true
+    end
+
+    if death_dropped then
+        return mark_protected_corpse(corpse, "death_dropped")
+    end
+
+    if live_quest_item then
+        return mark_protected_corpse(corpse, "quest_item")
+    end
+
+    return false
+end
+
+local function mark_quest_item_parent(item)
+    if not quest_corpse_protection_enabled() then
+        return false
+    end
+    if not item then
+        return false
+    end
+
+    if not is_quest_item_object(item) then
+        return false
+    end
+
+    local item_id = object_id(item)
+    local item_name = object_name(item)
+    local item_section = object_section(item)
+    local parent_id = tonumber(item.parent_id) or 65535
+    if parent_id <= 0 or parent_id == 65535 then
+        return false
+    end
+
+    local corpse = get_server_object(parent_id)
+    if corpse then
+        if is_dead_object(corpse) or corpse_has_quest_item(corpse) or corpse_has_death_dropped_flag(parent_id, object_name(corpse)) then
+            return mark_protected_corpse(corpse, "quest_item_parent")
+        end
+    end
+
+    return sync_protected_corpse_lootability(parent_id)
+end
+
+local function patch_recover_item_on_corpse()
+    if inst.RUNTIME.rioc_patch_applied == true then
+        return true
+    end
+
+    local status = rawget(_G, "status_recover_item_on_corpse")
+    local kill = rawget(_G, "kill_if_online")
+    if type(status) ~= "table" or type(status[0]) ~= "function" or type(kill) ~= "function" then
+        return false
+    end
+
+    local orig_kill = kill
+    _G.kill_if_online = function(id)
+        if corpse_has_death_dropped_flag(id) then
+            mark_protected_corpse_id(id, "rioc_kill_if_online")
+        end
+        return orig_kill(id)
+    end
+
+    inst.RUNTIME.rioc_patch_applied = true
+    return true
+end
+
+is_protected_corpse = function(corpse)
+    if not quest_corpse_protection_enabled() then
+        return false
+    end
+    if not corpse or not is_dead_object(corpse) then
+        return false
+    end
+
+    local id = object_id(corpse)
+    if corpse_save_flagged(id) then
+        return true
+    end
+
+    if corpse_has_death_dropped_flag(id, object_name(corpse)) then
+        return true
+    end
+
+    return corpse_has_quest_item(corpse) == true
+end
+
+local function is_protected_corpse_id(id)
+    if not quest_corpse_protection_enabled() then
+        return false
+    end
+    if corpse_save_flagged(id) then
+        return true
+    end
+    return corpse_has_death_dropped_flag(id) == true
+end
+
+local function get_update_cfg(now)
+    local snapshot = inst.RUNTIME.cfg_snapshot
+    local next_tg = tonumber(inst.RUNTIME.cfg_snapshot_next_tg) or 0
+    if type(snapshot) == "table" and now < next_tg then
+        return snapshot
+    end
+
+    snapshot = {
+        loot_enabled = cfg_bool("enabled", true) and cfg_bool("loot_enabled", true),
+        loot_disable_near_actor_limit = cfg_bool("loot_disable_near_actor_limit", true),
+        loot_collect_during_surge = cfg_bool("loot_collect_during_surge", false),
+    }
+    inst.RUNTIME.cfg_snapshot = snapshot
+    inst.RUNTIME.cfg_snapshot_next_tg = now + LOOT_CFG_SNAPSHOT_TTL_MS
+    return snapshot
+end
+
+local function apply_actor_loot_distance_override_throttled(now, enabled, force)
+    local next_tg = tonumber(inst.RUNTIME.loot_override_next_tg) or 0
+    if force ~= true and now < next_tg then
+        return
+    end
+    apply_actor_loot_distance_override(enabled == true)
+    inst.RUNTIME.loot_override_next_tg = now + LOOT_OVERRIDE_THROTTLE_MS
+end
+
+local function event_ttl_s()
+    return cfg_num("loot_event_ttl_s", 180, 0)
+end
+
+local function is_surge_active_now()
+    local xc = _G.xr_conditions
+    local xf = xc and xc.surge_started or nil
+    if type(xf) == "function" then
+        local ok, res = pcall(xf)
+        if ok and res == true then return true, false end
+        if ok and res == false then return false, false end
+    end
+
+    local fallback_used = false
+
+    local f = _G.surge_started
+    if type(f) == "function" then
+        fallback_used = true
+        local ok, res = pcall(f)
+        if ok and res == true then return true, fallback_used end
+        if ok and res == false then return false, fallback_used end
+    end
+
+    local psm = _G.psi_storm_manager
+    if psm and type(psm.is_loaded) == "function" and type(psm.is_started) == "function" then
+        fallback_used = true
+        local okL, loaded = pcall(function() return psm.is_loaded() end)
+        if okL and loaded == true then
+            local okS, started = pcall(function() return psm.is_started() end)
+            if okS and started == true then return true, fallback_used end
+        end
+    end
+
+    local sm = _G.surge_manager
+    if sm and type(sm.is_loaded) == "function" and type(sm.is_started) == "function" then
+        fallback_used = true
+        local okL, loaded = pcall(function() return sm.is_loaded() end)
+        if okL and loaded == true then
+            local okS, started = pcall(function() return sm.is_started() end)
+            if okS and started == true then return true, fallback_used end
+        end
+    end
+
+    if _G.level and type(_G.level.is_surge) == "function" then
+        fallback_used = true
+        local ok, res = pcall(function() return _G.level.is_surge() end)
+        if ok and res == true then return true, fallback_used end
+    end
+
+    return false, fallback_used
+end
+
+local function is_surge_active_cached()
+    local now = tg()
+    local cache_ms = cfg_num("surge_check_cache_ms", 250, 0)
+    if now < (tonumber(inst.RUNTIME.surge_cache_next_tg) or 0) then
+        return inst.RUNTIME.surge_cache_active == true
+    end
+
+    local active, fallback_used = is_surge_active_now()
+    inst.RUNTIME.surge_cache_active = active == true
+    inst.RUNTIME.surge_cache_next_tg = now + cache_ms
+
+    if fallback_used and siski.log and siski.log.warn then
+        siski.log.warn("LOOT", "SURGE_CHECK_FALLBACK source=loot")
+    end
+    return active == true
+end
+
+local function should_collect_events_now(now)
+    if cfg_bool("loot_collect_during_surge", false) then
+        return true
+    end
+
+    if is_surge_active_cached() then
+        inst.RUNTIME.last_surge_seen_tg = now
+        return false
+    end
+
+    local grace_ms = cfg_num("loot_collect_after_surge_grace_ms", 120000, 0)
+    if grace_ms <= 0 then
+        return true
+    end
+
+    local last = tonumber(inst.RUNTIME.last_surge_seen_tg) or 0
+    if last > 0 and now < (last + grace_ms) then
+        return false
+    end
+    return true
+end
+
+local function clear_store(kind)
+    inst.RUNTIME[kind .. "_events"] = {}
+    inst.RUNTIME[kind .. "_ids"] = {}
+    inst.RUNTIME[kind .. "_index"] = {}
+    inst.RUNTIME[kind .. "_queue"] = {}
+    inst.RUNTIME[kind .. "_head"] = 1
+    inst.RUNTIME[kind .. "_size"] = 0
+end
+
+local function clear_events_all()
+    clear_store("corpse")
+    clear_store("item")
+end
+
+remove_event_id = function(kind, id)
+    local events = inst.RUNTIME[kind .. "_events"]
+    if events[id] == nil then return false end
+
+    events[id] = nil
+    local ids = inst.RUNTIME[kind .. "_ids"]
+    local index = inst.RUNTIME[kind .. "_index"]
+    local pos = tonumber(index[id])
+    if pos and ids[pos] ~= nil then
+        local last_pos = #ids
+        local moved = ids[last_pos]
+        ids[pos] = moved
+        ids[last_pos] = nil
+        index[id] = nil
+        if moved ~= nil then
+            index[moved] = pos
+        end
+    else
+        index[id] = nil
+    end
+
+    local size_key = kind .. "_size"
+    local sz = tonumber(inst.RUNTIME[size_key]) or 0
+    if sz > 0 then
+        inst.RUNTIME[size_key] = sz - 1
+    else
+        inst.RUNTIME[size_key] = 0
+    end
+    return true
+end
+
+local function add_event_id(kind, id, now)
+    local events = inst.RUNTIME[kind .. "_events"]
+    local ids = inst.RUNTIME[kind .. "_ids"]
+    local index = inst.RUNTIME[kind .. "_index"]
+    local queue = inst.RUNTIME[kind .. "_queue"]
+
+    if events[id] == nil then
+        ids[#ids + 1] = id
+        index[id] = #ids
+        local size_key = kind .. "_size"
+        inst.RUNTIME[size_key] = (tonumber(inst.RUNTIME[size_key]) or 0) + 1
+    end
+
+    events[id] = now
+    queue[#queue + 1] = { id = id, tg = now }
+end
+
+local function compact_queue(kind)
+    local queue_key = kind .. "_queue"
+    local head_key = kind .. "_head"
+    local queue = inst.RUNTIME[queue_key]
+    local head = tonumber(inst.RUNTIME[head_key]) or 1
+    if head <= 1 then return end
+    if head < 256 and head <= (#queue / 2) then return end
+
+    local compacted = {}
+    for i = head, #queue do
+        compacted[#compacted + 1] = queue[i]
+    end
+    inst.RUNTIME[queue_key] = compacted
+    inst.RUNTIME[head_key] = 1
+end
+
+local function peek_head_entry(kind)
+    local queue_key = kind .. "_queue"
+    local head_key = kind .. "_head"
+    local queue = inst.RUNTIME[queue_key]
+    local head = tonumber(inst.RUNTIME[head_key]) or 1
+
+    while head <= #queue do
+        local entry = queue[head]
+        if entry and type(entry.id) == "number" and type(entry.tg) == "number" then
+            inst.RUNTIME[head_key] = head
+            return entry, head
+        end
+        queue[head] = nil
+        head = head + 1
+    end
+
+    inst.RUNTIME[head_key] = head
+    return nil, nil
+end
+
+local function pop_head_entry(kind, remove_current)
+    local queue_key = kind .. "_queue"
+    local head_key = kind .. "_head"
+    local queue = inst.RUNTIME[queue_key]
+    local entry, head = peek_head_entry(kind)
+    if not entry then return nil end
+
+    queue[head] = nil
+    inst.RUNTIME[head_key] = head + 1
+
+    if remove_current then
+        local events = inst.RUNTIME[kind .. "_events"]
+        if events[entry.id] == entry.tg then
+            remove_event_id(kind, entry.id)
+        end
+    end
+    return entry
+end
+
+local function event_counts()
+    local corpses = tonumber(inst.RUNTIME.corpse_size) or 0
+    local items = tonumber(inst.RUNTIME.item_size) or 0
+    return corpses, items, (corpses + items)
+end
+
+local function event_caps()
+    local total = cfg_num("loot_event_cap_total", 1200, 1)
+    local corpses = cfg_num("loot_event_cap_corpses", 800, 0)
+    local items = cfg_num("loot_event_cap_items", 800, 0)
+    return total, corpses, items
+end
+
+local function trim_oldest(kind)
+    local removed = pop_head_entry(kind, true)
+    compact_queue(kind)
+    return removed ~= nil
+end
+
+local function trim_oldest_any()
+    local c_entry = peek_head_entry("corpse")
+    local i_entry = peek_head_entry("item")
+    if not c_entry and not i_entry then
+        return false
+    end
+    if c_entry and i_entry then
+        if c_entry.tg <= i_entry.tg then
+            return trim_oldest("corpse")
+        end
+        return trim_oldest("item")
+    end
+    if c_entry then return trim_oldest("corpse") end
+    return trim_oldest("item")
+end
+
+local function log_backlog(reason)
+    local cap_total, cap_corpses, cap_items = event_caps()
+    local corpses, items, total = event_counts()
+    if siski.log and siski.log.warn then
+        siski.log.warn(
+            "LOOT",
+            "BACKLOG corpses=%s items=%s total=%s cap_total=%s cap_corpse=%s cap_item=%s reason=%s",
+            tostring(corpses),
+            tostring(items),
+            tostring(total),
+            tostring(cap_total),
+            tostring(cap_corpses),
+            tostring(cap_items),
+            tostring(reason or "-")
+        )
+    end
+end
+
+local function enforce_caps()
+    local cap_total, cap_corpses, cap_items = event_caps()
+    local corpses, items, total = event_counts()
+    local trimmed = false
+
+    while corpses > cap_corpses do
+        if not trim_oldest("corpse") then break end
+        trimmed = true
+        corpses, items, total = event_counts()
+    end
+    while items > cap_items do
+        if not trim_oldest("item") then break end
+        trimmed = true
+        corpses, items, total = event_counts()
+    end
+    while total > cap_total do
+        if not trim_oldest_any() then break end
+        trimmed = true
+        corpses, items, total = event_counts()
+    end
+
+    if trimmed then
+        log_backlog("cap_trim")
+    end
+end
+
+local function cleanup_events(now)
+    local ttl_ms = event_ttl_s() * 1000
+    local budget = 256
+    if ttl_ms <= 0 then
+        clear_events_all()
+        inst.RUNTIME.last_cleanup_tg = now
+        return
+    end
+
+    local cutoff = now - ttl_ms
+    local processed = 0
+    while processed < budget do
+        local c_entry = peek_head_entry("corpse")
+        local i_entry = peek_head_entry("item")
+        local kind = nil
+        local entry = nil
+
+        if c_entry and i_entry then
+            if c_entry.tg <= i_entry.tg then
+                kind = "corpse"
+                entry = c_entry
+            else
+                kind = "item"
+                entry = i_entry
+            end
+        elseif c_entry then
+            kind = "corpse"
+            entry = c_entry
+        elseif i_entry then
+            kind = "item"
+            entry = i_entry
+        else
+            break
+        end
+
+        if not (entry and entry.tg and entry.tg < cutoff) then
+            break
+        end
+
+        pop_head_entry(kind, true)
+        processed = processed + 1
+    end
+
+    compact_queue("corpse")
+    compact_queue("item")
+    enforce_caps()
+    inst.RUNTIME.last_cleanup_tg = now
+end
+
+local function has_pending_events()
+    return (tonumber(inst.RUNTIME.corpse_size) or 0) > 0
+        or (tonumber(inst.RUNTIME.item_size) or 0) > 0
+end
+
+local function maybe_cleanup_runtime(now, force)
+    now = tonumber(now) or tg()
+    local cfg = get_update_cfg(now)
+    if cfg.loot_enabled == false then
+        apply_actor_loot_distance_override_throttled(now, false, true)
+        inst.RUNTIME.last_cleanup_tg = now
+        return false
+    end
+
+    apply_actor_loot_distance_override_throttled(now, cfg.loot_disable_near_actor_limit, force == true)
+
+    if not cfg.loot_collect_during_surge and is_surge_active_cached() then
+        inst.RUNTIME.last_surge_seen_tg = now
+    end
+
+    if force == true or (has_pending_events() and now >= ((tonumber(inst.RUNTIME.last_cleanup_tg) or 0) + LOOT_PASSIVE_CLEANUP_STRIDE_MS)) then
+        cleanup_events(now)
+    end
+    return true
+end
+
+local function unlock_corpse(corpse)
+    if not corpse then return end
+    pcall(function()
+        if corpse.deadbody_can_take then corpse:deadbody_can_take(true) end
+        if corpse.deadbody_closed then corpse:deadbody_closed(false) end
+    end)
+end
+
+function inst.on_npc_death(victim, who)
+    if not should_run() then return end
+    if not victim then return end
+    local now = tg()
+    local ok_id, id = pcall(function() return victim:id() end)
+    if not (ok_id and type(id) == "number") then return end
+    queue_quest_corpse_candidate(id, "npc_death", now)
+    if should_collect_events_now(now) then
+        add_event_id("corpse", id, now)
+        enforce_caps()
+        maybe_cleanup_runtime(now, false)
+    end
+    if cfg_bool("loot_unlock_corpses", true) then
+        unlock_corpse(victim)
+    end
+end
+
+function inst.on_server_entity_register(se_obj, type_name)
+    if not should_run() then return end
+    if not se_obj then return end
+
+    if is_quest_item_object(se_obj) then
+        queue_quest_corpse_candidate(se_obj.parent_id, "quest_item_parent", tg())
+        return
+    end
+
+    local id = object_id(se_obj)
+    local name = object_name(se_obj)
+    if id and (is_dead_object(se_obj) or corpse_save_flagged(id) or corpse_has_death_dropped_flag(id, name) or corpse_has_quest_item(se_obj)) then
+        queue_quest_corpse_candidate(id, "server_register", tg())
+    end
+end
+
+function inst.on_npc_item_drop(npc, item)
+    if not should_run() then return end
+    if not item then return end
+    local now = tg()
+    local ok_id, id = pcall(function() return item:id() end)
+    if not (ok_id and type(id) == "number") then return end
+    if should_collect_events_now(now) then
+        add_event_id("item", id, now)
+        enforce_caps()
+        maybe_cleanup_runtime(now, false)
+    end
+end
+
+function inst.on_actor_item_drop(item)
+    if not should_run() then return end
+    if not item then return end
+    local now = tg()
+    local ok_id, id = pcall(function() return item:id() end)
+    if not (ok_id and type(id) == "number") then return end
+    if should_collect_events_now(now) then
+        add_event_id("item", id, now)
+        enforce_caps()
+        maybe_cleanup_runtime(now, false)
+    end
+end
+
+function inst.on_game_start()
+    if siski.bus and siski.bus.subscribe then
+        siski.bus.subscribe("npc_on_death_callback", "siski_loot", function(payload)
+            local args = type(payload) == "table" and type(payload.args) == "table" and payload.args or {}
+            inst.on_npc_death(args[1], args[2])
+        end)
+        siski.bus.subscribe("server_entity_on_register", "siski_loot", function(payload)
+            local args = payload_args(payload)
+            inst.on_server_entity_register(args[1], args[2])
+        end)
+        siski.bus.subscribe("npc_on_item_drop", "siski_loot", function(payload)
+            local args = type(payload) == "table" and type(payload.args) == "table" and payload.args or {}
+            inst.on_npc_item_drop(args[1], args[2])
+        end)
+        siski.bus.subscribe("actor_on_item_drop", "siski_loot", function(payload)
+            local args = type(payload) == "table" and type(payload.args) == "table" and payload.args or {}
+            inst.on_actor_item_drop(args[1])
+        end)
+        siski.bus.subscribe("load_state", "siski_loot", function()
+            patch_recover_item_on_corpse()
+            inst.RUNTIME.quest_corpse_full_sync = true
+        end)
+        siski.bus.subscribe("npc_on_update", "siski_loot", function()
+            if inst.RUNTIME.rioc_patch_applied ~= true then
+                patch_recover_item_on_corpse()
+            end
+            service_quest_corpse_candidates(tg())
+            if has_pending_events() then
+                maybe_cleanup_runtime(tg(), false)
+            end
+        end)
+        siski.bus.subscribe("on_option_change", "siski_loot", function()
+            maybe_cleanup_runtime(tg(), true)
+            inst.RUNTIME.quest_corpse_full_sync = true
+        end)
+    end
+    patch_recover_item_on_corpse()
+    maybe_cleanup_runtime(tg(), true)
+    inst.RUNTIME.quest_corpse_full_sync = true
+end
+
+function inst.is_recent_item_id(id)
+    return inst.RUNTIME.item_events[id] ~= nil
+end
+
+function inst.has_corpse_event_id(id)
+    return inst.RUNTIME.corpse_events[id] ~= nil
+end
+
+function inst.has_item_event_id(id)
+    return inst.RUNTIME.item_events[id] ~= nil
+end
+
+function inst.iter_corpse_event_ids()
+    return pairs(inst.RUNTIME.corpse_events)
+end
+
+function inst.iter_item_event_ids()
+    return pairs(inst.RUNTIME.item_events)
+end
+
+function inst.get_corpse_event_ids()
+    return inst.RUNTIME.corpse_ids
+end
+
+function inst.get_item_event_ids()
+    return inst.RUNTIME.item_ids
+end
+
+function inst.get_event_stats()
+    local cap_total, cap_corpses, cap_items = event_caps()
+    local corpses, items, total = event_counts()
+    return {
+        corpses = corpses,
+        items = items,
+        total = total,
+        cap_total = cap_total,
+        cap_corpses = cap_corpses,
+        cap_items = cap_items,
+    }
+end
+
+function inst.is_protected_corpse(corpse)
+    return is_protected_corpse(corpse) == true
+end
+
+function inst.is_protected_corpse_id(id)
+    return is_protected_corpse_id(id) == true
+end
+
+function inst.sync_protected_corpse_lootability(id)
+    return sync_protected_corpse_lootability(id) == true
+end
+
+function inst.mark_protected_corpse_id(id, reason)
+    return mark_protected_corpse_id(id, reason) == true
+end
+
+function inst.should_skip_event_scan()
+    if not should_run() then return true end
+    return should_collect_events_now(tg()) ~= true
+end
+
+siski.loot = inst

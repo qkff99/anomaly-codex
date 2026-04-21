@@ -1,0 +1,42 @@
+![device_glowstick_hud_base]
+item_position                           = -0.082952, 0.03034, -0.039455
+item_orientation                        = -28.401958, 173.8723, 134.2854
+hands_position							= 0, 0, 0
+hands_orientation						= 0, 0, 0
+hands_position_16x9						= 0, 0, 0
+hands_orientation_16x9					= 0, 0, 0
+
+aim_hud_offset_pos						= 0, 0, 0
+aim_hud_offset_rot						= 0, 0, 0
+aim_hud_offset_pos_16x9					= 0, 0, 0
+aim_hud_offset_rot_16x9					= 0, 0, 0
+; aim_hud_offset_pos						= 0, -0.015, 0
+; aim_hud_offset_rot						= 0, 0, 0
+; aim_hud_offset_pos_16x9					= 0, -0.015, 0
+; aim_hud_offset_rot_16x9					= 0, 0, 0
+
+anm_throw_hide							= liz_glowstick_hands_throw_end, 1
+
+![device_glowstick_hud]
+anm_show                                = liz_glowstick_hands_draw, idle_f
+anm_show_fast                           = liz_glowstick_hands_draw, idle_f, 1.5
+
+anm_show_real							= liz_glowstick_hands_draw, idle_f
+anm_hide								= liz_glowstick_hands_holster, holster
+anm_hide_fast							= liz_glowstick_hands_holster, holster
+anm_idle								= liz_glowstick_hands_idle, idle_f, 1.5
+anm_idle_moving							= liz_glowstick_hands_walk, idle_f
+anm_idle_sprint							= liz_glowstick_hands_run, idle_f
+
+anm_zoom_show                           = liz_glowstick_hands_zoom_draw, draw
+anm_zoom_fast                           = liz_glowstick_hands_zoom_draw, draw, 1.25
+
+anm_zoom_show_real						= liz_glowstick_hands_zoom_draw, idle_f
+anm_zoom_hide							= liz_glowstick_hands_zoom_holster, holster
+anm_zoom_hide_fast						= liz_glowstick_hands_zoom_holster, holster, 1
+anm_idle_zoom							= liz_glowstick_hands_zoom_idle, idle_f
+anm_zoom								= liz_glowstick_hands_zoom_in, idle_f
+anm_throw_start							= liz_glowstick_hands_bolt_throw_begin, idle_f
+anm_throw								= liz_glowstick_hands_bolt_throw_idle, idle_f
+anm_throw_end							= liz_glowstick_hands_bolt_throw_end, idle_f
+anm_throw_stick							= liz_glowstick_hands_throw_begin, idle_f, 1

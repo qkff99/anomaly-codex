@@ -1,0 +1,27 @@
+-- If you don't use MCM, change your defaults from here.
+local defaults = {
+	["place_radius"] = 3,
+	["dot_dist_diff"] = 0.4,
+	["transition_delete_items"] = true,
+	["delete_items"] = false,
+}
+
+function get_config(key)
+	if ui_mcm then return ui_mcm.get("campfire_placeable/"..key) else return defaults[key] end
+end
+
+function on_mcm_load()
+	op = { id= "campfire_placeable",sh=true ,gr={
+			{ id= "title",type= "slide",link= "ui_options_slider_player",text="ui_mcm_campfire_placeable_title",size= {512,50},spacing= 20 },
+			{id= "divider", type = "line" },
+			{id = "place_radius", type = "track", val = 2, min=0.5,max=5,step=0.25, def = 3},
+			{id = "dot_dist_diff", type = "track", val = 2, min=0.1,max=5,step=0.05, def = 0.4},
+			{id = "transition_delete_items", type = "check", val = 1, def = true},
+			{id= "divider", type = "line" },
+			{id= "divider", type = "line" },
+			{id = "delete_items", type = "check", val = 1, def = false},
+		}
+	}
+
+	return op
+end

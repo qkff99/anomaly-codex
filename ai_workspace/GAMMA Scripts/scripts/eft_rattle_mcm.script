@@ -1,0 +1,10 @@
+function on_mcm_load()
+    op = {
+        id = "eft_rattle", sh = true, gr = {
+            {id = "banner", type = "slide", link = "EFT_Rattle_Banner.dds", text = "ui_mcm_title_eft_rattle", size= {512,50}, spacing = 20},
+            {id = "aim_rattle", type = "check", val = 1, def = true},
+            {id = "lower_raise_rattle", type = "check", val = 1, def = false},
+        }
+    }
+    return op
+end

@@ -1,0 +1,199 @@
+![wpn_udp9]
+>scopes 			         = march_f_shorty, uh1_magd, e0t2_magd, acog, specter, pn23
+
+lewd_lens_hide_enabled       = true
+lewd_lens_hide_bone          = lens
+lewd_lens_hide_delays        = 0.1,0
+lewd_lens_hide_aim_mode      = true, false, false	
+![wpn_udp9_hud]
+		;---------------------------------------------------------------------------------------------------------------------------------------------
+;-------------------------------------------------Addons - Long Scopes - LPVOs - Gauss & PN23-------------------------------------------------
+;------------------------------------------ACOG - GAUSS - LEUPOLD - MARCH F - PN23 - SPECTER DR - SUSAT-----------------------------------------
+;---------------------------------------------------------------------------------------------------------------------------------------------
+[wpn_udp9_acog]:wpn_udp9
+hud                                      = wpn_udp9_acog_hud
+
+1icon_layer                                        = acog
+1icon_layer_x                                      = 78
+1icon_layer_y                                      = -11
+
+inv_weight                               = 3.550
+zoom_rotate_time                         = 0.25
+
+scope_status                             = 1
+scope_zoom_factor                        = 42.86
+
+[wpn_udp9_acog_hud]:wpn_udp9_hud
+
+item_visual                              = dynamics\weapons\wpn_udp9\wpn_udp9_acog_hud.ogf
+
+        aim_hud_offset_pos               = -0.057914, 0.004018, -0.087707
+        aim_hud_offset_pos_16x9          = -0.057914, 0.004018, -0.087707
+        aim_hud_offset_rot               = 0.011249, -0.003043, 0
+        aim_hud_offset_rot_16x9          = 0.011249, -0.003043, 0
+		
+        aim_hud_offset_alt_pos           = -0.059307, -0.041935, -0.02
+        aim_hud_offset_alt_pos_16x9      = -0.059307, -0.041935, -0.02
+        aim_hud_offset_alt_rot           = -0.053913, 0.004156, 0
+        aim_hud_offset_alt_rot_16x9      = -0.053913, 0.004156, 0
+;-------------------------------------------------------------------------------
+[wpn_udp9_pn23]:wpn_udp9
+hud                                      = wpn_udp9_pn23_hud
+
+1icon_layer                              = pn23
+1icon_layer_x                            = 59
+1icon_layer_y                            = -17
+
+inv_weight                               = 3.950
+zoom_rotate_time                         = 0.25
+
+scope_status                             = 1
+scope_zoom_factor                        = 30
+scope_dynamic_zoom                       = on
+
+[wpn_udp9_pn23_hud]:wpn_udp9_hud
+item_visual                              = dynamics\weapons\wpn_udp9\wpn_udp9_pn23_hud.ogf
+        aim_hud_offset_pos               = -0.057489, 0.00288, -0.112106
+        aim_hud_offset_pos_16x9          = -0.057489, 0.00288, -0.112106
+        aim_hud_offset_rot               = 0.005356, -0.004267, 0
+        aim_hud_offset_rot_16x9          = 0.005356, -0.004267, 0
+;-------------------------------------------------------------------------------
+[wpn_udp9_specter]:wpn_udp9
+hud                                      = wpn_udp9_specter_hud
+
+1icon_layer                              = specter
+1icon_layer_x                            = 56
+1icon_layer_y                            = -14
+
+inv_weight                               = 3.670
+zoom_rotate_time                         = 0.25
+
+scope_status                             = 1
+scope_zoom_factor                        = 30
+scope_dynamic_zoom                       = on
+
+use_alt_aim_hud                          = true	
+
+[wpn_udp9_specter_hud]:wpn_udp9_hud
+item_visual                              = dynamics\weapons\wpn_udp9\wpn_udp9_specter_hud.ogf
+        aim_hud_offset_alt_pos           = -0.058401, -0.026224, -0.051788
+        aim_hud_offset_alt_pos_16x9      = -0.058401, -0.026224, -0.051788
+        aim_hud_offset_alt_rot           = 0.008747, 0.000531, 0
+        aim_hud_offset_alt_rot_16x9      = 0.008747, 0.000531, 0
+        aim_hud_offset_pos               = -0.05737, 0.002384, -0.089771
+        aim_hud_offset_pos_16x9          = -0.05737, 0.002384, -0.089771
+        aim_hud_offset_rot               = 0.005692, -0.00405, 0
+        aim_hud_offset_rot_16x9          = 0.005692, -0.00405, 0
+
+;--------------------------------------------------------------------------------------------------------------------------------------
+;-------------------------------------------------Addons - NEW SIGHTS ADDED BY PHANT0M-------------------------------------------------
+;----------------------------------E0T2_MAG - lco1 - UH1 - UH1_MAG - MARCH-F_SHORTY_ALT - MARCH-F_SHORTY -------------------------------
+;--------------------------------------------------------------------------------------------------------------------------------------
+
+[wpn_udp9_e0t2_magd]:wpn_udp9
+hud                                      = wpn_udp9_e0t2_magd_hud
+
+1icon_layer                              = e0t2_magd
+1icon_layer_x                            = 60
+1icon_layer_y                            = -14
+
+inv_weight                               = 3.470
+zoom_rotate_time                         = 0.25
+
+scope_status                             = 1
+scope_zoom_factor                		 = 20
+
+[wpn_udp9_e0t2_magd_hud]:wpn_udp9_hud
+item_visual                              = dynamics\weapons\wpn_udp9\wpn_udp9_e0t2_mag_hud.ogf
+        aim_hud_offset_pos               = -0.057528, 0.003875, -0.089487
+        aim_hud_offset_pos_16x9          = -0.057528, 0.003875, -0.089487
+        aim_hud_offset_rot               = 0.00697, -0.003686, -7.1e-05
+        aim_hud_offset_rot_16x9          = 0.00697, -0.003686, -7.1e-05
+;-------------------------------------------------------------------------------
+[wpn_udp9_uh1_magd]:wpn_udp9
+hud                                      = wpn_udp9_uh1_magd_hud
+
+1icon_layer			    				 = uh1_magd
+1icon_layer_x                            = 60
+1icon_layer_y                            = -14
+
+inv_weight                               = 3.500
+zoom_rotate_time                         = 0.25
+
+scope_status                             = 1
+scope_zoom_factor                		 = 20
+
+[wpn_udp9_uh1_magd_hud]:wpn_udp9_hud
+item_visual                              = dynamics\weapons\wpn_udp9\wpn_udp9_uh1_mag_hud.ogf
+        aim_hud_offset_pos               = -0.058181, -0.002306, -0.088991
+        aim_hud_offset_pos_16x9          = -0.058181, -0.002306, -0.088991
+        aim_hud_offset_rot               = 0.006562, -0.002616, 0
+        aim_hud_offset_rot_16x9          = 0.006562, -0.002616, 0
+;-------------------------------------------------------------------------------
+[wpn_udp9_march_f_shorty_alt]:wpn_udp9
+hud                                      = wpn_udp9_march_f_shorty_alt_hud
+
+1icon_layer                              = march_f_shorty
+1icon_layer_x                            = 60
+1icon_layer_y                            = -15
+
+inv_weight                               = 3.405
+zoom_rotate_time                         = 0.25
+
+scope_status                             = 1
+scope_zoom_factor                        = 15
+scope_dynamic_zoom                       = on
+scope_zoom_factor_alt                    = 0
+
+[wpn_udp9_march_f_shorty_alt_hud]:wpn_udp9_hud
+item_visual                              = dynamics\weapons\wpn_udp9\wpn_udp9_march_f_shorty_alt_hud.ogf
+        aim_hud_offset_pos               = -0.058021, 0.003377, -0.070505
+        aim_hud_offset_pos_16x9          = -0.058021, 0.003377, -0.070505
+        aim_hud_offset_rot               = 0.006493, -0.004314, 0
+        aim_hud_offset_rot_16x9          = 0.006493, -0.004314, 0
+		
+        aim_hud_offset_alt_pos           = -0.046998, -0.084595, -0.071743
+        aim_hud_offset_alt_pos_16x9      = -0.046998, -0.084595, -0.071743
+
+;-------------------------------------------------------------------------------
+[wpn_udp9_march_f_shorty]:wpn_udp9
+hud                                      = wpn_udp9_march_f_shorty_hud
+
+1icon_layer                              = march_f_shorty
+1icon_layer_x                            = 60
+1icon_layer_y                            = -15
+
+inv_weight                               = 3.305
+zoom_rotate_time                         = 0.25
+
+scope_status                             = 1
+scope_zoom_factor                        = 6
+scope_dynamic_zoom                       = on
+scope_zoom_factor_alt                    = 0
+
+[wpn_udp9_march_f_shorty_hud]:wpn_udp9_hud
+item_visual                              = dynamics\weapons\wpn_udp9\wpn_udp9_march_f_shorty_hud.ogf
+        aim_hud_offset_pos               = -0.057702, 0.004442, -0.08181
+        aim_hud_offset_pos_16x9          = -0.057702, 0.004442, -0.08181
+        aim_hud_offset_rot               = 0.005787, -0.003774, 0
+        aim_hud_offset_rot_16x9          = 0.005787, -0.003774, 0
+		
+;-------------------------------------------------------------------------------
+[wpn_udp9_t12]:wpn_udp9
+hud					= wpn_udp9_t12_hud
+
+inv_weight                               = 3.47
+
+1icon_layer                              = t12
+1icon_layer_x                            = 75
+1icon_layer_y                            = -15
+
+	s3ds_reticle_size 	= 1.9
+	
+[wpn_udp9_t12_hud]:wpn_udp9_hud
+item_visual                		= dynamics\weapons\wpn_udp9\wpn_udp9_t12_hud.ogf
+        aim_hud_offset_pos               = -0.057593, 0.006363, -0.085779
+        aim_hud_offset_pos_16x9          = -0.057593, 0.006363, -0.085779
+        aim_hud_offset_rot               = 0.006918, -0.003469, 0
+        aim_hud_offset_rot_16x9          = 0.006918, -0.003469, 0
+

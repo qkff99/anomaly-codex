@@ -1,0 +1,191 @@
+;hud_fov 0.6------------------------------------------------------------------------------------------------
+![wpn_fnp45]
+!hud_fov
+!shell_point
+!shell_dir
+!shell_particles
+        scripted_snd_ammo_check                 = weapons\fnp\fnp_new_magcheck
+        scripted_snd_ammo_check_empty           = weapons\fnp\fnp_new_magcheck
+        scripted_snd_ammo_check_jammed          = weapons\fnp\fnp_new_magcheck
+        scripted_snd_ammo_check_empty_jammed    = weapons\fnp\fnp_new_magcheck
+        scripted_snd_ammo_check_no_mag          = $no_sound
+
+        snd_reload		        = weapons\fnp\fnp_new_reload
+        snd_reload_empty	        = weapons\fnp\fnp_new_reload_empty	
+
+        snd_empty		        = weapons\fort\fort_new_empty
+        snd_draw        	        = weapons\fort\fort_new_draw
+        snd_holster        	        = weapons\fort\fort_new_holster
+        snd_bore		        = weapons\fn57\fn57_inspect
+        snd_reload_misfire              = weapons\w99\w99_unjam
+        scripted_snd_reload_misfire_empty        = weapons\w99\w99_unjam_empty
+
+        scripted_snd_sprint2walk        	        = weapons\fort\fort_new_draw
+        scripted_snd_walk2sprint        	        = weapons\fort\fort_new_holster  
+        snd_switch_mode				= weapons\oc33\oc33_new_switch_mode
+![wpn_fnp45_hud]:hud_base
+        attach_place_idx            = 0
+        zoom_hide_crosshair         = true
+
+        item_position                            = 0, 0, 0
+        item_orientation                         = 0, 0, 0
+
+        hands_position                           = 0.0, -0.0, 0.040786
+        hands_position_16x9                      = 0.0, -0.0, 0.040786
+        hands_orientation                        = -0.043488, 0.006106, -0.050965
+        hands_orientation_16x9                   = -0.043488, 0.006106, -0.050965
+
+        aim_hud_offset_pos                       = -0.049943, 0.029124, 0.0
+        aim_hud_offset_pos_16x9                  = -0.049943, 0.029124, 0.0
+        aim_hud_offset_rot                       = 0.003334, 0, -0.086627
+        aim_hud_offset_rot_16x9                  = 0.003334, 0, -0.086627
+
+        lowered_hud_offset_pos           = 0.045, -0.27, 0
+        lowered_hud_offset_pos_16x9      = 0.045, -0.27, 0
+        lowered_hud_offset_rot           = -0.91, -0.04, -0.08
+        lowered_hud_offset_rot_16x9      = -0.91, -0.04, -0.08
+
+        gl_hud_offset_pos                        = 0, 0, 0
+        gl_hud_offset_pos_16x9                   = 0, 0, 0
+        gl_hud_offset_rot                        = 0, 0, 0
+        gl_hud_offset_rot_16x9                   = 0, 0, 0
+
+        lean_hud_offset_pos                      = 0, 0, 0
+        lean_hud_offset_rot                      = 0, 0, 0
+
+        fire_bone                                = muzzle
+        fire_point                               = 0, 0,0
+        
+        anm_bore                                 = fnp_new_inspect, idle
+        anm_show                                 = fnp_new_draw, idle
+        anm_hide                                 = fnp_new_holster, idle
+
+        anm_idle                                 = fnp_new_idle, idle
+        anm_idle_aim_moving                      = fnp_new_walk, idle 
+        anm_idle_aim_moving_crouch               = fnp_new_walk, idle, 0.8 
+        anm_idle_moving                          = fnp_new_walk, idle
+        anm_idle_moving_crouch                   = fnp_new_walk, idle
+        anm_idle_sprint                          = fnp_new_sprint, idle, 1.2
+
+        anm_reload                               = fnp_new_reload_nobump, reload_nobump
+        anm_reload_empty                         = fnp_new_reload_empty_nobump, reload_empty_nobump
+        anm_reload_misfire          		     = fnp_new_unjam, unjam
+
+        ; anm_switch_mode                 	     = fnp_new_switchmode, switch_mode
+
+        anm_shots                                = fnp_new_shoot_hip
+        anm_shots_aim                            = fnp_new_shoot_aim
+        anm_shots_aim_l                          = fnp_new_shoot_aim, shoot_empty
+        anm_idle_aim                             = fnp_new_aim, idle
+
+
+        anm_bore_empty                                 = fnp_new_inspect, idle_empty
+        anm_show_empty                                 = fnp_new_draw, idle_empty
+        anm_hide_empty                                 = fnp_new_holster, idle_empty
+        anm_shot_l                                     = fnp_new_shoot_hip, shoot_empty
+
+        anm_idle_empty                                 = fnp_new_idle, idle_empty
+        anm_idle_aim_moving_empty                      = fnp_new_walk, idle_empty
+        anm_idle_aim_moving_crouch_empty               = fnp_new_walk, idle_empty, 0.8
+        anm_idle_moving_empty                          = fnp_new_walk, idle_empty
+        anm_idle_moving_crouch_empty                   = fnp_new_walk, idle_empty, 0.9
+        anm_idle_sprint_empty                          = fnp_new_sprint, idle_empty, 1.2
+
+        ; anm_switch_mode_empty			       = fnp_new_switchmode_empty, switch_mode_empty
+        anm_idle_aim_empty                             = fnp_new_aim, idle_empty
+
+
+
+        ; Jammed Animation Variants
+        anm_idle_jammed                    = fnp_new_idle, idle_jammed
+        anm_show_jammed                    = fnp_new_draw, idle_jammed
+        anm_hide_jammed                    = fnp_new_holster, idle_jammed
+        anm_idle_aim_jammed                = fnp_new_aim, idle_jammed
+        anm_idle_sprint_jammed             = fnp_new_sprint, idle_jammed, 1.2
+        anm_idle_moving_jammed             = fnp_new_walk, idle_jammed
+        anm_idle_moving_crouch_jammed      = fnp_new_walk, idle_jammed, 0.8
+        anm_bore_jammed                    = fnp_new_inspect_jammed, idle_jammed
+        ;anm_reload_misfire                 = fnp_new_unjam, unjam
+
+
+        anm_walk2sprint_jammed             = fnp_new_walk2sprint, idle_jammed
+        anm_sprint2walk_jammed             = fnp_new_sprint2walk, idle_jammed
+
+
+        ; Empty Jammed Animation Variants
+        anm_idle_empty_jammed                    = fnp_new_idle, idle_jammed
+        anm_show_empty_jammed                    = fnp_new_draw, idle_jammed
+        anm_hide_empty_jammed                    = fnp_new_holster, idle_jammed
+        anm_idle_aim_empty_jammed                = fnp_new_aim, idle_jammed
+        anm_idle_sprint_empty_jammed             = fnp_new_sprint, idle_jammed, 1.2
+        anm_idle_moving_empty_jammed             = fnp_new_walk, idle_jammed
+        anm_idle_moving_crouch_empty_jammed      = fnp_new_walk, idle_jammed, 0.8
+        anm_bore_empty_jammed                    = fnp_new_inspect_jammed, idle_jammed
+        anm_reload_misfire_empty                 = fnp_new_unjam_empty, unjam_empty
+        anm_shot_l_jammed                        = fnp_new_idle, idle_jammed
+        anm_shots_jammed                   	 = fnp_new_idle, idle_jammed
+
+        anm_walk2sprint_empty_jammed             = fnp_new_walk2sprint, idle_jammed
+        anm_sprint2walk_empty_jammed             = fnp_new_sprint2walk, idle_jammed
+
+        ; Custom Animations Handled In Scripts
+        anm_ammo_check                           = fnp_new_magcheck, magcheck
+        anm_ammo_check_empty                     = fnp_new_magcheck, magcheck_empty
+        anm_ammo_check_no_mag                    = fnp_new_magcheck_nomag, magcheck_nomag
+        ;anm_ammo_check_aim                       = fnp_new_magcheck_ads, magcheck_ads
+        ;anm_ammo_check_empty_aim                 = fnp_new_magcheck_ads, magcheck_empty_ads
+        anm_ammo_check_jammed                    = fnp_new_magcheck, magcheck_jammed
+        anm_ammo_check_empty_jammed              = fnp_new_magcheck, magcheck_jammed_empty
+        ; anm_switch_mode_jammed                  	     = fnp_new_switchmode_jammed, switch_mode_jammed
+        ; anm_switch_mode_empty_jammed                  	     = fnp_new_switchmode_jammed, switch_mode_jammed
+         ; Transition/Intermediate Animations
+        anm_walk2sprint             = fnp_new_walk2sprint
+        anm_walk2sprint_empty = fnp_new_walk2sprint, idle_empty
+
+        anm_sprint2walk             = fnp_new_sprint2walk
+        anm_sprint2walk_empty       = fnp_new_sprint2walk, idle_empty
+
+        ; anm_idle2aim             = fnp_new_idle2aim
+        ; anm_idle2aim_empty       = fnp_new_idle2aim, idle_empty
+        
+        ; Transition Definitions
+        ts_pattern_walk2sprint      = .+, anm_idle_sprint, anm_walk2sprint, 1
+
+        ts_pattern_sprint2walk      = anm_idle_sprint, ^anm_idle.*, anm_sprint2walk, 1
+        ts_pattern_sprint2walk_aim  = anm_walk2sprint, ^anm_idle_aim.*, anm_sprint2walk, 1
+        ts_strict_sprint2walk_idle  = anm_walk2sprint, anm_idle, anm_sprint2walk
+        ts_strict_sprint2walk_move  = anm_walk2sprint, anm_idle_moving, anm_sprint2walk
+
+        ;ts_pattern_idle2aim         = ^anm_idle.*, ^anm_idle_aim$, anm_idle2aim, 1
+        ts_strict_sprint2aim        = anm_idle_sprint, anm_idle_aim, anm_sprint2walk
+
+        ts_strict_sprint2inspect        = anm_idle_sprint, anm_bore, anm_sprint2walk
+        ts_strict_walk2sprint_inspect        = anm_walk2sprint, anm_bore, anm_sprint2walk
+
+
+        !anm_sprint_start
+        !anm_sprint_end
+        !anm_sprint_start_empty
+        !anm_sprint_end_empty
+        !anm_sprint_start_jammed
+        !anm_sprint_end_jammed
+        !anm_idle_aim_moving_jammed
+        !anm_idle_aim_moving_crouch_jammed
+        !anm_idle_aim_start_jammed
+        !anm_idle_aim_end_jammed
+        !anm_idle_aim_end_empty
+        !anm_idle_aim_start_empty
+        !anm_idle_aim_end
+        !anm_idle_aim_start
+        !ts_pattern_sprint_start      
+        !ts_pattern_sprint_end      
+        !ts_strict_sprint_end_move  
+        !anm_shots_aim
+        !anm_shots_aim_l 
+
+![wpn_fnp45_sk1_hud]
+
+        aim_hud_offset_pos                       = -0.049943, 0.029124, 0.0
+        aim_hud_offset_pos_16x9                  = -0.049943, 0.029124, 0.0
+        aim_hud_offset_rot                       = 0.003334, 0, -0.086627
+        aim_hud_offset_rot_16x9                  = 0.003334, 0, -0.086627

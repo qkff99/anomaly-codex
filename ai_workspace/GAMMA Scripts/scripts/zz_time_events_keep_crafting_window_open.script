@@ -1,0 +1,5 @@
+function on_game_start()
+	if zz_item_cooking_keep_crafting_window_open then zz_item_cooking_keep_crafting_window_open.CreateTimeEvent = demonized_time_events.CreateTimeEvent end
+	if zz_item_repair_keep_crafting_window_open then zz_item_repair_keep_crafting_window_open.CreateTimeEvent = demonized_time_events.CreateTimeEvent end
+	if zz_ui_workshop_keep_crafting_window_open then zz_ui_workshop_keep_crafting_window_open.CreateTimeEvent = demonized_time_events.CreateTimeEvent end
+end

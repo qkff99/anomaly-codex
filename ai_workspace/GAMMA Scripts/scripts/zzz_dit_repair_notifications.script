@@ -1,0 +1,84 @@
+if not zzz_dit then
+    -- printf("~ zzz_dit not found | unloading module")
+    return
+end
+-- printf("loading module: zzz_dit_repair_notifications")
+item_parts.func_disassembly = function(obj,obj_d)
+    local function get_suitable_dtool(itm)
+	local g_pairs = pairs
+
+        local itms_disassemble = {}
+        for k in g_pairs(GetItemList("disassemble")) do itms_disassemble[#itms_disassemble+1] = k end
+        table.sort(itms_disassemble, function(a,b) return zzz_dit.item_priority[a] < zzz_dit.item_priority[b] end) -- Sorts the dissasembly items by priority
+        local res = nil
+        for _,sec in g_pairs(itms_disassemble) do
+            -- Returns the most apropriate tool
+            local itm_d = IsWeapon(itm) and db.actor:object("leatherman_tool") or
+                    zzz_dit.options.outfit_knife and (IsOutfit(itm) or IsHeadgear(obj)) and (db.actor:object("swiss_knife") or
+                            db.actor:object("leatherman_tool")) or db.actor:object(sec)
+
+            local inventory_d = {}
+            if itm_d then
+                for k in g_pairs(utils_item.collect_amount(db.actor,itm_d:section(),0)) do inventory_d[#inventory_d+1] = level.object_by_id(k) end
+
+                -- Returns the most damaged tool that won't break
+                table.sort(inventory_d, function(a,b) return a:condition() < b:condition()end)
+                local index = 1
+                if zzz_dit.options.consume_warning then
+                    for _,v in ipairs(inventory_d) do
+                        if zzz_dit.is_breaking(v) and index < #inventory_d then index = index + 1 end
+                    end
+                end
+                if inventory_d[index] then
+                    res = inventory_d[index]
+                    if not zzz_dit.is_breaking(inventory_d[index]) or sec == inventory_d[#inventory_d]:section()
+                            and sec == itms_disassemble[#itms_disassemble] then return inventory_d[index] end -- If the tool is gonna break try the next type
+                end
+            end
+        end
+        return res
+    end
+
+    obj_d = obj_d or get_suitable_dtool(obj)
+
+    if IsWeapon(obj) and (not obj_d or obj_d:section() ~= "leatherman_tool") then
+        actor_menu.set_item_news('fail', 'weapon', "st_dis_text_3", "", ui_item.get_sec_name("leatherman_tool"))
+        return
+    elseif (IsOutfit(obj) or IsHeadgear(obj)) and zzz_dit.options.outfit_knife and (not obj_d or obj_d:section() ~= "swiss_knife" and obj_d:section() ~= "leatherman_tool") then
+        actor_menu.set_item_news('fail', 'weapon', "st_dis_text_3", "", ui_item.get_sec_name("swiss_knife") .. ", " .. ui_item.get_sec_name("leatherman_tool"))
+        return
+    elseif not obj_d then
+        local itms_disassemble = GetItemList("disassemble")
+        local _items_parts = {}
+        for sec,v in pairs(itms_disassemble) do
+            _items_parts[#_items_parts+1] = (items ~= "" and ", " or "") .. ui_item.get_sec_name(sec)
+        end
+        local items = table.concat(_items_parts)
+
+        news_manager.send_tip(db.actor, game.translate_string("st_news_dis_items") .. "\\n%c[white]" .. game.translate_string("st_repair_notifications_tool_for_repair") .. ": ".. items, nil, "swiss_knife", 6000)
+        return
+    end
+
+    -- The tool will break if we go through
+    local chk = zzz_dit.options.consume_warning
+    if chk and zzz_dit.is_breaking(obj_d) and not zzz_dit.b_flag then
+        actor_menu.set_item_news("fail", "detail", "dit_no_consume_ctrl")
+        return
+    end
+
+    -- Warning message on safe keybind
+    chk = ui_options.get("control/general/disassembly_warning")
+    if chk and (not zzz_dit.d_flag) then
+        actor_menu.set_item_news("success", "detail", "st_awr_ctrl")
+        return
+    end
+
+    -- Functionality
+    if IsWeapon(obj) then
+        item_parts.disassembly_weapon(obj, obj_d)
+    elseif IsOutfit(obj) or IsHeadgear(obj) then
+        item_parts.disassembly_outfit(obj, obj_d)
+    else
+        item_parts.disassembly_item(obj, obj_d)
+    end
+end

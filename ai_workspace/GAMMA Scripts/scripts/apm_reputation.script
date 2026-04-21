@@ -1,0 +1,44 @@
+if ui_popup_messages then
+    local gc = game.translate_string
+
+    inc_faction_goodwill_to_actor = xr_effects.inc_faction_goodwill_to_actor
+    xr_effects.inc_faction_goodwill_to_actor = function(actor, npc, p)
+        inc_faction_goodwill_to_actor(actor, npc, p)
+
+        local display
+        if ui_mcm then
+            display = ui_mcm.get("ui_popup_messages/apm_reputation/goodwill")
+        else
+            display = true
+        end
+        if not display then return end
+
+        local community = p[1]
+        local delta     = p[2] and tonumber(p[2]) or 0
+        if delta ~= 0 and ui_popup_messages.GUI then
+            ui_popup_messages.GUI:AddMessage(gc("st_apm_reputation_goodwill"):format(delta > 0 and "+" or "", delta, gc(community)), delta > 0 and "ui_inGame2_PD_Diplomat" or "ui_inGame2_PD_Hranitel_tayn")
+        end
+    end
+
+    increment_reputation = game_statistics.increment_reputation
+    game_statistics.increment_reputation = function(delta)
+
+        local display
+        if ui_mcm then
+            display = ui_mcm.get("ui_popup_messages/apm_reputation/reputation")
+        else
+            display = true
+        end
+        if not display then
+            increment_reputation(delta)
+            return
+        end
+
+        local current_rept = db.actor:character_reputation()
+        increment_reputation(delta)
+        local d = db.actor:character_reputation() - current_rept
+        if d ~= 0 and ui_popup_messages.GUI then
+            ui_popup_messages.GUI:AddMessage(gc("st_apm_reputation_reputation"):format(d > 0 and "+" or "", d), d > 0 and "ui_inGame2_PD_Svoy_paren" or "ui_inGame2_PD_Avtoritet")
+        end
+    end
+end

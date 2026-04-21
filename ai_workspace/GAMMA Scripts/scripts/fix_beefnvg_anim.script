@@ -1,0 +1,10 @@
+if not z_beefs_nvgs then return end
+
+function actor_on_first_update()
+    z_beefs_nvgs.mc_anm_time_1 = game.get_motion_length("anim_mask_clean", "anm_hide_hand", 1.5) -- hardcoded since they're local and don't change in script at all anyways
+    z_beefs_nvgs.torch_anm_time = game.get_motion_length("anim_headlamp", "anm_switch", 1)
+end
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+end

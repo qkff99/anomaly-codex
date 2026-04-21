@@ -1,0 +1,48 @@
+-- Circumvents the original functions by setting flags. Conventional monkey patching is unfeasible due to
+-- use of local variables in the original script.
+local ignore = false
+local was_func_called = false
+
+local showcase_treasure_caption = {
+	[0] = "st_found_new_treasure",
+	[1] = "st_got_treasure",
+	[2] = "st_found_old_treasure",
+}
+function news_manager.send_treasure(param, text)
+    if ignore then
+        was_func_called = true
+        return
+    end
+
+	local news_caption = param and game.translate_string(showcase_treasure_caption[param]) or ""
+
+    text = text or ""
+
+    if db.actor:is_talking() then
+		db.actor:give_talk_message2(news_caption, text, "ui_inGame2_Polucheni_koordinaty_taynika", "iconed_answer_item")
+	else
+		db.actor:give_game_news(news_caption, text, "ui_inGame2_Polucheni_koordinaty_taynika", 0, 3000)
+	end
+	
+	xr_sound.set_sound_play(AC_ID, "pda_tips")
+end
+
+-- Similar monkey patches like these may be required if stashes are created without treasure_manager.set_random_stash
+local treasure_manager_set_random_stash = treasure_manager.set_random_stash
+function treasure_manager.set_random_stash(no_spot, hint, bonus_items, id, dbg)
+    ignore = true
+    was_func_called = false
+    
+    local result = treasure_manager_set_random_stash(no_spot, hint, bonus_items, id, dbg)
+    
+    ignore = false
+    if was_func_called then
+        local obj = alife_object(id)
+        local text = obj and dynamic_news_helper.GetPointDescription(obj) or ""
+        news_manager.send_treasure(0, text)
+    end
+
+    was_func_called = false
+
+    return result
+end

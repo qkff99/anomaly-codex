@@ -1,0 +1,487 @@
+; =======================
+; ------------- DAY ---------------
+; =======================
+; blockpost guard 1
+[logic@agr_smart_terrain_1_6_xcvb_day_1]
+active = walker@day_1
+suitable = {!surge_started !is_night} true
+prior = 59
+
+[walker@day_1]
+path_walk = guard_5_walk
+path_look = guard_5_look
+
+
+; patrol center
+[logic@agr_smart_terrain_1_6_xcvb_day_2]
+active = walker@day_2
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[walker@day_2]
+path_walk = patrol_6_walk
+
+
+; patrol behind
+[logic@agr_smart_terrain_1_6_xcvb_day_3]
+active = walker@day_3
+suitable = {!surge_started !is_night} true
+prior = 57
+
+[walker@day_3]
+path_walk = patrol_4_walk
+
+
+; patrol side
+[logic@agr_smart_terrain_1_6_xcvb_day_4]
+active = walker@day_4
+suitable = {!surge_started !is_night} true
+prior = 57
+
+[walker@day_4]
+path_walk = patrol_2_walk
+
+
+; blockpost guard 2
+[logic@agr_smart_terrain_1_6_xcvb_day_5]
+active = walker@day_5
+suitable = {!surge_started !is_night} true
+prior = 56
+
+[walker@day_5]
+path_walk = guard_1_walk
+path_look = guard_1_look
+
+
+; guard main building
+[logic@agr_smart_terrain_1_6_xcvb_day_6]
+active = walker@day_6
+suitable = {!surge_started !is_night} true
+prior = 56
+
+[walker@day_6]
+path_walk = guard_7_walk
+path_look = guard_7_look
+
+
+; patrol angar
+[logic@agr_smart_terrain_1_6_xcvb_day_7]
+active = walker@day_7
+suitable = {!surge_started !is_night} true
+prior = 56
+
+[walker@day_7]
+path_walk = patrol_1_walk
+
+
+; sniper base
+[logic@agr_smart_terrain_1_6_xcvb_day_8]
+active = walker@day_8
+suitable = {!surge_started !is_night =guard_has_rifle} true
+prior = 55
+
+[walker@day_8]
+path_walk = sniper_1_walk
+path_look = sniper_1_look
+
+
+; sniper watchtower
+[logic@agr_smart_terrain_1_6_xcvb_day_9]
+active = walker@day_9
+suitable = {!surge_started !is_night =guard_has_rifle} true
+prior = 55
+
+[walker@day_9]
+path_walk = guard_2_walk
+path_look = guard_2_look
+
+
+; guard second building
+[logic@agr_smart_terrain_1_6_xcvb_day_10]
+active = walker@day_10
+suitable = {!surge_started !is_night} true
+prior = 54
+
+[walker@day_10]
+path_walk = guard_6_walk
+path_look = guard_6_look
+
+
+; guard angars
+[logic@agr_smart_terrain_1_6_xcvb_day_11]
+active = walker@day_11
+suitable = {!surge_started !is_night} true
+prior = 54
+
+[walker@day_11]
+path_walk = walker_1_walk
+path_look = walker_1_look
+
+
+; patrol behind 2
+[logic@agr_smart_terrain_1_6_xcvb_day_12]
+active = walker@day_12
+suitable = {!surge_started !is_night} true
+prior = 54
+
+[walker@day_12]
+path_walk = patrol_3_walk
+
+
+; patrol center 2
+[logic@agr_smart_terrain_1_6_xcvb_day_13]
+active = walker@day_13
+suitable = {!surge_started !is_night} true
+prior = 53
+
+[walker@day_13]
+path_walk = patrol_5_walk
+
+
+
+; idle
+[logic@agr_smart_terrain_1_6_camp_work_6]
+active = animpoint@agr_smart_terrain_1_6_camp_work_6
+suitable = {!surge_started} true
+prior = 47
+
+[logic@agr_smart_terrain_1_6_camp_work_7]
+active = animpoint@agr_smart_terrain_1_6_camp_work_7
+suitable = {!surge_started} true
+prior = 46
+
+[logic@agr_smart_terrain_1_6_camp_work_8]
+active = animpoint@agr_smart_terrain_1_6_camp_work_8
+suitable = {!surge_started} true
+prior = 47
+on_game_timer = 7200 | {!is_rain} animpoint@agr_smart_cover_otzhiman_5
+
+[logic@agr_smart_terrain_1_6_camp_work_9]
+active = animpoint@agr_smart_terrain_1_6_camp_work_9
+suitable = {!surge_started} true
+prior = 46
+
+[logic@agr_smart_terrain_1_6_camp_work_10]
+active = animpoint@agr_smart_terrain_1_6_camp_work_10
+suitable = {!surge_started} true
+prior = 47
+on_game_timer = 7200 | {!is_rain} animpoint@agr_smart_cover_otzhiman_4
+
+[logic@agr_smart_terrain_1_6_camp_work_11]
+active = animpoint@agr_smart_terrain_1_6_camp_work_11
+suitable = {!surge_started} true
+prior = 46
+on_game_timer = 7200 | {!is_rain} animpoint@agr_smart_cover_otzhiman_3
+
+[logic@agr_smart_terrain_1_6_camp_work_12]
+active = animpoint@agr_smart_terrain_1_6_camp_work_12
+suitable = {!surge_started} true
+prior = 47
+
+[logic@agr_smart_terrain_1_6_camp_work_13]
+active = animpoint@agr_smart_terrain_1_6_camp_work_13
+suitable = {!surge_started} true
+prior = 47
+
+[logic@agr_smart_terrain_1_6_camp_work_17]
+active = animpoint@agr_smart_terrain_1_6_camp_work_17
+suitable = {!surge_started} true
+prior = 47
+
+
+[animpoint@agr_smart_terrain_1_6_camp_work_6]
+cover_name = agr_smart_terrain_1_6_animpoint_camp_1
+use_camp = true
+
+[animpoint@agr_smart_terrain_1_6_camp_work_7]
+cover_name = agr_smart_terrain_1_6_animpoint_camp_2
+use_camp = true
+
+[animpoint@agr_smart_terrain_1_6_camp_work_8]
+cover_name = agr_smart_terrain_1_6_animpoint_camp_3
+use_camp = true
+
+[animpoint@agr_smart_terrain_1_6_camp_work_9]
+cover_name = agr_smart_terrain_1_6_animpoint_camp_4
+use_camp = true
+
+[animpoint@agr_smart_terrain_1_6_camp_work_10]
+cover_name = agr_smart_terrain_1_6_animpoint_camp_5
+use_camp = true
+
+[animpoint@agr_smart_terrain_1_6_camp_work_11]
+cover_name = agr_smart_terrain_1_6_animpoint_camp_6
+use_camp = true
+
+[animpoint@agr_smart_terrain_1_6_camp_work_12]
+cover_name = agr_smart_terrain_1_6_animpoint_camp_7
+use_camp = true
+
+[animpoint@agr_smart_terrain_1_6_camp_work_13]
+cover_name = agr_smart_terrain_1_6_animpoint_camp_8
+use_camp = false
+
+[animpoint@agr_smart_terrain_1_6_camp_work_17]
+cover_name = agr_smart_terrain_1_6_animpoint_camp_12
+use_camp = true
+
+
+; =======================
+; ------------ NIGHT -------------
+; =======================
+[beh@general]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+gather_items_enabled = false
+help_wounded_enabled = false
+corpse_detection_enabled = false
+meet = no_meet
+wounded = wounded@ignore
+use_camp = false
+
+[meet@general]
+close_anim 		= nil
+close_victim 	= nil
+far_anim 		= nil
+far_victim 		= nil
+close_distance  = 0
+far_distance 	= 0
+use = {=actor_enemy} false, {=dist_to_actor_le(3)} true, false
+snd_on_use = {!dist_to_actor_le(3)} nil
+meet_on_talking = false
+
+[wounded@ignore]
+hp_state        = 0|wounded_heavy@help_heavy
+hp_state_see    = 0|wounded_heavy@help_heavy
+hp_victim       = 0|nil
+hp_fight        = 0|false
+hp_cover        = 0|false
+
+
+; blockpost guard 1
+[logic@agr_smart_terrain_1_6_xcvb_night_1]
+active = walker@night_1
+suitable = {!surge_started =is_night} true
+prior = 59
+
+[walker@night_1]
+path_walk = guard_5_walk
+path_look = guard_5_look
+
+
+; sleep angar sit couch
+[logic@agr_smart_terrain_1_6_xcvb_night_2]
+active = animpoint@night_2
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[animpoint@night_2]
+cover_name = agr_smart_terrain_1_6_animpoint_camp_11
+use_camp = true
+turn_on_campfire = true
+meet = meet@general
+
+
+; guard main building
+[logic@agr_smart_terrain_1_6_xcvb_night_3]
+active = walker@night_3
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[walker@night_3]
+path_walk = guard_7_walk
+path_look = guard_7_look
+
+
+; sleep second building
+[logic@agr_smart_terrain_1_6_xcvb_night_4]
+active = beh@night_4
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[beh@night_4]:beh@general
+pt1 = 20000, sleep | 		pos: -181.894, 0.0627, -176.8428		 look: -181.204, 0.0627, -176.035
+path_end = loop
+
+
+; patrol behind
+[logic@agr_smart_terrain_1_6_xcvb_night_5]
+active = walker@night_5
+suitable = {!surge_started =is_night} true
+prior = 55
+
+[walker@night_5]
+path_walk = patrol_4_walk
+
+
+; patrol side
+[logic@agr_smart_terrain_1_6_xcvb_night_6]
+active = walker@night_6
+suitable = {!surge_started =is_night} true
+prior = 55
+
+[walker@night_6]
+path_walk = patrol_2_walk
+
+
+; sleep angar
+[logic@agr_smart_terrain_1_6_xcvb_night_7]
+active = animpoint@night_7
+suitable = {!surge_started =is_night} true
+prior = 54
+
+[animpoint@night_7]
+cover_name = agr_smart_terrain_1_6_animpoint_camp_9
+use_camp = true
+turn_on_campfire = true
+
+
+; sleep angar
+[logic@agr_smart_terrain_1_6_xcvb_night_8]
+active = animpoint@night_8
+suitable = {!surge_started =is_night} true
+prior = 54
+
+[animpoint@night_8]
+cover_name = agr_smart_terrain_1_6_animpoint_camp_10
+use_camp = true
+turn_on_campfire = true
+
+
+; blockpost guard 2
+[logic@agr_smart_terrain_1_6_xcvb_night_9]
+active = walker@night_9
+suitable = {!surge_started =is_night} true
+prior = 53
+
+[walker@night_9]
+path_walk = guard_1_walk
+path_look = guard_1_look
+
+
+; sleep campfire behind building 1
+[logic@agr_smart_terrain_1_6_xcvb_night_10]
+active = animpoint@night_10
+suitable = {!surge_started =is_night} true
+prior = 53
+
+[animpoint@night_10]
+cover_name = agr_smart_terrain_1_6_animpoint_kamp2
+use_camp = true
+turn_on_campfire = true
+
+
+; sleep campfire behind building 2
+[logic@agr_smart_terrain_1_6_xcvb_night_11]
+active = animpoint@night_11
+suitable = {!surge_started =is_night} true
+prior = 53
+
+[animpoint@night_11]
+cover_name = agr_smart_terrain_1_6_animpoint_kamp4
+use_camp = true
+turn_on_campfire = true
+
+
+; sleep drink vodka main building
+[logic@agr_smart_terrain_1_6_xcvb_night_12]
+active = animpoint@night_12
+suitable = {!surge_started =is_night} true
+prior = 53
+
+[animpoint@night_12]
+cover_name = agr_smart_terrain_1_6_animpoint_camp_16
+use_camp = true
+
+
+; patrol angars
+[logic@agr_smart_terrain_1_6_xcvb_night_13]
+active = walker@night_13
+suitable = {!surge_started =is_night} true
+prior = 52
+
+[walker@night_13]
+path_walk = patrol_1_walk
+
+
+; guard second building
+[logic@agr_smart_terrain_1_6_xcvb_night_14]
+active = walker@night_14
+suitable = {!surge_started =is_night} true
+prior = 52
+
+[walker@night_14]
+path_walk = guard_6_walk
+path_look = guard_6_look
+
+
+; sniper watchtower
+[logic@agr_smart_terrain_1_6_xcvb_night_15]
+active = walker@night_15
+suitable = {!surge_started =is_night =guard_has_rifle} true
+prior = 52
+
+[walker@night_15]
+path_walk = guard_2_walk
+path_look = guard_2_look
+
+
+
+; patrol center
+[logic@agr_smart_terrain_1_6_xcvb_night_16]
+active = walker@night_16
+suitable = {!surge_started =is_night} true
+prior = 51
+
+[walker@night_16]
+path_walk = patrol_6_walk
+
+
+; patrol behind 2
+[logic@agr_smart_terrain_1_6_xcvb_night_17]
+active = walker@night_17
+suitable = {!surge_started =is_night} true
+prior = 51
+
+[walker@night_17]
+path_walk = patrol_3_walk
+
+
+; patrol center 2
+[logic@agr_smart_terrain_1_6_xcvb_night_18]
+active = walker@night_18
+suitable = {!surge_started =is_night} true
+prior = 50
+
+[walker@night_18]
+path_walk = patrol_5_walk
+
+
+; guard angars
+[logic@agr_smart_terrain_1_6_xcvb_night_19]
+active = walker@night_19
+suitable = {!surge_started =is_night} true
+prior = 50
+
+[walker@night_19]
+path_walk = walker_1_walk
+path_look = walker_1_look
+
+
+; sniper base
+[logic@agr_smart_terrain_1_6_xcvb_night_20]
+active = walker@night_20
+suitable = {!surge_started =is_night =guard_has_rifle} true
+prior = 50
+
+[walker@night_20]
+path_walk = sniper_1_walk
+path_look = sniper_1_look

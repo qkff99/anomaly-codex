@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="windows-1252"?>
+
+ <!-- NPE Module template -->
+
+ <!-- 1. PREPARATION -->
+<!-- 	you will replace in this file  -->
+<!-- 	modulename e.g. mymodname -->
+<!-- 	setname e.g. mysetname -->
+
+<string_table>
+
+	<!-- mcm menu (mandatory) -->
+
+	<string id="ui_mcm_npe_module_modulename">
+		<text>El título de la pestaña en el menú MCM</text>
+	</string>
+	<string id="ui_mcm_npe_module_modulename_title">
+		<text>El título del módulo NPE en el menú MCM</text>
+	</string>
+	<string id="ui_mcm_npe_module_modulename_desc">
+		<text>La descripción del módulo NPE en el menú MCM</text>
+	</string>	
+
+	<!-- every set defined in npe_modulename_mcm.script must have a string definition as below -->
+	<string id="ui_mcm_npe_module_modulename_setname">
+		<text>El nombre del conjunto en el menú MCM</text>
+	</string>
+
+	<!-- deck_modulename strings -->
+	<!-- define below all strings declared in deck -->
+
+	<!-- setname set strings -->
+	<!-- define below all strings declared in the set -->
+
+	<string id="ui_npe_modulename_setname_set_title">
+		<text>P. ej. Tutorial de prismáticos</text>
+	</string>
+	<string id="ui_npe_modulename_setname_card_01_title">
+		<text>P. ej. %c[d_cyan]Prismáticos</text>
+	</string>
+	<string id="ui_npe_modulename_setname_card_01_description">
+		<text>P. ej. Has encontrado unos prismáticos. 
+		\n
+		\n
+		Abre tu inventario y equipa los prismáticos recién encontrados en la ranura correspondiente.
+		\n
+		\n
+		Al pasar el ratón por encima del binocular, se resaltará la ranura en la que puede equiparse.		
+		\n
+		\n
+		Utiliza la tecla rápida 4 para equipar los prismáticos. Haz clic con el botón derecho del ratón para usarlos. 
+		</text>
+	</string>	
+
+	<!-- define below further sets strings -->
+
+</string_table>

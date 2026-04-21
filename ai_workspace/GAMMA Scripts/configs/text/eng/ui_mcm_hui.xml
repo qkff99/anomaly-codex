@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="windows-1251"?>
+
+<string_table>
+	
+    <string id="ui_mcm_hui_title">
+		<text>H.U.I.</text>
+	</string>
+    <string id="ui_mcm_menu_hui">
+		<text>H.U.I.</text>
+	</string>
+	<string id="ui_mcm_hui_enable">
+		<text>Enable addon</text>
+	</string>
+	<string id="ui_mcm_hui_enable_desc">
+		<text>Enables/disables H.U.I. completely</text>
+	</string>
+    <string id="ui_mcm_hui_range">
+		<text>Max distance (m)</text>
+	</string>
+	<string id="ui_mcm_hui_range_desc">
+		<text>Range in meters for marker to appear</text>
+	</string>
+	<string id="ui_mcm_hui_show_mode">
+		<text>Target filter</text>
+	</string>
+    <string id="ui_mcm_hui_show_mode_desc">
+		<text>Which targets can show UI</text>
+	</string>
+    <string id="hui_show_mode_lst_ui_mcm_hui_show_mode_enemy">
+		<text>Enemies only</text>
+	</string>
+    <string id="hui_show_mode_lst_ui_mcm_hui_show_mode_any">
+		<text>Any target</text>
+	</string>
+	<string id="ui_mcm_hui_require_los">
+		<text>Require line of sight</text>
+	</string>
+	<string id="ui_mcm_hui_require_los_desc">
+		<text>Show UI only if actor can see target</text>
+	</string>
+	<string id="ui_mcm_hui_show_faction">
+		<text>Show faction</text>
+	</string>
+	<string id="ui_mcm_hui_show_faction_desc">
+		<text>Show faction icon on marker</text>
+	</string>
+	<string id="ui_mcm_hui_show_distance">
+		<text>Show distance</text>
+	</string>		
+	<string id="ui_mcm_hui_show_distance_desc">
+		<text>Show distance on marker</text>
+	</string>	
+	<string id="ui_mcm_hui_show_name">
+		<text>Show name</text>
+	</string>		
+	<string id="ui_mcm_hui_show_name_desc">
+		<text>Show target name on marker</text>
+	</string>
+	<string id="ui_mcm_hui_update_ms">
+		<text>UI update delay (ms)</text>
+	</string>
+	<string id="ui_mcm_hui_update_ms_desc">
+		<text>How often the marker updates. 0 = every frame</text>
+	</string>
+	<string id="ui_mcm_hui_use_crosshair_radius">
+		<text>Crosshair radius mode</text>
+	</string>
+	<string id="ui_mcm_hui_use_crosshair_radius_desc">
+		<text>When enabled, show targets inside a radius around the crosshair</text>
+	</string>
+	<string id="ui_mcm_hui_crosshair_radius_px">
+		<text>Crosshair radius (px)</text>
+	</string>
+	<string id="ui_mcm_hui_crosshair_radius_px_desc">
+		<text>Radius in pixels around the screen center</text>
+	</string>
+	<string id="ui_mcm_hui_crosshair_select_mode">
+		<text>Crosshair selection</text>
+	</string>
+	<string id="ui_mcm_hui_crosshair_select_mode_desc">
+		<text>How targets are selected around the crosshair</text>
+	</string>
+	<string id="hui_crosshair_select_mode_lst_ui_mcm_hui_crosshair_mode_screen">
+		<text>Screen radius (px)</text>
+	</string>
+    <string id="hui_crosshair_select_mode_lst_ui_mcm_hui_crosshair_mode_world">
+		<text>World radius (m)</text>
+	</string>
+	<string id="ui_mcm_hui_crosshair_radius_m">
+		<text>Crosshair radius (m)</text>
+	</string>
+	<string id="ui_mcm_hui_crosshair_radius_m_desc">
+		<text>Max distance from target head to camera ray</text>
+	</string>
+	<string id="ui_mcm_hui_crosshair_only_best">
+		<text>Only nearest to crosshair</text>
+	</string>
+	<string id="ui_mcm_hui_crosshair_only_best_desc">
+		<text>If enabled, show only one target closest to the crosshair center</text>
+	</string>
+	<string id="ui_mcm_hui_jitter_off">
+		<text>Anti-jitter: Off</text>
+	</string>
+    <string id="ui_mcm_hui_jitter_mode">
+		<text>Anti-jitter mode</text>
+	</string>
+    <string id="ui_mcm_hui_jitter_mode_desc">
+		<text>Method for smoothing marker position to reduce jitter from bone animations.</text>
+	</string>
+	<string id="hui_jitter_mode_lst_ui_mcm_hui_jitter_off">
+		<text>Anti-jitter: Off</text>
+	</string>
+	<string id="hui_jitter_mode_lst_ui_mcm_hui_jitter_deadzone">
+		<text>Anti-jitter: Deadzone</text>
+	</string>
+	<string id="ui_mcm_hui_jitter_deadzone">
+		<text>Anti-jitter: Deadzone</text>
+	</string>
+	<string id="ui_mcm_hui_jitter_deadzone_desc">
+		<text>Minimum pixel change required to update marker position (0-20px).</text>
+	</string>
+	<string id="hui_jitter_mode_lst_ui_mcm_hui_jitter_ema2d">
+		<text>Anti-jitter: Smooth (2D)</text>
+	</string>
+	<string id="ui_mcm_hui_jitter_ema2d">
+		<text>Anti-jitter: Smooth (2D)</text>
+	</string>
+	<string id="ui_mcm_hui_jitter_ema2d_desc">
+		<text>Smooths marker movement on screen using exponential moving average.</text>
+	</string>
+	<string id="hui_jitter_mode_lst_ui_mcm_hui_jitter_ema3d">
+		<text>Anti-jitter: Smooth (3D)</text>
+	</string>
+	<string id="ui_mcm_hui_jitter_ema3d">
+		<text>Anti-jitter: Smooth (3D)</text>
+	</string>
+	<string id="ui_mcm_hui_jitter_ema3d_desc">
+		<text>Smooths target position in 3D space before projection to screen.</text>
+	</string>
+	<string id="ui_mcm_hui_jitter_tau_ms">
+		<text>Smoothing time constant (ms)</text>
+	</string>
+	<string id="ui_mcm_hui_jitter_tau_ms_desc">
+		<text>Time constant for EMA smoothing (lower = faster reaction, more jitter).</text>
+	</string>
+	<string id="ui_mcm_hui_jitter_max_step_px">
+		<text>Max step per frame (px)</text>
+	</string>
+	<string id="ui_mcm_hui_jitter_max_step_px_desc">
+		<text>Maximum pixels marker can move per frame (0 = unlimited).</text>
+	</string>
+	<string id="ui_mcm_hui_lerp_factor">
+		<text>Interpolation speed</text>
+	</string>
+	<string id="ui_mcm_hui_lerp_factor_desc">
+		<text>UI interpolation speed to target position per frame (0.01-1.0, lower = smoother).</text>
+	</string>
+	<string id="ui_mcm_hui_jitter_deadzone_px">
+		<text>Deadzone (px)</text>
+	</string>
+	<string id="ui_mcm_hui_jitter_deadzone_px_desc">
+		<text>Pixel change threshold for deadzone mode (0-20px).</text>
+	</string>
+	<string id="ui_mcm_hui_anchor_mode">
+		<text>Anchor mode</text>
+	</string>
+	<string id="ui_mcm_hui_anchor_mode_desc">
+		<text>Bone anchor point for marker position on NPC model.</text>
+	</string>
+	<string id="hui_anchor_mode_lst_ui_mcm_hui_anchor_head">
+		<text>Anchor: Head</text>
+	</string>
+    <string id="ui_mcm_hui_anchor_head">
+		<text>Anchor: Head</text>
+	</string>
+	<string id="hui_anchor_mode_lst_ui_mcm_hui_anchor_neck">
+		<text>Anchor: Neck</text>
+	</string>
+	<string id="ui_mcm_hui_anchor_neck">
+		<text>Anchor: Neck</text>
+	</string>
+	<string id="hui_anchor_mode_lst_ui_mcm_hui_anchor_spine">
+		<text>Anchor: Spine</text>
+	</string>
+	<string id="ui_mcm_hui_anchor_spine">
+		<text>Anchor: Spine</text>
+	</string>
+	<string id="hui_anchor_mode_lst_ui_mcm_hui_anchor_position">
+		<text>Anchor: Object position</text>
+	</string>
+	<string id="ui_mcm_hui_anchor_position">
+		<text>Anchor: Object position</text>
+	</string>
+	<string id="ui_mcm_hui_head_y_offset">
+		<text>Head Y offset (bias, m)</text>
+	</string>
+	<string id="ui_mcm_hui_head_y_offset_desc">
+		<text>Manual marker offset up/down from head (meters). Now works directly and is not suppressed by zoom.</text>
+	</string>
+	<string id="ui_mcm_hui_fov_comp_weight">
+		<text>Zoom compensation weight</text>
+	</string>
+	<string id="ui_mcm_hui_fov_comp_weight_desc">
+		<text>1.0 - full compensation, 0.0 - no compensation, >1.0 - hyper-compensation (marker will lower more aggressively during zoom).</text>
+	</string>
+	<string id="ui_mcm_hui_fov_factor_min">
+		<text>FOV min factor</text>
+	</string>
+	<string id="ui_mcm_hui_fov_factor_min_desc">
+		<text>Minimum FOV scaling factor (0.1-1.0)</text>
+	</string>
+	<string id="ui_mcm_hui_fov_factor_max">
+		<text>FOV max factor</text>
+	</string>
+	<string id="ui_mcm_hui_fov_factor_max_desc">
+		<text>Maximum FOV scaling factor (1.0-5.0)</text>
+	</string>
+	<string id="ui_mcm_hui_hp_bar_w">
+		<text>HP bar width</text>
+	</string>
+	<string id="ui_mcm_hui_hp_bar_w_desc">
+		<text>Base width of HP bar (pixels).</text>
+	</string>
+	<string id="ui_mcm_hui_hp_bar_min_w">
+		<text>HP bar min width</text>
+	</string>
+	<string id="ui_mcm_hui_hp_bar_min_w_desc">
+		<text>Minimum width of HP bar when scaled by distance.</text>
+	</string>
+	<string id="ui_mcm_hui_hp_bar_max_w">
+		<text>HP bar max width</text>
+	</string>
+	<string id="ui_mcm_hui_hp_bar_max_w_desc">
+		<text>Maximum width of HP bar when scaled by distance.</text>
+	</string>
+	<string id="ui_mcm_hui_hp_bar_offset_x">
+		<text>HP bar X offset (px)</text>
+	</string>
+	<string id="ui_mcm_hui_hp_bar_offset_x_desc">
+		<text>Move HP bar left/right (in marker pixels).</text>
+	</string>
+	<string id="ui_mcm_hui_hp_bar_offset_y">
+		<text>HP bar Y offset (px)</text>
+	</string>
+	<string id="ui_mcm_hui_hp_bar_offset_y_desc">
+		<text>Move HP bar up/down (in marker pixels).</text>
+	</string>
+	<string id="ui_mcm_hui_hp_bar_symbolic">
+		<text>Symbolic HP bar</text>
+	</string>
+	<string id="ui_mcm_hui_hp_bar_symbolic_desc">
+		<text>Replace the textured HP bar with a symbol bar (e.g. ||||||||).</text>
+	</string>
+	<string id="ui_mcm_hui_hp_bar_symbol_style">
+		<text>Symbol style</text>
+	</string>
+	<string id="ui_mcm_hui_hp_bar_symbol_style_desc">
+		<text>Which character is used to draw the symbolic HP bar.</text>
+	</string>
+	<string id="hui_hp_bar_symbol_style_lst_ui_mcm_hui_hp_bar_symbol_pipe">
+		<text>| (pipe)</text>
+	</string>
+	<string id="hui_hp_bar_symbol_style_lst_ui_mcm_hui_hp_bar_symbol_I">
+		<text>I (capital i)</text>
+	</string>
+	<string id="hui_hp_bar_symbol_style_lst_ui_mcm_hui_hp_bar_symbol_block">
+		<text># (block)</text>
+	</string>
+	<string id="ui_mcm_hui_hp_bar_symbol_len">
+		<text>Max symbols</text>
+	</string>
+	<string id="ui_mcm_hui_hp_bar_symbol_len_desc">
+		<text>How many symbols are shown at full HP (1-50).</text>
+	</string>
+	<string id="ui_mcm_hui_hp_bar_symbol_step_px">
+		<text>Symbol spacing (px)</text>
+	</string>
+	<string id="ui_mcm_hui_hp_bar_symbol_step_px_desc">
+		<text>Distance between symbols in pixels (1-20).</text>
+	</string>
+	<string id="ui_mcm_hui_hide_hp_full">
+		<text>Hide HP bar when full</text>
+	</string>
+	<string id="ui_mcm_hui_hide_hp_full_desc">
+		<text>Hide HP bar if health is at 100%</text>
+	</string>
+	<string id="ui_mcm_hui_detect_enable">
+		<text>Enable detection delay</text>
+	</string>
+	<string id="ui_mcm_hui_detect_enable_desc">
+		<text>Enable delayed detection for distant targets</text>
+	</string>
+	<string id="ui_mcm_hui_detect_instant_dist">
+		<text>Instant detection distance (m)</text>
+	</string>
+	<string id="ui_mcm_hui_detect_instant_dist_desc">
+		<text>Maximum distance for instant target detection (1-200m)</text>
+	</string>
+	<string id="ui_mcm_hui_detect_delay_sec">
+		<text>Detection delay (sec)</text>
+	</string>
+	<string id="ui_mcm_hui_detect_delay_sec_desc">
+		<text>Delay before showing full info for distant targets (1-10s)</text>
+	</string>
+	<string id="ui_mcm_hui_detecting">
+		<text>Detecting</text>
+	</string>
+	
+</string_table>

@@ -1,0 +1,108 @@
+local type = _G.type
+local pcall = _G.pcall
+local require = _G.require
+local table_insert = _G.table.insert
+
+local function ensure_schema()
+    if siski and siski.mcm_schema then
+        return siski.mcm_schema
+    end
+    if type(_G.siski_mcm_schema) == "table" then
+        return _G.siski_mcm_schema
+    end
+    if require then
+        local ok, mod = pcall(require, "siski_mcm_schema")
+        if ok and type(mod) == "table" then
+            return mod
+        end
+    end
+    if siski and siski.mcm_schema then
+        return siski.mcm_schema
+    end
+    if type(_G.siski_mcm_schema) == "table" then
+        return _G.siski_mcm_schema
+    end
+    return nil
+end
+
+local function clone_table(src)
+    local out = {}
+    for k, v in pairs(src) do
+        out[k] = v
+    end
+    return out
+end
+
+local function make_option(schema, key)
+    local meta = schema and schema.options and schema.options[key] or nil
+    if type(meta) ~= "table" then
+        return nil
+    end
+
+    local node = clone_table(meta)
+    node.id = key
+    node.hint = node.hint or ("siski_" .. key)
+    return node
+end
+
+local function make_group(schema, group)
+    local gr = {
+        { id = group.id .. "_title", type = "title", text = group.text, align = "l" },
+        { id = group.id .. "_divider", type = "line" },
+    }
+
+    for i = 1, #group.options do
+        local node = make_option(schema, group.options[i])
+        if node then
+            table_insert(gr, node)
+        end
+    end
+
+    return {
+        id = group.id,
+        sh = true,
+        text = group.text,
+        gr = gr,
+    }
+end
+
+local function make_panel(schema, panel)
+    local gr = {
+        { id = panel.id .. "_slide", type = "slide", link = "ui_options_slider_player", text = panel.text, size = { 512, 50 }, spacing = 20 },
+    }
+    for i = 1, #panel.groups do
+        local group = make_group(schema, panel.groups[i])
+        for j = 1, #group.gr do
+            table_insert(gr, group.gr[j])
+        end
+    end
+    return {
+        id = panel.id,
+        sh = true,
+        text = panel.text,
+        gr = gr,
+    }
+end
+
+function on_mcm_load()
+    local schema = ensure_schema()
+    local op = { id = "siski", sh = false, gr = {} }
+
+    if type(schema) ~= "table" or type(schema.panels) ~= "table" or #schema.panels == 0 then
+        op.gr[1] = {
+            id = "general",
+            sh = true,
+            text = "ui_mcm_siski_panel_general",
+            gr = {
+                { id = "general_slide", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_menu_siski", size = { 512, 50 }, spacing = 20 },
+            },
+        }
+        return op
+    end
+
+    for i = 1, #schema.panels do
+        table_insert(op.gr, make_panel(schema, schema.panels[i]))
+    end
+
+    return op
+end

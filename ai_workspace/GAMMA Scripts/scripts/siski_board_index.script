@@ -1,0 +1,1660 @@
+siski = siski or {}
+
+local type = _G.type
+local pcall = _G.pcall
+local require = _G.require
+local setmetatable = _G.setmetatable
+local tonumber = _G.tonumber
+local tostring = _G.tostring
+local rawget = _G.rawget
+local alife = _G.alife
+local game_graph = _G.game_graph
+local pairs = _G.pairs
+local next = _G.next
+local net_packet = _G.net_packet
+local clsid = rawget(_G, "clsid") or {}
+local table_sort = _G.table and _G.table.sort or nil
+
+local function ensure_class()
+    if type(siski.class) == "function" then
+        local ok, probe = pcall(siski.class, "_probe")
+        if ok and type(probe) == "table" then
+            return
+        end
+    end
+
+    if require then
+        pcall(require, "siski_oop")
+    end
+
+    local function define()
+        function siski.class(name)
+            local cls = {}
+            cls.__index = cls
+            cls.__name = name or "class"
+            function cls.new(...)
+                local self = setmetatable({}, cls)
+                if self.__init then
+                    self:__init(...)
+                end
+                return self
+            end
+            return cls
+        end
+    end
+
+    if type(siski.class) ~= "function" then
+        define()
+        return
+    end
+
+    local ok2, probe2 = pcall(siski.class, "_probe")
+    if not (ok2 and type(probe2) == "table") then
+        define()
+    end
+end
+
+ensure_class()
+
+local BoardIndex = siski.class("BoardIndex")
+BoardIndex.__index = BoardIndex
+
+local CLSID_LEVEL_CHANGER = tonumber(clsid and clsid.level_changer) or 94
+local CLSID_LEVEL_CHANGER_S = tonumber(clsid and clsid.level_changer_s) or 95
+
+local function get_board()
+    return rawget(_G, "SIMBOARD")
+end
+
+local function is_valid_server_id(id)
+    id = tonumber(id) or 0
+    return id > 0 and id ~= 65535
+end
+
+local function safe_call(tag, fn, ...)
+    local safe = siski and siski.safe
+    if safe and safe.safe_call then
+        return safe.safe_call(tag, fn, ...)
+    end
+    return pcall(fn, ...)
+end
+
+local function now_level_name_by_gvid(gvid)
+    if not (gvid and alife and game_graph) then
+        return nil
+    end
+    local ok, level_name = pcall(function()
+        local gv = game_graph():vertex(gvid)
+        if not gv then
+            return nil
+        end
+        return alife():level_name(gv:level_id())
+    end)
+    return ok and level_name or nil
+end
+
+local function append_level_value(map, level_name, value)
+    if type(level_name) ~= "string" or level_name == "" then
+        return
+    end
+    local arr = map[level_name]
+    if type(arr) ~= "table" then
+        arr = {}
+        map[level_name] = arr
+    end
+    arr[#arr + 1] = value
+end
+
+local function ensure_level_set(map, level_name)
+    if type(level_name) ~= "string" or level_name == "" then
+        return nil
+    end
+    local bucket = map[level_name]
+    if type(bucket) ~= "table" then
+        bucket = {}
+        map[level_name] = bucket
+    end
+    return bucket
+end
+
+local function set_level_value(map, level_name, value)
+    if value == nil then
+        return false
+    end
+    local bucket = ensure_level_set(map, level_name)
+    if type(bucket) ~= "table" then
+        return false
+    end
+    if bucket[value] == true then
+        return false
+    end
+    bucket[value] = true
+    return true
+end
+
+local function unset_level_value(map, level_name, value)
+    local bucket = map[level_name]
+    if type(bucket) ~= "table" or value == nil or bucket[value] ~= true then
+        return false
+    end
+    bucket[value] = nil
+    if next(bucket) == nil then
+        map[level_name] = nil
+    end
+    return true
+end
+
+local function build_sorted_bucket_array(bucket, numeric)
+    local out = {}
+    if type(bucket) ~= "table" then
+        return out
+    end
+    for key, ok in pairs(bucket) do
+        if ok == true then
+            out[#out + 1] = key
+        end
+    end
+    if table_sort then
+        if numeric == true then
+            table_sort(out, function(a, b)
+                return (tonumber(a) or 0) < (tonumber(b) or 0)
+            end)
+        else
+            table_sort(out, function(a, b)
+                return tostring(a) < tostring(b)
+            end)
+        end
+    end
+    return out
+end
+
+local function config_ref()
+    local cfg = siski and siski.config or nil
+    if type(cfg) == "table" then
+        return cfg
+    end
+    return nil
+end
+
+local function normalize_view_opts(opts_or_fn)
+    if type(opts_or_fn) == "function" then
+        return { filter_fn = opts_or_fn }
+    end
+    if type(opts_or_fn) == "table" then
+        return opts_or_fn
+    end
+    return nil
+end
+
+local function smart_blacklists_rule(level_name)
+    local cfg = config_ref()
+    if not (cfg and cfg.get_smart_blacklists_rule) then
+        return nil
+    end
+    local res = cfg.get_smart_blacklists_rule(level_name)
+    if type(res) == "table" then
+        return res
+    end
+    return nil
+end
+
+local function smart_blacklists_global_set()
+    local cfg = config_ref()
+    if not (cfg and cfg.get_smart_blacklists_global_set) then
+        return nil
+    end
+    local res = cfg.get_smart_blacklists_global_set()
+    if type(res) == "table" then
+        return res
+    end
+    return nil
+end
+
+local function faction_level_blacklists_rule(community)
+    local cfg = config_ref()
+    if not (cfg and cfg.get_faction_level_blacklist_rule) then
+        return nil
+    end
+    local res = cfg.get_faction_level_blacklist_rule(community)
+    if type(res) == "table" then
+        return res
+    end
+    return nil
+end
+
+local function is_level_globally_blacklisted(level_name)
+    if type(level_name) ~= "string" or level_name == "" then
+        return false
+    end
+    local cfg = config_ref()
+    if not (cfg and cfg.is_level_globally_blacklisted) then
+        return false
+    end
+    return cfg.is_level_globally_blacklisted(level_name) == true
+end
+
+local function faction_smart_blacklists_rule(community)
+    local cfg = config_ref()
+    if not (cfg and cfg.get_faction_smart_blacklist_rule) then
+        return nil
+    end
+    local res = cfg.get_faction_smart_blacklist_rule(community)
+    if type(res) == "table" then
+        return res
+    end
+    return nil
+end
+
+local function section_level_blacklists_rule(section_name)
+    local cfg = config_ref()
+    if not (cfg and cfg.get_section_level_blacklist_rule) then
+        return nil
+    end
+    local res = cfg.get_section_level_blacklist_rule(section_name)
+    if type(res) == "table" then
+        return res
+    end
+    return nil
+end
+
+local function section_smart_blacklists_rule(section_name)
+    local cfg = config_ref()
+    if not (cfg and cfg.get_section_smart_blacklist_rule) then
+        return nil
+    end
+    local res = cfg.get_section_smart_blacklist_rule(section_name)
+    if type(res) == "table" then
+        return res
+    end
+    return nil
+end
+
+local function is_level_blacklisted_for_context(level_name, community, section_name)
+    if type(level_name) ~= "string" or level_name == "" then
+        return false
+    end
+    if is_level_globally_blacklisted(level_name) then
+        return true
+    end
+
+    local rule = faction_level_blacklists_rule(community)
+    if rule and rule.all == true then
+        return true
+    end
+    local set = rule and rule.set or nil
+    if set and set[level_name] then
+        return true
+    end
+
+    local s_rule = section_level_blacklists_rule(section_name)
+    if s_rule and s_rule.all == true then
+        return true
+    end
+    local s_set = s_rule and s_rule.set or nil
+    if s_set and s_set[level_name] then
+        return true
+    end
+
+    return false
+end
+
+local function is_smart_blacklisted_for_context(level_name, smart_name, community, section_name)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return false
+    end
+    if is_level_blacklisted_for_context(level_name, community, section_name) then
+        return true
+    end
+
+    local gset = smart_blacklists_global_set()
+    if gset and gset[smart_name] then
+        return true
+    end
+
+    local rule = smart_blacklists_rule(level_name)
+    if rule and rule.all == true then
+        return true
+    end
+    local set = rule and rule.set or nil
+    if set and set[smart_name] then
+        return true
+    end
+
+    local f_rule = faction_smart_blacklists_rule(community)
+    if f_rule and f_rule.all == true then
+        return true
+    end
+    local f_set = f_rule and f_rule.set or nil
+    if f_set and f_set[smart_name] then
+        return true
+    end
+
+    local s_rule = section_smart_blacklists_rule(section_name)
+    if s_rule and s_rule.all == true then
+        return true
+    end
+    local s_set = s_rule and s_rule.set or nil
+    if s_set and s_set[smart_name] then
+        return true
+    end
+
+    return false
+end
+
+local function merge_unique_arrays(primary, secondary)
+    local out = {}
+    local seen = {}
+
+    local function append_from(src)
+        for i = 1, (src and #src or 0) do
+            local item = src[i]
+            if item ~= nil and not seen[item] then
+                seen[item] = true
+                out[#out + 1] = item
+            end
+        end
+    end
+
+    append_from(primary)
+    append_from(secondary)
+    return out
+end
+
+local function append_level_edge(map, source_level, dest_level)
+    if type(source_level) ~= "string" or source_level == "" then
+        return
+    end
+    if type(dest_level) ~= "string" or dest_level == "" then
+        return
+    end
+    if source_level == dest_level then
+        return
+    end
+    local bucket = map[source_level]
+    if type(bucket) ~= "table" then
+        bucket = {}
+        map[source_level] = bucket
+    end
+    bucket[dest_level] = true
+end
+
+local function edge_sets_to_arrays(src)
+    local out = {}
+    for level_name, set in pairs(src or {}) do
+        if type(level_name) == "string" and level_name ~= "" and type(set) == "table" then
+            local arr = {}
+            for other_level, ok in pairs(set) do
+                if ok == true and type(other_level) == "string" and other_level ~= "" then
+                    arr[#arr + 1] = other_level
+                end
+            end
+            if table_sort then
+                table_sort(arr)
+            end
+            out[level_name] = arr
+        end
+    end
+    return out
+end
+
+local function copy_edge_map(src)
+    local out = {}
+    for level_name, set in pairs(src or {}) do
+        if type(level_name) == "string" and level_name ~= "" and type(set) == "table" then
+            local dst = {}
+            for other_level, ok in pairs(set) do
+                if ok == true and type(other_level) == "string" and other_level ~= "" then
+                    dst[other_level] = true
+                end
+            end
+            out[level_name] = dst
+        end
+    end
+    return out
+end
+
+local function copy_array_map(src)
+    local out = {}
+    for level_name, arr in pairs(src or {}) do
+        if type(level_name) == "string" and level_name ~= "" and type(arr) == "table" then
+            local dst = {}
+            for i = 1, #arr do
+                local other_level = arr[i]
+                if type(other_level) == "string" and other_level ~= "" then
+                    dst[#dst + 1] = other_level
+                end
+            end
+            if table_sort then
+                table_sort(dst)
+            end
+            out[level_name] = dst
+        end
+    end
+    return out
+end
+
+local function copy_level_changer_edges(src)
+    local out = {}
+    for id, edge in pairs(src or {}) do
+        local nid = tonumber(id) or nil
+        if nid and type(edge) == "table" then
+            local source_level = type(edge.source_level) == "string" and edge.source_level or nil
+            local dest_level = type(edge.dest_level) == "string" and edge.dest_level or nil
+            if source_level and dest_level and source_level ~= "" and dest_level ~= "" then
+                out[nid] = {
+                    source_level = source_level,
+                    dest_level = dest_level,
+                }
+            end
+        end
+    end
+    return out
+end
+
+local function make_state_packet(sobj)
+    if not (sobj and net_packet) then
+        return nil
+    end
+    local ok, stpk = pcall(function()
+        return net_packet()
+    end)
+    if not (ok and stpk and stpk.w_begin and stpk.r_seek and sobj.STATE_Write) then
+        return nil
+    end
+    local ok_write = pcall(function()
+        stpk:w_begin(0)
+        sobj:STATE_Write(stpk)
+        stpk:r_seek(2)
+    end)
+    if not ok_write then
+        return nil
+    end
+    return stpk
+end
+
+local function skip_cse_alife_object_properties(stpk)
+    if not stpk then
+        return false
+    end
+    local ok = pcall(function()
+        stpk:r_u16()
+        stpk:r_float()
+        stpk:r_s32()
+        stpk:r_s32()
+        stpk:r_s32()
+        stpk:r_stringZ()
+        stpk:r_s32()
+        stpk:r_s32()
+    end)
+    return ok
+end
+
+local function skip_cse_shape_properties(stpk)
+    if not stpk then
+        return false
+    end
+    local ok = pcall(function()
+        local shape_count = tonumber(stpk:r_u8()) or 0
+        for _ = 1, shape_count do
+            local shape_type = tonumber(stpk:r_u8()) or 0
+            if shape_type == 0 then
+                stpk:r_vec3()
+                stpk:r_float()
+            else
+                stpk:r_vec3()
+                stpk:r_vec3()
+                stpk:r_vec3()
+                stpk:r_vec3()
+            end
+        end
+    end)
+    return ok
+end
+
+local function skip_cse_alife_space_restrictor_properties(stpk)
+    if not stpk then
+        return false
+    end
+    local ok = pcall(function()
+        stpk:r_u8()
+    end)
+    return ok
+end
+
+local utils_stpk_loaded = nil
+
+local function get_utils_stpk()
+    if utils_stpk_loaded ~= nil then
+        return utils_stpk_loaded or nil
+    end
+    local mod = rawget(_G, "utils_stpk")
+    if type(mod) ~= "table" and require then
+        pcall(require, "utils_stpk")
+        mod = rawget(_G, "utils_stpk")
+    end
+    utils_stpk_loaded = type(mod) == "table" and mod or false
+    return utils_stpk_loaded or nil
+end
+
+local function get_level_changer_data_fallback(sobj)
+    local stpk = make_state_packet(sobj)
+    if not stpk then
+        return nil
+    end
+    local ok = skip_cse_alife_object_properties(stpk)
+        and skip_cse_shape_properties(stpk)
+        and skip_cse_alife_space_restrictor_properties(stpk)
+    if not ok then
+        return nil
+    end
+    local out = {}
+    local ok_parse = pcall(function()
+        out.dest_game_vertex_id = stpk:r_u16()
+        out.dest_level_vertex_id = stpk:r_s32()
+        out.dest_position = stpk:r_vec3()
+        out.dest_direction = stpk:r_vec3()
+        out.dest_level_name = stpk:r_stringZ()
+        out.dest_graph_point = stpk:r_stringZ()
+        out.silent_mode = stpk:r_u8()
+    end)
+    return ok_parse and out or nil
+end
+
+local function get_level_changer_data(sobj)
+    local utils = get_utils_stpk()
+    if utils and utils.get_level_changer_data then
+        local ok, data = pcall(utils.get_level_changer_data, sobj)
+        if ok and type(data) == "table" then
+            return data
+        end
+    end
+    return get_level_changer_data_fallback(sobj)
+end
+
+local function is_base_smart(smart)
+    local props = smart and smart.props or nil
+    return type(props) == "table" and (tonumber(props.base) or 0) > 0
+end
+
+local function is_respawn_base_smart(smart)
+    if not is_base_smart(smart) then
+        return false
+    end
+    return smart.respawn_point == true and type(smart.respawn_params) == "table"
+end
+
+local function payload_args(payload)
+    if type(payload) ~= "table" then
+        return {}
+    end
+    return type(payload.args) == "table" and payload.args or {}
+end
+
+local function level_from_object(obj)
+    if not obj then return nil end
+    return now_level_name_by_gvid(tonumber(obj.m_game_vertex_id) or 0)
+end
+
+local function is_level_name(value)
+    return type(value) == "string" and value ~= ""
+end
+
+local function object_name(obj)
+    if not obj then
+        return nil
+    end
+    local raw_name = obj.name
+    if type(raw_name) == "string" and raw_name ~= "" then
+        return raw_name
+    end
+    local ok_name, res_name = pcall(function()
+        return obj:name()
+    end)
+    if ok_name and type(res_name) == "string" and res_name ~= "" then
+        return res_name
+    end
+    return nil
+end
+
+local function create_runtime()
+    return {
+        smart_by_name = {},
+        smarts_by_level = {},
+        base_smarts_by_level = {},
+        respawn_base_smarts_by_level = {},
+        smart_level_by_name = {},
+        smart_name_by_id = {},
+        smart_revision_by_level = {},
+        squad_revision_by_level = {},
+        topology_revision_by_level = {},
+        live_hydrated = false,
+        squads_by_level = {},
+        squad_level_by_id = {},
+        neighbors_by_level = {},
+        transition_edges_by_level = {},
+        level_changer_edges_by_id = {},
+        diag = {
+            callback_hits = {},
+            stats = {},
+            failures = {},
+            recent_squad_no_level = {},
+            recent_squad_no_id = {},
+            recent_smart_no_level = {},
+            recent_smart_no_name = {},
+            last_squad_upsert = nil,
+            last_smart_upsert = nil,
+            last_level_move = nil,
+            last_register = nil,
+            last_unregister = nil,
+        },
+        view_cache = {
+            smarts_by_level = {},
+            base_smarts_by_level = {},
+            respawn_base_smarts_by_level = {},
+            squads_by_level = {},
+        },
+    }
+end
+
+local function ensure_diag(runtime)
+    if type(runtime) ~= "table" then
+        return nil
+    end
+    local diag = runtime.diag
+    if type(diag) ~= "table" then
+        diag = {}
+        runtime.diag = diag
+    end
+    if type(diag.callback_hits) ~= "table" then
+        diag.callback_hits = {}
+    end
+    if type(diag.stats) ~= "table" then
+        diag.stats = {}
+    end
+    if type(diag.failures) ~= "table" then
+        diag.failures = {}
+    end
+    if type(diag.recent_squad_no_level) ~= "table" then
+        diag.recent_squad_no_level = {}
+    end
+    if type(diag.recent_squad_no_id) ~= "table" then
+        diag.recent_squad_no_id = {}
+    end
+    if type(diag.recent_smart_no_level) ~= "table" then
+        diag.recent_smart_no_level = {}
+    end
+    if type(diag.recent_smart_no_name) ~= "table" then
+        diag.recent_smart_no_name = {}
+    end
+    return diag
+end
+
+local function diag_inc(dst, key)
+    if type(dst) ~= "table" or type(key) ~= "string" or key == "" then
+        return
+    end
+    dst[key] = (tonumber(dst[key]) or 0) + 1
+end
+
+function BoardIndex:__init()
+    self.RUNTIME = create_runtime()
+end
+
+function BoardIndex:_diag_callback(name)
+    local diag = ensure_diag(self.RUNTIME)
+    if not diag then
+        return
+    end
+    diag_inc(diag.callback_hits, name)
+end
+
+function BoardIndex:_diag_stat(name)
+    local diag = ensure_diag(self.RUNTIME)
+    if not diag then
+        return
+    end
+    diag_inc(diag.stats, name)
+end
+
+function BoardIndex:_diag_fail(name)
+    local diag = ensure_diag(self.RUNTIME)
+    if not diag then
+        return
+    end
+    diag_inc(diag.failures, name)
+end
+
+function BoardIndex:_diag_last(name, payload)
+    local diag = ensure_diag(self.RUNTIME)
+    if not diag or type(name) ~= "string" or name == "" then
+        return
+    end
+    diag[name] = payload
+end
+
+function BoardIndex:_diag_push(list_name, payload, limit)
+    local diag = ensure_diag(self.RUNTIME)
+    if not diag or type(list_name) ~= "string" or list_name == "" then
+        return
+    end
+    local list = diag[list_name]
+    if type(list) ~= "table" then
+        list = {}
+        diag[list_name] = list
+    end
+    list[#list + 1] = payload
+    limit = tonumber(limit) or 12
+    while #list > limit do
+        table.remove(list, 1)
+    end
+end
+
+function BoardIndex:_resolve_squad_level(id, squad, fallback_ref)
+    local level_name = level_from_object(squad)
+    if is_level_name(level_name) then
+        return level_name, "squad"
+    end
+
+    if type(fallback_ref) == "string" then
+        if is_level_name(fallback_ref) then
+            return fallback_ref, "fallback_level"
+        end
+    elseif fallback_ref ~= nil then
+        local fallback_level = level_from_object(fallback_ref)
+        if is_level_name(fallback_level) then
+            return fallback_level, "fallback_object"
+        end
+    end
+
+    local prev_level = self.RUNTIME.squad_level_by_id[tonumber(id) or -1]
+    if is_level_name(prev_level) then
+        return prev_level, "runtime_prev"
+    end
+
+    return nil, nil
+end
+
+function BoardIndex:_invalidate_view_cache(kind, level_name)
+    if type(level_name) ~= "string" or level_name == "" then
+        return
+    end
+    local vc = self.RUNTIME.view_cache or nil
+    if type(vc) ~= "table" then
+        return
+    end
+    if kind == "squad" then
+        local bucket = vc.squads_by_level
+        if type(bucket) == "table" then
+            bucket[level_name] = nil
+        end
+        return
+    end
+    for _, cache_name in pairs({
+        "smarts_by_level",
+        "base_smarts_by_level",
+        "respawn_base_smarts_by_level",
+    }) do
+        local bucket = vc[cache_name]
+        if type(bucket) == "table" then
+            bucket[level_name] = nil
+        end
+    end
+end
+
+function BoardIndex:_bump_revision(kind, level_name)
+    if type(level_name) ~= "string" or level_name == "" then
+        return
+    end
+    if kind == "topology" then
+        local revs = self.RUNTIME.topology_revision_by_level
+        revs[level_name] = (tonumber(revs[level_name]) or 0) + 1
+        return
+    end
+    if kind == "squad" then
+        local revs = self.RUNTIME.squad_revision_by_level
+        revs[level_name] = (tonumber(revs[level_name]) or 0) + 1
+        self:_invalidate_view_cache("squad", level_name)
+        return
+    end
+    local revs = self.RUNTIME.smart_revision_by_level
+    revs[level_name] = (tonumber(revs[level_name]) or 0) + 1
+    self:_invalidate_view_cache("smart", level_name)
+end
+
+function BoardIndex:_mark_revision_union(kind, old_map, new_map)
+    local marked = {}
+    for level_name in pairs(old_map or {}) do
+        if not marked[level_name] then
+            marked[level_name] = true
+            self:_bump_revision(kind, level_name)
+        end
+    end
+    for level_name in pairs(new_map or {}) do
+        if not marked[level_name] then
+            marked[level_name] = true
+            self:_bump_revision(kind, level_name)
+        end
+    end
+end
+
+function BoardIndex:_remove_level_value(map, level_name, value)
+    local arr = map[level_name]
+    if type(arr) ~= "table" or value == nil then
+        return false
+    end
+    local out = {}
+    local changed = false
+    for i = 1, #arr do
+        local item = arr[i]
+        if item ~= value then
+            out[#out + 1] = item
+        else
+            changed = true
+        end
+    end
+    if #out > 0 then
+        map[level_name] = out
+    else
+        map[level_name] = nil
+    end
+    return changed
+end
+
+function BoardIndex:_rebuild_neighbors()
+    local neighbor_sets = {}
+    local function merge_edges(src)
+        for level_name, set in pairs(src or {}) do
+            if type(level_name) == "string" and level_name ~= "" and type(set) == "table" then
+                for other_level, ok in pairs(set) do
+                    if ok == true and type(other_level) == "string" and other_level ~= "" and other_level ~= level_name then
+                        append_level_edge(neighbor_sets, level_name, other_level)
+                        append_level_edge(neighbor_sets, other_level, level_name)
+                    end
+                end
+            end
+        end
+    end
+    merge_edges(self.RUNTIME.transition_edges_by_level)
+    local neighbors = edge_sets_to_arrays(neighbor_sets)
+    self:_mark_revision_union("topology", self.RUNTIME.neighbors_by_level, neighbors)
+    self.RUNTIME.neighbors_by_level = neighbors
+end
+
+function BoardIndex:_set_level_changer_entry(level_changer)
+    local changer_id = tonumber(level_changer and level_changer.id) or nil
+    if not changer_id then
+        return false
+    end
+    local source_level = level_from_object(level_changer)
+    local data = get_level_changer_data(level_changer)
+    local dest_level = type(data) == "table" and data.dest_level_name or nil
+    if type(source_level) ~= "string" or source_level == "" then
+        return false
+    end
+    if type(dest_level) ~= "string" or dest_level == "" then
+        return false
+    end
+    if source_level == dest_level then
+        return false
+    end
+
+    local prev = self.RUNTIME.level_changer_edges_by_id[changer_id]
+    if type(prev) == "table" then
+        local old_source = prev.source_level
+        local old_dest = prev.dest_level
+        local bucket = self.RUNTIME.transition_edges_by_level[old_source]
+        if type(bucket) == "table" then
+            bucket[old_dest] = nil
+            if next(bucket) == nil then
+                self.RUNTIME.transition_edges_by_level[old_source] = nil
+            end
+        end
+    end
+
+    append_level_edge(self.RUNTIME.transition_edges_by_level, source_level, dest_level)
+    self.RUNTIME.level_changer_edges_by_id[changer_id] = {
+        source_level = source_level,
+        dest_level = dest_level,
+    }
+    self:_rebuild_neighbors()
+    return true
+end
+
+function BoardIndex:_remove_level_changer_entry(level_changer)
+    local changer_id = tonumber(level_changer and level_changer.id or level_changer) or nil
+    if not changer_id then
+        return false
+    end
+    local prev = self.RUNTIME.level_changer_edges_by_id[changer_id]
+    self.RUNTIME.level_changer_edges_by_id[changer_id] = nil
+    if type(prev) ~= "table" then
+        return false
+    end
+    local bucket = self.RUNTIME.transition_edges_by_level[prev.source_level]
+    if type(bucket) == "table" then
+        bucket[prev.dest_level] = nil
+        if next(bucket) == nil then
+            self.RUNTIME.transition_edges_by_level[prev.source_level] = nil
+        end
+    end
+    self:_rebuild_neighbors()
+    return true
+end
+
+function BoardIndex:_upsert_smart_from_object(smart, source)
+    local smart_name = object_name(smart)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        self:_diag_fail("upsert_smart:no_name")
+        self:_diag_fail("upsert_smart:no_name:" .. tostring(source or "-"))
+        self:_diag_push("recent_smart_no_name", {
+            source = source,
+            smart_id = tonumber(smart and smart.id) or nil,
+            gvid = tonumber(smart and smart.m_game_vertex_id) or nil,
+        }, 16)
+        self:_diag_last("last_smart_upsert", {
+            source = source,
+            result = "no_name",
+            smart_id = tonumber(smart and smart.id) or nil,
+            gvid = tonumber(smart and smart.m_game_vertex_id) or nil,
+        })
+        return false
+    end
+
+    local prev = self.RUNTIME.smart_by_name[smart_name]
+    local next_gvid = tonumber(smart and smart.m_game_vertex_id) or tonumber(prev and prev.gvid) or nil
+    local next_level = next_gvid and now_level_name_by_gvid(next_gvid) or (prev and prev.level) or nil
+    if type(next_level) ~= "string" or next_level == "" then
+        self:_diag_fail("upsert_smart:no_level")
+        self:_diag_fail("upsert_smart:no_level:" .. tostring(source or "-"))
+        self:_diag_push("recent_smart_no_level", {
+            source = source,
+            smart_name = smart_name,
+            smart_id = tonumber(smart and smart.id) or tonumber(prev and prev.id) or nil,
+            gvid = next_gvid,
+        }, 16)
+        self:_diag_last("last_smart_upsert", {
+            source = source,
+            result = "no_level",
+            smart_name = smart_name,
+            smart_id = tonumber(smart and smart.id) or tonumber(prev and prev.id) or nil,
+            gvid = next_gvid,
+        })
+        return false
+    end
+
+    local has_props = type(smart and smart.props) == "table"
+    local has_respawn_meta = smart and (smart.respawn_point ~= nil or smart.respawn_params ~= nil) or false
+    local next_is_base = has_props and is_base_smart(smart) or (prev and prev.is_base == true) or false
+    local next_is_respawn_base = (has_props or has_respawn_meta) and is_respawn_base_smart(smart) or (prev and prev.is_respawn_base == true) or false
+    local next_id = tonumber(smart and smart.id) or tonumber(prev and prev.id) or nil
+
+    local old_level = prev and prev.level or nil
+    local old_id = tonumber(prev and prev.id) or nil
+    local old_is_base = prev and prev.is_base == true or false
+    local old_is_respawn_base = prev and prev.is_respawn_base == true or false
+
+    local changed_old_level = false
+    local changed_new_level = false
+
+    if old_id and old_id ~= next_id and self.RUNTIME.smart_name_by_id[old_id] == smart_name then
+        self.RUNTIME.smart_name_by_id[old_id] = nil
+    end
+
+    if type(old_level) == "string" and old_level ~= "" and old_level ~= next_level then
+        changed_old_level = unset_level_value(self.RUNTIME.smarts_by_level, old_level, smart_name) or changed_old_level
+        changed_old_level = unset_level_value(self.RUNTIME.base_smarts_by_level, old_level, smart_name) or changed_old_level
+        changed_old_level = unset_level_value(self.RUNTIME.respawn_base_smarts_by_level, old_level, smart_name) or changed_old_level
+    elseif old_level == next_level then
+        if old_is_base ~= next_is_base then
+            if next_is_base then
+                changed_new_level = set_level_value(self.RUNTIME.base_smarts_by_level, next_level, smart_name) or changed_new_level
+            else
+                changed_new_level = unset_level_value(self.RUNTIME.base_smarts_by_level, next_level, smart_name) or changed_new_level
+            end
+        end
+        if old_is_respawn_base ~= next_is_respawn_base then
+            if next_is_respawn_base then
+                changed_new_level = set_level_value(self.RUNTIME.respawn_base_smarts_by_level, next_level, smart_name) or changed_new_level
+            else
+                changed_new_level = unset_level_value(self.RUNTIME.respawn_base_smarts_by_level, next_level, smart_name) or changed_new_level
+            end
+        end
+    end
+
+    changed_new_level = set_level_value(self.RUNTIME.smarts_by_level, next_level, smart_name) or changed_new_level
+    if next_is_base then
+        changed_new_level = set_level_value(self.RUNTIME.base_smarts_by_level, next_level, smart_name) or changed_new_level
+    else
+        changed_new_level = unset_level_value(self.RUNTIME.base_smarts_by_level, next_level, smart_name) or changed_new_level
+    end
+    if next_is_respawn_base then
+        changed_new_level = set_level_value(self.RUNTIME.respawn_base_smarts_by_level, next_level, smart_name) or changed_new_level
+    else
+        changed_new_level = unset_level_value(self.RUNTIME.respawn_base_smarts_by_level, next_level, smart_name) or changed_new_level
+    end
+
+    self.RUNTIME.smart_by_name[smart_name] = {
+        id = next_id,
+        level = next_level,
+        gvid = next_gvid,
+        is_base = next_is_base == true,
+        is_respawn_base = next_is_respawn_base == true,
+        last_source = type(source) == "string" and source or nil,
+    }
+    self.RUNTIME.smart_level_by_name[smart_name] = next_level
+    if next_id then
+        self.RUNTIME.smart_name_by_id[next_id] = smart_name
+    end
+
+    if changed_old_level and old_level and old_level ~= next_level then
+        self:_bump_revision("smart", old_level)
+    end
+    if changed_new_level then
+        self:_bump_revision("smart", next_level)
+    end
+    self:_diag_stat("upsert_smart:ok")
+    self:_diag_last("last_smart_upsert", {
+        source = source,
+        result = "ok",
+        smart_name = smart_name,
+        smart_id = next_id,
+        gvid = next_gvid,
+        level = next_level,
+        is_base = next_is_base == true,
+        is_respawn_base = next_is_respawn_base == true,
+    })
+    return true
+end
+
+function BoardIndex:_remove_smart_by_name(smart_name, source)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        self:_diag_fail("remove_smart:bad_name")
+        return false
+    end
+    local prev = self.RUNTIME.smart_by_name[smart_name]
+    self.RUNTIME.smart_by_name[smart_name] = nil
+    local level_name = type(prev) == "table" and prev.level or self.RUNTIME.smart_level_by_name[smart_name]
+    local smart_id = tonumber(type(prev) == "table" and prev.id or nil) or nil
+    self.RUNTIME.smart_level_by_name[smart_name] = nil
+    if smart_id and self.RUNTIME.smart_name_by_id[smart_id] == smart_name then
+        self.RUNTIME.smart_name_by_id[smart_id] = nil
+    else
+        for id, name in pairs(self.RUNTIME.smart_name_by_id or {}) do
+            if name == smart_name then
+                self.RUNTIME.smart_name_by_id[id] = nil
+            end
+        end
+    end
+
+    local changed = false
+    if type(level_name) == "string" and level_name ~= "" then
+        changed = unset_level_value(self.RUNTIME.smarts_by_level, level_name, smart_name) or changed
+        changed = unset_level_value(self.RUNTIME.base_smarts_by_level, level_name, smart_name) or changed
+        changed = unset_level_value(self.RUNTIME.respawn_base_smarts_by_level, level_name, smart_name) or changed
+        if changed then
+            self:_bump_revision("smart", level_name)
+        end
+    end
+    if changed then
+        self:_diag_stat("remove_smart:ok")
+    else
+        self:_diag_fail("remove_smart:miss")
+    end
+    return changed
+end
+
+function BoardIndex:_upsert_squad_from_object(sid, squad, source, fallback_ref)
+    local id = tonumber(sid or (squad and squad.id)) or nil
+    if not id then
+        self:_diag_fail("upsert_squad:no_id")
+        self:_diag_fail("upsert_squad:no_id:" .. tostring(source or "-"))
+        self:_diag_push("recent_squad_no_id", {
+            source = source,
+            sid = tonumber(sid) or nil,
+            name = object_name(squad),
+            gvid = tonumber(squad and squad.m_game_vertex_id) or nil,
+            smart_id = tonumber(squad and squad.smart_id) or nil,
+        }, 16)
+        self:_diag_last("last_squad_upsert", {
+            source = source,
+            result = "no_id",
+            gvid = tonumber(squad and squad.m_game_vertex_id) or nil,
+        })
+        return false
+    end
+    local level_name, level_source = self:_resolve_squad_level(id, squad, fallback_ref)
+    if not is_level_name(level_name) then
+        self:_diag_fail("upsert_squad:no_level")
+        self:_diag_fail("upsert_squad:no_level:" .. tostring(source or "-"))
+        self:_diag_push("recent_squad_no_level", {
+            source = source,
+            sid = id,
+            name = object_name(squad),
+            gvid = tonumber(squad and squad.m_game_vertex_id) or nil,
+            smart_id = tonumber(squad and squad.smart_id) or nil,
+        }, 16)
+        self:_diag_last("last_squad_upsert", {
+            source = source,
+            result = "no_level",
+            sid = id,
+            name = object_name(squad),
+            gvid = tonumber(squad and squad.m_game_vertex_id) or nil,
+            smart_id = tonumber(squad and squad.smart_id) or nil,
+        })
+        return false
+    end
+    local prev_level = self.RUNTIME.squad_level_by_id[id]
+    local changed_old_level = false
+    local changed_new_level = false
+    if type(prev_level) == "string" and prev_level ~= "" and prev_level ~= level_name then
+        changed_old_level = unset_level_value(self.RUNTIME.squads_by_level, prev_level, id) or changed_old_level
+    end
+    changed_new_level = set_level_value(self.RUNTIME.squads_by_level, level_name, id) or changed_new_level
+    self.RUNTIME.squad_level_by_id[id] = level_name
+    if changed_old_level and prev_level and prev_level ~= level_name then
+        self:_bump_revision("squad", prev_level)
+    end
+    if changed_new_level then
+        self:_bump_revision("squad", level_name)
+    end
+    self:_diag_stat("upsert_squad:ok")
+    self:_diag_last("last_squad_upsert", {
+        source = source,
+        result = "ok",
+        sid = id,
+        gvid = tonumber(squad and squad.m_game_vertex_id) or nil,
+        smart_id = tonumber(squad and squad.smart_id) or nil,
+        level = level_name,
+        level_source = level_source,
+    })
+    return true
+end
+
+function BoardIndex:_remove_squad_by_id(sid, source)
+    local id = tonumber(sid) or nil
+    if not id then
+        self:_diag_fail("remove_squad:no_id")
+        return false
+    end
+    local level_name = self.RUNTIME.squad_level_by_id[id]
+    self.RUNTIME.squad_level_by_id[id] = nil
+    if type(level_name) ~= "string" or level_name == "" then
+        self:_diag_fail("remove_squad:no_level")
+        return false
+    end
+    local changed = unset_level_value(self.RUNTIME.squads_by_level, level_name, id)
+    if changed then
+        self:_bump_revision("squad", level_name)
+        self:_diag_stat("remove_squad:ok")
+    else
+        self:_diag_fail("remove_squad:miss")
+    end
+    return changed
+end
+
+function BoardIndex:_move_squad_level(sid, new_level, source)
+    local id = tonumber(sid) or nil
+    local level_name = type(new_level) == "string" and new_level ~= "" and new_level or nil
+    if not id or not level_name then
+        self:_diag_fail("move_squad:bad_args")
+        self:_diag_last("last_level_move", {
+            source = source,
+            result = "bad_args",
+            sid = id,
+            level = level_name,
+        })
+        return false
+    end
+    local prev_level = self.RUNTIME.squad_level_by_id[id]
+    local changed_old_level = false
+    local changed_new_level = false
+    if type(prev_level) == "string" and prev_level ~= "" and prev_level ~= level_name then
+        changed_old_level = unset_level_value(self.RUNTIME.squads_by_level, prev_level, id) or changed_old_level
+    end
+    changed_new_level = set_level_value(self.RUNTIME.squads_by_level, level_name, id) or changed_new_level
+    self.RUNTIME.squad_level_by_id[id] = level_name
+    if changed_old_level and prev_level and prev_level ~= level_name then
+        self:_bump_revision("squad", prev_level)
+    end
+    if changed_new_level then
+        self:_bump_revision("squad", level_name)
+    end
+    if changed_old_level or changed_new_level then
+        self:_diag_stat("move_squad:ok")
+    else
+        self:_diag_fail("move_squad:no_change")
+    end
+    self:_diag_last("last_level_move", {
+        source = source,
+        result = (changed_old_level or changed_new_level) and "ok" or "no_change",
+        sid = id,
+        prev_level = prev_level,
+        level = level_name,
+    })
+    return changed_old_level or changed_new_level
+end
+
+function BoardIndex:_on_server_entity_register(se_obj, type_name)
+    self:_diag_callback("server_entity_on_register")
+    self:_diag_callback("server_entity_on_register:" .. tostring(type_name or "-"))
+    self:_diag_last("last_register", {
+        type_name = type_name,
+        id = tonumber(se_obj and se_obj.id) or nil,
+        name = object_name(se_obj),
+        gvid = tonumber(se_obj and se_obj.m_game_vertex_id) or nil,
+    })
+    if type(type_name) ~= "string" then return end
+    if type_name == "se_smart_terrain" and se_obj then
+        self:_upsert_smart_from_object(se_obj, "server_entity_on_register")
+    elseif (type_name == "se_level_changer" or type_name == "level_changer" or type_name == "level_changer_s") and se_obj then
+        local ok_class, class_id = safe_call("se_level_changer:clsid", function()
+            return se_obj:clsid()
+        end)
+        class_id = ok_class and tonumber(class_id) or nil
+        if class_id == CLSID_LEVEL_CHANGER or class_id == CLSID_LEVEL_CHANGER_S or class_id == nil then
+            self:_set_level_changer_entry(se_obj)
+        end
+    end
+end
+
+function BoardIndex:_on_server_entity_unregister(se_obj, type_name)
+    self:_diag_callback("server_entity_on_unregister")
+    self:_diag_callback("server_entity_on_unregister:" .. tostring(type_name or "-"))
+    self:_diag_last("last_unregister", {
+        type_name = type_name,
+        id = tonumber(se_obj and se_obj.id) or nil,
+        name = object_name(se_obj),
+        gvid = tonumber(se_obj and se_obj.m_game_vertex_id) or nil,
+    })
+    if type(type_name) ~= "string" then return end
+    if type_name == "se_smart_terrain" and se_obj then
+        self:_remove_smart_by_name(object_name(se_obj), "server_entity_on_unregister")
+    elseif (type_name == "se_level_changer" or type_name == "level_changer" or type_name == "level_changer_s") and se_obj then
+        self:_remove_level_changer_entry(se_obj)
+    elseif type_name == "sim_squad_scripted" and se_obj then
+        self:_remove_squad_by_id(se_obj.id, "server_entity_on_unregister")
+    end
+end
+
+function BoardIndex:_on_squad_first_update(squad)
+    self:_diag_callback("squad_on_first_update")
+    self:_upsert_squad_from_object(squad and squad.id or nil, squad, "squad_on_first_update")
+end
+
+function BoardIndex:_on_squad_update(squad)
+    self:_diag_callback("squad_on_update")
+    self:_upsert_squad_from_object(squad and squad.id or nil, squad, "squad_on_update")
+end
+
+function BoardIndex:_on_squad_enter_smart(squad, smart)
+    self:_diag_callback("squad_on_enter_smart")
+    self:_upsert_squad_from_object(squad and squad.id or nil, squad, "squad_on_enter_smart", smart)
+    self:_upsert_smart_from_object(smart, "squad_on_enter_smart")
+end
+
+function BoardIndex:_on_squad_leave_smart(squad, smart)
+    self:_diag_callback("squad_on_leave_smart")
+    self:_upsert_squad_from_object(squad and squad.id or nil, squad, "squad_on_leave_smart", smart)
+    self:_upsert_smart_from_object(smart, "squad_on_leave_smart")
+end
+
+function BoardIndex:_on_squad_after_level_change(squad, old_level, new_level)
+    self:_diag_callback("squad_on_after_level_change")
+    local sid = squad and squad.id or nil
+    if sid then
+        local level_name = type(new_level) == "string" and new_level ~= "" and new_level or level_from_object(squad)
+        if type(level_name) == "string" and level_name ~= "" then
+            self:_move_squad_level(sid, level_name, "squad_on_after_level_change")
+        end
+    end
+end
+
+function BoardIndex:_on_smart_terrain_update(smart)
+    self:_diag_callback("smart_terrain_on_update")
+    self:_upsert_smart_from_object(smart, "smart_terrain_on_update")
+end
+
+function BoardIndex:_on_bootstrap()
+    self:_diag_callback("bootstrap")
+    self:_hydrate_live_runtime("bootstrap")
+    if next(self.RUNTIME.neighbors_by_level or {}) == nil
+        and next(self.RUNTIME.transition_edges_by_level or {}) ~= nil
+    then
+        self:_rebuild_neighbors()
+    end
+end
+
+function BoardIndex:_reset_runtime(reason)
+    self.RUNTIME = create_runtime()
+    if siski.log and siski.log.warn then
+        siski.log.warn("BOARD_INDEX", "reset_runtime reason=%s", tostring(reason or "-"))
+    end
+end
+
+function BoardIndex:_hydrate_live_runtime(source)
+    if self.RUNTIME.live_hydrated == true then
+        return false
+    end
+
+    local board = get_board()
+    if not board then
+        return false
+    end
+
+    local hydrated_any = false
+
+    local smarts_by_names = board.smarts_by_names
+    if type(smarts_by_names) == "table" then
+        for _, smart in pairs(smarts_by_names) do
+            if smart and self:_upsert_smart_from_object(smart, source or "hydrate_runtime") then
+                hydrated_any = true
+            end
+        end
+    end
+
+    local squads = board.squads
+    if type(squads) == "table" then
+        for sid_key, squad_ref in pairs(squads) do
+            local sid = tonumber(sid_key) or tonumber(type(squad_ref) == "table" and squad_ref.id or nil)
+            local squad = type(squad_ref) == "table" and squad_ref or nil
+            if is_valid_server_id(sid) and not squad then
+                local ok_obj, se_squad = pcall(function()
+                    local sim = alife and alife() or nil
+                    return sim and sim:object(sid) or nil
+                end)
+                squad = ok_obj and se_squad or nil
+            end
+            if is_valid_server_id(sid) and squad and self:_upsert_squad_from_object(sid, squad, source or "hydrate_runtime") then
+                hydrated_any = true
+            end
+        end
+    end
+
+    local sim_objs = rawget(_G, "simulation_objects")
+    local registry = sim_objs and sim_objs.object_registry or nil
+    local registry_size = tonumber(sim_objs and sim_objs.object_registry_size) or 0
+    if type(registry) == "table" and registry_size > 0 then
+        for i = 1, registry_size do
+            local se_obj = registry[i]
+            if se_obj then
+                local ok_class, class_id = safe_call("hydrate_level_changer:clsid", function()
+                    return se_obj:clsid()
+                end)
+                class_id = ok_class and tonumber(class_id) or nil
+                if class_id == CLSID_LEVEL_CHANGER or class_id == CLSID_LEVEL_CHANGER_S then
+                    if self:_set_level_changer_entry(se_obj) then
+                        hydrated_any = true
+                    end
+                end
+            end
+        end
+    end
+
+    self.RUNTIME.live_hydrated = true
+    return hydrated_any
+end
+
+function BoardIndex:_save_state(m_data)
+    if type(m_data) ~= "table" then
+        return
+    end
+    m_data.siski_board_index = {
+        neighbors_by_level = self.RUNTIME.neighbors_by_level or {},
+        transition_edges_by_level = self.RUNTIME.transition_edges_by_level or {},
+        level_changer_edges_by_id = self.RUNTIME.level_changer_edges_by_id or {},
+    }
+end
+
+function BoardIndex:_load_state(m_data)
+    local data = type(m_data) == "table" and m_data.siski_board_index or nil
+    if type(data) ~= "table" then
+        return
+    end
+    self.RUNTIME = create_runtime()
+    self.RUNTIME.transition_edges_by_level = copy_edge_map(data.transition_edges_by_level)
+    self.RUNTIME.neighbors_by_level = copy_array_map(data.neighbors_by_level)
+    self.RUNTIME.level_changer_edges_by_id = copy_level_changer_edges(data.level_changer_edges_by_id)
+    self.RUNTIME.topology_revision_by_level = {}
+    for level_name in pairs(self.RUNTIME.neighbors_by_level or {}) do
+        self.RUNTIME.topology_revision_by_level[level_name] = 1
+    end
+    if next(self.RUNTIME.neighbors_by_level or {}) == nil
+        and next(self.RUNTIME.transition_edges_by_level or {}) ~= nil
+    then
+        self:_rebuild_neighbors()
+    end
+    self:_hydrate_live_runtime("load_state")
+end
+
+function BoardIndex:_materialize_level_bucket(cache_name, revision_kind, map, level_name, numeric)
+    if type(level_name) ~= "string" or level_name == "" then
+        return {}
+    end
+    local vc = self.RUNTIME.view_cache or {}
+    local group = vc[cache_name]
+    if type(group) ~= "table" then
+        group = {}
+        vc[cache_name] = group
+        self.RUNTIME.view_cache = vc
+    end
+    local rev_map = revision_kind == "squad" and self.RUNTIME.squad_revision_by_level or self.RUNTIME.smart_revision_by_level
+    local rev = tonumber(rev_map[level_name]) or 0
+    local cached = group[level_name]
+    if type(cached) == "table" and tonumber(cached.rev) == rev and type(cached.items) == "table" then
+        return cached.items
+    end
+    local items = build_sorted_bucket_array(map[level_name], numeric == true)
+    group[level_name] = { rev = rev, items = items }
+    return items
+end
+
+function BoardIndex:_filter_level_smart_view(level_name, list, opts_or_fn)
+    local opts = normalize_view_opts(opts_or_fn)
+    if type(list) ~= "table" then
+        return {}
+    end
+    if not opts then
+        return list
+    end
+
+    local community = opts.community
+    local section_name = opts.section_name
+    local filter_fn = type(opts.filter_fn) == "function" and opts.filter_fn or nil
+    if is_level_blacklisted_for_context(level_name, community, section_name) then
+        return {}
+    end
+
+    local out = {}
+    local out_n = 0
+    for i = 1, #list do
+        local smart_name = list[i]
+        if type(smart_name) == "string"
+            and smart_name ~= ""
+            and (not is_smart_blacklisted_for_context(level_name, smart_name, community, section_name))
+        then
+            local keep = true
+            if filter_fn then
+                local ok_call, res = pcall(filter_fn, smart_name, level_name)
+                keep = ok_call and res == true or false
+            end
+            if keep then
+                out_n = out_n + 1
+                out[out_n] = smart_name
+            end
+        end
+    end
+    return out
+end
+
+function BoardIndex:_get_level_smarts(level_name, opts_or_fn)
+    local runtime_list = self:_materialize_level_bucket("smarts_by_level", "smart", self.RUNTIME.smarts_by_level, level_name, false)
+    local cfg = config_ref()
+    local cfg_list = cfg and cfg.get_level_smarts and cfg.get_level_smarts(level_name) or nil
+    local merged = merge_unique_arrays(cfg_list, runtime_list)
+    return self:_filter_level_smart_view(level_name, merged, opts_or_fn)
+end
+
+function BoardIndex:_get_base_smarts(level_name, opts_or_fn)
+    local runtime_list = self:_materialize_level_bucket("base_smarts_by_level", "smart", self.RUNTIME.base_smarts_by_level, level_name, false)
+    local cfg = config_ref()
+    local cfg_list = cfg and cfg.get_level_bases and cfg.get_level_bases(level_name) or nil
+    local merged = merge_unique_arrays(cfg_list, runtime_list)
+    return self:_filter_level_smart_view(level_name, merged, opts_or_fn)
+end
+
+function BoardIndex:_get_respawn_base_smarts(level_name, opts_or_fn)
+    local runtime_list = self:_materialize_level_bucket("respawn_base_smarts_by_level", "smart", self.RUNTIME.respawn_base_smarts_by_level, level_name, false)
+    return self:_filter_level_smart_view(level_name, runtime_list, opts_or_fn)
+end
+
+function BoardIndex:_get_level_squads(level_name)
+    return self:_materialize_level_bucket("squads_by_level", "squad", self.RUNTIME.squads_by_level, level_name, true)
+end
+
+function BoardIndex:_get_known_smart_levels()
+    local out = {}
+    for level_name in pairs(self.RUNTIME and self.RUNTIME.smarts_by_level or {}) do
+        if type(level_name) == "string" and level_name ~= "" then
+            out[#out + 1] = level_name
+        end
+    end
+    if table_sort then
+        table_sort(out)
+    end
+    return out
+end
+
+function BoardIndex:_get_smart_level(smart_name)
+    return self.RUNTIME.smart_level_by_name[type(smart_name) == "string" and smart_name or ""] or nil
+end
+
+function BoardIndex:_get_smart_name_by_id(smart_id)
+    return self.RUNTIME.smart_name_by_id[tonumber(smart_id) or -1] or nil
+end
+
+function BoardIndex:_get_level_neighbors(level_name, opts_or_fn)
+    local list = self.RUNTIME.neighbors_by_level[type(level_name) == "string" and level_name or ""] or {}
+    local opts = normalize_view_opts(opts_or_fn)
+    if not opts then
+        return list
+    end
+
+    local community = opts.community
+    local section_name = opts.section_name
+    local filter_fn = type(opts.filter_fn) == "function" and opts.filter_fn or nil
+    local out = {}
+    local out_n = 0
+    for i = 1, #list do
+        local neighbor = list[i]
+        local ok = type(neighbor) == "string"
+            and neighbor ~= ""
+            and (not is_level_blacklisted_for_context(neighbor, community, section_name))
+        if ok and filter_fn then
+            local ok_call, res = pcall(filter_fn, neighbor, level_name)
+            ok = ok_call and res == true or false
+        end
+        if ok then
+            out_n = out_n + 1
+            out[out_n] = neighbor
+        end
+    end
+    return out
+end
+
+function BoardIndex:_get_topology_revision(level_name)
+    return tonumber(self.RUNTIME.topology_revision_by_level[type(level_name) == "string" and level_name or ""]) or 0
+end
+
+function BoardIndex:_get_smart_revision(level_name)
+    return tonumber(self.RUNTIME.smart_revision_by_level[type(level_name) == "string" and level_name or ""]) or 0
+end
+
+local inst = BoardIndex.new and BoardIndex.new() or setmetatable({}, BoardIndex)
+if not inst.RUNTIME then
+    BoardIndex.__init(inst)
+end
+
+local function active_inst()
+    local current = siski and siski.board_index or nil
+    if type(current) == "table" and current.RUNTIME then
+        return current
+    end
+    return inst
+end
+
+local function ensure_bus_subscriptions()
+    local bus = siski and siski.bus or nil
+    if not (type(bus) == "table" and type(bus.subscribe) == "function") then
+        return false
+    end
+
+    local function ensure(event_name, fn)
+        if type(bus.has) == "function" then
+            local ok_has, has = pcall(bus.has, event_name, "siski_board_index")
+            if ok_has and has == true then
+                return true
+            end
+        end
+        local ok_sub, res = pcall(bus.subscribe, event_name, "siski_board_index", fn)
+        return ok_sub and res ~= false
+    end
+
+    ensure("server_entity_on_register", function(payload)
+        local args = payload_args(payload)
+        active_inst():_on_server_entity_register(args[1], args[2])
+    end)
+    ensure("server_entity_on_unregister", function(payload)
+        local args = payload_args(payload)
+        active_inst():_on_server_entity_unregister(args[1], args[2])
+    end)
+    ensure("squad_on_first_update", function(payload)
+        local args = payload_args(payload)
+        active_inst():_on_squad_first_update(args[1])
+    end)
+    ensure("squad_on_update", function(payload)
+        local args = payload_args(payload)
+        active_inst():_on_squad_update(args[1])
+    end)
+    ensure("squad_on_enter_smart", function(payload)
+        local args = payload_args(payload)
+        active_inst():_on_squad_enter_smart(args[1], args[2])
+    end)
+    ensure("squad_on_leave_smart", function(payload)
+        local args = payload_args(payload)
+        active_inst():_on_squad_leave_smart(args[1], args[2])
+    end)
+    ensure("squad_on_after_level_change", function(payload)
+        local args = payload_args(payload)
+        active_inst():_on_squad_after_level_change(args[1], args[2], args[3])
+    end)
+    ensure("smart_terrain_on_update", function(payload)
+        local args = payload_args(payload)
+        active_inst():_on_smart_terrain_update(args[1])
+    end)
+    ensure("actor_on_first_update", function()
+        active_inst():_on_bootstrap()
+    end)
+    ensure("load_state", function()
+        active_inst():_on_bootstrap()
+    end)
+    return true
+end
+
+ensure_bus_subscriptions()
+
+inst.reset_runtime = function(reason) return inst:_reset_runtime(reason) end
+inst.save_state = function(m_data) return inst:_save_state(m_data) end
+inst.load_state = function(m_data) return inst:_load_state(m_data) end
+inst.on_game_start = function() return ensure_bus_subscriptions() end
+inst.get_level_smarts = function(level_name, opts_or_fn) return inst:_get_level_smarts(level_name, opts_or_fn) end
+inst.get_base_smarts = function(level_name, opts_or_fn) return inst:_get_base_smarts(level_name, opts_or_fn) end
+inst.get_respawn_base_smarts = function(level_name, opts_or_fn) return inst:_get_respawn_base_smarts(level_name, opts_or_fn) end
+inst.get_known_smart_levels = function() return inst:_get_known_smart_levels() end
+inst.get_level_squads = function(level_name) return inst:_get_level_squads(level_name) end
+inst.get_smart_level = function(smart_name) return inst:_get_smart_level(smart_name) end
+inst.get_smart_name_by_id = function(smart_id) return inst:_get_smart_name_by_id(smart_id) end
+inst.get_level_neighbors = function(level_name, opts_or_fn) return inst:_get_level_neighbors(level_name, opts_or_fn) end
+inst.get_topology_revision = function(level_name) return inst:_get_topology_revision(level_name) end
+inst.get_smart_revision = function(level_name) return inst:_get_smart_revision(level_name) end
+
+siski.board_index = inst

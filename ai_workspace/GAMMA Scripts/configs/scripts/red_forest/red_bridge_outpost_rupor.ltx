@@ -1,0 +1,14 @@
+[logic]
+active = {=is_day()} ph_idle@play, ph_idle@stop
+
+[ph_idle@play]
+nonscript_usable = false
+on_info = {=is_day()} %=play_sound(red_bridge_outpost_bar_dolg_speech)%, %=stop_sound()% ph_idle@stop
+
+[ph_idle@stop]
+nonscript_usable = false
+on_info = {=is_day()} ph_idle@play
+
+[collide]
+ignore_static
+

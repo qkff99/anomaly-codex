@@ -1,0 +1,278 @@
+[beh@general]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+gather_items_enabled = true
+help_wounded_enabled = true
+corpse_detection_enabled = true
+meet = meet@general
+wounded = wounded@ignore
+use_camp = false
+path_end = loop
+
+
+[beh@combat]:beh@general
+wait_anim = patrol
+walk_anim = patrol
+jog_anim = patrol
+run_anim = patrol
+sound_idle = state
+
+
+[beh@campfire]:beh@general
+turn_on_campfire = true
+sound_idle = state
+
+[beh@sleep]:beh@general
+gather_items_enabled = false
+corpse_detection_enabled = false
+meet = no_meet
+
+
+[meet@general]
+close_anim 		= nil
+close_victim 	= nil
+far_anim 		= nil
+far_victim 		= nil
+close_distance  = 0
+far_distance 	= 0
+use = {=actor_enemy} false, {=dist_to_actor_le(3)} true, false
+snd_on_use = {!dist_to_actor_le(3)} nil
+meet_on_talking = false
+
+[wounded@ignore]
+hp_state        = 0|wounded_heavy@help_heavy
+hp_state_see    = 0|wounded_heavy@help_heavy
+hp_victim       = 0|nil
+hp_fight        = 0|false
+hp_cover        = 0|false
+
+; =======================
+; ------------- DAY ---------------
+; =======================
+; ------------- 59
+; (patrol 2nd floor east)
+[logic@val_7_4_xcvb_day_1]
+active = beh@day_1
+suitable = {!surge_started !is_night} true
+prior = 59
+
+[beh@day_1]:beh@combat
+pt1 = 10000, guard | 		pos: 18.9, 7.1884, -37.8 	 	 look: 17.9875, 6.1933, -34.2163 
+pt2 = 25000, fold_arms | 		pos: 13.3, 7.1884, -25.2 	 	 look: 7.6595, 6.3249, -24.2194 
+
+
+; (patrol 2-3 floor, bricks)
+[logic@val_7_4_xcvb_day_2]
+active = beh@day_2
+suitable = {!surge_started !is_night} true
+prior = 59
+
+[beh@day_2]:beh@combat
+pt1 = 10000, guard | 		pos: 40.6, 5.5415, -35 	 	 look: 40.6097, 4.5426, -30.6688 
+pt2 = 5000, guard | 		pos: 35.7, 7.173, -21 	 	 look: 32.2915, 6.1768, -20.9101 
+pt3 = 10000, guard | 		pos: 40.6, 9.062, -33.6 	 	 look: 40.6026, 8.0628, -30.5499 
+pt4 = 5000, guard | 		pos: 35.7, 7.173, -21 	 	 look: 32.2915, 6.1768, -20.9101 
+
+
+; ------------- 58
+; (patrol 1 floor, bricks)
+[logic@val_7_4_xcvb_day_3]
+active = beh@day_3
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[beh@day_3]:beh@combat
+pt1 = 10000, guard | 		pos: 44.8, 2.0211, -40.6 	 	 look: 44.4606, 1.0193, -37.1563 
+pt2 = 10000, guard | 		pos: 41.3, 1.8942, -18.2 	 	 look: 38.2806, 1.5332, -19.6407 
+
+
+; (idle first floor boxes center)
+[logic@val_7_4_xcvb_day_4]
+active = beh@day_4
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[beh@day_4]:beh@campfire
+pt1 = 5000, search | 		pos: 10.5, 2.2303, -29.4 	 	 look: 10.5709, 2.1531, -31.2934 
+pt2 = 5000, search | 		pos: 10.5, 2.2303, -29.4 	 	 look: 10.5709, 2.1531, -31.2934 
+pt3 = 5000, search | 		pos: 10.5, 2.2303, -29.4 	 	 look: 10.5709, 2.1531, -31.2934 
+
+
+; ------------- 57
+; (patrol 2nd floor west)
+[logic@val_7_4_xcvb_day_5]
+active = beh@day_5
+suitable = {!surge_started !is_night =guard_has_rifle} true
+prior = 57
+
+[beh@day_5]:beh@combat
+pt1 = 20000, smoking_stand | 		pos: -5.6, 7.2296, -23.1 	 	 look: -6.5271, 7.2284, -22.5103 
+pt2 = 30000, guard | 		pos: 0, 2.2303, -39.2 	 	 look: 2.19, 1.2299, -27.6176 
+pt3 = 20000, guard | 		pos: -5.6, 7.2296, -23.1 	 	 look: -6.5271, 7.2284, -22.5103 
+pt4 = 30000, guard | 		pos: 0, 2.2303, -39.2 	 	 look: 2.19, 1.2299, -27.6176 
+
+
+; (idle first floor boxes west)
+[logic@val_7_4_xcvb_day_6]
+active = beh@day_6
+suitable = {!surge_started !is_night} true
+prior = 57
+
+[beh@day_6]:beh@campfire
+pt1 = 5000, search | 		pos: -2.8, 2.2286, -28 	 	 look: -3.152, 2.2161, -26.7969 
+pt2 = 5000, search | 		pos: -2.8, 2.2286, -28 	 	 look: -3.152, 2.2161, -26.7969 
+pt4 = 5000, light_campfire | 		pos: -2.8, 2.2286, -28 	 	 look: -3.152, 2.2161, -26.7969 
+
+
+; ------------- 56
+; (sniper transition)
+[logic@val_7_4_xcvb_day_7]
+active = beh@day_7
+suitable = {!surge_started !is_night =guard_has_rifle} true
+prior = 56
+
+[beh@day_7]:beh@combat
+pt1 = 10000, guard | 		pos: 34.3, 7.1747, -19.6 	 	 look: 32.4774, 7.3271, -17.9982 
+
+
+; (campfire 1)
+[logic@val_7_4_xcvb_day_8]
+active = beh@day_8
+suitable = {!surge_started !is_night} true
+prior = 56
+
+[beh@day_8]:beh@campfire
+pt1 = 15000, smoking_sit | 		pos: 47.6, 9.062, -32.2 	 	 look: 45.2142, 8.0628, -29.6399 
+pt2 = 40000, sit_ass | 		pos: 47.6, 9.062, -32.2 	 	 look: 45.2142, 8.0628, -29.6399 
+pt3 = 20000, eat_vodka | 		pos: 47.6, 9.062, -32.2 	 	 look: 45.2142, 8.0628, -29.6399 
+
+
+; (campfire 2)
+[logic@val_7_4_xcvb_day_9]
+active = beh@day_9
+suitable = {!surge_started !is_night} true
+prior = 56
+
+[beh@day_9]:beh@campfire
+pt1 = 25000, use_pda | 		pos: 46.2, 9.062, -29.4 	 	 look: 46.4624, 8.0628, -33.097 
+pt2 = 35000, sit | 		pos: 47.6, 9.062, -32.2 	 	 look: 45.2142, 8.0628, -29.6399 
+pt3 = 25000, roast_kolbasa | 		pos: 47.6, 9.062, -32.2 	 	 look: 45.2142, 8.0628, -29.6399 
+
+
+; ------------- 55
+; (idle second floor boxes)
+[logic@val_7_4_xcvb_day_10]
+active = beh@day_10
+suitable = {!surge_started !is_night} true
+prior = 55
+
+[beh@day_10]:beh@campfire
+pt1 = 5000, search | 		pos: 18.2, 7.1884, -18.2 	 	 look: 19.7841, 7.1048, -18.0254 
+pt2 = 10000, wait | 		pos: 18.2, 7.1884, -18.2 	 	 look: 19.7841, 7.1048, -18.0254 
+pt3 = 5000, search | 		pos: 18.2, 7.1884, -18.2 	 	 look: 19.7841, 7.1048, -18.0254 
+
+
+; =======================
+; ------------ NIGHT -------------
+; =======================
+; ------------- 59
+; (patrol 1-2-3 floor, bricks night)
+[logic@val_7_4_xcvb_night_1]
+active = beh@night_1
+suitable = {!surge_started =is_night} true
+prior = 59
+
+[beh@night_1]:beh@combat
+pt1 = 10000, guard | 		pos: 39.9, 8.9351, -21.7 	 	 look: 35.3004, 6.1734, -21.6103 
+pt2 = 1, guard | 		pos: 40.6, 5.4129, -21.7 	 	 look: 40.8253, 4.4948, -24.113 
+pt3 = 1, guard | 		pos: 44.8, 5.5415, -35 	 	 look: 44.8916, 4.5424, -37.6066 
+pt4 = 1, guard | 		pos: 39.9, 3.7811, -39.9 	 	 look: 44.0205, 1.008, -39.6332 
+pt5 = 1, guard | 		pos: 44.8, 2.0211, -31.5 	 	 look: 40.253, 1.0222, -31.396 
+pt6 = 1, guard | 		pos: 40.6, 1.8942, -21 	 	 look: 39.0443, 0.9692, -19.7583 
+pt7 = 1, guard | 		pos: 40.6, 5.4129, -20.3 	 	 look: 37.5244, 5.6003, -19.7376  
+
+
+; ------------- 58
+[logic@val_7_4_xcvb_night_2]
+active = beh@night_2
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[beh@night_2]:beh@sleep
+pt1 = 10000, drunk_sit_ass | 		pos: 47.6, 9.062, -32.2 	 	 look: 45.2142, 8.0628, -29.6399 
+
+
+[logic@val_7_4_xcvb_night_3]
+active = beh@night_3
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[beh@night_3]:beh@campfire
+pt1 = 15000, sit_ass | 		pos: 46.2, 9.062, -29.4 	 	 look: 46.4624, 8.0628, -33.097 
+pt2 = 30000, use_pda | 		pos: 46.2, 9.062, -29.4 	 	 look: 46.4624, 8.0628, -33.097 
+pt3 = 20000, eat_vodka | 		pos: 46.2, 9.062, -29.4 	 	 look: 46.4624, 8.0628, -33.097 
+
+
+; ------------- 57
+; (patrol 2nd floor east)
+[logic@val_7_4_xcvb_night_4]
+active = beh@night_4
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[beh@night_4]:beh@combat
+pt1 = 25000, smoking_stand | 		pos: 18.9, 7.1884, -37.8 	 	 look: 17.9875, 6.1933, -34.2163 
+pt2 = 60000, smoking_stand | 		pos: 13.3, 7.1884, -25.2 	 	 look: 7.6595, 6.3249, -24.2194 
+
+
+; ------------- 56
+; (sleep 1)
+[logic@val_7_4_xcvb_night_5]
+active = beh@night_5
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[beh@night_5]:beh@sleep
+pt1 = 15000, sleep | 		pos: 44.8, 9.1529, -27.3 	 	 look: 46.8293, 8.0623, -26.3215 
+
+
+; (sleep 2)
+[logic@val_7_4_xcvb_night_6]
+active = beh@night_6
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[beh@night_6]:beh@sleep
+pt1 = 15000, sleep | 		pos: 33.6, 5.6256, -35.7 	 	 look: 33.4958, 4.5394, -32.5734 
+
+
+; ------------- 55
+; (sleep 3)
+[logic@val_7_4_xcvb_night_7]
+active = beh@night_7
+suitable = {!surge_started =is_night} true
+prior = 55
+
+[beh@night_7]:beh@sleep
+pt1 = 15000, lay_on_bed | 		pos: 36.4, 5.6273, -35 	 	 look: 34.2052, 4.5384, -32.1604 
+
+
+; (patrol 2nd floor west)
+[logic@val_7_4_xcvb_night_8]
+active = beh@night_8
+suitable = {!surge_started =is_night =guard_has_rifle} true
+prior = 55
+
+[beh@night_8]:beh@combat
+pt1 = 20000, smoking_stand | 		pos: -5.6, 7.2296, -23.1 	 	 look: -6.5271, 7.2284, -22.5103 
+pt2 = 30000, guard | 		pos: 0, 2.2303, -39.2 	 	 look: 2.19, 1.2299, -27.6176 
+pt3 = 20000, guard | 		pos: -5.6, 7.2296, -23.1 	 	 look: -6.5271, 7.2284, -22.5103 
+pt4 = 30000, guard | 		pos: 0, 2.2303, -39.2 	 	 look: 2.19, 1.2299, -27.6176 

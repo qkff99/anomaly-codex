@@ -1,0 +1,382 @@
+-- UTILS
+-- Similar floats
+local function similar(f1, f2, e)
+	return math.abs(f1 - f2) <= (e or 0.001)
+end
+
+-- Truncate to a decimal
+local function trunc(float, decimal)
+	local d = 10 ^ (decimal or 1)
+	return math.floor(float * d) / d 
+end
+
+-- Linear inter/extrapolation
+local function lerp(a, b, f)
+	if a and b and f then
+		return a + f * (b - a)
+	else
+		return a or b or 0
+	end
+end
+
+-- Time delta
+local function time_delta()
+	return math.min(50, device().time_delta)
+end
+
+-- LUT Lookup
+local function array_keys(t, sorted, sort_func)
+	local res = {}
+	local res_count = 1
+	for k, v in pairs(t) do
+		res[res_count] = k
+		res_count = res_count + 1
+	end
+	if sorted then
+		if sort_func then
+			table.sort(res, sort_func)
+		else
+			table.sort(res)
+		end
+	end
+	return res
+end
+
+local function bisect_left(a, x, lo, hi)
+	local lo = lo or 1
+	local hi = hi or #a
+	
+	if lo < 0 then
+		printf('bisect, lo must be non-negative')
+		return
+	end
+
+	while lo < hi do
+		local mid = math.floor((lo + hi) * 0.5)
+		if a[mid] < x then 
+			lo = mid+1
+		else
+			hi = mid
+		end
+    end
+
+	return lo
+end
+
+local function lookup(t, key, tkeys)
+	if is_empty(t) then return 0 end
+
+	if t[key] then return t[key] end
+
+	if not tkeys then
+		tkeys = array_keys(t, true)
+	end
+
+	local tkeys_len = #tkeys
+	if key <= tkeys[1] then
+		if key == tkeys[1] then
+			return t[tkeys[1]]
+		elseif not tkeys[2] then
+			return t[tkeys[1]]
+		else
+			local hi = tkeys[2]
+			local lo = tkeys[1]
+			local k = (key - lo) / (hi - lo)
+			return lerp(t[lo], t[hi], k)
+		end  
+	end
+	if key >= tkeys[tkeys_len] then
+		if key == tkeys[tkeys_len] then
+			return t[tkeys[tkeys_len]]
+		elseif not tkeys[tkeys_len - 1] then
+			return t[tkeys[tkeys_len]]
+		else
+			local hi = tkeys[tkeys_len]
+			local lo = tkeys[tkeys_len - 1]
+			local k = (key - lo) / (hi - lo)
+			return lerp(t[lo], t[hi], k)
+		end
+	end
+
+	local where = bisect_left(tkeys, key)
+    local lo = tkeys[where-1] or tkeys[where]
+    local hi = tkeys[where]
+    if lo == hi then return t[lo] end
+
+    local delta = (key - lo) / (hi - lo)
+    local res = delta * t[hi] + (1 - delta) * t[lo]
+
+    --printf(res)
+    return res
+end
+
+-- EMA smoothing for changing values, frame independent
+local default_smoothing = 11.5
+local smoothed_values = {}
+
+local function ema(key, value, def, steps, delta)
+	local steps = steps or default_smoothing
+	local delta = delta or steps
+	local smoothing_alpha = 2.0 / (steps + 1)
+
+	smoothed_values[key] = smoothed_values[key] and smoothed_values[key] + math.min(smoothing_alpha * (delta / steps), 1) * (value - smoothed_values[key]) or def or value
+
+	--printf("EMA fired, key %s, target %s, current %s, going %s", key, value, smoothed_values[key], (value > smoothed_values[key] and "up" or "down"))
+	return smoothed_values[key]
+end
+
+special_characters = {
+	["m_trader"] = "esc_2_12_stalker_trader",
+	["m_lesnik"] = "red_forester_tech",
+	["zat_a2_stalker_nimble"] = "esc_2_12_stalker_nimble",
+}
+
+-- LUT for rotating camera to the angle depending on aspect ratio of display (device().width / device().height)
+local ratio_to_rotate = {
+	[1.333] = -11,
+	[1.600] = -13.5,
+	[1.777] = -15.5,
+	[2.370] = -21.5,
+	[3.555] = -31,
+}
+local ratio_to_rotate_keys = array_keys(ratio_to_rotate, true)
+
+-- Vars
+local saved_fov
+local zoom_fov_from
+local zoom_fov_to
+local zoom_fov_active = false
+local zoom_fov_active_always = false
+local saved_hud_fov
+local zoom_hud_fov_from
+local zoom_hud_fov_to
+
+local saved_npc
+local saved_dist
+local saved_rotate
+
+-- Get NPC actor talks to
+function valid_npc(npc)
+	return npc and (special_characters[npc:section()] or IsStalker(npc) and npc:alive() and npc:is_talking() and npc:id() ~= AC_ID)
+end
+
+function GetTalkingNpc()
+	local npc = get_speaker()
+	if valid_npc(npc) then
+		return npc
+	end
+
+	-- for i=1, #db.OnlineStalkers do
+	-- 	local st = db.storage[db.OnlineStalkers[i]]
+	-- 	local npc = st and st.object or level.object_by_id(db.OnlineStalkers[i])
+	-- 	if valid_npc(npc) then
+	-- 		return npc
+	-- 	end
+	-- end
+end
+
+-- Move camera so the npc is in the left
+function move_camera()
+	if not saved_npc then
+		return stop_move_camera()
+	end
+
+	-- Get look position and direction
+	local look_pos = utils_obj.safe_bone_pos(saved_npc, "bip01_head")
+	local look_dir = look_pos:sub(device().cam_pos):normalize()
+
+	-- Turn look direction depending on aspect ratio of display
+	local rotate_deg
+	if saved_rotate then
+		rotate_deg = saved_rotate
+	else
+		local ratio = trunc(device().width / device().height, 3)
+		rotate_deg = lookup(ratio_to_rotate, ratio, ratio_to_rotate_keys)
+		saved_rotate = rotate_deg
+	end
+	if saved_dist and settings.zoom_fov_enabled and settings.distance_fov then
+		rotate_deg = rotate_deg / saved_dist
+	end
+	rotate_deg = rotate_deg * settings.turn_modifier
+	local new_look_dir = vector_rotate_y(look_dir, rotate_deg)
+
+	-- Smooth the turning for better effect
+	local steps = settings.smoothing
+	local delta = time_delta()
+	local smoothed_look_dir = vector():set(
+		ema("look_dir_x", new_look_dir.x, look_dir.x, steps, delta),
+		ema("look_dir_y", new_look_dir.y, look_dir.y, steps, delta),
+		ema("look_dir_z", new_look_dir.z, look_dir.z, steps, delta)
+	)
+
+	-- Apply the turning
+	local new_look_pos = vector():mad(device().cam_pos, smoothed_look_dir, 10)
+	db.actor:actor_look_at_point(new_look_pos)
+end
+
+function start_move_camera()
+	RegisterScriptCallback("actor_on_update", move_camera)
+end
+
+function stop_move_camera()
+	UnregisterScriptCallback("actor_on_update", move_camera)
+	if db.actor then
+		if db.actor.actor_stop_look_at_point then
+			db.actor:actor_stop_look_at_point()
+		end
+	end
+	smoothed_values.look_dir_x = nil
+	smoothed_values.look_dir_y = nil
+	smoothed_values.look_dir_z = nil
+	saved_rotate = nil
+	saved_npc = nil
+	saved_dist = nil
+end
+
+function GUI_on_show(name)
+	if name == "Dialog" then
+		saved_npc = GetTalkingNpc()
+		saved_dist = saved_npc and math.max(1, device().cam_pos:distance_to(utils_obj.safe_bone_pos(saved_npc, "bip01_head")) - 0.2)
+		if settings.zoom_fov_enabled then
+			saved_fov = zoom_fov_active and saved_fov or get_console_cmd(2, "fov")
+			local new_fov = math.min(settings.min_zoom_fov, saved_fov / settings.zoom_fov_modifier)
+			if saved_dist and settings.distance_fov then
+				new_fov = math.atan(math.tan(new_fov * (0.5 * math.pi / 180)) / saved_dist) / (0.5 * math.pi / 180)
+			end
+			saved_hud_fov = zoom_fov_active and saved_hud_fov or get_console_cmd(2, "hud_fov")
+			local new_hud_fov = saved_hud_fov / (saved_fov / new_fov)
+			start_fov(saved_fov, new_fov, saved_hud_fov, new_hud_fov, true)
+		end
+		if settings.track_npc then
+			start_move_camera()
+		end
+	end
+end
+
+function GUI_on_hide(name)
+	if name == "Dialog" then
+		reset(true)
+	end
+end
+
+-- Smooth changing of FOV
+-- start_fov(fov_from, fov_to, fov_hud_from, fov_hud_to, active_always) initiate the changing procedure
+function change_fov()
+	local steps = settings.fov_smoothing
+	local delta = time_delta()
+	local smoothed_fov = ema("fov", zoom_fov_to, zoom_fov_from, steps, delta)
+	exec_console_cmd("fov " .. smoothed_fov)
+	local smoothed_hud_fov = ema("hud_fov", zoom_hud_fov_to, zoom_hud_fov_from, steps, delta)
+	exec_console_cmd("hud_fov " .. smoothed_hud_fov)
+	if not zoom_fov_active_always and similar(smoothed_fov, zoom_fov_to, 0.02) then
+		exec_console_cmd("fov " .. zoom_fov_to)
+		exec_console_cmd("hud_fov " .. zoom_hud_fov_to)
+		stop_fov()
+	end
+end
+
+function start_fov(fov_from, fov_to, fov_hud_from, fov_hud_to, active_always)
+	zoom_fov_from = fov_from or get_console_cmd(2, "fov")
+	zoom_fov_to = fov_to
+	zoom_hud_fov_from = fov_hud_from or get_console_cmd(2, "hud_fov")
+	zoom_hud_fov_to = fov_hud_to
+	zoom_fov_active = true
+	zoom_fov_active_always = active_always
+	RegisterScriptCallback("actor_on_update", change_fov)
+end
+
+function stop_fov()
+	smoothed_values.fov = nil
+	smoothed_values.hud_fov = nil
+	zoom_fov_active = false
+	zoom_fov_active_always = false
+	UnregisterScriptCallback("actor_on_update", change_fov)
+end
+
+function reset_fov()
+	stop_fov()
+	if not saved_fov then return end
+
+	exec_console_cmd("fov " .. saved_fov)
+	exec_console_cmd("hud_fov " .. saved_hud_fov)
+	saved_fov = nil
+	saved_hud_fov = nil
+end
+
+function reset(soft_fov)
+	if soft_fov then
+		if saved_fov then
+			start_fov(zoom_fov_to, saved_fov, zoom_hud_fov_to, saved_hud_fov)
+		end
+	else
+		reset_fov()
+	end
+	stop_move_camera()
+end
+
+function hard_reset()
+	reset()
+end
+
+-- MCM
+function load_defaults()
+	local t = {}
+	local op = dialog_fov_mcm.op
+	for i, v in ipairs(op.gr) do
+		if v.def ~= nil then
+			t[v.id] = v.def
+		end
+	end
+	return t
+end
+
+settings = load_defaults()
+
+function load_settings()
+	settings = load_defaults()
+	if ui_mcm then
+		for k, v in pairs(settings) do
+			settings[k] = ui_mcm.get(dialog_fov_mcm.op_id .. "/" .. k)
+		end
+	end
+	return settings
+end
+
+function on_option_change()
+	load_settings()
+	switch_mod(settings.enabled)
+end
+
+function switch_mod(enable)
+	local funcs = {
+		{"GUI_on_show", GUI_on_show},
+		{"GUI_on_hide", GUI_on_hide},
+		{"actor_on_net_destroy", hard_reset},
+		{"actor_on_before_death", hard_reset},
+	}
+	if enable then
+		for i, v in ipairs(funcs) do
+			RegisterScriptCallback(v[1], v[2])
+		end
+	else
+		for i, v in ipairs(funcs) do
+			UnregisterScriptCallback(v[1], v[2])
+		end
+		reset()
+		return
+	end
+
+	if not settings.zoom_fov_enabled then
+		reset_fov()
+	end
+
+	if not settings.track_npc then
+		stop_move_camera()
+	end
+end
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_first_update", on_option_change)
+	RegisterScriptCallback("on_option_change", on_option_change)
+	switch_mod(true)
+end

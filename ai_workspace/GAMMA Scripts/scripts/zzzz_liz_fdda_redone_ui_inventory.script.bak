@@ -1,0 +1,207 @@
+--- ---------------------------------------------
+--- in this script i'm trying to delay equiping item to a slot
+--- so that i could play animation and then transfer item to slot afterwards
+--- not a fan of this solution, but so far it works
+--- ---------------------------------------------
+
+local list_items_in_use = {}
+local ready_color = GetARGB(100, 255, 159, 82)
+local bags = { actor_bag = true, actor_equ = true }
+local handlers = {}
+
+------------------------------------------------------------------------------
+-- init
+------------------------------------------------------------------------------
+
+function on_game_start()
+    rax_persistent_highlight.register("liz_fdda_outfit", check_ready)
+end
+
+------------------------------------------------------------------------------
+-- monkey patches
+------------------------------------------------------------------------------
+
+local OriginalUIIEquip = ui_inventory.UIInventory.Action_Equip
+ui_inventory.UIInventory.Action_Equip = function(self, obj, bag)
+    obj = self:CheckItem(obj, "Action_Equip")
+    local handler = nil
+    for n, h in pairs(handlers) do
+        if h.predicate(obj) then
+            handler = h
+            break
+        end
+    end
+    if not handler then
+        OriginalUIIEquip(self, obj, bag)
+        return
+    else
+        if list_items_in_use[obj:id()] then return end
+
+        local slot = (SYS_GetParam(2, obj:section(), "slot") or -1) + 1
+        local obj_to = db.actor:item_in_slot(slot)
+        if obj_to then
+            handler.on_swap(obj_to, obj, bag)
+        else
+            handler.on_equip(obj, bag)
+        end
+    end
+end
+
+
+local OriginalUIIUnEquip = ui_inventory.UIInventory.Action_UnEquip
+ui_inventory.UIInventory.Action_UnEquip = function(self, obj, bag)
+    obj = self:CheckItem(obj, "Action_UnEquip")
+    local handler = nil
+    for n, h in pairs(handlers) do
+        if h.predicate(obj) then
+            handler = h
+            break
+        end
+    end
+    if not handler then
+        OriginalUIIUnEquip(self, obj, bag)
+        return
+    else
+        if list_items_in_use[obj:id()] then return end
+
+        handler.on_unequip(obj, bag)
+    end
+end
+
+
+local OriginalUIIDrop = ui_inventory.UIInventory.Action_Drop
+ui_inventory.UIInventory.Action_Drop = function (self, obj, bag)
+    obj = self:CheckItem(obj, "Action_Drop")
+    local handler = nil
+    for n, h in pairs(handlers) do
+        if h.predicate(obj) then
+            handler = h
+            break
+        end
+    end
+    if not handler then
+        OriginalUIIDrop(self, obj, bag)
+        return
+    else
+        if list_items_in_use[obj:id()] then return end
+
+        handler.on_drop(obj, bag)
+    end
+end
+
+
+local OriginalUIIDragDrop
+function ModifiedUIDragDrop(self, bag_from, idx_from)
+    lam2.log("FFUIINV")
+    local obj_from = self.CC[bag_from]:GetObj(idx_from)
+    if not obj_from then return end
+    -- bag_from, idx_from = self:Picker_Ownership(bag_from, idx_from, obj_from)
+
+    -- check if there any scripts from fdda redone that want to handle this object
+    local handler = nil
+    for n, h in pairs(handlers) do
+        if h.predicate(obj_from) then
+            handler = h
+            break
+        end
+    end
+    if not handler then
+        OriginalUIIDragDrop(self, bag_from, idx_from)
+        return
+    end
+    if list_items_in_use[obj_from:id()] then return end
+
+    if self.trash:IsShown() and self.trash:IsCursorOverWindow() then
+        OriginalUIIDragDrop(self, bag_from, idx_from)
+        return
+    else
+        local bag_to, idx_to, obj_to
+        for _, cc in pairs(self.CC) do
+            bag_to, idx_to, obj_to = cc:GetCell_Focused()
+            if bag_to then break end
+        end
+        --ruck to slot
+        if (bag_to == "actor_equ") and (self:Cond_Equip(obj_from, bag_from) or bag_from == "actor_equ") and (not IsArtefact(obj_from)) then
+            local slot = (SYS_GetParam(2, obj_from:section(), "slot") or -1) + 1
+            if idx_to == slot then
+                if obj_to then
+                    handler.on_swap(obj_to, obj_from, bag_from)
+                else
+                    handler.on_equip(obj_from, bag_from)
+                end
+            end
+        else
+            OriginalUIIDragDrop(self, bag_from, idx_from)
+            return
+        end
+    end
+end
+
+--compatibility with perk based artifacts
+if zzz_ui_inventory_arte_to_grenade then
+    OriginalUIIDragDrop = zzz_ui_inventory_arte_to_grenade.ui_inventory.UIInventory.On_CC_DragDrop
+    zzz_ui_inventory_arte_to_grenade.ui_inventory.UIInventory.On_CC_DragDrop = ModifiedUIDragDrop
+else
+    OriginalUIIDragDrop = ui_inventory.UIInventory.On_CC_DragDrop
+    ui_inventory.UIInventory.On_CC_DragDrop = ModifiedUIDragDrop
+end
+------------------------------------------------------------------------------
+-- callbacks
+------------------------------------------------------------------------------
+
+function check_ready(cell)
+    if bags[cell.container.ID] then
+        return list_items_in_use[cell.ID] and ready_color
+    end
+end
+
+------------------------------------------------------------------------------
+-- main
+------------------------------------------------------------------------------
+
+function Add_Handler(name, predicate, on_equip, on_unequip, on_drop, on_swap)
+    handlers[name] = {
+        predicate = predicate,
+        on_equip = on_equip,
+        on_unequip = on_unequip,
+        on_drop = on_drop,
+        on_swap = on_swap
+    }
+end
+
+function Remove_Handler(name)
+    handlers[name] = nil
+end
+
+function Equip(obj, bag)
+    local gui = ui_inventory.GUI
+    if gui then
+        OriginalUIIEquip(gui, obj, bag)
+    end
+end
+
+function Unequip(obj, bag)
+    local gui = ui_inventory.GUI
+    if gui then
+        OriginalUIIUnEquip(gui, obj, bag)
+    end
+end
+
+function Drop(obj, bag)
+    local gui = ui_inventory.GUI
+    if gui then
+        OriginalUIIDrop(gui, obj, bag)
+    end
+end
+
+function Set_Item_in_Use(obj_id, value)
+    if value then
+        list_items_in_use[obj_id] = value
+    else
+        list_items_in_use[obj_id] = nil
+    end
+end
+
+function Is_Item_in_Use(obj_id)
+    return list_items_in_use[obj_id]
+end

@@ -1,0 +1,553 @@
+
+local HI = has_alife_info
+local GI = give_info
+local DI = disable_info
+function NI(str)
+	return not (has_alife_info(str))
+end
+
+
+--[[----------------------------------------------------------------------------------------------------
+	duty_girl_hunting_chimera
+------------------------------------------------------------------------------------------------------]]
+function duty_girl_hunting_chimera_status(tsk,task_id)
+	local sec = "squad_duty_girl_hunting_chimera"
+	if (tsk.stage == 0) then
+		if (HI("duty_girl_hunting_chimera_move")) then
+			local smart = SIMBOARD.smarts_by_names["gar_smart_terrain_2_4"]
+			local squad = SIMBOARD:create_squad(smart,sec)
+			tsk.stage = 1
+		end
+	end
+	
+	if (tsk.stage == 1) then
+		local squad = get_story_se_object(sec)
+		if not (squad) then
+			local function message()
+				local npc = get_story_object("stalker_duty_girl")
+				if (npc and db.actor) then
+					if (NI("duty_girl_hunting_chimera_hunt_4") and xr_conditions.check_time_speech(db.actor,npc)) then
+						GI("duty_girl_hunting_chimera_hunt_4")
+						xr_effects.speech(db.actor,npc,{"duty_girl_hunting_chimera_hunt_4",5})
+					end
+				end
+				if (HI("duty_girl_hunting_chimera_hunt_4")) then
+					return true
+				end
+			end
+			local npc = get_story_object("stalker_duty_girl")
+			if (npc) then
+				CreateTimeEvent(npc:id(),"speech",0,message)
+			end
+			tsk.stage = 2
+		end
+	end
+	
+	if (tsk.stage == 2) then
+		if (NI("duty_girl_hunting_chimera_dead")) then
+			GI("duty_girl_hunting_chimera_dead")
+		end
+		if (HI("duty_girl_hunting_chimera_reward")) then
+			return "complete"
+		end
+	end
+end
+
+function duty_girl_hunting_chimera_target(task_id,field,p,tsk)
+	if (field == "title") then
+		return task_id.."_"..field
+	end
+	
+	if (field == "descr") then
+		if (tsk.stage == 0) then
+			return task_id.."_"..field.."_1"
+		end
+		if (tsk.stage == 1) then
+			return task_id.."_"..field.."_2"
+		end
+		if (tsk.stage == 2) then
+			return task_id.."_"..field.."_3"
+		end
+	end
+	
+	if (field == "target") then
+		if (tsk.stage == 0) then
+			local obj = SIMBOARD.smarts_by_names["gar_smart_terrain_6_3"]
+			return obj and obj.id
+		end
+		if (tsk.stage == 1) or (tsk.stage == 2) then
+			local obj = get_story_se_object("squad_duty_girl")
+			return obj and obj.id
+		end
+	end
+end
+
+function hunting_chimera_hit(npc,shit,bone_id,flags)
+	if (shit and shit.draftsman and IsStalker(shit.draftsman)) then
+		if (shit.draftsman:id() == AC_ID) then
+			if (NI("duty_girl_hunting_chimera_fight")) then
+				GI("duty_girl_hunting_chimera_fight")
+			end
+			return
+		end
+		if (shit.draftsman:has_info("npcx_is_companion") or string.find(shit.draftsman:name(),"stalker_duty_girl")) then
+			if (NI("duty_girl_hunting_chimera_fight")) then
+				GI("duty_girl_hunting_chimera_fight")
+			end
+			shit.power = shit.power / 2
+			return
+		end
+	end
+	flags.ret_value = false
+end
+
+--[[----------------------------------------------------------------------------------------------------
+	duty_girl_monolith_elite
+------------------------------------------------------------------------------------------------------]]
+function duty_girl_monolith_elite_status(tsk,task_id)
+	if (tsk.stage == 0) then
+		SIMBOARD:create_squad(SIMBOARD.smarts_by_names["mil_smart_terrain_2_6"],"squad_duty_girl_monolith_elite_mono")
+		SIMBOARD:create_squad(SIMBOARD.smarts_by_names["mil_smart_terrain_4_5"],"squad_duty_girl_monolith_elite_duty")
+		tsk.stage = 1
+	end
+	
+	if (tsk.stage == 1) or (tsk.stage == 2) then
+		local squad = get_story_se_object("squad_duty_girl_monolith_elite_mono")
+		local mem_num = squad and squad:npc_count() or 0
+		if (mem_num ~= 0) then
+			-- Player attack without order
+			if (mem_num < 8) then
+				if (NI("duty_girl_monolith_elite_move")) then
+					GI("duty_girl_monolith_elite_move")
+					if (NI("duty_girl_monolith_elite_join")) then
+						GI("duty_girl_monolith_elite_join")
+					end
+					local function message()
+						local npc = get_story_object("stalker_duty_girl")
+						if (npc and db.actor) then
+							if (NI("duty_girl_monolith_elite_move_5") and xr_conditions.check_time_speech(db.actor,npc)) then
+								GI("duty_girl_monolith_elite_move_5")
+								xr_effects.speech(db.actor,npc,{"duty_girl_monolith_elite_move_5",5})
+							end
+							if (NI("duty_girl_monolith_elite_move_6") and xr_conditions.check_time_speech(db.actor,npc)) then
+								GI("duty_girl_monolith_elite_move_6")
+								xr_effects.speech(db.actor,npc,{"duty_girl_monolith_elite_move_6",5})
+							end
+						end
+						if (HI("duty_girl_monolith_elite_move_6")) then
+							return true
+						end
+					end
+					
+					local npc = get_story_object("stalker_duty_girl")
+					if (npc) then
+						CreateTimeEvent(npc:id(),"speech",0,message)
+					end
+				end
+			end
+		else
+			-- Squad is killed
+			local function message()
+				local npc = get_story_object("stalker_duty_girl")
+				if (npc and db.actor) then
+					if (NI("duty_girl_monolith_elite_move_4") and xr_conditions.check_time_speech(db.actor,npc)) then
+						GI("duty_girl_monolith_elite_move_4")
+						xr_effects.speech(db.actor,npc,{"duty_girl_monolith_elite_move_4",5})
+					end
+				end
+				if (HI("duty_girl_monolith_elite_move_4")) then
+					return true
+				end
+			end
+			
+			local npc = get_story_object("stalker_duty_girl")
+			if (npc) then
+				CreateTimeEvent(npc:id(),"speech",0,message)
+			end
+			tsk.stage = 3
+		end
+		
+		if (tsk.stage == 1) then
+			if (HI("duty_girl_monolith_elite_move")) then
+				tsk.stage = 2
+			end
+		end
+	end
+	
+	if (tsk.stage == 3) then
+		if (NI("duty_girl_monolith_elite_dead")) then
+			GI("duty_girl_monolith_elite_dead")
+		end
+		if (HI("duty_girl_monolith_elite_reward")) then
+			return "complete"
+		end
+	end
+end
+
+function duty_girl_monolith_elite_target(task_id,field,p,tsk)
+	if (field == "title") then
+		return task_id.."_"..field
+	end
+	
+	if (field == "descr") then
+		if (tsk.stage == 0) or (tsk.stage == 1) then
+			return task_id.."_"..field.."_1"
+		end
+		if (tsk.stage == 2) then
+			return task_id.."_"..field.."_2"
+		end
+		if (tsk.stage == 3) then
+			return task_id.."_"..field.."_3"
+		end
+	end
+	
+	if (field == "target") then
+		if (tsk.stage == 0) or (tsk.stage == 1) then
+			local obj = get_story_se_object("squad_duty_girl")
+			local sqd = get_story_se_object("squad_duty_girl_monolith_elite_duty")
+			if (obj and sqd and simulation_objects.is_on_the_same_level(obj,sqd)) then
+				return obj.id
+			end
+			return sqd and sqd.id
+		end
+		if (tsk.stage == 2) then
+			local obj = SIMBOARD.smarts_by_names["mil_smart_terrain_2_6"]
+			return obj and obj.id
+		end
+		if (tsk.stage == 3) then
+			local obj = get_story_se_object("squad_duty_girl")
+			return obj and obj.id
+		end
+	end
+end
+
+function monolith_elite_hit(npc,shit,bone_id,flags)
+	if (shit and shit.draftsman and IsStalker(shit.draftsman)) then
+		if (shit.draftsman:id() == AC_ID) then
+			return
+		end
+		if (IsStalker(shit.draftsman) and shit.draftsman:has_info("npcx_is_companion") or string.find(shit.draftsman:name(),"stalker_duty_girl")) then
+			shit.power = shit.power / 4
+			return
+		end
+		local squad = get_object_squad(shit.draftsman)
+		if (squad and string.find(squad:section_name(),"squad_duty_girl_monolith_elite")) then
+			if (string.find(npc:name(),"monolith")) then
+				shit.power = shit.power / 4
+			else
+				shit.power = shit.power / 2
+			end
+			return
+		end
+	end
+	flags.ret_value = false
+end
+
+--[[----------------------------------------------------------------------------------------------------
+	duty_girl_loot_stash
+------------------------------------------------------------------------------------------------------]]
+function duty_girl_loot_stash_status(tsk,task_id)
+	if (tsk.stage == 0) then
+		local tbl = {
+			"detector_advanced",
+			"vodka","vodka",
+			"bandage","bandage","bandage","bandage","bandage",
+			"medkit","medkit","medkit","medkit","medkit",
+			"ammo_5.56x45_fmj","ammo_5.56x45_fmj","ammo_5.56x45_fmj","ammo_5.56x45_fmj","ammo_5.56x45_fmj","ammo_5.56x45_fmj"
+		}
+		local sm = SIMBOARD.smarts_by_names["val_smart_terrain_1_2"]
+		local pos = vector():set(175.7,1,-278.6)
+		if (sm) then
+			for i,v in pairs(tbl) do
+				alife():create(v,pos,sm.m_level_vertex_id,sm.m_game_vertex_id)
+			end
+			local se = alife():create("wpn_lr300",pos,sm.m_level_vertex_id,sm.m_game_vertex_id)
+			if (se) then
+				save_var(db.actor,task_id,se.id)
+			end
+		end
+		tsk.stage = 1
+	end
+	
+	if (tsk.stage == 1) then
+		local id = load_var(db.actor,task_id)
+		local se = id and alife():object(id)
+		if not (se and IsWeapon(se) and string.find(se:name(),"wpn_lr300") and (se.parent_id == 65535)) then
+			return "complete"
+		end
+	end
+end
+
+function duty_girl_loot_stash_target(task_id,field,p,tsk)
+	if (field == "title") then
+		return task_id.."_"..field
+	end
+	
+	if (field == "descr") then
+		return task_id.."_"..field.."_1"
+	end
+	
+	if (field == "target") then
+		local id = load_var(db.actor,task_id)
+		local se = id and alife():object(id)
+		return se and se.id
+	end
+end
+
+--[[----------------------------------------------------------------------------------------------------
+	duty_girl_capture_the_brirge
+------------------------------------------------------------------------------------------------------]]
+function duty_girl_capture_the_brirge_status(tsk,task_id)
+	if (tsk.stage == 0) then
+		SIMBOARD:create_squad(SIMBOARD.smarts_by_names["red_smart_terrain_bridge"],"squad_duty_girl_capture_the_brirge_mono_1")
+		SIMBOARD:create_squad(SIMBOARD.smarts_by_names["red_smart_terrain_bridge"],"squad_duty_girl_capture_the_brirge_mono_2")
+		SIMBOARD:create_squad(SIMBOARD.smarts_by_names["red_smart_terrain_5_5"],"squad_duty_girl_capture_the_brirge_duty")
+		SIMBOARD:create_squad(SIMBOARD.smarts_by_names["red_smart_terrain_5_5"],"squad_duty_girl_capture_the_brirge_lone")
+		tsk.stage = 1
+	end
+	
+	if (tsk.stage == 1) or (tsk.stage == 2) then
+		local squad_1 = get_story_se_object("squad_duty_girl_capture_the_brirge_mono_1")
+		local squad_2 = get_story_se_object("squad_duty_girl_capture_the_brirge_mono_2")
+		local mem_num = (squad_1 and squad_1:npc_count() or 0) + (squad_2 and squad_2:npc_count() or 0)
+		if (mem_num ~= 0) then
+			-- Player attack without order
+			if (mem_num < 20) then
+				if (NI("duty_girl_capture_the_brirge_move")) then
+					GI("duty_girl_capture_the_brirge_move")
+					if (NI("duty_girl_capture_the_brirge_join")) then
+						GI("duty_girl_capture_the_brirge_join")
+					end
+					
+					local function message()
+						local npc = get_story_object("stalker_duty_girl")
+						if (npc and db.actor) then
+							if (NI("duty_girl_capture_the_brirge_move_5") and xr_conditions.check_time_speech(db.actor,npc)) then
+								GI("duty_girl_capture_the_brirge_move_5")
+								xr_effects.speech(db.actor,npc,{"duty_girl_capture_the_brirge_move_5",5})
+							end
+							if (NI("duty_girl_capture_the_brirge_move_6") and xr_conditions.check_time_speech(db.actor,npc)) then
+								GI("duty_girl_capture_the_brirge_move_6")
+								xr_effects.speech(db.actor,npc,{"duty_girl_capture_the_brirge_move_6",5})
+							end
+						end
+						if (HI("duty_girl_capture_the_brirge_move_6")) then
+							return true
+						end
+					end
+					
+					local npc = get_story_object("stalker_duty_girl")
+					if (npc) then
+						CreateTimeEvent(npc:id(),"speech",0,message)
+					end
+				end
+			end
+		else
+			-- Squad is killed
+			local function message()
+				local npc = get_story_object("stalker_duty_girl")
+				if (npc and db.actor) then
+					if (NI("duty_girl_capture_the_brirge_move_4") and xr_conditions.check_time_speech(db.actor,npc)) then
+						GI("duty_girl_capture_the_brirge_move_4")
+						xr_effects.speech(db.actor,npc,{"duty_girl_capture_the_brirge_move_4",5})
+					end
+				end
+				if (HI("duty_girl_capture_the_brirge_move_4")) then
+					return true
+				end
+			end
+			
+			local npc = get_story_object("stalker_duty_girl")
+			if (npc) then
+				CreateTimeEvent(npc:id(),"speech",0,message)
+			end
+			tsk.stage = 3
+		end
+		
+		if (tsk.stage == 1) then
+			if (HI("duty_girl_capture_the_brirge_move")) then
+				tsk.stage = 2
+			end
+		end
+	end
+	
+	if (tsk.stage == 3) then
+		if (NI("red_bridge_outpost")) then
+			GI("red_bridge_outpost")
+		end
+		if (NI("duty_girl_capture_the_brirge_dead")) then
+			GI("duty_girl_capture_the_brirge_dead")
+		end
+		if (HI("duty_girl_capture_the_brirge_reward")) then
+			return "complete"
+		end
+	end
+end
+
+function duty_girl_capture_the_brirge_target(task_id,field,p,tsk)
+	if (field == "title") then
+		return task_id.."_"..field
+	end
+	
+	if (field == "descr") then
+		if (tsk.stage == 0) or (tsk.stage == 1) then
+			return task_id.."_"..field.."_1"
+		end
+		if (tsk.stage == 2) then
+			return task_id.."_"..field.."_2"
+		end
+		if (tsk.stage == 3) then
+			return task_id.."_"..field.."_3"
+		end
+	end
+	
+	if (field == "target") then
+		if (tsk.stage == 0) or (tsk.stage == 1) then
+			local obj = get_story_se_object("squad_duty_girl")
+			local sqd = get_story_se_object("squad_duty_girl_capture_the_brirge_duty")
+			if (obj and sqd and simulation_objects.is_on_the_same_level(obj,sqd)) then
+				return obj.id
+			end
+			return sqd and sqd.id
+		end
+		if (tsk.stage == 2) then
+			local obj = SIMBOARD.smarts_by_names["red_smart_terrain_bridge"]
+			return obj and obj.id
+		end
+		if (tsk.stage == 3) then
+			local obj = get_story_se_object("squad_duty_girl")
+			return obj and obj.id
+		end
+	end
+end
+
+function capture_the_brirge_hit(npc,shit,bone_id,flags)
+	if (shit and shit.draftsman and IsStalker(shit.draftsman)) then
+		local npc_squad = get_object_squad(npc)
+		local hit_squad = (shit.draftsman:id() ~= AC_ID) and get_object_squad(shit.draftsman)
+		if (npc_squad and string.find(npc_squad:section_name(),"squad_duty_girl_capture_the_brirge_mono")) then
+			if (shit.draftsman:id() == AC_ID) then
+				return
+			end
+			if (shit.draftsman:has_info("npcx_is_companion") or string.find(shit.draftsman:name(),"stalker_duty_girl")) then
+				shit.power = shit.power / 3
+				return
+			end
+			if (hit_squad and string.find(hit_squad:section_name(),"squad_duty_girl_capture_the_brirge")) then
+				shit.power = shit.power / 3
+				return
+			end
+		else
+			if (hit_squad and string.find(hit_squad:section_name(),"squad_duty_girl_capture_the_brirge")) then
+				shit.power = shit.power / 3
+				return
+			end
+		end
+	end
+	flags.ret_value = false
+end
+
+function capture_the_brirge_spawn_outpost(actor,squad,p)
+	local lst = {
+		"squad_red_duty_outpost_trader",
+		"squad_red_duty_outpost_medic",
+		"squad_red_duty_outpost_guide",
+		"squad_red_duty_outpost_guard_1",
+		"squad_red_duty_outpost_guard_2",
+		"squad_red_duty_outpost_visitor_1",
+		"squad_red_duty_outpost_visitor_2",
+		"squad_red_duty_outpost_visitor_3",
+		"squad_red_duty_outpost_visitor_4"
+	}
+	for k,sec in pairs(lst) do
+		if not (get_story_se_object(sec)) then
+			SIMBOARD:create_squad(SIMBOARD.smarts_by_names["red_smart_terrain_bridge"],sec)
+		end
+	end
+end
+
+
+--[[----------------------------------------------------------------------------------------------------
+	Main
+------------------------------------------------------------------------------------------------------]]
+task_status_functor.duty_girl_task_status = function(tsk,task_id)
+	if not (task_id and tsk) then
+		return
+	end
+	return _G["task_duty_girl"][task_id .. "_status"](tsk,task_id)
+end
+
+task_functor.duty_girl_task_target = function(task_id,field,p,tsk)
+	if not (task_id and tsk) then
+		return
+	end
+	return _G["task_duty_girl"][task_id .. "_target"](task_id,field,p,tsk)
+end
+
+
+--[[----------------------------------------------------------------------------------------------------
+	Debug
+------------------------------------------------------------------------------------------------------]]
+---[[
+cmd = debug_cmd_list.command_get_list()
+
+function cmd.redbase()
+	if (NI("red_bridge_outpost")) then
+		GI("red_bridge_outpost")
+	end
+	xr_dynamic_object.dynamic_object(db.actor,db.actor,{"misc\\duty_outpost_object.ltx"})
+	capture_the_brirge_spawn_outpost()
+end
+
+function cmd.d1()
+	gameplay_duty_girl.duty_girl_init()
+	task_manager.get_task_manager():give_task("duty_girl_hunting_chimera")
+end
+function cmd.d1kill()
+	local squad_1 = get_story_se_object("squad_duty_girl_hunting_chimera")
+	if (squad_1) then
+		alife_release(squad_1)
+	end
+end
+function cmd.d1skip()
+	gameplay_duty_girl.duty_girl_init()
+	GI("duty_girl_hunting_chimera_done")
+end
+
+function cmd.d2()
+	gameplay_duty_girl.duty_girl_init()
+	task_manager.get_task_manager():give_task("duty_girl_monolith_elite")
+end
+function cmd.d2kill()
+	local squad_1 = get_story_se_object("squad_duty_girl_monolith_elite_mono")
+	if (squad_1) then
+		alife_release(squad_1)
+	end
+end
+
+function cmd.d3()
+	task_manager.get_task_manager():give_task("duty_girl_loot_stash")
+end
+function cmd.d3skip()
+	gameplay_duty_girl.duty_girl_init()
+	GI("duty_girl_loot_stash_done")
+end
+
+function cmd.d4()
+	gameplay_duty_girl.duty_girl_init()
+	task_manager.get_task_manager():give_task("duty_girl_capture_the_brirge")
+end
+
+function cmd.d4kill()
+	local squad_1 = get_story_se_object("squad_duty_girl_capture_the_brirge_mono_1")
+	local squad_2 = get_story_se_object("squad_duty_girl_capture_the_brirge_mono_2")
+	if (squad_1) then
+		alife_release(squad_1)
+	end
+	if (squad_2) then
+		alife_release(squad_2)
+	end
+end
+
+
+--]]

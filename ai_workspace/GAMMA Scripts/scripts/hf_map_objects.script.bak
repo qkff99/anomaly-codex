@@ -1,0 +1,282 @@
+local mcm_keybinds = ui_mcm and ui_mcm.key_hold
+local record_on_place = false
+local record_on_keypress = false
+local bind_record = DIK_keys.DIK_APOSTROPHE
+
+---@class UIRecordObj
+GUI = nil -- instance, don't touch
+function add_obj_prompt(section, position, level_vertex_id, game_vertex_id, rotation)
+	if not DEV_DEBUG then
+		return
+	end
+
+	hide_hud_inventory()
+
+	if (not GUI) then
+		GUI = UIRecordObj()
+	end
+
+	if (GUI) and (not GUI:IsShown()) then
+		GUI:ShowDialog(true)
+		GUI:Reset(section, position, level_vertex_id, game_vertex_id, rotation)
+
+		Register_UI("UIRecordObj","hf_record_on_place")
+	end
+end
+
+------------------------------------------------------------------
+-- UI
+-------------------------------------------------------------------
+class "UIRecordObj" (CUIScriptWnd)
+
+function UIRecordObj:__init() super()
+	self:InitControls()
+	self:InitCallBacks()
+end
+
+function UIRecordObj:__finalize()
+end
+
+function UIRecordObj:InitControls()
+	self:SetWndRect(Frect():set(0,0,1024,768))
+	self:SetAutoDelete(true)
+	--self:Enable(true)
+
+	local xml					= CScriptXmlInit()
+	xml:ParseFile				("ui_items_backpack.xml")
+
+	self.dialog					= xml:InitStatic("backpack", self)
+	xml:InitStatic("backpack:background", self.dialog)
+
+	self.input = xml:InitEditBox("backpack:input",self.dialog)
+	self:Register(self.input,"fld_input")
+
+	local btn = xml:Init3tButton("backpack:btn_cancel", self.dialog)
+	self:Register(btn,"btn_cancel")
+
+	btn = xml:Init3tButton("backpack:btn_ok", self.dialog)
+	self:Register(btn,"btn_ok")
+end
+
+function UIRecordObj:InitCallBacks()
+	self:AddCallback("btn_ok", ui_events.BUTTON_CLICKED, self.OnAccept, self)
+	self:AddCallback("btn_cancel", ui_events.BUTTON_CLICKED, self.Close, self)
+end
+
+function UIRecordObj:Reset(section, position, level_vertex_id, game_vertex_id, rotation)
+	self.input:SetText("")
+    self.section = section
+    self.position = position
+    self.level_vertex_id = level_vertex_id
+    self.game_vertex_id = game_vertex_id
+    self.rotation = rotation
+
+end
+
+function UIRecordObj:Update()
+	CUIScriptWnd.Update(self)
+end
+
+function UIRecordObj:OnAccept()
+    local spawn_name = self.input:GetText()
+
+	local data = {
+		["object"] = self.section,
+		["position"] = self.position,
+		["lvid"] = self.level_vertex_id,
+		["gvid"] = self.game_vertex_id,
+		["rotation"] = self.rotation,
+	}
+
+    add_obj_to_ltx(spawn_name, data)
+	self:Close()
+end
+
+function UIRecordObj:OnKeyboard(dik, keyboard_action)
+	local res = CUIScriptWnd.OnKeyboard(self,dik,keyboard_action)
+	if (res == false) then
+		if keyboard_action == ui_events.WINDOW_KEY_PRESSED then
+			if dik == DIK_keys.DIK_ESCAPE then
+				self:Close()
+			end
+		end
+	end
+	return res
+end
+
+function UIRecordObj:Close()
+	self:HideDialog()
+
+	Unregister_UI("UIRecordObj")
+end
+
+----------------------------------
+-- Storing object data to LTX
+----------------------------------
+local function is_vector(var)
+	if type(var) ~= "userdata" then return false end
+	if var.x and var.y and var.z then return true end
+	return false
+end
+
+function add_obj_to_ltx(spawn_name, data)
+	---@type ini_file_ex
+    local ini_cc = ui_debug_launcher.ini_cc
+	if spawn_name == nil or spawn_name == "" then
+		spawn_name = os.date("%Y/%m/%d-%H:%M:%S")
+	end
+	for key, value in pairs(data) do
+		ini_cc:w_value(spawn_name, key, is_vector(value) and utils_data.vector_to_string(value) or value)
+	end
+    ini_cc:save()
+end
+
+----------------------------------
+-- Spawning objects on new game
+----------------------------------
+
+---A map of spawned objects, pointing to their object id if object still exists, true if released, nil otherwise
+---@type table<string, number|true>
+spawned_objects = {}
+
+-- Map of object ids to spawn id (used for cleanup)
+id_to_spawn_id = {}
+
+---Generates a list of objects to be spawned, reading from objects.ltx (old format) and spawns.ltx (new format)
+---@return {section: string, location: vector, lvid: number, gvid: number, rotation: vector, spawn_id: number, story_id: string|nil, data: table}[]
+function generate_spawn_list()
+	local obj_tbl = {}
+
+	-- Iterate over objects.ltx, reading every entry for every map (section)
+	local ini_map_objects = ini_file_ex("plugins\\world_objects\\objects.ltx")
+	local j = 1
+	for _, section in pairs(ini_map_objects:get_sections()) do
+		local n = ini_map_objects.ini:line_count(section)
+		for i=0,n-1 do
+			local result, id, value	= ini_map_objects.ini:r_line_ex(section,i)
+			local p = str_explode(value,",")
+			if (p) then
+				obj_tbl[j] = {
+					section = p[1],
+					location = vector():set(tonumber(p[2]), tonumber(p[3]), tonumber(p[4])),
+					lvid = tonumber(p[5]),
+					gvid = tonumber(p[6]),
+					rotation = vector():set(tonumber(p[7]), tonumber(p[8]), tonumber(p[9])),
+					spawn_id = id,
+				}
+				j = j + 1
+			end
+		end
+	end
+
+	-- Iterate over spawns.ltx, reading every entry (section)
+	local ini_spawns = ini_file_ex("plugins\\world_objects\\spawns.ltx")
+	for _, section in pairs(ini_spawns:get_sections()) do
+		local entry = {
+			section = ini_spawns:r_string_ex(section, "object"),
+			location = utils_data.string_to_vector(ini_spawns:r_string_ex(section, "position")),
+			rotation = utils_data.string_to_vector(ini_spawns:r_string_ex(section, "rotation")),
+			lvid = ini_spawns:r_float_ex(section, "lvid"),
+			gvid = ini_spawns:r_float_ex(section, "gvid"),
+			spawn_id = section,
+			story_id = ini_spawns:r_string_ex(section, "story_id"),
+			data = parse_key_value(ini_spawns:r_string_ex(section, "data"))
+		}
+		table.insert(obj_tbl, entry)
+	end
+
+	return obj_tbl
+end
+
+function actor_on_first_update()
+	-- Spawn world objects
+	for k, v in pairs(generate_spawn_list()) do
+		if spawned_objects[v.spawn_id] then goto continue end
+
+		local obj_id = placeable_furniture.create_object(v.section, v.location, v.rotation, v.lvid, v.gvid)
+		if not obj_id then goto continue end
+
+		-- Set world_obj flag: Disable pickup
+		hf_obj_manager.update_data(obj_id, {is_world_obj=true})
+		
+		-- Track spawned objects
+		spawned_objects[v.spawn_id] = obj_id
+		id_to_spawn_id[obj_id] = v.spawn_id
+
+		-- Register story_id if it exists
+		if v.story_id then
+			story_objects.register(obj_id, v.story_id)
+		end
+
+		-- Set custom data
+		if v.data then
+			for i,val in pairs(v.data) do
+				v.data[i] = tonumber(val) or val
+			end
+			hf_obj_manager.update_data(obj_id, v.data)
+		end
+
+		::continue::
+	end
+end
+
+function save_state(m_data)
+	m_data.spawned_objects = spawned_objects
+end
+
+function load_state(m_data)
+	spawned_objects = m_data.spawned_objects or spawned_objects
+end
+
+function on_key_press(dik)
+	if dik ~= bind_record or not record_on_keypress then return end
+
+	---@type game_object
+	local obj = placeable_furniture.get_obj_at_crosshair()
+	if not obj then return end
+
+	local bone_name = obj:bone_name(0)
+	local angle_hpb = obj:bone_direction(bone_name)
+	local true_angle = vector():set(angle_hpb.y, angle_hpb.x, angle_hpb.z)
+
+	add_obj_prompt(obj:section(), obj:position(), obj:level_vertex_id(), obj:game_vertex_id(), true_angle)
+end
+
+function on_option_change(mcm) --new in mcm 1.6.0 mcm passes true to the on_option_change callback
+	if mcm then
+		record_on_place = ui_mcm.get("aol_hf/world_obj/flag_record_on_place")
+		record_on_keypress = ui_mcm.get("aol_hf/world_obj/flag_record_on_keypress")
+
+		bind_record = ui_mcm.get("aol_hf/world_obj/bind_record") or bind_record
+	end
+end
+
+-- Open record prompt if MCM option is on
+function hf_on_furniture_place(id)
+	if not record_on_place then return end
+
+	local obj = alife_object(id)
+	if not obj then return end
+
+	add_obj_prompt(obj:section_name(), obj.position, obj.m_level_vertex_id, obj.m_game_vertex_id, obj.angle)
+end
+
+function server_entity_on_unregister(se_obj,type_name)
+	local spawn_id = id_to_spawn_id[se_obj.id]
+	if not spawn_id then return end
+
+	spawned_objects[spawn_id] = true
+	id_to_spawn_id[se_obj.id] = nil
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_option_change",on_option_change)
+    on_option_change(mcm_keybinds)
+
+	RegisterScriptCallback("on_key_press", on_key_press)
+	RegisterScriptCallback("actor_on_first_update",actor_on_first_update)
+	RegisterScriptCallback("save_state",save_state)
+	RegisterScriptCallback("load_state",load_state)
+	RegisterScriptCallback("hf_on_furniture_place", hf_on_furniture_place)
+	RegisterScriptCallback("server_entity_on_unregister", server_entity_on_unregister)
+end

@@ -1,0 +1,26 @@
+function on_mcm_load()
+	op = { id = "ATS_illum", sh = true, gr =
+		{
+            { id = "ATS_title", type = "slide", link = "ats_mcm_banner", text = "ui_mcm_ATS_illum_title", size = { 512, 50 }, spacing = 20 },
+            { id = "ATS_keybind", type = "key_bind", val = 2, def = DIK_keys.DIK_Y },
+			{ id = "ATS_toggle_volume", type = "track", val = 2, min = 0.0, max = 1.0, step = 0.05, def = 0.3 },
+            { id = "dzs_volume", type = "track", val = 2, min = 0.0, max = 1.0, step = 0.05, def = 0.3 },
+			{ id = "dzs_mode", type = "radio_h", val = 2, def = 1, content = { {1, "dzs_mode_1"}, {2, "dzs_mode_2"} } },
+			{ id = "dzs_sound_type", type = "list", val = 2, def = 1, content = { {1, "dzs_sound_1"}, {2, "dzs_sound_2"}, {3, "dzs_sound_3"}, {4, "dzs_sound_4"}, {5, "dzs_sound_5"} } },
+        }
+    }
+    return op
+end
+
+local defaults = {
+	["ATS_keybind"] = DIK_keys.DIK_Y,
+	["dzs_mode"] = 1,
+	["dzs_sound_type"] = 1,
+	["dzs_volume"] = 0.3,
+	["ATS_toggle_volume"] = 0.3,
+	
+}
+	
+function get_config(key)
+    if ui_mcm then return ui_mcm.get("ATS_illum/"..key) else return defaults[key] end
+end

@@ -1,0 +1,110 @@
+--====================================================
+--
+-- Dynamic Zoom Sound Script by Private Pirate v1.3.1
+--
+--====================================================
+
+
+local tref = 0
+local is_wpn
+local wpn
+local wpn_obj
+local zoom_factor_buffer
+local zoom_type
+local click_sound_mode = ATS_illum_mcm.get_config("dzs_mode")
+local click_sound_type = ATS_illum_mcm.get_config("dzs_sound_type")
+local dyn_zoom_sound = sound_object("ATS_scope_sounds\\ATS_zoom_sound_" .. click_sound_type)
+local click_volume = ATS_illum_mcm.get_config("dzs_volume")
+local other_aim_first = false
+local scope_types = ini_file_ex("plugins\\dynamic_zoom_scope_sounds.ltx")
+local scope_sounds = utils_data.collect_section(scope_types, "scope_types", true)
+local string_find = string.find
+
+
+function on_game_start()
+	RegisterScriptCallback("actor_on_update", actor_on_update)
+	RegisterScriptCallback("actor_on_weapon_zoom_in", actor_on_weapon_zoom_in)
+	RegisterScriptCallback("on_option_change", on_option_change)
+end
+
+
+function on_option_change()
+	click_sound_mode = ATS_illum_mcm.get_config("dzs_mode")
+	click_volume = ATS_illum_mcm.get_config("dzs_volume")
+	if (click_sound_mode == 1) then
+		click_sound_type = ATS_illum_mcm.get_config("dzs_sound_type")
+		dyn_zoom_sound = sound_object("ATS_scope_sounds\\ATS_zoom_sound_" .. click_sound_type)
+	else
+		get_scope_sound()
+	end
+end
+
+
+function actor_on_weapon_zoom_in()
+	if (is_wpn) then
+		if (zoom_type == 0) then
+			zoom_factor_buffer = wpn_obj:GetZoomFactor()
+		else
+			other_aim_first = true
+		end
+		
+		if (click_sound_mode == 2) then
+			get_scope_sound()
+		end
+	end
+end
+
+
+function actor_on_update()
+	local tstart = time_global()
+	if tref > tstart then return end
+	tref = tstart + 30
+
+	local active_item = db.actor:active_item()
+	if (not active_item) then return end
+	is_wpn = IsWeapon(active_item) and not (SYS_GetParam(0,active_item:section(),"class") == "WP_KNIFE")
+	wpn = is_wpn and active_item
+
+	if (is_wpn) then
+		wpn_obj = wpn:cast_Weapon()
+		zoom_type = wpn_obj:GetZoomType()
+	else return	end
+
+	local is_zoomed = is_wpn and axr_main.weapon_is_zoomed
+
+	if (is_zoomed and zoom_type == 0) then
+		play_click_sound()
+	end
+end
+
+
+function get_scope_sound()
+	if (not wpn) then return end
+	local scope = SYS_GetParam(0,wpn:section(),"scope_texture") or wpn:section()
+	local scope_name = tostring(scope)
+
+	for k,v in pairs(scope_sounds) do
+		if (string_find(scope_name, tostring(k))) then
+			dyn_zoom_sound = sound_object("ATS_scope_sounds\\ATS_zoom_sound_" .. v)
+			return true
+		end
+	end
+end	
+
+
+function play_click_sound()
+	local current_zoom = wpn_obj:GetZoomFactor()
+	local has_scope = wpn_obj:IsScopeAttached()
+
+	if (other_aim_first == true) then
+		zoom_factor_buffer = current_zoom
+		other_aim_first = false
+	end
+
+	if (has_scope and current_zoom ~= zoom_factor_buffer) then
+		dyn_zoom_sound:play(db.actor, 0, sound_object.s2d)
+		dyn_zoom_sound.volume = click_volume
+	end
+
+	zoom_factor_buffer = current_zoom
+end

@@ -1,0 +1,336 @@
+siski_memory_dump_hotkey = siski_memory_dump_hotkey or {}
+
+local type = _G.type
+local tostring = _G.tostring
+local tonumber = _G.tonumber
+local pairs = _G.pairs
+local ipairs = _G.ipairs
+local pcall = _G.pcall
+local io = _G.io
+local os = _G.os
+local time_global = _G.time_global
+local level = _G.level
+local DIK_keys = _G.DIK_keys
+local RegisterScriptCallback = _G.RegisterScriptCallback
+
+local REGISTERED = false
+local DUMP_COUNTER = 0
+
+local function tg()
+    return (time_global and time_global()) or 0
+end
+
+local function safe_level_name()
+    if not (level and level.name) then
+        return nil
+    end
+    local ok, name = pcall(function() return level.name() end)
+    if ok and type(name) == "string" and name ~= "" then
+        return name
+    end
+    return nil
+end
+
+local function file_dir(path)
+    if type(path) ~= "string" or path == "" then
+        return ""
+    end
+    return path:match("^(.*[\\/])") or ""
+end
+
+local function dump_file_path()
+    local log_path = nil
+    if siski and siski.log and type(siski.log.log_file) == "string" and siski.log.log_file ~= "" then
+        log_path = siski.log.log_file
+    else
+        log_path = "siski.log"
+    end
+    DUMP_COUNTER = DUMP_COUNTER + 1
+    local dir = file_dir(log_path)
+    return dir .. "siski_memory_dump_" .. tostring(tg()) .. "_" .. tostring(DUMP_COUNTER) .. ".txt"
+end
+
+local function bump_count(dst, key)
+    if type(dst) ~= "table" then
+        return
+    end
+    key = tostring(key or "nil")
+    dst[key] = (tonumber(dst[key]) or 0) + 1
+end
+
+local function count_keys(src)
+    if type(src) ~= "table" then
+        return 0
+    end
+    local total = 0
+    for _ in pairs(src) do
+        total = total + 1
+    end
+    return total
+end
+
+local function collect_memory_totals(state, runtime, board_runtime)
+    local totals = {
+        managed_squads = 0,
+        by_npc_kind = {},
+        by_community = {},
+        by_task_type = {},
+        by_level = {},
+        dirty_task = 0,
+        nil_current_task = 0,
+        board_levels = type(board_runtime) == "table" and count_keys(board_runtime.smarts_by_level) or 0,
+        board_smarts = type(board_runtime) == "table" and count_keys(board_runtime.smart_level_by_name) or 0,
+        board_squads_indexed = 0,
+    }
+
+    local squads = type(state) == "table" and type(state.squads) == "table" and state.squads or {}
+    for _, entry in pairs(squads) do
+        if type(entry) == "table" and entry.allowed == true then
+            totals.managed_squads = totals.managed_squads + 1
+            bump_count(totals.by_npc_kind, entry.npc_kind or "unknown")
+            bump_count(totals.by_community, entry.community or "unknown")
+            bump_count(totals.by_level, entry.level or "unknown")
+
+            local current = entry.tasks and entry.tasks.current or nil
+            if type(current) == "table" then
+                bump_count(totals.by_task_type, current.type or "unknown")
+            else
+                totals.nil_current_task = totals.nil_current_task + 1
+                bump_count(totals.by_task_type, "NO_TASK")
+            end
+
+            if type(entry.dirty) == "table" and entry.dirty.task == true then
+                totals.dirty_task = totals.dirty_task + 1
+            end
+        end
+    end
+
+    local squads_by_level = type(board_runtime) == "table" and type(board_runtime.squads_by_level) == "table" and board_runtime.squads_by_level or {}
+    for _, bucket in pairs(squads_by_level) do
+        if type(bucket) == "table" then
+            totals.board_squads_indexed = totals.board_squads_indexed + count_keys(bucket)
+        end
+    end
+
+    totals.runtime_managed_levels = type(runtime) == "table" and count_keys(runtime.managed_squads_by_level) or 0
+    return totals
+end
+
+local function collect_bus_status()
+    local bus = siski and siski.bus or nil
+    local events = {
+        "server_entity_on_register",
+        "server_entity_on_unregister",
+        "squad_on_first_update",
+        "squad_on_update",
+        "squad_on_enter_smart",
+        "squad_on_leave_smart",
+        "squad_on_after_level_change",
+        "smart_terrain_on_update",
+        "actor_on_first_update",
+        "load_state",
+    }
+    local out = {
+        available = type(bus) == "table",
+        counts = {},
+        has_board_index = {},
+    }
+    if type(bus) ~= "table" then
+        return out
+    end
+    for i = 1, #events do
+        local event_name = events[i]
+        if type(bus.count) == "function" then
+            local ok_count, count = pcall(bus.count, event_name)
+            if ok_count then
+                out.counts[event_name] = count
+            end
+        end
+        if type(bus.has) == "function" then
+            local ok_has, has = pcall(bus.has, event_name, "siski_board_index")
+            if ok_has then
+                out.has_board_index[event_name] = has == true
+            end
+        end
+    end
+    return out
+end
+
+local function escape_string(value)
+    value = tostring(value or "")
+    value = value:gsub("\\", "\\\\")
+    value = value:gsub("\r", "\\r")
+    value = value:gsub("\n", "\\n")
+    value = value:gsub("\t", "\\t")
+    value = value:gsub("\"", "\\\"")
+    return value
+end
+
+local function key_rank(key)
+    local key_type = type(key)
+    if key_type == "number" then
+        return 1, key
+    end
+    if key_type == "string" then
+        return 2, key
+    end
+    if key_type == "boolean" then
+        return 3, key and 1 or 0
+    end
+    return 4, tostring(key)
+end
+
+local function sorted_keys(src)
+    local out = {}
+    if type(src) ~= "table" then
+        return out
+    end
+    for key in pairs(src) do
+        out[#out + 1] = key
+    end
+    table.sort(out, function(a, b)
+        local ra, va = key_rank(a)
+        local rb, vb = key_rank(b)
+        if ra ~= rb then
+            return ra < rb
+        end
+        return tostring(va) < tostring(vb)
+    end)
+    return out
+end
+
+local function format_key(key)
+    local key_type = type(key)
+    if key_type == "string" then
+        if key:match("^[%a_][%w_]*$") then
+            return key
+        end
+        return "[\"" .. escape_string(key) .. "\"]"
+    end
+    if key_type == "number" or key_type == "boolean" then
+        return "[" .. tostring(key) .. "]"
+    end
+    return "[<" .. key_type .. ":" .. escape_string(tostring(key)) .. ">]"
+end
+
+local function append_line(lines, depth, text)
+    lines[#lines + 1] = string.rep("  ", depth) .. text
+end
+
+local function dump_value(lines, key, value, depth, visited)
+    local prefix = format_key(key) .. " = "
+    local value_type = type(value)
+
+    if value_type == "nil" then
+        append_line(lines, depth, prefix .. "nil")
+        return
+    end
+
+    if value_type == "number" or value_type == "boolean" then
+        append_line(lines, depth, prefix .. tostring(value))
+        return
+    end
+
+    if value_type == "string" then
+        append_line(lines, depth, prefix .. "\"" .. escape_string(value) .. "\"")
+        return
+    end
+
+    if value_type ~= "table" then
+        append_line(lines, depth, prefix .. "<" .. value_type .. ":" .. escape_string(tostring(value)) .. ">")
+        return
+    end
+
+    if visited[value] then
+        append_line(lines, depth, prefix .. "<cycle@" .. tostring(visited[value]) .. ">")
+        return
+    end
+
+    visited[value] = depth
+    append_line(lines, depth, prefix .. "{")
+    local keys = sorted_keys(value)
+    for i = 1, #keys do
+        local child_key = keys[i]
+        dump_value(lines, child_key, value[child_key], depth + 1, visited)
+    end
+    append_line(lines, depth, "}")
+end
+
+local function build_dump_text()
+    local lines = {}
+    local memory = siski and siski.memory or nil
+    local board_index = siski and siski.board_index or nil
+    local state = memory and memory.get_state and memory.get_state() or nil
+    local runtime = memory and memory.get_runtime and memory.get_runtime() or nil
+    local board_runtime = board_index and board_index.RUNTIME or nil
+    local bus_status = collect_bus_status()
+    local totals = collect_memory_totals(state, runtime, board_runtime)
+    local meta = {
+        dump_tg = tg(),
+        level = safe_level_name(),
+        version = siski and siski.version or nil,
+        state_squads = type(state) == "table" and count_keys(state.squads) or 0,
+        runtime_managed_levels = type(runtime) == "table" and count_keys(runtime.managed_squads_by_level) or 0,
+        board_levels = type(board_runtime) == "table" and count_keys(board_runtime.smarts_by_level) or 0,
+        board_smarts = type(board_runtime) == "table" and count_keys(board_runtime.smart_level_by_name) or 0,
+    }
+
+    lines[#lines + 1] = "SISKI MEMORY DUMP"
+    lines[#lines + 1] = "================="
+    lines[#lines + 1] = ""
+
+    local visited = {}
+    dump_value(lines, "meta", meta, 0, visited)
+    dump_value(lines, "totals", totals, 0, visited)
+    dump_value(lines, "bus_status", bus_status, 0, visited)
+    dump_value(lines, "state", state, 0, visited)
+    dump_value(lines, "runtime", runtime, 0, visited)
+    dump_value(lines, "board_index_runtime", board_runtime, 0, visited)
+
+    return table.concat(lines, "\n") .. "\n"
+end
+
+local function log_status(fmt, ...)
+    if siski and siski.log and siski.log.info then
+        pcall(siski.log.info, "MEM_DUMP", fmt, ...)
+        return
+    end
+    if type(log1) == "function" then
+        local ok, text = pcall(string.format, fmt, ...)
+        if ok then
+            pcall(log1, "[MEM_DUMP] " .. text)
+        end
+    end
+end
+
+local function write_dump()
+    local path = dump_file_path()
+    local text = build_dump_text()
+    local file = io and io.open and io.open(path, "w") or nil
+    if not file then
+        log_status("dump_failed path=%s", tostring(path))
+        return false
+    end
+    file:write(text)
+    file:close()
+    log_status("dump_written path=%s", tostring(path))
+    return true
+end
+
+local function on_key_press(key)
+    if key ~= (DIK_keys and DIK_keys.DIK_L) then
+        return
+    end
+    write_dump()
+end
+
+function siski_memory_dump_hotkey.on_game_start()
+    if REGISTERED == true then
+        return
+    end
+    if type(RegisterScriptCallback) == "function" then
+        RegisterScriptCallback("on_key_press", on_key_press)
+        REGISTERED = true
+        log_status("hotkey_ready key=L")
+    end
+end

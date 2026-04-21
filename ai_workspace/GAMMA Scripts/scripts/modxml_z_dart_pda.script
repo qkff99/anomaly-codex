@@ -1,0 +1,95 @@
+local Utils  = dart_utils
+local Module = dart_module
+
+
+local mod = "pda"
+
+-- maps scaling of fonts
+local FONT_LIST = {
+  "letterica16",
+  "letterica18",
+  "graffiti19",
+  "graffiti22",
+  "letterica25",
+  "graffiti32",
+  "graffiti50",
+}
+
+
+-- get the font to upscsale to according to config
+function getUpscaled(font)
+  local textScale   = ui_mcm.get("dart/dart_pda/textScale")
+  local textCeiling = ui_mcm.get("dart/dart_pda/textCeiling")
+
+  for i, v in ipairs(FONT_LIST) do
+    if font == v then
+      return FONT_LIST[math.min(i + textScale, textCeiling)]
+    end
+  end
+
+  return font
+end
+
+
+function parseActorMenu(XML, config)
+  local element = XML:query("properties_box font")[1]
+  if not element then
+    return
+  end
+
+  local font = XML:getElementAttr(element).font
+  if not font then
+    return
+  end
+
+  XML:setElementAttr(element, {
+    font = getUpscaled(font)
+  })
+end
+
+
+function parsePDATemplates(XML, config)
+  local elements = Utils.imerge(
+    XML:query("text"),
+    XML:query("font")
+  )
+
+  Utils.ipairscb(elements, function(element)
+    local font = XML:safeGetAttrs(element).font
+    if not font then
+      return
+    end
+
+    XML:safeSetAttrs(element, {
+      font = getUpscaled(font)
+    })
+  end)
+end
+
+
+function on_xml_read()
+  Module.registerModule(mod, "actor_menu", parseActorMenu)
+  Module.registerModule(mod, "pda", parsePDATemplates)
+  Module.registerModule(mod, "pda_logs", parsePDATemplates)
+  Module.registerModule(mod, "pda_ranking", parsePDATemplates)
+  Module.registerModule(mod, "pda_taskboard", parsePDATemplates)
+  Module.registerModule(mod, "pda_tasks", parsePDATemplates)
+  Module.registerModule(mod, "pda_radio", parsePDATemplates)
+  Module.registerModule(mod, "pda_contacts", parsePDATemplates)
+  Module.registerModule(mod, "pda_encyclopedia", parsePDATemplates)
+  Module.registerModule(mod, "pda_relations", parsePDATemplates)
+
+  -- Show All Faction Relations in PDA support
+  Module.registerModule(mod, "pda_relations_f10", parsePDATemplates)
+  Module.registerModule(mod, "pda_relations_f10x", parsePDATemplates)
+  Module.registerModule(mod, "pda_relations_f11", parsePDATemplates)
+  Module.registerModule(mod, "pda_relations_f11x", parsePDATemplates)
+  Module.registerModule(mod, "pda_relations_f12", parsePDATemplates)
+  Module.registerModule(mod, "pda_relations_f12x", parsePDATemplates)
+  Module.registerModule(mod, "pda_relations_f13", parsePDATemplates)
+  Module.registerModule(mod, "pda_relations_f13x", parsePDATemplates)
+  Module.registerModule(mod, "pda_relations_f14", parsePDATemplates)
+  Module.registerModule(mod, "pda_relations_f14x", parsePDATemplates)
+  Module.registerModule(mod, "pda_relations_f9", parsePDATemplates)
+  Module.registerModule(mod, "pda_relations_f9x", parsePDATemplates)
+end

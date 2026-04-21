@@ -1,0 +1,109 @@
+--[[
+	=====================================================================
+	Addon      : Tosox Mini Mods Repo: Task Marker for Delivery Tasks Fix
+	Link       : https://www.moddb.com/mods/stalker-anomaly/addons/tosox-mini-mods-repo/
+	Author     : Tosox
+	Date       : 11.01.2024
+	Last Edit  : 27.01.2024
+	=====================================================================
+--]]
+
+orig_general_delivery = task_functor.general_delivery
+task_functor.general_delivery = function(task_id, field, p, tsk)
+	if (not db.actor) or (not tsk) then
+		return nil
+	end
+	
+	if field == "target" then
+		local var = load_var(db.actor, task_id)
+		if not var then
+			return nil
+		end
+	
+		if tsk.stage == 0 then
+			-- If the player doesn't have the item in his inventory return the parent_id of the item
+			local item_1_obj = var.item_1_id and alife_object(var.item_1_id)
+			if (item_1_obj) and (item_1_obj.parent_id < 65535) then -- obj.parent_id >= 65535 -> obj on ground
+				return item_1_obj.parent_id
+			end
+
+			return var.item_1_id
+		end
+		
+		-- If quest item is found then return the package receiver id
+		if tsk.stage == 1 then
+			return var.target_id
+		end
+	end
+
+	return nil
+end
+
+orig_task_status_functor_drx_sl_quest_item_task_status = task_status_functor.drx_sl_quest_item_task_status
+task_status_functor.drx_sl_quest_item_task_status = function(tsk, task_id)
+	orig_task_status_functor_drx_sl_quest_item_task_status(tsk, task_id)
+
+	if (not db.actor) or (not tsk) then
+		return
+	end
+	
+	local var = load_var(db.actor, task_id)
+	if not var then
+		return
+	end
+
+	-- Fail the quest if the item vanished
+	if (tsk.stage == 0) and (var.item_id) then
+		local item_obj = var.item_id and alife_object(var.item_id)
+		if (not item_obj) or ((item_obj) and (item_obj:section_name() ~= "drx_sl_quest_item_" .. var.stash_type)) then
+			return "fail"
+		end
+	end
+end
+
+orig_drx_sl_quest_item_task_target = task_functor.drx_sl_quest_item_task_target
+task_functor.drx_sl_quest_item_task_target = function(task_id, field, p, tsk)
+	if (not db.actor) or (not tsk) then
+		return nil
+	end
+
+	if field == "target" then
+		local var = load_var(db.actor, task_id)
+		if not var then
+			return nil
+		end
+
+		-- Return the quest item location
+		if tsk.stage == 0 then
+			-- Return the item location if stash was discovered
+			local item_se_obj = var.item_id and alife_object(var.item_id)
+			if item_se_obj then
+				if item_se_obj.parent_id < 65535 then
+					return item_se_obj.parent_id
+				else
+					return item_se_obj.id
+				end
+			end
+
+			-- Return the stash location
+			return var.target_id
+		end
+		
+
+		-- If quest item is found then return the quest giver id
+		if tsk.stage == 1 then
+			-- Save the item id if the stash was discovered
+			if not var.item_id then
+				local item = db.actor:object("drx_sl_quest_item_" .. var.stash_type)
+				if item then
+					var.item_id = item:id()
+					save_var(db.actor, task_id, var)
+				end
+			end
+
+			return tsk.task_giver_id
+		end
+	end
+
+	return nil
+end

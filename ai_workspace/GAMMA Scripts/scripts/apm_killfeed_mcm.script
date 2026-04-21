@@ -1,0 +1,14 @@
+function on_mcm_load()
+    op = {
+        id = "apm_killfeed", sh = true, gr = {
+            {id = "banner", type = "slide", text = "ui_mcm_ui_popup_messages_killfeed_title", size = {512, 50}, spacing = 20},
+
+            {id = "options", type = "list", val = 0, def="onlyPlayerKillsAndDeath", content= {
+                {"all", "apm_killfeed_all"}, 
+                {"onlyPlayerKillsAndDeath", "apm_killfeed_onlyPlayerKillsAndDeath"},
+                {"onlyPlayerDeath", "apm_killfeed_onlyPlayerDeath"}},
+              },
+        }
+    }
+    return op, "ui_popup_messages"
+end

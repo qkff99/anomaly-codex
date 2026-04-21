@@ -1,0 +1,37 @@
+local mcm_enable_auto_cancel = false
+local valid_hit_types = {
+    -- [0] = true, -- burn
+    -- [1] = true, -- shock
+    -- [2] = true, -- chemical burn
+    -- [3] = true, -- radiation
+    -- [4] = true, -- telepathic
+    [5] = true, -- wound
+    [6] = true, -- fire wound
+    -- [7] = true, -- strike
+    [8] = true, -- explosion
+    -- [9] = true, -- wound2
+    -- [10] = true, -- light burn
+}
+
+
+function on_game_start()
+    RegisterScriptCallback("on_game_load", initialize)
+    RegisterScriptCallback("on_option_change", initialize)
+    RegisterScriptCallback("actor_on_before_hit", actor_on_before_hit)
+end
+
+
+function initialize()
+    mcm_enable_auto_cancel = liz_fdda_redone_mcm.get_config("consumables/auto_cancel")
+    valid_hit_types[5] = liz_fdda_redone_mcm.get_config("consumables/ac_wound")
+    valid_hit_types[6] = liz_fdda_redone_mcm.get_config("consumables/ac_fire_wound")
+    valid_hit_types[8] = liz_fdda_redone_mcm.get_config("consumables/ac_explosion")
+end
+
+
+function actor_on_before_hit(hit)
+    if not mcm_enable_auto_cancel then return end
+    if valid_hit_types[hit.type] then
+        lam2.stop_all_actions()
+    end
+end

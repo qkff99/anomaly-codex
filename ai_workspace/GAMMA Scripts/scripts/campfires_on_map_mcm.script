@@ -1,0 +1,115 @@
+local show_campfires = true
+local show_only_visited = true
+local mcm_id = "campfires_on_map"
+local campfires = {}
+local visited_campfires = {}
+
+function actor_on_info_callback(_, info_id)
+    if info_id ~= "ui_pda" then return end
+    update_campfires()
+end
+
+function get_campfire_binder(dist)
+    local pos = db.actor:position()
+    for id,binder in pairs(bind_campfire.campfires_all) do 
+        if (binder and binder.campfire) then
+            if (pos:distance_to_sqr(binder.object:position()) <= dist) then
+                return binder
+            end
+        end 
+    end
+end
+
+function update_campfires()
+    if not show_campfires then return end
+    for id,binder in pairs(bind_campfire.campfires_all) do 
+        if (binder and binder.campfire) then
+            local is_lit = binder.campfire:is_on()
+            toggle_campfire(id, is_lit)
+        end 
+    end
+end
+
+function toggle_campfire(id, is_lit)
+    local status = is_lit and "lit" or "unlit"
+    if campfires[id] and ((not visited_campfires[id]) and show_only_visited) then
+        level.map_remove_object_spot(id,"campfire_" .. campfires[id])
+        campfires[id] = nil
+        return
+    end
+
+    local visited = visited_campfires[id] and "_visited" or ""
+    if campfires[id] and campfires[id] ~= status then
+        level.map_remove_object_spot(id,"campfire_" .. campfires[id])
+        level.map_add_object_spot(id, "campfire_" .. status, "st_campfire" .. visited)
+    elseif (not campfires[id]) and ((visited_campfires[id]) or (not show_only_visited)) then
+        level.map_add_object_spot(id, "campfire_" .. status, "st_campfire" .. visited)
+    end
+    campfires[id] = status
+end
+
+function on_mcm_load()
+    local options = {
+        id = mcm_id, sh = true,
+        gr = {
+            { id = mcm_id                , type = "slide"             , link = "ui_options_slider_player", text = "ui_mcm_menu_" .. mcm_id, size = {512, 50}, spacing = 20},
+            { id = "show_campfires"      , type = "check", val = 1, def = true},
+            { id = "show_only_visited"   , type = "check", val = 1, def = true}
+        }
+    }
+    return options
+end
+
+function on_option_change()
+    if ui_mcm then
+        show_campfires = ui_mcm.get(mcm_id .. "/show_campfires")
+        show_only_visited = ui_mcm.get(mcm_id .. "/show_only_visited")
+    end
+    for id, status in pairs(campfires) do
+        level.map_remove_object_spot(id,"campfire_" .. status)
+        campfires[id] = nil
+    end
+    update_campfires()
+end
+
+function save_state(m_data)
+    m_data.visited_campfires = visited_campfires
+end
+
+function load_state(m_data)
+    visited_campfires = m_data.visited_campfires or {}
+end
+
+function on_before_save_input()
+    local campfire_radius = 5
+    local nearby_campfire = get_campfire_binder(campfire_radius)
+    if nearby_campfire then
+        local id = nearby_campfire.object:id()
+        visited_campfires[id] = true
+        toggle_campfire(id, nearby_campfire.campfire:is_on())
+    end
+end
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_info_callback", actor_on_info_callback)
+    RegisterScriptCallback("on_option_change", on_option_change)
+    RegisterScriptCallback("save_state", save_state)
+    RegisterScriptCallback("load_state", load_state)
+    RegisterScriptCallback("on_before_save_input", on_before_save_input)
+    RegisterScriptCallback("actor_on_first_update", update_campfires)
+
+    local cached_use_campfire = bind_campfire.use_campfire
+    bind_campfire.use_campfire = function(actor,zone,p) -- called from game_tutorials.xml
+        local pos = db.actor:position()
+        for id,binder in pairs(bind_campfire.campfires_all) do 
+            if (binder and binder.campfire) then
+                if (pos:distance_to_sqr(binder.object:position()) <= 2) then
+                    visited_campfires[id] = true
+                end
+            end
+        end
+        cached_use_campfire(actor,zone,p)
+    end
+
+    on_option_change()
+end

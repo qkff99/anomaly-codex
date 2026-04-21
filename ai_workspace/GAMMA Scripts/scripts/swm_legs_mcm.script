@@ -1,0 +1,53 @@
+
+function on_mcm_load()
+    op = { id= "swm_legs",sh=true ,gr={
+            {id = "title",type= "slide",link= "ui_options_slider_player",text="ui_mcm_swm_legs_title",size= {512,50},spacing= 20 },
+			{id = "hide_legs_low_crouch", type = "check", val = 1, def=true},
+            {id = "legs_offset", type = "track", val = 2, min=-1.5,max=-0.4,step=0.01, def = -0.65},
+            {id = "legs_offset_side", type = "track", val = 2, min=-0.2,max=0.2,step=0.01, def = 0},
+			{id = "toggle_turn_step_sound", type = "check", val = 1, def=true},
+            {id = "toggle_turn_step_sound_exo", type = "check", val = 1, def=true},
+			{id = "turn_step_sound_volume", type = "track", val = 2, min=0.1,max=1,step=0.1, def = 0.3},	
+			{id = "use_hd_models", type = "check", val = 1, def=false},
+            {id = "enable_idle_anims", type = "check", val = 1, def=true},
+            {id = "idle_anim_min_cooldown", type = "track", val = 2, min=3,max=120,step=1, def = 6},
+            {id = "idle_anim_max_cooldown", type = "track", val = 2, min=4,max=300,step=1, def = 30},
+            {id = "use_combat_state", type = "check", val = 1, def=true},
+            {id = "use_special_noncombat_shift", type = "check", val = 1, def=false},
+            {id = "legs_offset_noncombat", type = "track", val = 2, min=-1.5,max=-0.4,step=0.01, def = -0.5},
+			{id = "use_slow_down_state", type = "check", val = 1, def=true},
+            {id = "visual_upg_enabled", type = "check", val = 1, def=true},
+			--{id = "enable_dirt", type = "check", val = 1, def=true},
+			--{id = "enable_blood", type = "check", val = 1, def=true},
+			{id = "enable_debug_warnings", type = "check", val = 1, def=true},
+            {id = "disabled", type = "check", val = 1, def=false}
+		}
+    }
+    return op
+end 
+
+local defaults = {
+["hide_legs_low_crouch"] = true,
+["legs_offset"] = -0.65,
+["legs_offset_side"] = 0,
+["toggle_turn_step_sound"] = true,
+["toggle_turn_step_sound_exo"] = true,
+["turn_step_sound_volume"] = 0.3,
+["use_hd_models"] = false,
+["enable_idle_anims"] = true,
+["idle_anim_min_cooldown"] = 6,
+["idle_anim_max_cooldown"] = 30,
+["use_combat_state"] = true,
+["use_special_noncombat_shift"] = false,
+["legs_offset_noncombat"] = -0.5,
+["use_slow_down_state"] = true,
+["visual_upg_enabled"] = true,
+--["enable_dirt"] = true,
+--["enable_blood"] = true,
+["enable_debug_warnings"] = true,
+["disabled"] = false
+}
+
+function get_config(key)
+    if ui_mcm then return ui_mcm.get("swm_legs/"..key) else return defaults[key] end
+end

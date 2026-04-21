@@ -1,0 +1,31 @@
+
+-- Removes background noise from the draw & holster of the RF-Receiver
+
+local debuglogs = false
+
+no_sound_states = {
+    anm_show = true,
+    anm_show_fast = true,
+    anm_hide_fast = true,
+    anm_hide = true,
+}
+sound_currently_enabled = false
+
+function actor_on_hud_animation_play(anm_table, item)
+    if not item then return end
+    local parent_section = SYS_GetParam(0, item:section(), "parent_section", item:section())
+    if not (parent_section == "detector_radio") then return end    
+    sound_currently_enabled = no_sound_states[anm_table.anm_name] == nil
+    if debuglogs then printf("<DAR> sound_currently_enabled %s | item section %s | anm_name %s",sound_currently_enabled, parent_section, anm_table and anm_table.anm_name) end
+end
+
+local has_valid_device = item_radio.actor_has_valid_device
+function item_radio.actor_has_valid_device(mba)
+    local valid_dev = has_valid_device(mba)
+    if debuglogs then printf("<DAR> sound_currently_enabled is %s | valid device %s",sound_currently_enabled,valid_dev) end
+    return sound_currently_enabled and valid_dev
+end
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_hud_animation_play", actor_on_hud_animation_play)
+end

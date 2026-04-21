@@ -1,0 +1,12 @@
+op = { id= "blood_pool",sh=true ,gr={
+		{ id= "title",type= "slide",link= "ui_options_slider_player",text="ui_mcm_blood_pool_title",size= {512,50},spacing= 20 },
+		{id = "max_pool_size", type = "track", val = 2, min=0.05,max=3,step=0.05, def = 0.75},
+		{id = "num_of_updates", type = "track", val = 2, min=400,max=2000,step=10, def = 1000},
+		{id = "update_freq", type = "track", val = 2, min=0.02,max=1,step=0.02, def = 0.10},
+		{id = "pool_lifetime", type = "track", val = 2, min=100,max=1200,step=50, def = 500},
+	}
+}
+
+function on_mcm_load()
+	return op
+end

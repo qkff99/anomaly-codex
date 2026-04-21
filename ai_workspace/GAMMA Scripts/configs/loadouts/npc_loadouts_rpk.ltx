@@ -1,0 +1,34 @@
+; section name can be anything as long as it is unique
+[rpk_loadout]
+; this is the section we want to append to, has to kebab together [faction]_[rank]_[slot]. Slot can be empty, defaults to primary. Can also use _p, _s, _e shorthand for primary, secondary, extra
+loadout_sec = bandit_novice
+; this is the section of weapons in wep_importer we want to add
+weapons_sec = rpk
+
+
+[anim_rpk_monolith]:rpk_loadout
+loadout_sec = bandit_veteran_primary, bandit_master_primary
+
+;-----------------------------------------------------------------------
+
+[anim_rpk_csky]:anim_rpk_monolith
+loadout_sec = csky_experienced_primary
+
+;-----------------------------------------------------------------------
+
+[anim_rpk_duty]:anim_rpk_monolith
+loadout_sec = duty_experienced_primary, duty_veteran_primary
+
+;-----------------------------------------------------------------------
+
+[anim_rpk_stalker]:anim_rpk_monolith
+loadout_sec = experienced_primary, stalker_professional_primary, master_primary
+;-----------------------------------------------------------------------
+
+[anim_rpk_killer]:anim_rpk_monolith
+loadout_sec = killer_veteran_primary, killer_master_primary
+;-----------------------------------------------------------------------
+
+[anim_rpk_greh]:anim_rpk_monolith
+loadout_sec = greh_experienced_primary, greh_veteran_primary, greh_master_primary
+;-----------------------------------------------------------------------

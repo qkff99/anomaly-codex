@@ -1,0 +1,203 @@
+--[[
+Encyclopedia News Messages
+16/11/2020
+Reimplementation of the ui_pda_encyclopedia_tab.script encyclopedia messages by Darryl123 and Tronex
+Unless superceded by a prexesting licence on the orginal ui_pda_encyclopedia_tab.script
+	this work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License
+Author: RavenAscendant
+--]]
+
+
+function base_unlock_article() end
+function base_unlock_note() end
+
+categories = {} --not local because it would have been nice not to have to make a duplicate of the table in the base scrip, not that anyone is going to try and modify this.
+
+
+function on_game_start()
+
+
+	parse_categories() -- build local copy of catagories
+end
+
+base_unlock_note = ui_pda_encyclopedia_tab.unlock_note
+function ui_pda_encyclopedia_tab.unlock_note(section)
+	local unlocked = base_unlock_note(section)
+
+	if unlocked then
+		local index_a, index_c = set_article(section)
+		if not (index_a) or not (index_c) then
+			return true
+		end
+		-- Article and category texts.
+		local message = game.translate_string("pda_encyclopedia_notify_note")
+		local text_a
+		text_a = categories[index_c].articles[index_a]
+		text_a = ui_pda_encyclopedia_tab.UpdateName(text_a)
+		text_a = game.translate_string(text_a)
+		-- Other information.
+		local header = game.translate_string("st_tip")
+		local texture = "ui_iconsTotal_bar_darklab_documents" --news_manager.tips_icons["guide_unlock"] or "ui_inGame2_Poslednie_razrabotki"
+		db.actor:give_game_news(header, strformat(message, text_a), texture, 0, 5000, 0)
+		utils_obj.play_sound("device\\pda\\pda_note")
+	end
+	
+	return unlocked
+end
+
+base_unlock_article = ui_pda_encyclopedia_tab.unlock_article
+function ui_pda_encyclopedia_tab.unlock_article(section)
+	local unlocked = base_unlock_article(section)
+	
+	if (unlocked) then
+		local index_a, index_c = set_article(section)
+		if not (index_a) or not (index_c) then
+			return true
+		end
+		-- Article and category texts.
+		local message = game.translate_string("pda_encyclopedia_notify")
+		--printf("Monkeyzz " .. categories[index_c].section)
+		local text_c = game.translate_string(categories[index_c].section)
+		local text_a
+		text_a = categories[index_c].articles[index_a]
+		text_a = ui_pda_encyclopedia_tab.UpdateName(text_a)
+		text_a = game.translate_string(text_a)
+		-- Other information.
+		local header = game.translate_string("st_tip")
+		local texture = news_manager.tips_icons["guide_unlock"] or "ui_inGame2_Poslednie_razrabotki"
+		db.actor:give_game_news(header, strformat(message, text_c, text_a), texture, 0, 5000, 0)
+		utils_obj.play_sound("device\\pda\\pda_guide_2") --utils_obj.play_sound("device\\pda\\pda_guide")
+	end
+
+	return unlocked
+end
+
+-- make a local copy of the encyclopedia catagories function and supporting funtion stripped of sideeffects
+function parse_categories()
+ --printf("Moneyzz 75")
+
+	local modes = {
+		["azazel"] = true,
+		["debug"] = false,
+		["dev_debug"] = false,
+		["ironman"] = true,
+		["story"] = true,
+		["survival"] = true,
+		["campfire"] = true,
+		["agony"] = true,
+		["timer"] = true,
+		["warfare"] = true
+	}
+	--printf("Moneyzz 89")
+	-- Return if the encyclopedia plugin does not exist.
+	local ini_ecy = ini_file("plugins\\encyclopedia.ltx")
+	--printf("Moneyzz 92")
+	local plugin_section = "encyclopedia"
+	if not (ini_ecy:section_exist(plugin_section)) then
+		return
+	end
+ --printf("Moneyzz 96")
+	
+	-- Create a table for each encyclopedia category.
+	local line_count = ini_ecy:line_count(plugin_section) or 0
+	for i = 0, line_count - 1 do
+		local junk1, section, junk2 = ini_ecy:r_line(plugin_section, i, "", "")
+		categories[i + 1] = { section = section }
+	end
+ --printf("Moneyzz 104")
+	
+	-- Fill the categories with their articles.
+	for i = 1, #categories do
+		if (ini_ecy:section_exist(categories[i].section)) then
+			line_count = ini_ecy:line_count(categories[i].section) or 0
+			categories[i].articles = {}
+			for j = 0, line_count - 1 do
+				local junk1, section, value = ini_ecy:r_line(categories[i].section, j, "", "")
+				if (evaluate_article(modes, section, value) == true) then
+					table.insert(categories[i].articles, section)
+				end
+			end
+		end
+	end
+	--printf(#categories)
+end
+
+
+-- just the evaluation portion of the function from ui_pda_encyclopedia_tab
+ function evaluate_article(modes, section, value)
+	-- Information about the article.
+	local disabled = nil
+	local tier = 0
+	local special = nil
+	local unlocked = nil
+	
+	-- Check each value attached to the article.
+	if (value) then
+		for k, v in string.gmatch(value, "([%w_%-%s%.]+)=([%w_%-%s%.]+)") do
+			-- Value read from article flag.
+			local v_bool = ((tonumber(v) or 0) ~= 0)
+			local v_numb = (tonumber(v) or 0)
+			-- Unlocks the article by default.
+			if (k == "unlocked") then
+				unlocked = v_bool
+			-- Tiers the article.
+			elseif (k == "tier") then
+				tier = v_numb > 0 and v_numb or 0
+			-- Special
+			elseif (k == "special") then
+				special = v_bool
+			-- Enables/disables article based on game mode.
+			elseif (not disabled) then
+				for k2, v2 in pairs(modes) do
+					if (k == k2) then
+						if (v2 and not v_bool) or (v_bool and not v2) then
+							disabled = true
+							break
+						end
+					end
+				end
+			end
+		end
+	end
+	
+	-- Prevents the article being added.
+	if (disabled) then
+	--printf("Monkeyzz false")
+		return false
+	end
+
+	--printf("monkeyzz true")
+	
+	-- Article can be added.
+	return true
+end
+
+function set_article(section)
+	
+	
+	
+	-- Return if no section exists.
+	if not (section) then
+		return
+	end
+	
+	-- Discover the category of the article.
+	local article = nil
+	local category = nil
+	for index_c = 1, #categories do
+		category = categories[index_c]
+		-- Determine if the article is in this category.
+		if (category) then
+			for index_a = 1, #category.articles do
+				article = category.articles[index_a]
+				-- Set the category and article if correct.
+				if (article and article == section) then
+				
+
+					return index_a, index_c
+				end
+			end
+		end
+	end
+end
+

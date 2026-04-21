@@ -1,0 +1,13 @@
+[lc_extra_level_transition_base]
+GroupControlSection	= spawn_group
+$spawn				= "physics\object"
+$prefetch			= 8
+class				= O_PHYSIC
+remove_time			= 60
+visual				= dynamics\light\light_signal.ogf
+fixed_bones			= link
+script_binding		= bind_physic_object.init
+custom_data			= scripts\lc_extra_level_transitions.ltx
+
+; Extra items can be included by naming them items_extra_level_transitions_*
+; For example,items_extra_level_transitions_cordon.ltx

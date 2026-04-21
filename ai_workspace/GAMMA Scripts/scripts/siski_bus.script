@@ -1,0 +1,159 @@
+siski = siski or {}
+
+local type = _G.type
+local pcall = _G.pcall
+local setmetatable = _G.setmetatable
+
+local function ensure_class()
+    local cls = siski.class
+    if type(cls) == "function" then
+        local ok, probe = pcall(cls, "_probe")
+        if ok and type(probe) == "table" then
+            return
+        end
+    end
+
+    local function define()
+        function siski.class(name)
+            local c = {}
+            c.__index = c
+            c.__name = name or "class"
+            function c.new(...)
+                local self = setmetatable({}, c)
+                if self.__init then
+                    self:__init(...)
+                end
+                return self
+            end
+            return c
+        end
+    end
+
+    if type(siski.class) ~= "function" then
+        define()
+        return
+    end
+
+    local ok2, probe2 = pcall(siski.class, "_probe")
+    if not (ok2 and type(probe2) == "table") then
+        define()
+    end
+end
+
+ensure_class()
+
+local Bus = siski.class("Bus")
+Bus.__index = Bus
+
+function Bus:__init()
+    self.subscribers = {}
+end
+
+function Bus:_subscribe(event, name, fn)
+    if type(event) ~= "string" or event == "" then return false end
+    if type(name) ~= "string" or name == "" then return false end
+    if type(fn) ~= "function" then return false end
+
+    local list = self.subscribers[event]
+    if not list then
+        list = {}
+        self.subscribers[event] = list
+    end
+
+    for i = 1, #list do
+        if list[i].name == name then
+            return false
+        end
+    end
+
+    list[#list + 1] = { name = name, fn = fn }
+    return true
+end
+
+function Bus:_unsubscribe(event, name)
+    local list = self.subscribers[event]
+    if not list or type(name) ~= "string" or name == "" then
+        return false
+    end
+
+    for i = 1, #list do
+        if list[i].name == name then
+            table.remove(list, i)
+            if #list == 0 then
+                self.subscribers[event] = nil
+            end
+            return true
+        end
+    end
+
+    return false
+end
+
+function Bus:_publish(event, payload)
+    local list = self.subscribers[event]
+    if not list or #list == 0 then
+        return 0
+    end
+
+    payload = payload or {}
+    local snapshot = {}
+    for i = 1, #list do
+        snapshot[i] = list[i]
+    end
+    local delivered = 0
+    for i = 1, #snapshot do
+        local sub = snapshot[i]
+        local fn = sub and sub.fn or nil
+        if type(fn) ~= "function" then
+            delivered = delivered + 1
+        else
+            local ok, err = pcall(fn, payload)
+            if not ok and siski and siski.log and siski.log.error then
+                siski.log.error("BUS", "subscriber failed event=%s name=%s err=%s", tostring(event), tostring(sub and sub.name or "-"), tostring(err))
+            end
+            delivered = delivered + 1
+        end
+    end
+    return delivered
+end
+
+function Bus:_count(event)
+    local list = self.subscribers[event]
+    return list and #list or 0
+end
+
+function Bus:_has(event, name)
+    local list = self.subscribers[event]
+    if not list or type(name) ~= "string" or name == "" then
+        return false
+    end
+    for i = 1, #list do
+        if list[i].name == name then
+            return true
+        end
+    end
+    return false
+end
+
+function Bus:_reset(event)
+    if event == nil then
+        self.subscribers = {}
+        return true
+    end
+    self.subscribers[event] = nil
+    return true
+end
+
+local inst = Bus.new and Bus.new() or setmetatable({}, Bus)
+if not inst.subscribers then
+    Bus.__init(inst)
+end
+
+inst.subscribe = function(event, name, fn) return inst:_subscribe(event, name, fn) end
+inst.unsubscribe = function(event, name) return inst:_unsubscribe(event, name) end
+inst.publish = function(event, payload) return inst:_publish(event, payload) end
+inst.count = function(event) return inst:_count(event) end
+inst.has = function(event, name) return inst:_has(event, name) end
+inst.reset = function(event) return inst:_reset(event) end
+
+siski.bus = inst

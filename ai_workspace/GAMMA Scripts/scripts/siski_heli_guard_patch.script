@@ -1,0 +1,134 @@
+siski = siski or {}
+
+local type = _G.type
+local tostring = _G.tostring
+local pcall = _G.pcall
+local alife_object = _G.alife_object
+
+local function log_warn(fmt, ...)
+    if siski.log and siski.log.warn then
+        siski.log.warn("HELI_PATCH", fmt, ...)
+    end
+end
+
+local function has_respawn_counter_entry(se_obj)
+    if not se_obj then
+        return true
+    end
+    local respawn_id = se_obj.respawn_point_id
+    local prop_section = se_obj.respawn_point_prop_section
+    if not (respawn_id and type(prop_section) == "string" and prop_section ~= "" and prop_section ~= "nil") then
+        return true
+    end
+    local smart = alife_object and alife_object(respawn_id) or nil
+    if not smart then
+        return true
+    end
+    return type(smart.already_spawned) == "table"
+        and type(smart.already_spawned[prop_section]) == "table"
+end
+
+local function clear_stale_respawn_counter_ref(se_obj, source)
+    if not se_obj or has_respawn_counter_entry(se_obj) then
+        return false
+    end
+
+    log_warn(
+        "skip stale heli respawn counter cleanup source=%s heli=%s smart_id=%s prop=%s",
+        tostring(source or "-"),
+        tostring(se_obj.id or "-"),
+        tostring(se_obj.respawn_point_id or "-"),
+        tostring(se_obj.respawn_point_prop_section or "-")
+    )
+    se_obj.respawn_point_id = nil
+    se_obj.respawn_point_prop_section = nil
+    return true
+end
+
+local function apply_se_heli_patch()
+    local cls = rawget(_G, "se_heli")
+    if type(cls) ~= "table" or type(cls.on_unregister) ~= "function" then
+        return false
+    end
+    if cls.__siski_heli_guard_patch_applied == true then
+        return true
+    end
+
+    local original = cls.on_unregister
+    cls.on_unregister = function(self)
+        if self then
+            clear_stale_respawn_counter_ref(self, "se_heli")
+        end
+        return original(self)
+    end
+    cls.__siski_heli_guard_patch_applied = true
+    return true
+end
+
+local function apply_bind_heli_patch()
+    local cls = rawget(_G, "heli_binder")
+    if type(cls) ~= "table" or type(cls.check_health) ~= "function" then
+        return false
+    end
+    if cls.__siski_heli_guard_patch_applied == true then
+        return true
+    end
+
+    local original = cls.check_health
+    cls.check_health = function(self, ...)
+        local object = self and self.object or nil
+        local object_id = object and object.id and object:id() or nil
+        local se_obj = object_id and alife_object and alife_object(object_id) or nil
+        if se_obj then
+            clear_stale_respawn_counter_ref(se_obj, "bind_heli")
+        end
+        return original(self, ...)
+    end
+    cls.__siski_heli_guard_patch_applied = true
+    return true
+end
+
+local function apply_patch()
+    local patched = false
+    if apply_se_heli_patch() then
+        patched = true
+    end
+    if apply_bind_heli_patch() then
+        patched = true
+    end
+    return patched
+end
+
+local function master_enabled()
+    if siski and siski.config and siski.config.get then
+        local ok_enabled, enabled = pcall(function() return siski.config.get("enabled", true) end)
+        if ok_enabled then
+            return enabled == true
+        end
+    end
+    return true
+end
+
+local function on_game_start()
+    if master_enabled() == true then
+        return apply_patch()
+    end
+    return false
+end
+
+if siski and siski.bus and siski.bus.subscribe then
+    siski.bus.subscribe("on_option_change", "siski_heli_guard_patch", function()
+        if master_enabled() == true then
+            apply_patch()
+        end
+    end)
+end
+
+local inst = {
+    apply = apply_patch,
+    on_game_start = on_game_start,
+}
+
+siski.heli_guard_patch = inst
+
+return inst

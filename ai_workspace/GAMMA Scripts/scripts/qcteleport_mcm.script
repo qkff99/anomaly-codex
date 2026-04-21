@@ -1,0 +1,51 @@
+local simm 
+
+KEY_QCTELEPORT = DIK_keys.DIK_NUMPAD6 -- default is numpad 6
+
+local mcm_keybinds = ui_mcm and ui_mcm.simple_press
+
+
+function CBqtp_on_key_release_code(key)
+	if (key == KEY_QCTELEPORT) then
+		simm = alife()
+		for id,squad in pairs(axr_companions.companion_squads) do 
+			if (squad and squad.commander_id) then
+				for k in squad:squad_members() do
+					local npc = db.storage[k.id] and db.storage[k.id].object
+					if (npc and npc:alive()) then
+						local force_set_position = level.vertex_position(db.actor:level_vertex_id())
+								if (force_set_position) then
+									npc:set_npc_position(force_set_position)
+								end
+						simm:teleport_object(k.id,db.actor:game_vertex_id(),db.actor:level_vertex_id(),db.actor:position())
+					end
+				end
+			end
+		end
+end	
+    return false
+end
+
+
+
+function on_game_start()
+	RegisterScriptCallback("on_key_release",CBqtp_on_key_release_code)
+	RegisterScriptCallback("on_option_change", QCon_option_change)
+	QCon_option_change(mcm_keybinds)
+end
+
+function on_mcm_load()
+	op = { id= "qcteleport", sh= true , gr={
+		{ id= "title",type= "slide",link="ui_options_slider_player",text="ui_mcm_qcteleport_title", size = {512, 50}, spacing = 20},
+		{ id= "qcteleportkeybind",type= "key_bind",val=2, text="ui_mcm_qcteleport_bind", def=KEY_QCTELEPORT}
+		}
+	}
+	return op
+end
+
+function QCon_option_change(mcm)
+    if mcm then
+        KEY_QCTELEPORT = ui_mcm.get("qcteleport/qcteleportkeybind") or KEY_QCTELEPORT
+    end
+end
+

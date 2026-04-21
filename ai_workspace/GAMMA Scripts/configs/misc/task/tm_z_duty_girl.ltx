@@ -1,0 +1,30 @@
+
+[duty_girl_base]
+icon			= ui_inGame2_Mesta_evakuatsii
+storyline		= true
+prior			= 1000
+status_functor	= duty_girl_task_status
+target_functor	= duty_girl_task_target
+title_functor	= duty_girl_task_target
+descr_functor	= duty_girl_task_target
+
+[duty_girl_hunting_chimera]:duty_girl_base
+on_init		= %+duty_girl_hunting_chimera_init%
+on_complete = %+duty_girl_hunting_chimera_done%
+on_fail		= %+duty_girl_hunting_chimera_fail%
+
+[duty_girl_monolith_elite]:duty_girl_base
+on_init		= %+duty_girl_monolith_elite_init%
+on_complete = %+duty_girl_monolith_elite_done%
+on_fail		= %+duty_girl_monolith_elite_fail%
+
+[duty_girl_loot_stash]:duty_girl_base
+on_init		= %+duty_girl_loot_stash_init%
+on_complete = %+duty_girl_loot_stash_done%
+on_fail		= %+duty_girl_loot_stash_fail%
+
+[duty_girl_capture_the_brirge]:duty_girl_base
+on_init		= %+duty_girl_capture_the_brirge_init%
+on_complete = %+duty_girl_capture_the_brirge_done%
+on_fail		= %+duty_girl_capture_the_brirge_fail%
+

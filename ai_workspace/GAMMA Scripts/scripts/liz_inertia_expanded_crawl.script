@@ -1,0 +1,228 @@
+local ie = liz_inertia_expanded
+
+blocked_weapons = {}
+local mcm_crawl_anm_enable = false
+local mcm_crawl_can_shoot = 1
+local fdda_enable_animations = false
+local fdda_enable_take = false
+local block_mask
+local old_pos = vector()
+local is_crawl_active = false
+local is_crawl_animation_plays = false
+local blocked_devices = {
+    ["device_glowstick"] = true,
+    ["device_glowstick_orange"] = true,
+    ["device_glowstick_red"] = true,
+    ["device_glowstick_blue"] = true,
+}
+
+function initialize()
+    mcm_crawl_anm_enable = liz_inertia_expanded_mcm.get_config("other/crawl_anm_enable")
+    mcm_crawl_can_shoot = liz_inertia_expanded_mcm.get_config("other/crawl_can_shoot")
+
+    -- if fdda take animation installed
+    if take_item_anim then
+        if ui_mcm then
+            fdda_enable_animations = ui_mcm.get("EA_settings/enable_animations")
+            fdda_enable_take = ui_mcm.get("EA_settings/take_item_anim")
+        else
+            fdda_enable_animations = ui_options.get("video/player/animations")
+            fdda_enable_take = true
+        end
+    end
+
+    if not mcm_crawl_anm_enable then
+        UnregisterScriptCallback("actor_on_update", actor_on_update)
+
+        game.stop_hud_anm("liz\\liz_hands_crawl_rf.anm", true)
+        game.stop_hud_anm("liz\\liz_hands_crawl_rb.anm", true)
+        game.stop_hud_anm("liz\\liz_hands_crawl_rr.anm", true)
+        game.stop_hud_anm("liz\\liz_hands_crawl_rl.anm", true)
+
+        game.stop_hud_anm("liz\\liz_hands_crawl_lf.anm", true)
+        game.stop_hud_anm("liz\\liz_hands_crawl_lb.anm", true)
+        game.stop_hud_anm("liz\\liz_hands_crawl_lr.anm", true)
+        game.stop_hud_anm("liz\\liz_hands_crawl_ll.anm", true)
+
+        ie.remove_lerp("crawl_lf")
+        ie.remove_lerp("crawl_lb")
+        ie.remove_lerp("crawl_ll")
+        ie.remove_lerp("crawl_lr")
+
+        ie.remove_lerp("crawl_rf")
+        ie.remove_lerp("crawl_rb")
+        ie.remove_lerp("crawl_rl")
+        ie.remove_lerp("crawl_rr")
+
+        stop_left_hand_animation()
+
+        return
+    end
+
+    --setup crawl lerps. no need to use lerp mask cuz
+    --of the left hand animation I control lerp power manually anyway
+    ie.new_lerp("crawl_lf", 0, 0, .5, ie.mask_layers.none)
+    ie.new_lerp("crawl_lb", 0, 0, .5, ie.mask_layers.none)
+    ie.new_lerp("crawl_lr", 0, 0, .5, ie.mask_layers.none)
+    ie.new_lerp("crawl_ll", 0, 0, .5, ie.mask_layers.none)
+
+    ie.new_lerp("crawl_rf", 0, 0, .5, ie.mask_layers.none)
+    ie.new_lerp("crawl_rb", 0, 0, .5, ie.mask_layers.none)
+    ie.new_lerp("crawl_rr", 0, 0, .5, ie.mask_layers.none)
+    ie.new_lerp("crawl_rl", 0, 0, .5, ie.mask_layers.none)
+
+    block_mask = ie.new_mask(
+        ie.mask_layers.wpn_aim,
+        ie.mask_layers.wpn_reload,
+        ie.mask_layers.wpn_lower,
+        ie.mask_layers.not_weapon,
+        ie.mask_layers.anm_plays
+    )
+
+    RegisterScriptCallback("actor_on_update", actor_on_update)
+end
+
+
+function actor_on_update(_, delta)
+    local is_crawling = liz_inertia_expanded_crawl_state_tracker.is_crawling()
+    local is_overriden = ie.is_overriden(block_mask)
+    local dt = delta / 100
+    local actor = db.actor
+    local cur_pos = actor:position()
+    local cur_dev_obj = actor:active_detector()
+    local cur_dev_sec = cur_dev_obj and cur_dev_obj:section()
+    local crawl_speed = 0
+    local anm_speed = 0
+    local dproduct_forward = 0
+    local dproduct_side = 0
+
+    ie.set_mask_flag(ie.mask_layers.is_crawling, is_crawling)
+
+    if is_crawling and not is_overriden then
+        -- speed
+        local speed_min = 0
+        local speed_max = 0.035
+        cur_pos.y = 0
+        old_pos.y = 0
+        crawl_speed = cur_pos:distance_to(old_pos or cur_pos) / dt
+        anm_speed = clamp( (crawl_speed - speed_min) / (speed_max - speed_min), 0, 1.15 )
+
+        -- move direction
+        local cur_dir_forward = actor:direction()
+        local move_dir = vector():set(cur_pos):sub(old_pos or cur_pos)
+        move_dir.y = 0
+        move_dir:normalize()
+        cur_dir_forward.y = 0
+        cur_dir_forward:normalize()
+        cur_dir_side = vector():set(cur_dir_forward.z, cur_dir_forward.y, - cur_dir_forward.x)
+        dproduct_forward = cur_dir_forward:dotproduct(move_dir) -- forward 1; back -1
+        dproduct_side = cur_dir_side:dotproduct(move_dir) -- right 1; left -1
+    end
+
+    if crawl_speed > 0.005 then
+        ie.set_lerp("crawl_lf", dproduct_forward > 0 and dproduct_forward or 0)
+        ie.set_lerp("crawl_rf", dproduct_forward > 0 and dproduct_forward or 0)
+        ie.set_lerp("crawl_lb", dproduct_forward < 0 and -dproduct_forward or 0)
+        ie.set_lerp("crawl_rb", dproduct_forward < 0 and -dproduct_forward or 0)
+
+        ie.set_lerp("crawl_lr", dproduct_side > 0 and dproduct_side or 0)
+        ie.set_lerp("crawl_rr", dproduct_side > 0 and dproduct_side or 0)
+        ie.set_lerp("crawl_ll", dproduct_side < 0 and -dproduct_side or 0)
+        ie.set_lerp("crawl_rl", dproduct_side < 0 and -dproduct_side or 0)
+
+        if not cur_dev_obj then play_left_hand_animation() end --play left hand animation if there are no detector in hand
+        is_crawl_active = true
+    else
+        is_crawl_active = false
+        stop_left_hand_animation()
+
+        ie.set_lerp("crawl_lf", 0)
+        ie.set_lerp("crawl_lb", 0)
+        ie.set_lerp("crawl_rf", 0)
+        ie.set_lerp("crawl_rb", 0)
+
+        ie.set_lerp("crawl_lr", 0)
+        ie.set_lerp("crawl_ll", 0)
+        ie.set_lerp("crawl_rr", 0)
+        ie.set_lerp("crawl_rl", 0)
+    end
+
+    old_pos = cur_pos
+
+    game.play_hud_anm("liz\\liz_hands_crawl_rf.anm", 0, anm_speed, ie.get_lerp("crawl_rf").from * 1.5, true, true)
+    game.play_hud_anm("liz\\liz_hands_crawl_rb.anm", 0, anm_speed, ie.get_lerp("crawl_rb").from * 1.5, true, true)
+    game.play_hud_anm("liz\\liz_hands_crawl_rr.anm", 0, anm_speed, ie.get_lerp("crawl_rr").from * 1.5, true, true)
+    game.play_hud_anm("liz\\liz_hands_crawl_rl.anm", 0, anm_speed, ie.get_lerp("crawl_rl").from * 1.5, true, true)
+
+    game.play_hud_anm("liz\\liz_hands_crawl_lf.anm", 1, anm_speed, not blocked_devices[cur_dev_sec] and ie.get_lerp("crawl_lf").from * 2 or 0, true, true)
+    game.play_hud_anm("liz\\liz_hands_crawl_lb.anm", 1, anm_speed, not blocked_devices[cur_dev_sec] and ie.get_lerp("crawl_lb").from * 2 or 0, true, true)
+    game.play_hud_anm("liz\\liz_hands_crawl_lr.anm", 1, anm_speed, not blocked_devices[cur_dev_sec] and ie.get_lerp("crawl_lr").from * 2 or 0, true, true)
+    game.play_hud_anm("liz\\liz_hands_crawl_ll.anm", 1, anm_speed, not blocked_devices[cur_dev_sec] and ie.get_lerp("crawl_ll").from * 2 or 0, true, true)
+end
+
+
+function play_left_hand_animation()
+    if not is_crawl_animation_plays then
+        game.play_hud_motion(db.actor:active_item() and 1 or 2, "liz_weapon_inertia_expanded_animations_hud", "anm_crawl", true, 1)
+        is_crawl_animation_plays = true
+    end
+end
+
+
+function stop_left_hand_animation()
+    if is_crawl_animation_plays then
+        game.stop_hud_motion()
+        is_crawl_animation_plays = false
+    end
+end
+
+
+-- mcm_crawl_ca_shoot valid values:
+-- 0 all weapons can shoot while crawl
+-- 1 some weapons can shoot while crawl 
+-- 2 none weapons can shoot while crawl
+function actor_on_weapon_before_fire(flags)
+    if not mcm_crawl_anm_enable then return end
+    if not is_crawl_active then return end
+
+    if mcm_crawl_can_shoot == 0 then
+        return
+    elseif mcm_crawl_can_shoot == 1 then
+        local actor = db.actor
+        local wpn = actor and actor:active_item()
+        if wpn and blocked_weapons[wpn:section()] then
+            flags.ret_value = false
+        end
+        return
+    elseif mcm_crawl_can_shoot == 2 then
+        flags.ret_value = false
+        return
+    end
+    -- if  mcm_crawl_anm_enable
+    --     and (not mcm_crawl_can_shoot or blocked_weapons[wpn:section()])
+    --     and is_crawl_active
+    -- then
+    --     flags.ret_value = false
+    -- end
+end
+
+
+-- fdda pickup animation patch
+if take_item_anim then
+    local originalAOIBP = take_item_anim.actor_on_item_before_pickup
+    take_item_anim.actor_on_item_before_pickup = function(item, flags)
+        if fdda_enable_animations and fdda_enable_take and is_crawl_active then
+            flags.ret_value = false
+            return
+        end
+        originalAOIBP(item, flags)
+    end
+end
+
+
+function on_game_start()
+    RegisterScriptCallback("on_option_change", initialize)
+    RegisterScriptCallback("actor_on_first_update", initialize)
+    RegisterScriptCallback("actor_on_weapon_before_fire", actor_on_weapon_before_fire)
+    -- RegisterScriptCallback("actor_on_update", actor_on_update)
+end

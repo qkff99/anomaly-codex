@@ -1,0 +1,530 @@
+local distance_to_respond = pda_inter_mcm.get_config("banter_sos_distance")
+local respond_duration = pda_inter_mcm.get_config("banter_sos_duration")
+local sos_cooldown = pda_inter_mcm.get_config("banter_sos_cooldown")
+local squad_limit = pda_inter_mcm.get_config("banter_sos_limit")
+
+local old_targets = {}
+local gt = game.translate_string
+
+local emissions_cd = 600	-- irl seconds
+local emissions_range = 18	-- hours range -18, 18
+local emission_accuracy = {		-- "emission_accuracy" value of 1 means math.random(18)
+	["monolith"] = 0.05,
+	["greh"] = 0.05,
+	["ecolog"] = 0.1,
+	["isg"] = 0.2,
+	["army"] = 0.2,
+	["csky"] = 0.3,
+	["dolg"] = 0.4,
+	["stalker"] = 0.5,
+	["freedom"] = 0.5,
+	["killer"] = 0.7,
+	["bandit"] = 0.8,
+	["renegade"] = 0.9,
+}
+
+local status_cd = 1800		-- irl seconds (30 mins)
+
+function send_sos()
+
+	-- get nearest smart
+	local smart_id = smart_terrain.nearest_to_actor_smart.id
+	local smart = smart_id and alife_object(smart_id)
+
+	-- find closest enemy's name and send message (end if no enemies are found)
+	local name = closest_enemy_name()
+	if not name then
+		pda_inter_gui.GUI:UpdBanterButtons("sos")
+		return
+	end
+
+	local msg = name and smart and ( gt("pda_banter_sos_1") .. " " .. name .. " " .. gt("pda_banter_sos_at") .. " " .. gt("st_" .. smart:name() .. "_name") .. "!") or "<empty string>"
+	dynamic_news_helper.send_tip(msg, alife():actor():character_name(), nil, 5, db.actor:character_icon(), nil, "npc")
+
+	-- reduce reputation
+	db.actor:change_character_reputation(-50)
+
+	-- play sound
+	local snd = sound_object("device\\pda\\pda_sos")
+	snd:play_no_feedback(db.actor, sound_object.s2d, 0, VEC_ZERO, 1.0, 1.0)
+
+	-- send stalkers or not
+	for i = 1, #db.OnlineStalkers do
+		local id = db.OnlineStalkers[i]
+		local npc = db.storage[id] and db.storage[id].object or level.object_by_id(id)
+		local squad = npc and get_object_squad(npc)
+
+		-- do only for squad that is: default, not in table, in radius
+		if squad and string.find(squad:section_name(), "sim_squad") and (not old_targets[squad.id]) and (db.actor:position():distance_to(squad.position) < distance_to_respond) and (smart and smart:name()) then
+
+			-- goodwill and limit check
+			local goodwill_chance = get_squad_relation_chance_sos(squad)
+			local t_size = size_table(old_targets)
+			pr("goodwill value: %s for squad id: %s", goodwill_chance, squad.id)
+			if goodwill_chance and goodwill_chance > math.random() and t_size < squad_limit then
+
+				pr("squad id: %s is coming", squad.id)
+				-- save old target
+				old_targets[squad.id] = squad.assigned_target_id
+
+				-- send to nearest to actor smart
+				squad.scripted_target = smart:name()
+				squad.rush_to_target = true
+
+			end
+		end
+	end
+
+
+	-- reset after some time (remove scripted target, return old assigned target, remove from table)
+	local function reset_sending()
+		for sq_id, _ in pairs(old_targets) do
+			local squad = alife_object(sq_id)
+			if squad then
+				squad.scripted_target = nil
+				squad.assigned_target_id = old_targets[sq_id]
+			end
+			old_targets[sq_id] = nil
+		end
+		return true
+	end
+	CreateTimeEvent("reset_sos_sending_e", "reset_sos_sending_a", respond_duration, reset_sending)
+
+	-- set cooldown for SOS button
+	local function reset_cd()
+		pr("-resetting banter SOS button")
+		pda_inter_gui.GUI:UpdBanterButtons("sos")
+		return true
+	end
+	CreateTimeEvent("reset_sos_cooldown_e", "reset_sos_cooldown_a", sos_cooldown, reset_cd)
+
+end
+
+function ask_surge()
+	local sm = surge_manager and surge_manager.get_surge_manager()
+	if not sm then return end
+
+	local time_to_surge = sm._delta
+	local last_surge_time = sm.last_surge_time
+	local surge_state = ui_options.get("alife/event/emission_state")
+	if not (time_to_surge and last_surge_time and surge_state) then
+		pr("! surge is off, return")
+		pda_inter_gui.GUI:UpdBanterButtons("surge")
+		return
+	end
+
+	local cur_time = game.get_game_time()
+	local till_surge_sec = time_to_surge - cur_time:diffSec(last_surge_time)
+	local till_surge_h = math.floor(till_surge_sec/3600 + 0.5)
+	pr("till surge hours: %s", till_surge_h)
+
+	-- get all senders and save those who respond
+	local responded_senders = {}
+	local possible_senders = get_surge_senders_t()
+	for id, comm in pairs(possible_senders) do
+		local goodwill = relation_registry.community_relation(get_actor_true_community(), comm)
+		goodwill = normalize(goodwill, -200, 2000)
+		if goodwill and emission_accuracy[comm] and goodwill > math.random() then
+			responded_senders[id] = emission_accuracy[comm]
+		end
+	end
+
+	-- send message
+	local msg_delay
+	for id, val in pairs(responded_senders) do
+		local sender = alife_object(id)
+		local sender_icon = sender and sender:character_icon()
+		local sender_name = sender and sender:character_name()
+		local sender_comm = sender and sender.community and sender:community() or ""
+		local comm = sender_comm == "trader" and gt("st_ui_pda_legend_trader") or gt("st_faction_" .. sender_comm)
+
+		-- calc message time
+		local surge_range_min = math.floor( val * (math.random(-emissions_range, 0)) + 0.5)
+		local surge_range_max = math.floor( val * (math.random(0, emissions_range)) + 0.5)
+		local sender_emission_min = till_surge_h + surge_range_min
+		local sender_emission_max = till_surge_h + surge_range_max
+		if sender_emission_min < 1 then sender_emission_min = 0 end
+		if sender_emission_max < sender_emission_min then sender_emission_max = sender_emission_min end
+		pr("surge random time: %s - %s", sender_emission_min, sender_emission_max)
+
+		-- send message
+		local function surge_msg()
+			local msg = gt("pda_banter_emission_msg_1_" .. math.random(4)) .. " " .. gt("encyclopedia_anomalies_emission") .. " " .. gt("pda_banter_emission_msg_2_" .. math.random(3)) .. " " .. sender_emission_min .. "-" .. sender_emission_max .. " " .. gt("pda_banter_emission_hours")
+			dynamic_news_helper.send_tip(msg, sender_name .. ", " .. comm, nil, 5, sender_icon, nil, "npc")
+			return true
+		end
+
+		if not msg_delay then
+			msg_delay = math.random(4, 7)
+		else
+			msg_delay = msg_delay + math.random(3, 5)
+		end
+		pr("waiting for surge msg from %s", id)
+		CreateTimeEvent("surge_msg_delay_e" .. id, "surge_msg_delay_a" .. id, msg_delay, surge_msg)
+
+	end
+
+	-- set cooldown for Surge button
+	local function reset_cd()
+		pr("-resetting banter surge button")
+		pda_inter_gui.GUI:UpdBanterButtons("surge")
+		return true
+	end
+	CreateTimeEvent("reset_surge_cooldown_e", "reset_surge_cooldown_a", emissions_cd, reset_cd)
+
+end
+
+function ask_psi_storm()
+	local pm = psi_storm_manager and psi_storm_manager.get_psi_storm_manager()
+	if not pm then return end
+
+	local time_to_psi = pm._delta
+	local last_psi_time = pm.last_psi_storm_time
+	local psi_state = ui_options.get("alife/event/psi_storm_state")
+	if not (time_to_psi and last_psi_time and psi_state) then
+		pr("! psi-storm is off, return")
+		pda_inter_gui.GUI:UpdBanterButtons("psi")
+		return
+	end
+
+	local cur_time = game.get_game_time()
+	local till_surge_sec = time_to_psi - cur_time:diffSec(last_psi_time)
+	local till_surge_h = math.floor(till_surge_sec/3600 + 0.5)
+	pr("till psi-storm hours: %s", till_surge_h)
+
+	-- get all senders and save those who respond
+	local responded_senders = {}
+	local possible_senders = get_surge_senders_t()
+	for id, comm in pairs(possible_senders) do
+		local goodwill = relation_registry.community_relation(get_actor_true_community(), comm)
+		goodwill = normalize(goodwill, -200, 2000)
+		if goodwill and emission_accuracy[comm] and goodwill > math.random() then
+			responded_senders[id] = emission_accuracy[comm]
+		end
+	end
+
+	-- send message
+	local msg_delay
+	for id, val in pairs(responded_senders) do
+		local sender = alife_object(id)
+		local sender_icon = sender and sender:character_icon()
+		local sender_name = sender and sender:character_name()
+		local sender_comm = sender and sender.community and sender:community() or ""
+		local comm = sender_comm == "trader" and gt("st_ui_pda_legend_trader") or gt("st_faction_" .. sender_comm)
+
+		-- calc message time
+		local surge_range_min = math.floor( val * (math.random(-emissions_range, 0)) + 0.5)
+		local surge_range_max = math.floor( val * (math.random(0, emissions_range)) + 0.5)
+		local sender_emission_min = till_surge_h + surge_range_min
+		local sender_emission_max = till_surge_h + surge_range_max
+		if sender_emission_min < 1 then sender_emission_min = 0 end
+		if sender_emission_max < sender_emission_min then sender_emission_max = sender_emission_min end
+		pr("psi-storm random time: %s - %s", sender_emission_min, sender_emission_max)
+
+		-- send message
+		local function psi_msg()
+			local msg = gt("pda_banter_emission_msg_1_" .. math.random(4)) .. " " .. gt("encyclopedia_anomalies_psistorm") .. " " .. gt("pda_banter_emission_msg_2_" .. math.random(3)) .. " " .. sender_emission_min .. "-" .. sender_emission_max .. " " .. gt("pda_banter_emission_hours")
+			dynamic_news_helper.send_tip(msg, sender_name .. ", " .. comm, nil, 5, sender_icon, nil, "npc")
+			return true
+		end
+
+		if not msg_delay then
+			msg_delay = math.random(4, 7)
+		else
+			msg_delay = msg_delay + math.random(3, 5)
+		end
+		pr("waiting for psi-storm msg from %s", id)
+		CreateTimeEvent("psi_msg_delay_e" .. id, "psi_msg_delay_a" .. id, msg_delay, psi_msg)
+
+	end
+
+	-- set cooldown for Psi button
+	local function reset_cd()
+		pr("-resetting banter psi button")
+		pda_inter_gui.GUI:UpdBanterButtons("psi")
+		return true
+	end
+	CreateTimeEvent("reset_psi_cooldown_e", "reset_psi_cooldown_a", emissions_cd, reset_cd)
+
+end
+
+function ask_status()
+	-- get all squads on level and possible senders
+	local level_squads = {}
+	local sender_squads = {}
+	for i = 1, 65534 do
+		local se_obj = alife_object(i)
+		local se_obj_fits = se_obj and (IsStalker(se_obj) or IsMonster(se_obj)) and se_obj:alive()
+		if se_obj_fits then
+			local squad = get_object_squad(se_obj)
+			local squad_level_id = squad and game_graph():vertex(squad.m_game_vertex_id):level_id()
+			local squad_level_name = squad_level_id and alife():level_name(squad_level_id)
+
+			-- if squad on same level as actor and not in squads table yet
+			if squad_level_name and squad_level_name == level.name() and (not level_squads[squad.id]) then
+				level_squads[squad.id] = se_obj.id
+
+				-- add possible senders (stalkers only)
+				local goodwill = IsStalker(se_obj) and get_squad_relation_chance_status(squad)
+				if goodwill and goodwill > math.random() and (not sender_squads[squad.id]) then
+					sender_squads[squad.id] = true
+				end
+			end
+
+		end
+	end
+
+
+	-- get nearest sender's enemy squad
+	for squad_id, _ in pairs(sender_squads) do
+
+		for target_squad_id, target_npc_id in pairs(level_squads) do
+
+			-- exclude itself
+			if squad_id ~= target_squad_id then
+				-- find and store first nearest enemy squad within 250m
+				local dist = get_distx(squad_id, target_squad_id)
+				local squad = alife_object(squad_id)
+				local target = alife_object(target_squad_id)
+				local squad_comm = squad and squad:get_squad_community()
+				local target_comm = target and target:get_squad_community()
+				local is_enemy = squad_comm and target_comm and game_relations.is_factions_enemies(squad_comm, target_comm)
+
+				if dist and dist < 250 and is_enemy then
+					local name = get_npc_name(target_npc_id)
+					sender_squads[squad_id] = name
+					break
+				end
+			end
+
+		end
+	end
+
+	-- if "val" still boolean and target wasnt picked then delete it
+	for squad_id, val in pairs(sender_squads) do
+		if type(val) == "boolean" then
+			sender_squads[squad_id] = nil
+		end
+	end
+
+
+	-- set and send message
+	local msg_delay
+	for squad_id, target_name in pairs(sender_squads) do
+
+		local function status_delay()
+			local msg = strformat(gt("pda_banter_status_" .. math.random(1, 3)), target_name)
+			local squad = alife_object(squad_id)
+			if squad and squad.commander_id then
+				local sender = squad:commander_id() and alife_object(squad:commander_id())
+				local sender_icon = sender and sender:character_icon()
+				local sender_name = sender and sender:character_name()
+				local sender_comm = sender and sender.community and sender:community() or ""
+				local comm = sender_comm == "trader" and gt("st_ui_pda_legend_trader") or gt("st_faction_" .. sender_comm)
+				dynamic_news_helper.send_tip(msg, sender_name .. ", " .. comm, nil, 5, sender_icon, nil, "npc")
+			end
+			return true
+		end
+
+		if not msg_delay then
+			msg_delay = math.random(4, 7)
+		else
+			msg_delay = msg_delay + math.random(1, 5)
+		end
+		pr("waiting for status msg from %s", squad_id)
+		CreateTimeEvent("status_msg_delay_e" .. squad_id, "status_msg_delay_a" .. squad_id, msg_delay, status_delay)
+
+	end
+
+
+	-- set/reset cooldown
+	local function reset_cd()
+		pr("-resetting banter status button")
+		pda_inter_gui.GUI:UpdBanterButtons("status")
+		return true
+	end
+	CreateTimeEvent("reset_status_cooldown_e", "reset_status_cooldown_a", status_cd, reset_cd)
+
+end
+
+------------------------- utils -------------------------
+local strings = {
+	dog = "encyclopedia_mutants_blind_dog",
+	bloodsucker = "encyclopedia_mutants_bloodsucker",
+	boar = "encyclopedia_mutants_boar",
+	burer = "encyclopedia_mutants_burer",
+	cat = "encyclopedia_mutants_cat",
+	chimera = "encyclopedia_mutants_chimera",
+	controller = "encyclopedia_mutants_controller",
+	bird = "encyclopedia_mutants_crow",
+	flesh = "encyclopedia_mutants_flesh",
+	fracture = "encyclopedia_mutants_fracture",
+	pseudodog = "encyclopedia_mutants_pseudodog",
+	giant = "encyclopedia_mutants_pseudogiant",
+	snork = "encyclopedia_mutants_snork",
+	tushkano = "encyclopedia_mutants_tushkano",
+	zombie = "encyclopedia_mutants_zombie",
+	SM_KARLIK = "encyclopedia_mutants_karlik",
+	SM_LURKER = "encyclopedia_mutants_lurker",
+	SM_POLTER_G	= "encyclopedia_mutants_poltergeist",
+	SM_PYRO_G = "encyclopedia_mutants_pyrogeist",
+	SM_PSEUDO_G	= "encyclopedia_mutants_pseudogeist",
+	SM_PSYSUCKER = "encyclopedia_mutants_psysucker",
+}
+
+function closest_enemy_name()
+	local actor_enemies = dup_table(xr_combat_ignore.fighting_with_actor_npcs)
+
+	-- get nearest npc id
+	local nearest_npc_id
+	local nearest_npc_pos
+	for npc_id, _ in pairs(actor_enemies) do
+		local npc = level.object_by_id(npc_id)
+		local npc_pos = npc and npc:position()
+		local ac_pos = db.actor:position()
+		local dist = npc_pos and ac_pos:distance_to(npc_pos)
+
+		if dist and (not nearest_npc_pos or dist < nearest_npc_pos) then
+			nearest_npc_pos = dist
+			nearest_npc_id = npc_id
+		end
+	end
+
+	if not nearest_npc_id then return end
+
+	-- get nearest npc name and if its stalker or mutant
+	local npc_name
+	local npc = level.object_by_id(nearest_npc_id)
+	if npc and npc:alive() then
+		if IsStalker(npc) then
+			npc_name = gt("st_faction_" .. npc:character_community())
+		elseif IsMonster(npc) then
+			local str = ini_sys:r_string_ex(npc:section(), "kind") or ini_sys:r_string_ex(npc:section(), "species") or nil
+			npc_name = str and gt(strings[str])
+		end
+	end
+
+	return npc_name
+end
+
+function get_npc_name(npc_id)
+	-- return community if stalker, return name if mutant
+	local se_npc = npc_id and alife_object(npc_id)
+	if (not se_npc) then return end
+
+	if IsStalker(se_npc) then
+		npc_name = gt("st_faction_" .. se_npc:community())
+	elseif IsMonster(se_npc) then
+		local str = ini_sys:r_string_ex(se_npc:section_name(), "kind") or ini_sys:r_string_ex(se_npc:section_name(), "species") or nil
+		npc_name = str and gt(strings[str])
+	end
+
+	return npc_name
+end
+
+function get_distx(obj_id, target_id)		-- need server object and target
+	local se_obj = alife_object(obj_id)
+	local target = alife_object(target_id)
+	if (not se_obj) or (not target) then return end
+
+	-- additional checks for possible offset error
+	local se_obj_p = se_obj.position
+	local target_p = target.position
+	if (not se_obj_p) or (not target_p) then return end
+
+	local se_obj_lid = game_graph():vertex(se_obj.m_game_vertex_id):level_id()
+	local target_lid = game_graph():vertex(target.m_game_vertex_id):level_id()
+	if (not se_obj_lid) or (not global_position.level_offsets[se_obj_lid]) then return end
+	if (not target_lid) or (not global_position.level_offsets[target_lid]) then return end
+
+	-- this can sometimes be nil for whatever reason
+	local se_obj_pos = global_position.from(se_obj_p, se_obj_lid)
+	local target_pos = global_position.from(target_p, target_lid)
+	if (not se_obj_pos) or (not target_pos) then return end
+
+	local dist_between = se_obj_pos:distance_to_xz(target_pos)
+	dist_between = dist_between < 1 and 1 or dist_between
+
+	return dist_between
+end
+
+function get_squad_relation_chance_sos(squad)
+	local ac_comm = get_actor_true_community()
+	local squad_comm = squad:get_squad_community()
+	if (not ac_comm) or (not squad_comm) then return end
+
+	local monol = ac_comm == "monolith" and squad_comm == "monolith"
+	local greh = ac_comm == "greh" and squad_comm == "greh"
+	if monol or greh then
+		return 0.95
+	end
+
+	local goodwill = relation_registry.community_relation(ac_comm, squad_comm)
+	if not goodwill then return end
+
+	if goodwill >= 0 then
+		return normalize(goodwill, 0, 3000)		-- 0 to 75%
+	else
+		return normalize(goodwill, 1, -3000)	-- 0 to 75%
+	end
+
+	return
+end
+
+function get_squad_relation_chance_status(squad)
+	local ac_comm = get_actor_true_community()
+	local squad_comm = squad:get_squad_community()
+	if (not ac_comm) or (not squad_comm) then return end
+
+	local goodwill = relation_registry.community_relation(ac_comm, squad_comm)
+	if not goodwill then return end
+
+	return normalize(goodwill, 0, 3000)
+end
+
+function get_surge_senders_t()
+	local senders_t = {}
+	local t = dup_table(pda_inter_x_tasks.all_potential_givers)
+
+	repeat
+		local rnd_sender_id = rnd_key_table(t)
+		local se_sender = rnd_sender_id and alife_object(rnd_sender_id)
+		local comm = se_sender and se_sender.community and se_sender:community()
+		if comm and emission_accuracy[comm] then
+			local not_enemy_to_actor = game_relations.is_factions_friends(get_actor_true_community(), comm) or game_relations.is_factions_neutrals(get_actor_true_community(), comm)
+			if (not_enemy_to_actor) then
+				senders_t[se_sender.id] = comm
+			end
+		end
+	until size_table(senders_t) >= 4
+
+	return senders_t
+end
+
+function rnd_key_table(t)		-- for 1.5.1
+	local check = t and type(t) == "table"
+	if not check then
+		return
+	end
+	local n = {}
+	for k,v in pairs(t) do
+		n[#n+1] = k
+	end
+	return #n > 0 and n[math.random(#n)] or nil
+end
+
+function pr(...)
+	if not pda_inter_gui.Custom_PDA_debug then return end
+	printf(...)
+end
+
+function on_option_change()
+	distance_to_respond = pda_inter_mcm.get_config("banter_sos_distance")
+	respond_duration = pda_inter_mcm.get_config("banter_sos_duration")
+	sos_cooldown = pda_inter_mcm.get_config("banter_sos_cooldown")
+	squad_limit = pda_inter_mcm.get_config("banter_sos_limit")
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_option_change", on_option_change)
+end

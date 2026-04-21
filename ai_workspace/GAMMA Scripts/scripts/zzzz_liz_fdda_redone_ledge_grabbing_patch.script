@@ -1,0 +1,5 @@
+local baseLGCCP = demonized_ledge_grabbing.checkClimbPrecondition
+demonized_ledge_grabbing.checkClimbPrecondition = function ()
+    if lam2.is_running() then return false end
+    return baseLGCCP()
+end

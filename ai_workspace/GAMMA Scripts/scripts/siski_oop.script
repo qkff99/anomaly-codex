@@ -1,0 +1,17 @@
+siski = siski or {}
+
+function siski.class(name)
+    local cls = {}
+    cls.__index = cls
+    cls.__name = name or "class"
+
+    function cls.new(...)
+        local self = setmetatable({}, cls)
+        if self.__init then
+            self:__init(...)
+        end
+        return self
+    end
+
+    return cls
+end

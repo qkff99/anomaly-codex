@@ -1,0 +1,10 @@
+function on_mcm_load()
+    op = {
+        id = "apm_reputation", sh = true, gr = {
+            {id = "banner", type = "slide", text = "ui_mcm_ui_popup_messages_reputation_title", size = {512, 50}, spacing = 20},
+            {id = "goodwill", type = "check", val = 1, def = true},
+            {id = "reputation", type = "check", val = 1, def = true},
+        }
+    }
+    return op, "ui_popup_messages"
+end

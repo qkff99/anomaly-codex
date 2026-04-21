@@ -1,0 +1,91 @@
+local Dart  = dart_core
+local MCM   = dart_mcm
+local Utils = dart_utils
+
+
+local config = {
+  anchor      = {"RIGHT", "BOTTOM"},
+  offset      = {0, 0},
+  safezone    = true,
+  scale       = 1,
+  align       = nil,
+  alpha       = nil,
+  clockOffset = {0, 0},
+}
+
+Dart.config.minimap = config
+Dart.state.minimap  = {}
+
+
+function mcmOnConfig(mcmConfig)
+  local clockOffsetX = ui_mcm.get("dart/dart_minimap/clockOffsetX")
+  local clockOffsetY = ui_mcm.get("dart/dart_minimap/clockOffsetY")
+  local offsetX      = ui_mcm.get("dart/dart_minimap/offsetX")
+  local offsetY      = ui_mcm.get("dart/dart_minimap/offsetY")
+  local scale        = ui_mcm.get("dart/dart_minimap/scale")
+  local alignX       = ui_mcm.get("dart/dart_minimap/alignX")
+  local alignY       = ui_mcm.get("dart/dart_minimap/alignY")
+  local alpha        = ui_mcm.get("dart/dart_minimap/alpha")
+
+  if scale then
+    mcmConfig.minimap.scale = scale
+  end
+
+  mcmConfig.minimap.offset = {
+    offsetX or config.offset[1],
+    offsetY or config.offset[2],
+  }
+
+  if alpha and alpha >= 0 then
+    mcmConfig.minimap.alpha = alpha
+  end
+
+  mcmConfig.minimap.align = {
+    alignX ~= "DEFAULT" and alignX or nil,
+    alignY ~= "DEFAULT" and alignY or nil,
+  }
+
+  mcmConfig.minimap.clockOffset = {
+    clockOffsetX or config.clockOffset[1],
+    clockOffsetY or config.clockOffset[2],
+  }
+end
+
+
+function mcmOnLoad(options)
+  options[6] = {
+    id = "dart_minimap",
+    sh = true,
+    gr = {
+      MCM.getTitle(),
+      MCM.getSubtitle({text = "ui_mcm_dart_minimap_title"}),
+      MCM.getScaleField({def = config.scale}),
+      MCM.getNote({text = "ui_mcm_dart_scale_note"}),
+      MCM.getLine(),
+      MCM.getOffsetXField({def = config.offset[1]}),
+      MCM.getOffsetYField({def = config.offset[2]}),
+      MCM.getLine(),
+      MCM.getAlignXField({def = config.align and (config.align[1] or "DEFAULT")}),
+      MCM.getAlignYField({def = config.align and (config.align[2] or "DEFAULT")}),
+      MCM.getLine(),
+      MCM.getAlphaField({hint = "dart_minimap_alpha", def = config.alpha or -1}),
+      MCM.getNote({text = "ui_mcm_dart_minimap_alpha_note"}),
+      MCM.getLine(),
+      MCM.getOffsetXField({
+        id = "clockOffsetX",
+        hint = "dart_minimap_clockOffsetX",
+        def = config.clockOffset[1]
+      }),
+      MCM.getOffsetYField({
+        id = "clockOffsetY",
+        hint = "dart_minimap_clockOffsetY",
+        def = config.clockOffset[2]
+      }),
+      MCM.getNote({text = "ui_mcm_dart_minimap_clockOffset_note"}),
+    }
+  }
+end
+
+
+RegisterScriptCallback("on_dart_mcm_load", mcmOnLoad)
+RegisterScriptCallback("on_dart_mcm_config", mcmOnConfig)

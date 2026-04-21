@@ -1,0 +1,100 @@
+-- QUICK ITEM USE
+local originalAOIBU = itms_manager.actor_on_item_before_use
+function itms_manager.actor_on_item_before_use(obj,flags)
+	if (ui_inventory.GUI and ui_inventory.GUI:IsShown()) then originalAOIBU(obj,flags) return end
+
+	local sec = obj:section()
+	if not IsItem("multiuse", sec) then originalAOIBU(obj,flags) return end
+
+	local quick_item
+	for cnt=1,4 do
+		local slot_sec =  get_console_cmd(0,"slot_" .. (cnt-1))
+		if sec == slot_sec then
+			quick_item = slot_sec
+			break
+		end
+	end
+
+	if not quick_item then originalAOIBU(obj,flags) return end 
+
+	local usable_obj
+	local lowest_uses = 99999
+	db.actor:iterate_inventory( function(owner, obj)
+		if obj:section() == quick_item then
+			local uses = obj:get_remaining_uses()
+			if uses == 1 then
+				usable_obj = obj
+				return true
+			end
+			if uses < lowest_uses then
+				lowest_uses = uses
+				usable_obj = obj
+			end
+		end
+	end)
+
+	if usable_obj then
+		obj = usable_obj
+	end
+
+	originalAOIBU(obj,flags)
+end
+-- END of QUICK ITEM USE
+
+-- MANUAL USE OF STACK
+last_bag = nil
+
+base_action_use = ui_inventory.UIInventory.Action_Use
+function ui_inventory.UIInventory.Action_Use(self, obj, bag)
+	if not (last_bag and last_bag == "actor_bag") then
+		last_bag = nil
+		base_action_use(self, obj, bag) 
+		return 
+	end
+
+	if (type(obj) == "number") then
+		obj = level.object_by_id(obj)
+	end
+
+	if not (obj and obj:section()) then 
+		last_bag = nil
+		base_action_use(self, obj, bag) 
+		return 
+	end
+
+	local sec = obj:section()
+	if IsItem("multiuse", sec) then
+		local usable_obj
+		local lowest_uses = 99999
+		db.actor:iterate_inventory( function(owner, obj)
+			if obj:section() == sec then
+				local uses = obj:get_remaining_uses()
+				if uses == 1 then
+					usable_obj = obj
+					return true
+				end
+				if uses < lowest_uses then
+					lowest_uses = uses
+					usable_obj = obj
+				end
+			end
+		end)
+
+		obj = usable_obj or obj
+	end
+
+	last_bag = nil
+	base_action_use(self, obj, bag)
+end
+
+base_on_mouse1_db = ui_inventory.UIInventory.On_CC_Mouse1_DB
+function ui_inventory.UIInventory.On_CC_Mouse1_DB(self, bag, idx)
+	last_bag = bag
+	base_on_mouse1_db(self, bag, idx)
+end
+
+base_on_mouse2_db = ui_inventory.UIInventory.On_CC_Mouse2
+function ui_inventory.UIInventory.On_CC_Mouse2(self, bag, idx)
+	last_bag = bag
+	base_on_mouse2_db(self, bag, idx)
+end

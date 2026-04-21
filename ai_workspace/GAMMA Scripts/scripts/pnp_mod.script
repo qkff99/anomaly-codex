@@ -1,0 +1,1890 @@
+local MOD_LABEL = "[P&P]"
+local SAVE_VERSION = 1
+
+local MCM_ROOT = "pnp_mod"
+local MCM_PATH_ENABLED = MCM_ROOT .. "/enabled"
+local MCM_PATH_FILL_STEP = MCM_ROOT .. "/fill_step"
+local MCM_PATH_DRINK_GAIN = MCM_ROOT .. "/drink_gain"
+local MCM_PATH_MEDIUM_DRAIN = MCM_ROOT .. "/medium_drain"
+local MCM_PATH_HIGH_DRAIN = MCM_ROOT .. "/high_drain"
+local MCM_PATH_ACCIDENT_CHANCE = MCM_ROOT .. "/accident_chance"
+local MCM_PATH_REACTION_RADIUS = MCM_ROOT .. "/reaction_radius"
+local MCM_PATH_DIRECT_HIT_HOSTILE = MCM_ROOT .. "/direct_hit_hostile"
+local MCM_PATH_INDICATOR_MODE = MCM_ROOT .. "/indicator_mode"
+local MCM_PATH_HOTKEY = MCM_ROOT .. "/hotkey"
+local MCM_PATH_DEBUG_ANYTIME = MCM_ROOT .. "/debug_anytime"
+
+local DEFAULTS = {
+	enabled = true,
+	fill_step = 24,
+	drink_gain = 1300,
+	medium_drain = 0.00008,
+	high_drain = 0.00015,
+	accident_chance = 5,
+	reaction_radius = 5.0,
+	direct_hit_hostile = true,
+	indicator_mode = "threshold",
+	hotkey = (DIK_keys and DIK_keys.DIK_U) or 22,
+	debug_anytime = false,
+}
+
+local THRESHOLD_URGE = 3000
+local THRESHOLD_HIGH = 6000
+local THRESHOLD_CRITICAL = 8500
+local MAX_FILL = 10000
+local TICK_SECONDS = 300
+local POWER_TICK_MS = 100
+local RELIEF_DURATION_MS = 1800
+local RELIEF_DRAIN_PER_MS = MAX_FILL / RELIEF_DURATION_MS
+local RELIEF_COOLDOWN_MS = 5000
+local ACCIDENT_LOCKOUT_MS = 15000
+local ACCIDENT_POWER_DRAIN = 0.00030
+local ACCIDENT_HEALTH_DRAIN = 0.00003
+local DIRECT_HIT_DISTANCE = 2.0
+local WITNESS_GOODWILL_PENALTY = -75
+local WITNESS_SCAN_INTERVAL_MS = 400
+local WITNESS_THREAT_INTERVAL_MS = 350
+local WITNESS_THREAT_REFORCE_MS = 4500
+local DIRECT_HIT_GOODWILL = -5000
+local CAMPFIRE_EXTINGUISH_RADIUS = 1.35
+local CAMPFIRE_EXTINGUISH_COOLDOWN_MS = 400
+local PARTICLE_NAME = "_samples_particles_\\fontan"
+local PARTICLE_FALLBACK = "industrial_particles\\weapon_smoke"
+local PARTICLE_BONE = "bip01_pelvis"
+local PARTICLE_FORWARD_OFFSET = 0.35
+local PARTICLE_HEIGHT_OFFSET = 0.85
+local PARTICLE_PITCH_OFFSET = -(math.pi / 2)
+local PARTICLE_PITCH_FORWARD_COMPENSATION = 0.18
+local PARTICLE_PITCH_HEIGHT_COMPENSATION = -0.08
+local STREAM_BURST_INTERVAL_MS = 60
+local STREAM_PARTICLE_KEEP_MS = 200
+local SPLASH_PARTICLE_KEEP_MS = 300
+local GROUND_SPLASH_PARTICLE_NAMES = {
+	"hit_fx\\hit_water_00",
+	"hit_fx\\hit_water_01",
+	"hit_fx\\effects\\hit_water_hit",
+	"hit_fx\\effects\\hit_water_hit_distort",
+}
+local WALL_SPLASH_PARTICLE_NAMES = {
+	"amik\\hit_fx\\hit_water_splash",
+	"amik\\hit_fx\\hit_water_splash_00",
+	"amik\\hit_fx\\hit_water_splash_01",
+}
+local GROUND_SURFACE_NORMAL_Y = 0.6
+local GROUND_TRACE_RANGE = 6.0
+local GROUND_RANGE_TOLERANCE = 0.30
+local WALL_SPLASH_OFFSET = 0.18
+local SPLASH_INTERVAL_MS = 120
+local RELIEF_TRACE_RANGE = 3.0
+local RELIEF_TRACE_DROP = -0.35
+local CAMERA_NOD_DURATION_MS = 420
+local CAMERA_NOD_PITCH_RAD = 0.14
+local COLLIDE_RQT_BOTH = 3
+local SURFACE_SAMPLE_OFFSET = 0.12
+local SURFACE_SAMPLE_BACKOFF = 0.08
+local SURFACE_SAMPLE_RANGE = 0.30
+local SOUND_MODE_ENTER = "start_zip_peepee"
+local SOUND_MODE_EXIT = "stop_zip_peepee"
+local SOUND_PROCESS_LOOP = "pee_process_sound"
+local WITNESS_THREAT_SOUNDS = {
+	"meet_hide_weapon",
+	"meet_stop",
+	"meet_use_no_weapon",
+}
+
+local STATIC_PARTICLE_ALLOWLIST = {
+	["amik\\explosion\\explosion_f1"] = true,
+	["_samples_particles_\\fontan"] = true,
+	["pnp_mod\\fontan_clone"] = true,
+	["zones\\effects\\zone_acidic_idle_point_emiter_fontan"] = true,
+	["_samples_particles_\\fontan_turbulence"] = true,
+	["_samples_particles_\\sparks_00"] = true,
+	["_samples_particles_\\sparks_01"] = true,
+	["_samples_particles_\\sparks_02"] = true,
+	["hit_fx\\hit_human_bush"] = true,
+	["hit_fx\\effects\\hit_sparks_01"] = true,
+	["hit_fx\\effects\\hit_sparks_02"] = true,
+	["hit_fx\\effects\\hit_sparks_03"] = true,
+	["hit_fx\\effects\\hit_sparks_04"] = true,
+	["industrial_particles\\weapon_smoke"] = true,
+	["zones\\zone_acidic_idle"] = true,
+	["amik\\hit_fx\\hit_water_splash"] = true,
+	["hit_fx\\effects\\hit_water_splash_01"] = true,
+	["hit_fx\\effects\\hit_water_splash_02"] = true,
+	["hit_fx\\effects\\hit_water_hit"] = true,
+	["hit_fx\\effects\\hit_water_hit_distort"] = true,
+	["hit_fx\\hit_water_00"] = true,
+	["hit_fx\\hit_water_01"] = true,
+	["amik\\hit_fx\\hit_water_splash_00"] = true,
+	["amik\\hit_fx\\hit_water_splash_01"] = true,
+}
+
+local CONFIG = {}
+local KNOWN_PARTICLES = nil
+local WITNESS_GOSSIP_PREFIX = "pnp_mod_npc_react_"
+local WITNESS_GOSSIP_POOLS = {}
+local STATE = {
+	fill = 0,
+	last_tick = nil,
+	cooldown_until = 0,
+	relief_until = 0,
+	accident_lockout_until = 0,
+	mode_active = false,
+	relief_active = false,
+	fire_held = false,
+	stream_tick_at = 0,
+	stream_burst_next_at = 0,
+	witness_scan_next_at = 0,
+	witness_threat_next_at = 0,
+	stream_particles = {},
+	witness_reacted_ids = {},
+	witness_threat_ids = {},
+	witness_threat_forced_at = {},
+	world_ready = false,
+	splash_particles = {},
+	splash_particle_object = nil,
+	splash_particle_name = nil,
+	splash_next_at = 0,
+	ground_splash_pool = nil,
+	wall_splash_pool = nil,
+	trace_fail_logged = false,
+	relief_hit_targets = {},
+	campfire_cooldowns = {},
+	hud_hidden = false,
+	prev_slot = nil,
+	camera_nod_active = false,
+	camera_nod_started_at = 0,
+	camera_nod_duration_ms = 0,
+	camera_nod_base_pos = nil,
+	camera_nod_base_hpb = nil,
+}
+
+local feature_state = false
+local last_power_tick = 0
+local snd_mode_enter = nil
+local snd_mode_exit = nil
+local snd_process_loop = nil
+
+local function log_dbg(message, ...)
+	printf("%s " .. message, MOD_LABEL, ...)
+end
+
+local function clamp_fill(value)
+	if value < 0 then
+		return 0
+	end
+	if value > MAX_FILL then
+		return MAX_FILL
+	end
+	return value
+end
+
+local function new_vector(x, y, z)
+	local out = vector()
+	out:set(x or 0, y or 0, z or 0)
+	return out
+end
+
+local function clone_vector(value)
+	if not value then
+		return nil
+	end
+
+	return new_vector(value.x, value.y, value.z)
+end
+
+local function set_fill(value)
+	STATE.fill = clamp_fill(math.floor(value + 0.5))
+end
+
+local function add_fill(delta)
+	set_fill((STATE.fill or 0) + delta)
+end
+
+local function translate(id)
+	return game.translate_string(id)
+end
+
+local function show_status(id, duration)
+	actor_menu.set_msg(1, translate(id), duration or 4)
+end
+
+local function trim_string(value)
+	return (value and value:match("^%s*(.-)%s*$")) or ""
+end
+
+local function get_witness_gossip_pool(prefix)
+	local cached = WITNESS_GOSSIP_POOLS[prefix]
+	if cached ~= nil then
+		return cached or nil
+	end
+
+	local ok_tbl, tbl = pcall(function()
+		return utils_data.collect_translations(prefix, true)
+	end)
+	if not ok_tbl or not tbl or #tbl == 0 then
+		WITNESS_GOSSIP_POOLS[prefix] = false
+		return nil
+	end
+
+	WITNESS_GOSSIP_POOLS[prefix] = tbl
+	return tbl
+end
+
+local function register_particle_name(name)
+	local trimmed = trim_string(name)
+	if trimmed == "" then
+		return
+	end
+
+	trimmed = trimmed:gsub("/", "\\")
+	trimmed = trimmed:gsub("%.pe$", "")
+	trimmed = trimmed:gsub("%.pg$", "")
+	KNOWN_PARTICLES[trimmed] = true
+end
+
+local function scan_particle_path(path)
+	local fs = getFS()
+	if not fs then
+		return
+	end
+
+	local file_flags = bit_or(FS.FS_ListFiles, FS.FS_RootOnly)
+	local file_list = fs:file_list_open("$game_particles$", path or "", file_flags)
+	local file_count = file_list and file_list:Size() or 0
+	for index = 0, file_count - 1 do
+		local file_name = file_list:GetAt(index)
+		if file_name then
+			register_particle_name((path or "") .. file_name)
+		end
+	end
+	if file_list and file_list.Free then
+		file_list:Free()
+	end
+
+	local folder_flags = bit_or(FS.FS_ListFolders, FS.FS_RootOnly)
+	local folder_list = fs:file_list_open("$game_particles$", path or "", folder_flags)
+	local folder_count = folder_list and folder_list:Size() or 0
+	for index = 0, folder_count - 1 do
+		local folder_name = folder_list:GetAt(index)
+		if folder_name and folder_name ~= "" then
+			scan_particle_path((path or "") .. folder_name)
+		end
+	end
+	if folder_list and folder_list.Free then
+		folder_list:Free()
+	end
+end
+
+local function load_known_particles()
+	if KNOWN_PARTICLES ~= nil then
+		return KNOWN_PARTICLES
+	end
+
+	KNOWN_PARTICLES = {}
+	scan_particle_path("")
+
+	local known_count = 0
+	for _ in pairs(KNOWN_PARTICLES) do
+		known_count = known_count + 1
+	end
+	log_dbg("particle registry loaded from $game_particles$: %s", known_count)
+
+	return KNOWN_PARTICLES
+end
+
+local function particle_exists(name)
+	if not name or name == "" then
+		return false
+	end
+
+	if STATIC_PARTICLE_ALLOWLIST[name] == true then
+		return true
+	end
+
+	return load_known_particles()[name] == true
+end
+
+local function resolve_particle_name(name)
+	if particle_exists(name) then
+		return name
+	end
+	if particle_exists(PARTICLE_FALLBACK) then
+		log_dbg("particle missing, falling back: %s -> %s", tostring(name), PARTICLE_FALLBACK)
+		return PARTICLE_FALLBACK
+	end
+	log_dbg("particle missing and fallback unavailable: %s", tostring(name))
+	return nil
+end
+
+local function mcm_get(path, default)
+	if ui_mcm and ui_mcm.get then
+		local ok, value = pcall(ui_mcm.get, path)
+		if ok and value ~= nil then
+			return value
+		end
+	end
+	return default
+end
+
+local function refresh_config()
+	CONFIG.enabled = mcm_get(MCM_PATH_ENABLED, DEFAULTS.enabled)
+	CONFIG.fill_step = tonumber(mcm_get(MCM_PATH_FILL_STEP, DEFAULTS.fill_step)) or DEFAULTS.fill_step
+	CONFIG.drink_gain = tonumber(mcm_get(MCM_PATH_DRINK_GAIN, DEFAULTS.drink_gain)) or DEFAULTS.drink_gain
+	CONFIG.medium_drain = tonumber(mcm_get(MCM_PATH_MEDIUM_DRAIN, DEFAULTS.medium_drain)) or DEFAULTS.medium_drain
+	CONFIG.high_drain = tonumber(mcm_get(MCM_PATH_HIGH_DRAIN, DEFAULTS.high_drain)) or DEFAULTS.high_drain
+	CONFIG.accident_chance = tonumber(mcm_get(MCM_PATH_ACCIDENT_CHANCE, DEFAULTS.accident_chance)) or DEFAULTS.accident_chance
+	CONFIG.reaction_radius = tonumber(mcm_get(MCM_PATH_REACTION_RADIUS, DEFAULTS.reaction_radius)) or DEFAULTS.reaction_radius
+	CONFIG.direct_hit_hostile = mcm_get(MCM_PATH_DIRECT_HIT_HOSTILE, DEFAULTS.direct_hit_hostile)
+	CONFIG.indicator_mode = mcm_get(MCM_PATH_INDICATOR_MODE, DEFAULTS.indicator_mode)
+	CONFIG.hotkey = tonumber(mcm_get(MCM_PATH_HOTKEY, DEFAULTS.hotkey)) or DEFAULTS.hotkey
+	CONFIG.debug_anytime = mcm_get(MCM_PATH_DEBUG_ANYTIME, DEFAULTS.debug_anytime)
+end
+
+local function get_actor()
+	return db.actor and db.actor:alive() and db.actor or nil
+end
+
+local function safe_object_id(obj)
+	local ok, value = pcall(function()
+		return obj:id()
+	end)
+	return ok and value or nil
+end
+
+local function safe_object_clsid(obj)
+	local ok, value = pcall(function()
+		return obj:clsid()
+	end)
+	return ok and value or nil
+end
+
+local function safe_object_alive(obj)
+	local ok, value = pcall(function()
+		return obj:alive()
+	end)
+	if ok then
+		return value == true
+	end
+
+	ok, value = pcall(function()
+		return obj:is_entity_alive()
+	end)
+	return ok and value == true or false
+end
+
+local function is_live_stalker_object(obj)
+	local cls = safe_object_clsid(obj)
+	if not IsStalker(nil, cls) then
+		return false
+	end
+
+	return safe_object_alive(obj)
+end
+
+local function safe_object_position(obj)
+	local ok, value = pcall(function()
+		return obj:position()
+	end)
+	return ok and value or nil
+end
+
+local function get_campfire_registry()
+	local module = rawget(_G, "bind_campfire")
+	if type(module) == "table" and type(module.campfires_all) == "table" then
+		return module.campfires_all
+	end
+
+	local globals = rawget(_G, "campfires_all")
+	if type(globals) == "table" then
+		return globals
+	end
+
+	return nil
+end
+
+local function get_mode_sound(is_enter)
+	local cache = is_enter and snd_mode_enter or snd_mode_exit
+	if cache then
+		return cache
+	end
+
+	local sound_path = is_enter and SOUND_MODE_ENTER or SOUND_MODE_EXIT
+	local ok, snd = pcall(sound_object, sound_path)
+	if not (ok and snd) then
+		log_dbg("mode sound create failed: %s", tostring(sound_path))
+		return nil
+	end
+
+	if is_enter then
+		snd_mode_enter = snd
+	else
+		snd_mode_exit = snd
+	end
+
+	return snd
+end
+
+local function play_mode_sound(is_enter)
+	local actor = get_actor()
+	local snd = actor and get_mode_sound(is_enter) or nil
+	if not snd then
+		return
+	end
+
+	pcall(function()
+		snd:play(actor, 0, sound_object.s2d)
+	end)
+end
+
+local function get_process_sound()
+	if snd_process_loop then
+		return snd_process_loop
+	end
+
+	local ok, snd = pcall(sound_object, SOUND_PROCESS_LOOP)
+	if not (ok and snd) then
+		log_dbg("process sound create failed: %s", tostring(SOUND_PROCESS_LOOP))
+		return nil
+	end
+
+	snd_process_loop = snd
+	return snd
+end
+
+local function start_process_sound()
+	local actor = get_actor()
+	local snd = actor and get_process_sound() or nil
+	if not snd then
+		return
+	end
+
+	pcall(function()
+		if not snd:playing() then
+			snd:play(actor, 0, sound_object.s2d + sound_object.looped)
+		end
+	end)
+end
+
+local function stop_process_sound()
+	if not snd_process_loop then
+		return
+	end
+
+	pcall(function()
+		if snd_process_loop:playing() then
+			snd_process_loop:stop()
+		end
+	end)
+end
+
+local function stop_particle_instance(particle, immediate)
+	if not particle then
+		return
+	end
+
+	pcall(function()
+		if immediate then
+			particle:stop()
+		else
+			particle:stop_deffered()
+		end
+	end)
+end
+
+local function cleanup_stream_particles(now, force)
+	local particles = STATE.stream_particles
+	if not particles or #particles == 0 then
+		return
+	end
+
+	local current_time = now or time_global()
+	local write_index = 1
+	for i = 1, #particles do
+		local entry = particles[i]
+		local keep_particle = false
+		if entry and entry.particle then
+			local born_at = tonumber(entry.born_at) or 0
+			keep_particle = (not force) and ((current_time - born_at) < STREAM_PARTICLE_KEEP_MS)
+		end
+
+		if keep_particle then
+			particles[write_index] = entry
+			write_index = write_index + 1
+		elseif entry and entry.particle then
+			stop_particle_instance(entry.particle, true)
+		end
+	end
+
+	for i = write_index, #particles do
+		particles[i] = nil
+	end
+end
+
+local function cleanup_splash_particles(now, force)
+	local particles = STATE.splash_particles
+	if not particles or #particles == 0 then
+		return
+	end
+
+	local current_time = now or time_global()
+	local write_index = 1
+	for i = 1, #particles do
+		local entry = particles[i]
+		local keep_particle = false
+		if entry and entry.particle then
+			local born_at = tonumber(entry.born_at) or 0
+			keep_particle = (not force) and ((current_time - born_at) < SPLASH_PARTICLE_KEEP_MS)
+		end
+
+		if keep_particle then
+			particles[write_index] = entry
+			write_index = write_index + 1
+		elseif entry and entry.particle then
+			stop_particle_instance(entry.particle, true)
+		end
+	end
+
+	for i = write_index, #particles do
+		particles[i] = nil
+	end
+end
+
+local function is_liquid_item(section)
+	if not section or section == "" then
+		return false
+	end
+
+	local thirst = ini_sys:r_float_ex(section, "eat_thirstiness")
+	if not thirst then
+		return false
+	end
+
+	local sec = string.lower(section)
+	return string.find(sec, "water", 1, true)
+		or string.find(sec, "drink", 1, true)
+		or string.find(sec, "vodka", 1, true)
+		or string.find(sec, "flask", 1, true)
+		or string.find(sec, "mineral", 1, true)
+end
+
+function get_visual_level()
+	if (CONFIG.indicator_mode == "hidden") or (not CONFIG.enabled) then
+		return 0
+	end
+	if (CONFIG.indicator_mode == "threshold") and STATE.fill < THRESHOLD_URGE then
+		return 0
+	end
+	if STATE.fill < THRESHOLD_URGE then
+		return 1
+	elseif STATE.fill < THRESHOLD_HIGH then
+		return 2
+	elseif STATE.fill < THRESHOLD_CRITICAL then
+		return 3
+	end
+	return 4
+end
+
+function get_bladder_level()
+	return clamp((STATE.fill or 0) / MAX_FILL, 0, 1)
+end
+
+local function get_relief_camera_dir(actor)
+	local dev = device and device() or nil
+	local cam_dir = dev and dev.cam_dir or nil
+	if cam_dir and cam_dir:magnitude() > 0.001 then
+		return new_vector(cam_dir.x, cam_dir.y, cam_dir.z)
+	end
+
+	local dir = actor and actor:direction() or nil
+	if dir and dir:magnitude() > 0.001 then
+		return new_vector(dir.x, dir.y, dir.z)
+	end
+
+	return new_vector(0, 0, 1)
+end
+
+local function stop_camera_nod()
+	local actor = get_actor()
+	local base_hpb = STATE.camera_nod_base_hpb
+
+	if actor and base_hpb then
+		pcall(function()
+			actor:set_actor_direction(-base_hpb.x, -base_hpb.y, base_hpb.z)
+		end)
+	end
+
+	if actor and level and level.remove_cam_custom_position_direction then
+		pcall(function()
+			level.remove_cam_custom_position_direction()
+		end)
+	end
+
+	STATE.camera_nod_active = false
+	STATE.camera_nod_started_at = 0
+	STATE.camera_nod_duration_ms = 0
+	STATE.camera_nod_base_pos = nil
+	STATE.camera_nod_base_hpb = nil
+end
+
+local function begin_camera_nod()
+	local dev = device and device() or nil
+	local cam_pos = dev and dev.cam_pos or nil
+	local cam_dir = dev and dev.cam_dir or nil
+	if not (cam_pos and cam_dir and level and level.set_cam_custom_position_direction) then
+		return false
+	end
+
+	stop_camera_nod()
+	STATE.camera_nod_active = true
+	STATE.camera_nod_started_at = time_global()
+	STATE.camera_nod_duration_ms = CAMERA_NOD_DURATION_MS
+	STATE.camera_nod_base_pos = clone_vector(cam_pos)
+	STATE.camera_nod_base_hpb = new_vector(cam_dir:getH(), cam_dir:getP(), 0)
+	return true
+end
+
+local function update_camera_nod(now)
+	local base_pos = STATE.camera_nod_base_pos
+	local base_hpb = STATE.camera_nod_base_hpb
+	local duration = STATE.camera_nod_duration_ms or 0
+	local started_at = STATE.camera_nod_started_at or 0
+	local elapsed
+	local progress
+	local hpb
+	local pitch_offset
+
+	if not (STATE.camera_nod_active and base_pos and base_hpb and duration > 0) then
+		return false
+	end
+
+	if not (level and level.set_cam_custom_position_direction) then
+		stop_camera_nod()
+		return false
+	end
+
+	elapsed = math.max(0, (now or time_global()) - started_at)
+	progress = elapsed / duration
+	if progress >= 1 then
+		stop_camera_nod()
+		return false
+	end
+
+	pitch_offset = -CAMERA_NOD_PITCH_RAD * math.sin(math.pi * progress)
+	hpb = new_vector(base_hpb.x, base_hpb.y + pitch_offset, base_hpb.z)
+
+	pcall(function()
+		level.set_cam_custom_position_direction(base_pos, hpb, 1, false, false)
+	end)
+
+	local actor = get_actor()
+	if actor and base_hpb then
+		pcall(function()
+			actor:set_actor_direction(-base_hpb.x, -base_hpb.y, base_hpb.z)
+		end)
+	end
+
+	return true
+end
+
+local function is_camera_nod_blocked_bind(bind)
+	if not (STATE.camera_nod_active and key_bindings and bind) then
+		return false
+	end
+
+	return bind == key_bindings.kFWD
+		or bind == key_bindings.kBACK
+		or bind == key_bindings.kL_STRAFE
+		or bind == key_bindings.kR_STRAFE
+		or bind == key_bindings.kJUMP
+		or bind == key_bindings.kCROUCH
+		or bind == key_bindings.kACCEL
+end
+
+local function get_relief_source_pos(actor)
+	local bone_pos = nil
+	if actor and actor.bone_position then
+		pcall(function()
+			bone_pos = actor:bone_position(PARTICLE_BONE)
+		end)
+	end
+
+	if bone_pos and bone_pos:magnitude() > 0.001 then
+		return new_vector(bone_pos.x, bone_pos.y, bone_pos.z)
+	end
+
+	local pos = actor:position()
+	return new_vector(pos.x, pos.y + PARTICLE_HEIGHT_OFFSET, pos.z)
+end
+
+local function get_relief_particle_angles(actor)
+	local dir = get_relief_camera_dir(actor)
+	return dir:getH(), dir:getP() + PARTICLE_PITCH_OFFSET
+end
+
+local function get_relief_forward_dir(actor)
+	local dir = get_relief_camera_dir(actor)
+	local len = math.sqrt((dir.x * dir.x) + (dir.z * dir.z))
+	if len <= 0.001 then
+		return new_vector(0, 0, 1)
+	end
+
+	return new_vector(dir.x / len, 0, dir.z / len)
+end
+
+local function get_relief_particle_pos(actor)
+	local pos = get_relief_source_pos(actor)
+	local dir = get_relief_forward_dir(actor)
+	local cam_dir = get_relief_camera_dir(actor)
+	local pitch_factor = cam_dir.y or 0
+	if pitch_factor < -1 then
+		pitch_factor = -1
+	elseif pitch_factor > 1 then
+		pitch_factor = 1
+	end
+	local forward_offset = PARTICLE_FORWARD_OFFSET + (pitch_factor * PARTICLE_PITCH_FORWARD_COMPENSATION)
+	return new_vector(
+		pos.x + dir.x * forward_offset,
+		pos.y + (pitch_factor * PARTICLE_PITCH_HEIGHT_COMPENSATION),
+		pos.z + dir.z * forward_offset
+	)
+end
+
+local function get_relief_trace_dir(actor)
+	local dir = get_relief_camera_dir(actor)
+	local dx = dir.x
+	local dy = dir.y
+	local dz = dir.z
+	local trace_len = math.sqrt((dx * dx) + (dy * dy) + (dz * dz))
+	if trace_len <= 0.001 then
+		return new_vector(0, -1, 0)
+	end
+
+	return new_vector(dx / trace_len, dy / trace_len, dz / trace_len)
+end
+
+local function get_trace_hit_pos(start_pos, dir, hit_range)
+	return new_vector(
+		start_pos.x + (dir.x * hit_range),
+		start_pos.y + (dir.y * hit_range),
+		start_pos.z + (dir.z * hit_range)
+	)
+end
+
+local function clamp_scalar(value, min_value, max_value)
+	if value < min_value then
+		return min_value
+	end
+	if value > max_value then
+		return max_value
+	end
+	return value
+end
+
+local function get_ray_pick_flags()
+	if rq_target then
+		if rq_target.rqtBoth ~= nil then
+			return rq_target.rqtBoth
+		end
+		if rq_target.targets and rq_target.targets.rqtBoth ~= nil then
+			return rq_target.targets.rqtBoth
+		end
+	end
+
+	return COLLIDE_RQT_BOTH
+end
+
+local function run_ray_pick(start_pos, dir, range, actor)
+	if not ray_pick then
+		return nil
+	end
+
+	local ok_picker, picker = pcall(ray_pick, start_pos, dir, range, get_ray_pick_flags(), actor)
+	if not (ok_picker and picker) then
+		return nil
+	end
+
+	local ok, hit = pcall(picker.query, picker)
+	if not (ok and hit) then
+		return nil
+	end
+
+	local result = picker:get_result()
+	if not result or (tonumber(result.range) or 0) <= 0 then
+		return nil
+	end
+
+	return result
+end
+
+local function get_surface_sample_basis(trace_dir)
+	local ref = math.abs(trace_dir.y) > 0.9 and new_vector(1, 0, 0) or new_vector(0, 1, 0)
+	local tangent_a = new_vector()
+	tangent_a:crossproduct(trace_dir, ref)
+	if tangent_a:magnitude() <= 0.001 then
+		ref:set(0, 0, 1)
+		tangent_a:crossproduct(trace_dir, ref)
+	end
+	tangent_a:normalize_safe()
+
+	local tangent_b = new_vector()
+	tangent_b:crossproduct(tangent_a, trace_dir)
+	tangent_b:normalize_safe()
+	return tangent_a, tangent_b
+end
+
+local function trace_surface_sample(actor, hit_pos, trace_dir, tangent, distance)
+	local offset = new_vector():mul(tangent, distance)
+	local backoff = new_vector():mul(trace_dir, SURFACE_SAMPLE_BACKOFF)
+	local sample_start = new_vector()
+	sample_start:add(hit_pos, offset)
+	sample_start:sub(backoff)
+
+	local result = run_ray_pick(sample_start, trace_dir, SURFACE_SAMPLE_RANGE, actor)
+	if not result then
+		return nil
+	end
+
+	return get_trace_hit_pos(sample_start, trace_dir, tonumber(result.range) or 0)
+end
+
+local function get_fallback_surface_normal(trace_dir)
+	local normal = new_vector()
+	normal:invert(trace_dir)
+	normal:normalize_safe()
+	return normal
+end
+
+local function estimate_surface_normal(actor, hit_pos, trace_dir)
+	local tangent_a, tangent_b = get_surface_sample_basis(trace_dir)
+	local sample_a = trace_surface_sample(actor, hit_pos, trace_dir, tangent_a, SURFACE_SAMPLE_OFFSET)
+	local sample_b = trace_surface_sample(actor, hit_pos, trace_dir, tangent_b, SURFACE_SAMPLE_OFFSET)
+	if not (sample_a and sample_b) then
+		return get_fallback_surface_normal(trace_dir)
+	end
+
+	local edge_a = new_vector()
+	edge_a:sub(sample_a, hit_pos)
+	local edge_b = new_vector()
+	edge_b:sub(sample_b, hit_pos)
+
+	local normal = new_vector()
+	normal:crossproduct(edge_a, edge_b)
+	if normal:magnitude() <= 0.001 then
+		return get_fallback_surface_normal(trace_dir)
+	end
+
+	normal:normalize_safe()
+	if normal:dotproduct(trace_dir) > 0 then
+		normal:invert()
+	end
+	return normal
+end
+
+local function get_splash_orientation(surface_normal)
+	local normal = new_vector()
+	normal:normalize_safe(surface_normal)
+	local yaw = normal:getH()
+	local pitch = normal:getP() - (math.pi / 2)
+	return yaw, pitch, 0
+end
+
+local function get_expected_ground_range(actor, start_pos, trace_dir)
+	if not (actor and start_pos and trace_dir) then
+		return nil
+	end
+
+	local trace_y = math.abs(trace_dir.y or 0)
+	if trace_y <= 0.001 then
+		return nil
+	end
+
+	local down_result = run_ray_pick(start_pos, new_vector(0, -1, 0), GROUND_TRACE_RANGE, actor)
+	if not down_result then
+		return nil
+	end
+
+	local down_range = tonumber(down_result.range) or 0
+	if down_range <= 0 then
+		return nil
+	end
+
+	return down_range / trace_y
+end
+
+local function is_ground_impact(actor, start_pos, hit_range, trace_dir, surface_normal)
+	local expected_ground_range = get_expected_ground_range(actor, start_pos, trace_dir)
+	if expected_ground_range then
+		return hit_range >= math.max(0.05, expected_ground_range - GROUND_RANGE_TOLERANCE)
+	end
+
+	return surface_normal and surface_normal.y >= GROUND_SURFACE_NORMAL_Y
+end
+
+local function trace_relief_impact(actor)
+	if not actor then
+		return nil, nil, nil, nil
+	end
+
+	local start_pos = get_relief_particle_pos(actor)
+	local trace_dir = get_relief_trace_dir(actor)
+	local result = run_ray_pick(start_pos, trace_dir, RELIEF_TRACE_RANGE, actor)
+	if not result then
+		return nil, nil, trace_dir, start_pos
+	end
+
+	return result, get_trace_hit_pos(start_pos, trace_dir, tonumber(result.range) or 0), trace_dir, start_pos
+end
+
+local function trace_relief_wall_impact(actor, start_pos)
+	if not (actor and start_pos) then
+		return nil, nil, nil
+	end
+
+	local trace_dir = get_relief_forward_dir(actor)
+	local result = run_ray_pick(start_pos, trace_dir, RELIEF_TRACE_RANGE, actor)
+	if not result then
+		return nil, nil, trace_dir
+	end
+
+	return result, get_trace_hit_pos(start_pos, trace_dir, tonumber(result.range) or 0), trace_dir
+end
+
+local function spawn_relief_particle(actor)
+	if not actor then
+		return false
+	end
+
+	local particle_name = resolve_particle_name(PARTICLE_NAME)
+	if not particle_name then
+		return false
+	end
+
+	local particle_pos = get_relief_particle_pos(actor)
+	local particle_yaw, particle_pitch = get_relief_particle_angles(actor)
+	local ok_create, particle = pcall(particles_object, particle_name)
+	if not (ok_create and particle) then
+		log_dbg("particle create failed: %s", tostring(particle))
+		return false
+	end
+
+	local ok_play, err = pcall(function()
+		particle:set_orientation(particle_yaw, particle_pitch, 0)
+		particle:play_at_pos(particle_pos)
+	end)
+	if not ok_play then
+		log_dbg("particle play failed: %s", tostring(err))
+		return false
+	end
+
+	local particles = STATE.stream_particles
+	particles[#particles + 1] = {
+		particle = particle,
+		born_at = time_global(),
+	}
+
+	return true
+end
+
+local function refill_splash_pool(particle_names)
+	local pool = {}
+	local seen = {}
+
+	for i = 1, #particle_names do
+		local splash_name = resolve_particle_name(particle_names[i])
+		if splash_name and not seen[splash_name] then
+			pool[#pool + 1] = splash_name
+			seen[splash_name] = true
+		end
+	end
+
+	return pool
+end
+
+local function get_splash_particle_name(pool_key, particle_names)
+	local pool = STATE[pool_key]
+	if not pool or #pool == 0 then
+		pool = refill_splash_pool(particle_names)
+		STATE[pool_key] = pool
+	end
+	if not pool or #pool == 0 then
+		return nil
+	end
+
+	local index = math.random(#pool)
+	local splash_name = pool[index]
+	table.remove(pool, index)
+	return splash_name
+end
+
+local apply_witness_reaction
+
+local function play_relief_splash(hit_pos, surface_normal, trace_dir, is_ground)
+	local splash_name = get_splash_particle_name(
+		is_ground and "ground_splash_pool" or "wall_splash_pool",
+		is_ground and GROUND_SPLASH_PARTICLE_NAMES or WALL_SPLASH_PARTICLE_NAMES
+	)
+	if not (splash_name and hit_pos) then
+		return false
+	end
+
+	local ok_create, particle = pcall(particles_object, splash_name)
+	if not (ok_create and particle) then
+		log_dbg("splash particle create failed: %s", tostring(particle))
+		return false
+	end
+
+	local splash_pos = hit_pos
+	if trace_dir and not is_ground then
+		splash_pos = new_vector()
+		splash_pos:mad(hit_pos, trace_dir, -WALL_SPLASH_OFFSET)
+	end
+
+	local ok_play, err = pcall(function()
+		if surface_normal and not is_ground then
+			local yaw, pitch, roll = get_splash_orientation(surface_normal)
+			particle:set_orientation(yaw, pitch, roll)
+		end
+		particle:play_at_pos(splash_pos)
+		if surface_normal and not is_ground then
+			local yaw, pitch, roll = get_splash_orientation(surface_normal)
+			particle:set_position(splash_pos)
+			particle:set_orientation(yaw, pitch, roll)
+		end
+	end)
+	if not ok_play then
+		log_dbg("splash particle play failed: %s", tostring(err))
+		return false
+	end
+
+	STATE.splash_particles[#STATE.splash_particles + 1] = {
+		particle = particle,
+		born_at = time_global(),
+	}
+	STATE.splash_particle_object = particle
+	STATE.splash_particle_name = splash_name
+	return true
+end
+
+local function finish_relief_stream()
+	stop_process_sound()
+	STATE.stream_burst_next_at = 0
+	cleanup_splash_particles(time_global(), true)
+	STATE.splash_particles = {}
+	STATE.splash_particle_object = nil
+	STATE.splash_particle_name = nil
+	STATE.splash_next_at = 0
+	STATE.trace_fail_logged = false
+	STATE.relief_hit_targets = {}
+	STATE.campfire_cooldowns = {}
+	STATE.relief_active = false
+	STATE.relief_until = 0
+	STATE.stream_tick_at = 0
+end
+
+local function reset_runtime_state()
+	finish_relief_stream()
+	stop_camera_nod()
+	cleanup_stream_particles(time_global(), true)
+	STATE.stream_particles = {}
+	cleanup_splash_particles(time_global(), true)
+	STATE.splash_particles = {}
+
+	STATE.mode_active = false
+	STATE.fire_held = false
+	STATE.witness_scan_next_at = 0
+	STATE.witness_threat_next_at = 0
+	STATE.witness_reacted_ids = {}
+	STATE.witness_threat_ids = {}
+	STATE.witness_threat_forced_at = {}
+	STATE.world_ready = false
+	STATE.stream_burst_next_at = 0
+	STATE.stream_particles = {}
+	STATE.splash_particles = {}
+	STATE.splash_next_at = 0
+	STATE.ground_splash_pool = nil
+	STATE.wall_splash_pool = nil
+	STATE.relief_hit_targets = {}
+	STATE.campfire_cooldowns = {}
+	STATE.hud_hidden = false
+	STATE.prev_slot = nil
+end
+
+local function enter_relief_mode(play_sound)
+	local actor = get_actor()
+	if not actor then
+		return false
+	end
+
+	if STATE.mode_active then
+		return true
+	end
+
+	STATE.prev_slot = actor:active_slot()
+	level.show_weapon(false)
+	if STATE.prev_slot and STATE.prev_slot ~= 0 then
+		actor:activate_slot(0)
+	end
+	begin_camera_nod()
+	STATE.mode_active = true
+	STATE.fire_held = false
+	STATE.witness_scan_next_at = 0
+	STATE.witness_threat_next_at = 0
+	STATE.witness_reacted_ids = {}
+	STATE.witness_threat_ids = {}
+	STATE.witness_threat_forced_at = {}
+	STATE.splash_next_at = 0
+	STATE.trace_fail_logged = false
+	STATE.relief_hit_targets = {}
+	if play_sound ~= false then
+		play_mode_sound(true)
+	end
+	return true
+end
+
+local function exit_relief_mode(play_sound)
+	local actor = get_actor()
+	local was_mode_active = STATE.mode_active
+	finish_relief_stream()
+
+	if actor then
+		level.show_weapon(true)
+		if STATE.prev_slot and STATE.prev_slot ~= 0 then
+			actor:activate_slot(STATE.prev_slot)
+		end
+	end
+
+	if was_mode_active then
+		begin_camera_nod()
+	end
+
+	if STATE.mode_active and play_sound ~= false then
+		play_mode_sound(false)
+	end
+
+	STATE.mode_active = false
+	STATE.fire_held = false
+	STATE.witness_scan_next_at = 0
+	STATE.witness_threat_next_at = 0
+	STATE.witness_reacted_ids = {}
+	STATE.witness_threat_ids = {}
+	STATE.witness_threat_forced_at = {}
+	STATE.prev_slot = nil
+	STATE.hud_hidden = false
+end
+
+local function start_relief_stream()
+	local actor = get_actor()
+	if not actor or not STATE.mode_active then
+		return false
+	end
+
+	if STATE.relief_active then
+		return true
+	end
+
+	if not CONFIG.debug_anytime and STATE.fill <= 0 then
+		return false
+	end
+
+	if actor:active_slot() ~= 0 then
+		actor:activate_slot(0)
+	end
+	level.show_weapon(false)
+
+	STATE.relief_active = true
+	STATE.relief_until = 0
+	STATE.stream_tick_at = time_global()
+	STATE.stream_burst_next_at = 0
+	STATE.witness_scan_next_at = time_global() + WITNESS_SCAN_INTERVAL_MS
+	STATE.witness_threat_next_at = 0
+	STATE.splash_next_at = 0
+	STATE.trace_fail_logged = false
+	STATE.relief_hit_targets = {}
+	start_process_sound()
+	apply_witness_reaction()
+
+	spawn_relief_particle(actor)
+	STATE.stream_burst_next_at = time_global() + STREAM_BURST_INTERVAL_MS
+
+	return STATE.relief_active
+end
+
+local function push_witness_gossip(witness, timeout)
+	if not (witness and db.actor and dynamic_news_helper) then
+		return false
+	end
+
+	local actor_name = db.actor:character_name()
+	local speaker_name = witness:character_name()
+	local community = dynamic_news_helper.GetCommunityDescription(witness, 6) or ""
+	local location = dynamic_news_helper.GetPointDescription(db.actor)
+	local templates = get_witness_gossip_pool(WITNESS_GOSSIP_PREFIX)
+	local replacements = {
+		["speaker"] = speaker_name,
+		["community"] = community,
+		["who"] = actor_name,
+		["name"] = actor_name,
+		["target"] = actor_name,
+		["where"] = location,
+	}
+
+	if not templates then
+		templates = get_witness_gossip_pool("st_dyn_news_gossip_bounty_")
+		replacements = {
+			["who"] = actor_name,
+			["where"] = location,
+		}
+	end
+
+	if not templates then
+		templates = get_witness_gossip_pool("st_dyn_news_companion_rep_1_")
+		replacements = {
+			["name"] = actor_name,
+		}
+	end
+
+	if not templates or #templates == 0 then
+		return false
+	end
+
+	local msg = utils_data.parse_string_keys(templates[math.random(#templates)], replacements)
+	local sender = speaker_name
+	if community ~= "" then
+		sender = strformat("%s, %s", speaker_name, community)
+	end
+	local ok_push = pcall(function()
+		dynamic_news_helper.send_tip(msg, sender, timeout or 0, 20, witness:character_icon(), "news", "npc")
+	end)
+
+	return ok_push
+end
+
+local function safe_object_by_id(obj_id)
+	if not obj_id then
+		return nil
+	end
+
+	local ok_obj, obj = pcall(level.object_by_id, obj_id)
+	return ok_obj and obj or nil
+end
+
+local function play_witness_threat_sound(npc)
+	local npc_id = safe_object_id(npc)
+	local sound_mod = rawget(_G, "xr_sound")
+	local sound_theme_mod = rawget(_G, "sound_theme")
+	if not (npc_id and sound_mod and sound_theme_mod and type(sound_theme_mod.theme) == "table") then
+		return false
+	end
+
+	for i = 1, #WITNESS_THREAT_SOUNDS do
+		local sound_id = WITNESS_THREAT_SOUNDS[i]
+		if sound_theme_mod.theme[sound_id] then
+			local ok_sound = pcall(function()
+				sound_mod.set_sound_play(npc_id, sound_id)
+			end)
+			if ok_sound then
+				return true
+			end
+		end
+	end
+
+	return false
+end
+
+local function apply_witness_threat_state(npc, actor)
+	local sm = rawget(_G, "state_mgr")
+	if not (sm and npc and actor and is_live_stalker_object(npc) and npc:relation(actor) ~= game_object.enemy) then
+		return false
+	end
+
+	local ok_state = pcall(function()
+		npc:set_desired_direction()
+		sm.set_state(npc, "threat_na", nil, nil, {look_object = actor}, {fast_set = true})
+	end)
+
+	return ok_state
+end
+
+local function keep_witness_threat_sight(npc, actor)
+	if not (npc and actor and is_live_stalker_object(npc) and npc:relation(actor) ~= game_object.enemy) then
+		return false
+	end
+
+	local ok_sight = pcall(function()
+		npc:set_sight(actor, true, true)
+	end)
+
+	return ok_sight
+end
+
+local function add_witness_threat(npc, actor)
+	local npc_id = safe_object_id(npc)
+	if not (npc_id and actor) then
+		return false
+	end
+
+	local threat_ids = STATE.witness_threat_ids or {}
+	local forced_at = STATE.witness_threat_forced_at or {}
+	STATE.witness_threat_ids = threat_ids
+	STATE.witness_threat_forced_at = forced_at
+	if threat_ids[npc_id] then
+		return true
+	end
+
+	threat_ids[npc_id] = true
+	forced_at[npc_id] = time_global()
+	apply_witness_threat_state(npc, actor)
+	keep_witness_threat_sight(npc, actor)
+	play_witness_threat_sound(npc)
+	return true
+end
+
+local function update_witness_threats(actor)
+	local threat_ids = STATE.witness_threat_ids
+	local forced_at = STATE.witness_threat_forced_at or {}
+	local sm = rawget(_G, "state_mgr")
+	local tg = time_global()
+	if not (actor and threat_ids) then
+		return false
+	end
+
+	local updated = false
+	for npc_id in pairs(threat_ids) do
+		local npc = safe_object_by_id(npc_id)
+		if npc and is_live_stalker_object(npc) and npc:relation(actor) ~= game_object.enemy then
+			keep_witness_threat_sight(npc, actor)
+			local state_name = sm and sm.get_state and sm.get_state(npc) or nil
+			local last_forced = forced_at[npc_id] or 0
+			if (type(state_name) ~= "string" or not state_name:find("threat", 1, true)) and tg >= (last_forced + WITNESS_THREAT_REFORCE_MS) then
+				apply_witness_threat_state(npc, actor)
+				forced_at[npc_id] = tg
+			end
+			updated = true
+		else
+			threat_ids[npc_id] = nil
+			forced_at[npc_id] = nil
+		end
+	end
+
+	return updated
+end
+
+apply_witness_reaction = function()
+	local actor = get_actor()
+	if not actor then
+		return false
+	end
+
+	local reacted = false
+	local witnesses = {}
+	local witness_ids = STATE.witness_reacted_ids or {}
+	STATE.witness_reacted_ids = witness_ids
+	level.iterate_nearest(actor:position(), CONFIG.reaction_radius or DEFAULTS.reaction_radius, function(obj)
+		local obj_id = safe_object_id(obj)
+		if obj and obj_id and obj_id ~= actor:id() and is_live_stalker_object(obj) then
+			if not witness_ids[obj_id] and obj:relation(actor) ~= game_object.enemy then
+				obj:change_goodwill(WITNESS_GOODWILL_PENALTY, actor)
+				witness_ids[obj_id] = true
+				witnesses[#witnesses + 1] = obj
+				add_witness_threat(obj, actor)
+				reacted = true
+			end
+		end
+		return false
+	end)
+
+	if reacted then
+		for i = 1, #witnesses do
+			push_witness_gossip(witnesses[i], i - 1)
+		end
+		show_status("st_pnp_mod_witnessed", 4)
+	end
+
+	return reacted
+end
+
+local function apply_direct_hit_target(actor, target)
+	local target_id = safe_object_id(target)
+	if not (CONFIG.direct_hit_hostile and actor and target and target_id and target_id ~= actor:id() and is_live_stalker_object(target)) then
+		return false
+	end
+
+	if STATE.relief_hit_targets[target_id] then
+		return true
+	end
+
+	STATE.relief_hit_targets[target_id] = true
+	target:set_relation(game_object.enemy, actor)
+	target:force_set_goodwill(DIRECT_HIT_GOODWILL, actor)
+	show_status("st_pnp_mod_direct_hit", 5)
+	return true
+end
+
+local function try_extinguish_campfire(hit_pos)
+	if not hit_pos then
+		return false
+	end
+
+	local campfires = get_campfire_registry()
+	if not campfires then
+		return false
+	end
+
+	local best_binder = nil
+	local best_id = nil
+	local best_dist_sqr = CAMPFIRE_EXTINGUISH_RADIUS * CAMPFIRE_EXTINGUISH_RADIUS
+
+	for binder_id, binder in pairs(campfires) do
+		if binder and binder.object and binder.campfire then
+			local campfire_pos = safe_object_position(binder.object)
+			if campfire_pos then
+				local ok_dist, dist_sqr = pcall(function()
+					return hit_pos:distance_to_sqr(campfire_pos)
+				end)
+				if ok_dist and dist_sqr and dist_sqr <= best_dist_sqr then
+					best_binder = binder
+					best_id = binder_id
+					best_dist_sqr = dist_sqr
+				end
+			end
+		end
+	end
+
+	if not (best_binder and best_id and best_binder.campfire) then
+		return false
+	end
+
+	local now = time_global()
+	local cooldown_until = STATE.campfire_cooldowns[best_id]
+	if cooldown_until and cooldown_until > now then
+		return false
+	end
+
+	local ok_on, is_on = pcall(function()
+		return best_binder.campfire:is_on()
+	end)
+	if not (ok_on and is_on) then
+		return false
+	end
+
+	local ok_turn_off = pcall(function()
+		best_binder.campfire:turn_off()
+	end)
+	if not ok_turn_off then
+		return false
+	end
+
+	STATE.campfire_cooldowns[best_id] = now + CAMPFIRE_EXTINGUISH_COOLDOWN_MS
+	return true
+end
+
+local function update_relief_impact(actor, force)
+	local result, hit_pos, trace_dir, start_pos = trace_relief_impact(actor)
+	local wall_result, wall_hit_pos, wall_trace_dir = trace_relief_wall_impact(actor, start_pos)
+	local hit_range = tonumber(result and result.range) or math.huge
+	local wall_hit_range = tonumber(wall_result and wall_result.range) or math.huge
+	local expected_ground_range = get_expected_ground_range(actor, start_pos, trace_dir)
+	local use_wall_hit = false
+
+	if wall_result then
+		if not result then
+			use_wall_hit = true
+		elseif expected_ground_range and (wall_hit_range < math.max(0.05, expected_ground_range - GROUND_RANGE_TOLERANCE)) then
+			use_wall_hit = true
+		elseif wall_hit_range < math.max(0.05, hit_range - GROUND_RANGE_TOLERANCE) then
+			use_wall_hit = true
+		end
+	end
+
+	if use_wall_hit then
+		result = wall_result
+		hit_pos = wall_hit_pos
+		trace_dir = wall_trace_dir
+		hit_range = wall_hit_range
+	end
+
+	if not (result and hit_pos) then
+		if force and not STATE.trace_fail_logged then
+			STATE.trace_fail_logged = true
+			log_dbg("relief impact trace miss")
+		end
+		return false
+	end
+
+	STATE.trace_fail_logged = false
+
+	local tg = time_global()
+	hit_range = tonumber(result.range) or 0
+	local surface_normal = trace_dir and estimate_surface_normal(actor, hit_pos, trace_dir) or nil
+	local is_ground = (not use_wall_hit) and is_ground_impact(actor, start_pos, hit_range, trace_dir, surface_normal)
+	if force or (tg >= (STATE.splash_next_at or 0)) then
+		play_relief_splash(hit_pos, surface_normal, trace_dir, is_ground)
+		try_extinguish_campfire(hit_pos)
+		STATE.splash_next_at = tg + SPLASH_INTERVAL_MS
+	end
+
+	if result.object and hit_range <= DIRECT_HIT_DISTANCE then
+		apply_direct_hit_target(actor, result.object)
+	end
+
+	return true
+end
+
+local function trigger_accident()
+	if STATE.relief_active then
+		return
+	end
+
+	if STATE.mode_active then
+		exit_relief_mode(false)
+	end
+
+	set_fill(0)
+	STATE.cooldown_until = time_global() + RELIEF_COOLDOWN_MS
+	STATE.accident_lockout_until = time_global() + ACCIDENT_LOCKOUT_MS
+	show_status("st_pnp_mod_accident", 5)
+	apply_witness_reaction()
+end
+
+local function get_block_reason()
+	local actor = get_actor()
+	if not actor then
+		return "st_pnp_mod_no_actor"
+	end
+	if CONFIG.debug_anytime then
+		return nil
+	end
+	if not CONFIG.enabled then
+		return "st_pnp_mod_disabled"
+	end
+	if not STATE.world_ready then
+		return "st_pnp_mod_not_ready"
+	end
+	if STATE.fill < THRESHOLD_URGE then
+		return "st_pnp_mod_not_ready"
+	end
+	if actor:is_talking() then
+		return "st_pnp_mod_blocked_busy"
+	end
+	if actor:get_current_holder() ~= nil then
+		return "st_pnp_mod_blocked_vehicle"
+	end
+	if not main_hud_shown() then
+		return "st_pnp_mod_blocked_busy"
+	end
+	return nil
+end
+
+function can_relieve_now()
+	return STATE.mode_active or (get_block_reason() == nil)
+end
+
+function attempt_relieve()
+	if STATE.mode_active then
+		exit_relief_mode(true)
+		return true
+	end
+
+	local reason = get_block_reason()
+	if reason then
+		show_status(reason, 3)
+		return false
+	end
+
+	return enter_relief_mode(true)
+end
+
+local function actor_on_first_update()
+	STATE.world_ready = true
+end
+
+local function actor_on_net_destroy()
+	reset_runtime_state()
+end
+
+local function actor_on_item_use(item)
+	if not CONFIG.enabled or not item then
+		return
+	end
+
+	local sec = item:section()
+	if not is_liquid_item(sec) then
+		return
+	end
+
+	add_fill(CONFIG.drink_gain or DEFAULTS.drink_gain)
+	log_dbg("liquid item used: %s | fill=%s", tostring(sec), tostring(STATE.fill))
+end
+
+local function actor_on_update()
+	local relief_actor = get_actor()
+	local tg = time_global()
+	update_camera_nod(tg)
+	cleanup_stream_particles(tg, false)
+	cleanup_splash_particles(tg, false)
+
+	if STATE.mode_active and relief_actor then
+		level.show_weapon(false)
+		if relief_actor:active_slot() ~= 0 then
+			relief_actor:activate_slot(0)
+		end
+		if tg >= (STATE.witness_threat_next_at or 0) then
+			update_witness_threats(relief_actor)
+			STATE.witness_threat_next_at = tg + WITNESS_THREAT_INTERVAL_MS
+		end
+	end
+
+	if STATE.world_ready and STATE.mode_active and STATE.fire_held and not STATE.relief_active and (CONFIG.debug_anytime or STATE.fill > 0) then
+		start_relief_stream()
+	end
+
+	if STATE.relief_active then
+		if not (STATE.mode_active and STATE.fire_held and relief_actor) then
+			finish_relief_stream()
+		elseif relief_actor then
+				local last_tick_at = STATE.stream_tick_at or tg
+				local dt_ms = math.max(0, tg - last_tick_at)
+				STATE.stream_tick_at = tg
+
+			if not CONFIG.debug_anytime and dt_ms > 0 then
+				set_fill((STATE.fill or 0) - (dt_ms * RELIEF_DRAIN_PER_MS))
+				if STATE.fill <= 0 then
+					set_fill(0)
+					finish_relief_stream()
+					show_status("st_pnp_mod_done", 3)
+				end
+				end
+
+				if STATE.relief_active then
+					if tg >= (STATE.stream_burst_next_at or 0) then
+						spawn_relief_particle(relief_actor)
+						STATE.stream_burst_next_at = tg + STREAM_BURST_INTERVAL_MS
+					end
+					if tg >= (STATE.witness_scan_next_at or 0) then
+						apply_witness_reaction()
+						STATE.witness_scan_next_at = tg + WITNESS_SCAN_INTERVAL_MS
+					end
+					update_relief_impact(relief_actor, false)
+				end
+			else
+			finish_relief_stream()
+		end
+	end
+
+	if not CONFIG.enabled then
+		return
+	end
+
+	local actor = get_actor()
+	if not actor then
+		return
+	end
+
+	if get_console_cmd(1, "g_god") then
+		return
+	end
+
+	if tg >= last_power_tick then
+		if STATE.fill >= THRESHOLD_HIGH then
+			actor:change_power(-(CONFIG.high_drain or DEFAULTS.high_drain))
+		elseif STATE.fill >= THRESHOLD_URGE then
+			actor:change_power(-(CONFIG.medium_drain or DEFAULTS.medium_drain))
+		end
+
+		if tg < (STATE.accident_lockout_until or 0) then
+			actor:change_power(-ACCIDENT_POWER_DRAIN)
+			actor:change_health(-ACCIDENT_HEALTH_DRAIN)
+		end
+
+		last_power_tick = tg + POWER_TICK_MS
+	end
+
+	local curr_time = game.get_game_time()
+	if STATE.last_tick and curr_time:diffSec(STATE.last_tick) < TICK_SECONDS then
+		return
+	end
+
+	STATE.last_tick = curr_time
+	add_fill(CONFIG.fill_step or DEFAULTS.fill_step)
+
+	if STATE.fill >= THRESHOLD_CRITICAL and tg >= (STATE.accident_lockout_until or 0) then
+		local chance = tonumber(CONFIG.accident_chance) or DEFAULTS.accident_chance
+		if math.random(100) <= chance then
+			trigger_accident()
+		end
+	end
+end
+
+local function on_key_press(key)
+	local bind = dik_to_bind(key)
+	if not CONFIG.enabled then
+		return
+	end
+	if tonumber(key) == tonumber(CONFIG.hotkey) then
+		attempt_relieve()
+	elseif STATE.mode_active and bind == key_bindings.kWPN_FIRE and not CONFIG.debug_anytime and STATE.fill <= 0 then
+		show_status("st_pnp_mod_not_ready", 3)
+	end
+end
+
+local function on_key_release(key)
+	local bind = dik_to_bind(key)
+	if bind ~= key_bindings.kWPN_FIRE then
+		return
+	end
+
+	STATE.fire_held = false
+	if STATE.relief_active then
+		finish_relief_stream()
+	end
+end
+
+local function on_key_hold(key)
+	local bind = dik_to_bind(key)
+	if not (CONFIG.enabled and STATE.mode_active) then
+		return
+	end
+	if bind ~= key_bindings.kWPN_FIRE then
+		return
+	end
+
+	STATE.fire_held = true
+	if not STATE.relief_active and (CONFIG.debug_anytime or STATE.fill > 0) then
+		start_relief_stream()
+	end
+end
+
+local function on_before_key_press(dik, bind, dis, flags)
+	if flags and is_camera_nod_blocked_bind(bind) then
+		flags.ret_value = false
+	end
+end
+
+local function on_before_key_hold(dik, bind, dis, flags)
+	if flags and is_camera_nod_blocked_bind(bind) then
+		flags.ret_value = false
+	end
+end
+
+local function on_before_key_release(dik, bind, dis, flags)
+	if flags and is_camera_nod_blocked_bind(bind) then
+		flags.ret_value = false
+	end
+end
+
+local function actor_on_weapon_before_fire(flags)
+	if STATE.mode_active and flags then
+		flags.ret_value = false
+	end
+end
+
+local function save_state(m_data)
+	if STATE.relief_active or STATE.splash_particle_object or (#STATE.stream_particles > 0) or (#STATE.splash_particles > 0) then
+		finish_relief_stream()
+		cleanup_stream_particles(time_global(), true)
+		STATE.stream_particles = {}
+		cleanup_splash_particles(time_global(), true)
+		STATE.splash_particles = {}
+	end
+
+	m_data.pnp_mod = {
+		version = SAVE_VERSION,
+		fill = STATE.fill,
+		last_tick = STATE.last_tick and utils_data.CTime_to_table(STATE.last_tick) or nil,
+		cooldown_until = STATE.cooldown_until or 0,
+		accident_lockout_until = STATE.accident_lockout_until or 0,
+	}
+end
+
+local function load_state(m_data)
+	reset_runtime_state()
+
+	local data = m_data.pnp_mod or m_data.bladder_relief
+	if not data then
+		set_fill(0)
+		STATE.last_tick = nil
+		STATE.cooldown_until = 0
+		STATE.accident_lockout_until = 0
+		STATE.relief_until = 0
+		return
+	end
+
+	set_fill(data.fill or 0)
+	STATE.last_tick = data.last_tick and utils_data.CTime_from_table(data.last_tick) or nil
+	STATE.cooldown_until = tonumber(data.cooldown_until) or 0
+	STATE.accident_lockout_until = tonumber(data.accident_lockout_until) or 0
+	STATE.relief_until = 0
+end
+
+local function create()
+	if feature_state then
+		return
+	end
+
+	feature_state = true
+	RegisterScriptCallback("actor_on_update", actor_on_update)
+	RegisterScriptCallback("actor_on_item_use", actor_on_item_use)
+	RegisterScriptCallback("on_key_press", on_key_press)
+	RegisterScriptCallback("on_key_release", on_key_release)
+	RegisterScriptCallback("on_key_hold", on_key_hold)
+	RegisterScriptCallback("on_before_key_press", on_before_key_press)
+	RegisterScriptCallback("on_before_key_hold", on_before_key_hold)
+	RegisterScriptCallback("on_before_key_release", on_before_key_release)
+	RegisterScriptCallback("actor_on_net_destroy", actor_on_net_destroy)
+	RegisterScriptCallback("actor_on_weapon_before_fire", actor_on_weapon_before_fire)
+	actor_status.add_indicator("PnPMod", {
+		index = 14,
+		typ = "state",
+		functor = {"pnp_mod", "get_visual_level"},
+		icon = "ui_inGame2_indicator_thirst",
+		background = "ui_inGame2_indicator_slot",
+		anim_icon = false,
+		anim_bk = false,
+	})
+	log_dbg("enabled")
+end
+
+local function destroy()
+	if not feature_state then
+		return
+	end
+
+	feature_state = false
+	exit_relief_mode(false)
+	stop_camera_nod()
+	UnregisterScriptCallback("actor_on_update", actor_on_update)
+	UnregisterScriptCallback("actor_on_item_use", actor_on_item_use)
+	UnregisterScriptCallback("on_key_press", on_key_press)
+	UnregisterScriptCallback("on_key_release", on_key_release)
+	UnregisterScriptCallback("on_key_hold", on_key_hold)
+	UnregisterScriptCallback("on_before_key_press", on_before_key_press)
+	UnregisterScriptCallback("on_before_key_hold", on_before_key_hold)
+	UnregisterScriptCallback("on_before_key_release", on_before_key_release)
+	UnregisterScriptCallback("actor_on_net_destroy", actor_on_net_destroy)
+	UnregisterScriptCallback("actor_on_weapon_before_fire", actor_on_weapon_before_fire)
+	actor_status.add_indicator("PnPMod", nil)
+	log_dbg("disabled")
+end
+
+local function sync_feature_state()
+	refresh_config()
+	if CONFIG.enabled then
+		create()
+	else
+		destroy()
+	end
+end
+
+local function on_option_change()
+	sync_feature_state()
+end
+
+function on_game_start()
+	refresh_config()
+	RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+	RegisterScriptCallback("save_state", save_state)
+	RegisterScriptCallback("load_state", load_state)
+	RegisterScriptCallback("on_option_change", on_option_change)
+	sync_feature_state()
+end

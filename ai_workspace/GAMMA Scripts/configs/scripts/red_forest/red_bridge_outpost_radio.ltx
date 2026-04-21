@@ -1,0 +1,18 @@
+[logic]
+active = ph_idle@play
+
+[ph_idle@base]
+nonscript_usable = true
+
+[ph_idle@play]:ph_idle@base
+on_info = %=play_sound(red_bridge_outpost_radio)%
+tips	= Use
+on_use	= %=stop_sound()% ph_idle@stop
+
+[ph_idle@stop]:ph_idle@base
+tips	= Use
+on_use	= ph_idle@play
+
+[collide]
+ignore_static
+

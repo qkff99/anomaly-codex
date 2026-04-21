@@ -1,0 +1,20 @@
+function on_game_start()
+    RegisterScriptCallback("npc_on_death_callback",add_dot)
+    RegisterScriptCallback("npc_on_use",remove_dot)
+    RegisterScriptCallback("monster_on_death_callback",add_dot)
+    RegisterScriptCallback("monster_on_actor_use_callback",remove_dot)
+	
+	
+end
+
+function add_dot(npc)
+	_ = npc and level.map_add_object_spot_ser(npc:id(), "deadbody_location", "")
+end
+
+
+function remove_dot(obj, who)
+		local id = obj:id()
+		-- Need two calls to delete dot engine error
+		level.map_remove_object_spot(id, "deadbody_location", "")
+		level.map_remove_object_spot(id, "deadbody_location", "")
+end

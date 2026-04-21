@@ -1,0 +1,67 @@
+local Dart   = dart_core
+local Module = dart_module
+local Utils  = dart_utils
+
+
+local mod = "statusIcons"
+Module.createLogger(mod)("Monkey patching UIIndicators:InitControls()")
+
+
+local InitControls = actor_status.UIIndicators.InitControls
+
+-- The base function is filled with hard-coded values that can't easily be
+-- changed, and that makes fixing the status icons unnecessarily hard, so we
+-- have a mess to clean up and need to get creative to do it
+function actor_status.UIIndicators:InitControls()
+  local config = Module.config(mod)
+  local state  = Module.state(mod)
+
+  local getHudXML = utils_xml.get_hud_xml
+
+  -- The base function calls this after setting self.W and before initializing
+  -- the UI so it's the ideal place to do what we need
+  function utils_xml.get_hud_xml()
+    local hudXML = getHudXML()
+    local ratio  = Utils.getAspectRatioVs(state.xmlAspectRatio)
+
+    local iconWidth = tonumber(
+      hudXML:ReadAttribute("indicators:static", 0, "width")
+    )
+
+    -- force self.W to respect the XML value
+    if iconWidth then
+      self.W = iconWidth * alticons.size_adjust / ratio
+    end
+
+    -- allow a custom spacing value
+    self.offset = config.spacing * alticons.size_adjust / ratio
+
+    local InitStatic = hudXML.InitStatic
+
+    -- Intercept the first call to xml:InitStatic(), which should be the call
+    -- that initializes self.dialog. We need its instance to prevent the base
+    -- function from "nudging" it with problematic hard-coded values
+    function hudXML:InitStatic(path, instance)
+      self.InitStatic = InitStatic
+
+      local dialog    = self:InitStatic(path, instance)
+      local SetWndPos = dialog.SetWndPos
+
+      -- Disable the first call to dialog:SetWndPos() to prevent the base
+      -- function from "nudging" {x, y} so that it respects the XML
+      function dialog:SetWndPos()
+        self.SetWndPos = SetWndPos
+      end
+
+      return dialog
+    end
+
+    return hudXML
+  end
+
+  -- call the base function
+  InitControls(self)
+
+  -- restore original functionality
+  utils_xml.get_hud_xml = getHudXML
+end

@@ -1,0 +1,93 @@
+local Dart  = dart_core
+local MCM   = dart_mcm
+local Utils = dart_utils
+
+
+local config = {
+  anchor   = {"LEFT", "BOTTOM"},
+  offset   = {8, 0},
+  safezone = true,
+  scale    = 1,
+}
+
+Dart.config.bhs = config
+Dart.state.bhs  = {}
+
+
+function mcmOnConfig(mcmConfig)
+  local offsetX = ui_mcm.get("dart/dart_bhs/offsetX")
+  local offsetY = ui_mcm.get("dart/dart_bhs/offsetY")
+  local scale   = ui_mcm.get("dart/dart_bhs/scale")
+
+  if scale then
+    mcmConfig.bhs.scale = scale
+  end
+
+  mcmConfig.bhs.offset = {
+    offsetX or config.offset[1],
+    offsetY or config.offset[2],
+  }
+end
+
+
+function mcmOnLoad(options)
+  options[1] = {
+    id = "dart_bhs",
+    sh = true,
+    gr = {
+      MCM.getTitle(),
+      MCM.getSubtitle({text = "ui_mcm_dart_bhs_title"}),
+      MCM.getScaleField({def = config.scale}),
+      MCM.getNote({text = "ui_mcm_dart_scale_note"}),
+      MCM.getLine(),
+      MCM.getOffsetXField({def = config.offset[1]}),
+      MCM.getOffsetYField({def = config.offset[2]}),
+    }
+  }
+end
+
+
+function onPreRefresh()
+  if ui_sidhud_mcm then
+    ui_sidhud_mcm.deactivate_hud()
+  end
+
+  utils_xml.XML_MHUD = nil
+end
+
+
+function onPostRefresh()
+  local BHS = zzz_player_injuries
+
+  if ui_sidhud_mcm then
+    ui_sidhud_mcm.activate_hud()
+  end
+
+  if BHS then
+    BHS.init = false
+
+    if BHS.showtexthud > 0 then
+      BHS.healthstatus = not BHS.healthstatus
+      BHS.actor_on_update()
+
+      BHS.healthstatus = not BHS.healthstatus
+      BHS.HUDUpdate()
+    elseif BHS.show_hud_type > 0 then
+      local hudType = BHS.show_hud_type
+
+      BHS.show_hud_type = 0
+      BHS.show_hud_change_time = time_global()
+      BHS.actor_on_update()
+
+      BHS.show_hud_type = hudType
+      BHS.show_hud_change_time = time_global()
+      BHS.HUDUpdate()
+    end
+  end
+end
+
+
+RegisterScriptCallback("on_dart_mcm_load", mcmOnLoad)
+RegisterScriptCallback("on_dart_mcm_config", mcmOnConfig)
+RegisterScriptCallback("on_dart_pre_refresh", onPreRefresh)
+RegisterScriptCallback("on_dart_post_refresh", onPostRefresh)

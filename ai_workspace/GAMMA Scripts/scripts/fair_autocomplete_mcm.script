@@ -1,0 +1,178 @@
+-- Fair Autocomplete - MCM Configuration
+
+local defaults = {
+    -- General settings
+    ["enable"] = true,
+    ["enable_autocomplete"] = true,
+    ["pda_check"] = true,
+    ["require_player_kill"] = true,
+    ["companion_kills_count"] = true,
+    ["count_assists"] = true,
+    ["max_kill_distance"] = 0,  -- 0 = disabled, otherwise max meters
+    ["require_same_level"] = true,
+    ["cancel_if_stolen"] = true,
+    ["check_interval"] = 2.0,
+    
+    -- Item compensation
+    ["compensate_item_rewards"] = true,
+    ["compensation_coefficient"] = 0.4,
+    
+    -- Task types - General
+    ["assault"] = true,
+    ["bounty"] = true,
+    ["hostage"] = false,
+    ["spy_extract"] = false,
+    ["fate"] = false,
+    ["scripted"] = false,
+    ["retrieve"] = false,
+    ["measurements"] = false,
+    ["scanner"] = false,
+    ["mutant_hunt"] = true,
+    
+    -- Task types - Special
+    ["snitch"] = false,
+    ["spring_clean"] = true,
+    ["defense"] = false,
+    ["destroy_btrs"] = true,
+    ["research_hunt"] = false,
+    ["recover_tracker"] = false,
+    
+    -- Assault kill requirement (1=one, 2=half, 3=all)
+    ["kill_requirement"] = 1,
+    
+    -- Other settings
+    ["whitelist"] = "esc_2_12_stalker_fanat_task_3:0",
+    ["blacklist"] = "esc_2_12_stalker_wolf_task_3",
+    ["show_target_info"] = true,
+    ["show_stolen_message"] = true,
+    ["debug"] = false
+}
+
+function get_config(category, key)
+    local value = nil
+    
+    if ui_mcm then
+        value = ui_mcm.get("fair_autocomplete/" .. key)
+    end
+    
+    -- If MCM returned nil or doesn't exist, use defaults
+    if value == nil then
+        value = defaults[key]
+    end
+    
+    return value
+end
+
+function on_mcm_load()
+    return {
+        id = "fair_autocomplete",
+        sh = true,
+        gr = {
+            -- Title
+            { id = "title", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_fair_autocomplete_title", size = { 512, 50 }, spacing = 20 },
+            
+            -- General Settings
+            { id = "enable", type = "check", val = 1, def = true,
+              hint = "fair_autocomplete_enable" },
+            { id = "enable_autocomplete", type = "check", val = 1, def = true,
+              hint = "fair_autocomplete_enable_autocomplete" },
+            { id = "pda_check", type = "check", val = 1, def = true,
+              hint = "fair_autocomplete_pda_check" },
+            { id = "divider_1", type = "line" },
+            
+            -- Kill Validation
+            { id = "require_player_kill", type = "check", val = 1, def = true,
+              hint = "fair_autocomplete_require_player_kill" },
+            { id = "companion_kills_count", type = "check", val = 1, def = true,
+              hint = "fair_autocomplete_companion_kills_count" },
+            { id = "count_assists", type = "check", val = 1, def = true,
+              hint = "fair_autocomplete_count_assists" },
+            { id = "max_kill_distance", type = "track", val = 2, min = 0, max = 200, step = 10, def = 0,
+              hint = "fair_autocomplete_max_kill_distance" },
+            { id = "require_same_level", type = "check", val = 1, def = true,
+              hint = "fair_autocomplete_require_same_level" },
+            { id = "cancel_if_stolen", type = "check", val = 1, def = true,
+              hint = "fair_autocomplete_cancel_if_stolen" },
+            { id = "divider_2", type = "line" },
+            
+            -- Task Types Header
+            { id = "task_types_header", type = "desc", text = "ui_mcm_fair_autocomplete_task_types_header" },
+            
+            -- General Tasks
+            { id = "assault", type = "check", val = 1, def = true,
+              hint = "fair_autocomplete_assault" },
+            { id = "bounty", type = "check", val = 1, def = true,
+              hint = "fair_autocomplete_bounty" },
+            { id = "mutant_hunt", type = "check", val = 1, def = true,
+              hint = "fair_autocomplete_mutant_hunt" },
+            { id = "hostage", type = "check", val = 1, def = false,
+              hint = "fair_autocomplete_hostage" },
+            { id = "spy_extract", type = "check", val = 1, def = false,
+              hint = "fair_autocomplete_spy_extract" },
+            { id = "fate", type = "check", val = 1, def = false,
+              hint = "fair_autocomplete_fate" },
+            { id = "scripted", type = "check", val = 1, def = false,
+              hint = "fair_autocomplete_scripted" },
+            { id = "retrieve", type = "check", val = 1, def = false,
+              hint = "fair_autocomplete_retrieve" },
+            { id = "measurements", type = "check", val = 1, def = false,
+              hint = "fair_autocomplete_measurements" },
+            { id = "scanner", type = "check", val = 1, def = false,
+              hint = "fair_autocomplete_scanner" },
+            { id = "divider_3", type = "line" },
+            
+            -- Special Tasks Header
+            { id = "special_tasks_header", type = "desc", text = "ui_mcm_fair_autocomplete_special_tasks_header" },
+            
+            -- Special Tasks
+            { id = "snitch", type = "check", val = 1, def = false,
+              hint = "fair_autocomplete_snitch" },
+            { id = "spring_clean", type = "check", val = 1, def = true,
+              hint = "fair_autocomplete_spring_clean" },
+            { id = "defense", type = "check", val = 1, def = false,
+              hint = "fair_autocomplete_defense" },
+            { id = "destroy_btrs", type = "check", val = 1, def = true,
+              hint = "fair_autocomplete_destroy_btrs" },
+            { id = "research_hunt", type = "check", val = 1, def = false,
+              hint = "fair_autocomplete_research_hunt" },
+            { id = "recover_tracker", type = "check", val = 1, def = false,
+              hint = "fair_autocomplete_recover_tracker" },
+            { id = "divider_4", type = "line" },
+            
+            -- Kill Requirement
+            { id = "kill_requirement", type = "list", val = 0, def = 1,
+              content = {
+                  { 1, "fair_autocomplete_kill_req_one" },
+                  { 2, "fair_autocomplete_kill_req_half" },
+                  { 3, "fair_autocomplete_kill_req_all" }
+              },
+              hint = "fair_autocomplete_kill_requirement"
+            },
+            { id = "divider_5", type = "line" },
+            
+            -- Rewards
+            { id = "compensate_item_rewards", type = "check", val = 1, def = true,
+              hint = "fair_autocomplete_compensate_item_rewards" },
+            { id = "compensation_coefficient", type = "track", val = 2, min = 0.1, max = 2.0, step = 0.1, def = 0.4,
+              hint = "fair_autocomplete_compensation_coefficient" },
+            { id = "divider_6", type = "line" },
+            
+            -- UI Options
+            { id = "show_target_info", type = "check", val = 1, def = true,
+              hint = "fair_autocomplete_show_target_info" },
+            { id = "show_stolen_message", type = "check", val = 1, def = true,
+              hint = "fair_autocomplete_show_stolen_message" },
+            { id = "divider_7", type = "line" },
+            
+            -- Advanced
+            { id = "check_interval", type = "track", val = 2, min = 0.5, max = 10.0, step = 0.5, def = 2.0,
+              hint = "fair_autocomplete_check_interval" },
+            { id = "whitelist", type = "input", val = 0, def = "esc_2_12_stalker_fanat_task_3:0",
+              hint = "fair_autocomplete_whitelist" },
+            { id = "blacklist", type = "input", val = 0, def = "esc_2_12_stalker_wolf_task_3",
+              hint = "fair_autocomplete_blacklist" },
+            { id = "debug", type = "check", val = 1, def = false,
+              hint = "fair_autocomplete_debug" },
+        }
+    }
+end

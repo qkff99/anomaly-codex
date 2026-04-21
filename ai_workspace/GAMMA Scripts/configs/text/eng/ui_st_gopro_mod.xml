@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="utf-8"?>
+<string_table>
+	<string id="ui_mcm_title_gopro_mod">
+		<text>GoPro MOD</text>
+	</string>
+	<string id="ui_mcm_menu_gopro_mod">
+		<text>GoPro MOD</text>
+	</string>
+	<string id="ui_mcm_title_gopro_mod_settings">
+		<text>Settings</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_overview">
+		<text>Switch the camera to the NPC or monster you are currently aiming at. The player becomes invulnerable, input is blocked, and the HUD is hidden until you toggle the mode off.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_enabled">
+		<text>Enable Mod</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_enabled_desc">
+		<text>Master switch for GoPro MOD. When disabled, POV and tuner hotkeys do nothing and any active observation is closed immediately.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_toggle_key">
+		<text>Toggle NPC POV</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_toggle_key_desc">
+		<text>Look at a living stalker or monster and press the key to enter or leave its POV camera.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_ui_toggle_key">
+		<text>Open Tuner UI</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_ui_toggle_key_desc">
+		<text>Open the compact GoPro tuner window during gameplay. Changes made there are written back into MCM immediately.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_free_look_key">
+		<text>Free Look Hold Key</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_free_look_key_desc">
+		<text>Hold this key during NPC POV to temporarily unlock mouse look. Releasing the key restores the camera back to the target's view direction.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_follow_actor">
+		<text>Player Follows NPC</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_follow_actor_desc">
+		<text>While NPC POV is active, keep the actor 10 meters above the target and drop the actor back onto the target's current position when POV ends.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_hide_head_in_pov">
+		<text>Hide Target Head In POV</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_hide_head_in_pov_desc">
+		<text>When the camera is attached to a head or eye bone, hide the target's head branch while POV is active to prevent the face and helmet from filling the screen.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_death_cam">
+		<text>Death Cam</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_death_cam_desc">
+		<text>After the observed target dies, keep showing its POV for 5 seconds before the mode ends or auto-switches.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_death_auto_switch">
+		<text>Death Auto Switch</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_death_auto_switch_desc">
+		<text>After a target dies, automatically switch POV to another valid unit. If Death Cam is enabled, the switch happens after the 5 second death view.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_death_auto_switch_mode">
+		<text>Death Auto Switch Mode</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_death_auto_switch_mode_desc">
+		<text>Auto: squad member, then nearest same kind, then any nearest valid unit. Killer: switch to the last valid killer, then fall back to Auto if needed.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_pov_fov">
+		<text>POV FOV</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_pov_fov_desc">
+		<text>Camera FOV used only while NPC POV is active. The player's normal FOV is restored when observation ends.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_camera_update_hz">
+		<text>Camera Update Rate</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_camera_update_hz_desc">
+		<text>How often GoPro MOD samples the target bone pose. Lower values reduce bone jitter harder but add more motion stepping.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_camera_ema_strength">
+		<text>EMA Smoothness</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_camera_ema_strength_desc">
+		<text>How strongly position and rotation are smoothed between sampled poses. Higher values are smoother but add more camera lag.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_camera_lag_compensation">
+		<text>Lag Compensation</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_camera_lag_compensation_desc">
+		<text>Predict the camera anchor forward using the target's movement speed to reduce the apparent pullback caused by EMA smoothing while the target is moving.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_camera_bone">
+		<text>NPC Camera Bone</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_camera_bone_desc">
+		<text>Literal bone name used first for the POV anchor. If it is missing on the target, GoPro MOD falls back to its internal bone chain.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_roll_offset_deg">
+		<text>Roll Offset</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_roll_offset_deg_desc">
+		<text>Extra camera roll in degrees. Useful when the target bone orientation is rotated sideways.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_viewport_near">
+		<text>Near Plane</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_viewport_near_desc">
+		<text>Lower values reduce clipping when the camera is very close to the model. Extremely low values may cause depth artifacts.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_forward_offset">
+		<text>Forward Offset</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_forward_offset_desc">
+		<text>Push the camera forward or backward along the target's facing direction.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_up_offset">
+		<text>Up Offset</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_up_offset_desc">
+		<text>Move the camera up or down along the target's local up axis.</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_right_offset">
+		<text>Right Offset</text>
+	</string>
+	<string id="ui_mcm_gopro_mod_right_offset_desc">
+		<text>Move the camera left or right along the target's local right axis.</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_bone_bip01_head">
+		<text>bip01_head</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_bone_eye_left">
+		<text>eye_left</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_bone_eye_right">
+		<text>eye_right</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_bone_bip01_neck">
+		<text>bip01_neck</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_bone_bip01_spine2">
+		<text>bip01_spine2</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_bone_bip01_spine1">
+		<text>bip01_spine1</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_bone_bip01_spine">
+		<text>bip01_spine</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_bone_bip01_pelvis">
+		<text>bip01_pelvis</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_bone_pelvis">
+		<text>pelvis</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_bone_head">
+		<text>head</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_bone_head_boss">
+		<text>head_boss</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_death_auto_switch_mode_auto">
+		<text>auto</text>
+	</string>
+	<string id="ui_mcm_lst_gopro_mod_death_auto_switch_mode_killer">
+		<text>killer's POV</text>
+	</string>
+	<string id="st_gopro_tuner_title">
+		<text>GoPro Tuner</text>
+	</string>
+	<string id="st_gopro_tuner_subtitle">
+		<text>These changes save into MCM immediately and apply live while NPC POV is active.</text>
+	</string>
+	<string id="st_gopro_tuner_hints_title">
+		<text>Hotkeys</text>
+	</string>
+	<string id="st_gopro_tuner_camera_bone">
+		<text>Camera Bone</text>
+	</string>
+	<string id="st_gopro_tuner_follow_actor">
+		<text>Player Follows NPC</text>
+	</string>
+	<string id="st_gopro_tuner_hide_head_in_pov">
+		<text>Hide Target Head In POV</text>
+	</string>
+	<string id="st_gopro_tuner_death_cam">
+		<text>Death Cam</text>
+	</string>
+	<string id="st_gopro_tuner_death_auto_switch">
+		<text>Death Auto Switch</text>
+	</string>
+	<string id="st_gopro_tuner_death_auto_switch_mode">
+		<text>Death Auto Switch Mode</text>
+	</string>
+	<string id="st_gopro_tuner_pov_fov">
+		<text>POV FOV</text>
+	</string>
+	<string id="st_gopro_tuner_camera_update_hz">
+		<text>Update Rate</text>
+	</string>
+	<string id="st_gopro_tuner_camera_ema_strength">
+		<text>EMA Smoothness</text>
+	</string>
+	<string id="st_gopro_tuner_camera_lag_compensation">
+		<text>Lag Compensation</text>
+	</string>
+	<string id="st_gopro_tuner_roll_offset">
+		<text>Roll Offset</text>
+	</string>
+	<string id="st_gopro_tuner_viewport_near">
+		<text>Near Plane</text>
+	</string>
+	<string id="st_gopro_tuner_forward_offset">
+		<text>Forward Offset</text>
+	</string>
+	<string id="st_gopro_tuner_up_offset">
+		<text>Up Offset</text>
+	</string>
+	<string id="st_gopro_tuner_right_offset">
+		<text>Right Offset</text>
+	</string>
+	<string id="st_gopro_tuner_btn_defaults">
+		<text>Reset Defaults</text>
+	</string>
+	<string id="st_gopro_tuner_btn_close">
+		<text>Close</text>
+	</string>
+	<string id="st_gopro_tuner_hint_squad_members">
+		<text>Prev / Next squad member</text>
+	</string>
+	<string id="st_gopro_tuner_hint_squads">
+		<text>Prev / Next squad on level</text>
+	</string>
+	<string id="st_gopro_tuner_hint_prev_member">
+		<text>Previous squad member</text>
+	</string>
+	<string id="st_gopro_tuner_hint_next_member">
+		<text>Next squad member</text>
+	</string>
+	<string id="st_gopro_tuner_hint_prev_squad">
+		<text>Previous squad on level</text>
+	</string>
+	<string id="st_gopro_tuner_hint_next_squad">
+		<text>Next squad on level</text>
+	</string>
+	<string id="st_gopro_tuner_hint_close">
+		<text>Close tuner</text>
+	</string>
+	<string id="st_gopro_tuner_status_inactive">
+		<text>POV inactive. Aim at a living stalker or monster and press the POV hotkey.</text>
+	</string>
+	<string id="st_gopro_tuner_status_target">
+		<text>Target</text>
+	</string>
+	<string id="st_gopro_tuner_status_follow_actor">
+		<text>Player Follows NPC</text>
+	</string>
+	<string id="st_gopro_tuner_status_on">
+		<text>On</text>
+	</string>
+	<string id="st_gopro_tuner_status_off">
+		<text>Off</text>
+	</string>
+	<string id="st_gopro_tuner_status_selected">
+		<text>Selected Bone</text>
+	</string>
+	<string id="st_gopro_tuner_status_resolved">
+		<text>Resolved Bone</text>
+	</string>
+</string_table>

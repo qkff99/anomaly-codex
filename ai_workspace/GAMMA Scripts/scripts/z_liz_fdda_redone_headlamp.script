@@ -1,0 +1,52 @@
+actor_effects.Hit_TorchToggle = function ()
+    if (not actor_effects.allow_animation()) or (not item_device.can_toggle_torch()) then return end
+
+    actor_effects.torch_anm_state = 1
+	local weapon_zoomed = axr_main.weapon_is_zoomed and (not (IsPistol(db.actor:active_item(),nil)) or db.actor:active_detector())
+    local det_active = db.actor:active_detector() or nil
+
+    -- if holding weapon and aiming disable ADS
+	if (db.actor:active_item()) then
+        if not det_active and weapon_zoomed then
+            if (get_console():get_bool("wpn_aim_toggle")) then
+                level.press_action(bind_to_dik(key_bindings.kWPN_ZOOM))
+            else
+                level.release_action(bind_to_dik(key_bindings.kWPN_ZOOM))
+            end
+        end
+    end
+
+    lam2.add_action(get_template_action_torch_toggle(not det_active))
+end
+
+function get_template_action_torch_toggle(anm_blend)
+    local a = lam2.get_template_action_play_animation()
+    a.sec = "liz_headlamp_animation_hud"
+    a.anm = "anm_toggle"
+    a.hands = 1
+    a.anm_blend = anm_blend
+    a.is_toggled = false
+    a.on_enter = function (self)
+        game.play_hud_anm("liz\\headlamp\\liz_headlamp_toggle_weapon_sway.anm", 0, 1, 1, false)
+        -- weapon inertia expanded patch
+        if liz_inertia_expanded then
+            liz_inertia_expanded.set_mask_flag(liz_inertia_expanded.mask_layers.anm_plays, true)
+        end
+    end
+    a.on_execute = function (self, time)
+        if time > 0.5333334 and not self.is_toggled then
+            self.is_toggled = true
+            local snd_headlamp = sound_object('interface\\inv_torch')
+            snd_headlamp:play(db.actor, 0, sound_object.s2d)
+            item_device.toggle_torch()
+        end
+    end
+    a.on_exit = function (self)
+        actor_effects.torch_anm_state = 0
+        -- weapon inertia expanded patch
+        if liz_inertia_expanded then
+            liz_inertia_expanded.set_mask_flag(liz_inertia_expanded.mask_layers.anm_plays, false)
+        end
+    end
+    return a
+end

@@ -1,0 +1,234 @@
+--[[
+=======================================================================================
+    DevTools Profiler - Shared State Module
+    
+    This module contains all shared state, configuration, and constants used by the
+    profiler subsystem. It loads first alphabetically to ensure state is available
+    to all other profiler modules.
+    
+    Other modules access state via: devtools_profiler_state.FIELD
+=======================================================================================
+--]]
+
+-- ============================================================================
+-- SHARED STATE CONTAINER
+-- ============================================================================
+
+devtools_profiler_state = devtools_profiler_state or {}
+local S = devtools_profiler_state
+
+-- ============================================================================
+-- CONFIGURATION CONSTANTS
+-- ============================================================================
+
+S.MAX_SAMPLES = 60 -- Rolling window size for samples
+S.MAX_CALL_DEPTH = 100 -- Maximum call depth to prevent stack overflow
+S.MAX_WRAPS_PER_MODULE = 4000 -- Limit wraps per module
+S.MAX_TABLE_VISITS_PER_MODULE = 20000 -- Limit table traversals
+
+-- ============================================================================
+-- FLAGS
+-- ============================================================================
+
+S.ENABLED = true -- Global enable/disable for timing
+S.DEBUG_TIMING = false -- Enable to print timing debug info
+S.FLAMEGRAPH_ENABLED = false -- Enable flamegraph data collection
+S.auto_profile_enabled = false -- Auto-profiling active flag
+
+-- Check if profile_timer is available (required for accurate timing)
+S.PROFILE_TIMER_AVAILABLE = (profile_timer ~= nil)
+
+-- ============================================================================
+-- BLACKLIST CONFIGURATION
+-- ============================================================================
+
+S.BLACKLIST_CONFIG = {
+	-- DevTools modules (profiling them causes infinite recursion)
+	modules = {
+		"devtools_profiler",
+		"devtools_profiler_state",
+		"devtools_profiler_stats",
+		"devtools_profiler_wrap",
+		"devtools_profiler_export",
+		"devtools_config",
+		"devtools_logging",
+		"devtools_imgui",
+		"devtools_ui_common",
+		"devtools_ui_profiler",
+		"devtools_ui_logs",
+	},
+
+	-- Lua standard library modules (system modules that shouldn't be profiled)
+	system_modules = {
+		"_G",
+		"os",
+		"io",
+		"debug",
+		"string",
+		"math",
+		"table",
+		"coroutine",
+		"package",
+	},
+
+	-- Function names that should never be wrapped (system functions)
+	functions = {
+		"printf",
+		"get_time",
+		"time_global",
+		"RegisterScriptCallback",
+		"UnregisterScriptCallback",
+		"SendScriptCallback",
+		"make_callback",
+	},
+}
+
+-- Build lookup tables for fast checking
+S.BLACKLISTED_MODULES = {}
+S.BLACKLISTED_FUNCTIONS = {}
+
+for _, name in ipairs(S.BLACKLIST_CONFIG.modules) do
+	S.BLACKLISTED_MODULES[name] = true
+end
+
+for _, name in ipairs(S.BLACKLIST_CONFIG.system_modules) do
+	S.BLACKLISTED_MODULES[name] = true
+end
+
+for _, name in ipairs(S.BLACKLIST_CONFIG.functions) do
+	S.BLACKLISTED_FUNCTIONS[name] = true
+end
+
+-- ============================================================================
+-- INTERNAL STATE TABLES
+-- ============================================================================
+
+S.timer_stacks = {} -- Per-function timer stacks for nested call handling
+S.stats = {} -- Statistics per function
+
+-- Module management
+S.registered_modules = {} -- Modules registered for profiling: {name = true}
+S.wrapped_modules = {} -- Stores original functions per module
+S.wrapped_function_count = 0
+
+-- Profiling session tracking
+S.profiling_start_time = nil -- Timestamp when profiling was enabled
+
+-- Call stack tracking for depth limiting
+S.active_call_stack = {} -- Stack of currently executing profiled functions
+S.safety_stats = { -- Safety statistics for debugging
+	skipped_depth = 0, -- Calls skipped due to depth limit
+	blacklist_violations = 0, -- Runtime blacklist hits
+}
+
+-- ============================================================================
+-- FLAMEGRAPH STATE
+-- ============================================================================
+
+S.flamegraph_enabled = S.FLAMEGRAPH_ENABLED
+S.flamegraph_samples = {} -- { "stack;trace" = total_ms, ... }
+S.flamegraph_total_samples = 0
+
+-- ============================================================================
+-- WRAPPING STATE (weak tables for GC friendliness)
+-- ============================================================================
+
+-- Per-run state (weak so it won't prevent GC)
+S.visited_tables = setmetatable({}, { __mode = "k" }) -- table -> true
+S.wrapped_funcs = setmetatable({}, { __mode = "k" }) -- function -> true
+
+-- Track which class globals we've already wrapped (to avoid double-wrapping)
+S.wrapped_class_globals = {}
+
+-- Tables we must never traverse into (identity-based)
+S.SYSTEM_TABLES = setmetatable({
+	[_G] = true,
+	[table] = true,
+	[string] = true,
+	[math] = true,
+	[coroutine] = true,
+	[package] = true,
+}, { __mode = "k" })
+
+-- Add optional system tables
+if os then
+	S.SYSTEM_TABLES[os] = true
+end
+if io then
+	S.SYSTEM_TABLES[io] = true
+end
+if debug then
+	S.SYSTEM_TABLES[debug] = true
+end
+
+-- Functions we must never wrap (identity-based)
+S.DO_NOT_WRAP_FUNCS = setmetatable({
+	[table.insert] = true,
+	[table.remove] = true,
+	[table.sort] = true,
+	[table.concat] = true,
+}, { __mode = "k" })
+
+-- ============================================================================
+-- EARLY LOAD STATE
+-- ============================================================================
+
+S.early_load_preset_data = nil -- Store for on_game_start to use
+
+-- ============================================================================
+-- UTILITY FUNCTIONS (on state module for cross-module access)
+-- ============================================================================
+
+-- Register a function as "do not wrap"
+function S.dont_wrap(fn)
+	if type(fn) == "function" then
+		S.DO_NOT_WRAP_FUNCS[fn] = true
+	end
+end
+
+-- Check if a module is blacklisted
+function S.is_module_blacklisted(module_name)
+	return S.BLACKLISTED_MODULES[module_name] == true
+end
+
+-- Check if a function name is blacklisted
+function S.is_function_blacklisted(function_name)
+	return S.BLACKLISTED_FUNCTIONS[function_name] == true
+end
+
+-- Reset visited tables (called per module wrap)
+function S.reset_visited_tables()
+	S.visited_tables = setmetatable({}, { __mode = "k" })
+end
+
+-- Reset wrapped class globals
+function S.reset_wrapped_class_globals()
+	S.wrapped_class_globals = {}
+end
+
+-- ============================================================================
+-- DEFERRED SYSTEM TABLE REGISTRATION
+-- ============================================================================
+
+-- This function is called after other devtools modules load to add them to SYSTEM_TABLES
+function S.register_devtools_system_tables()
+	if _G.devtools_profiler and type(_G.devtools_profiler) == "table" then
+		S.SYSTEM_TABLES[_G.devtools_profiler] = true
+	end
+	if _G.devtools_imgui and type(_G.devtools_imgui) == "table" then
+		S.SYSTEM_TABLES[_G.devtools_imgui] = true
+	end
+	if _G.devtools_config and type(_G.devtools_config) == "table" then
+		S.SYSTEM_TABLES[_G.devtools_config] = true
+	end
+	if _G.devtools_logging and type(_G.devtools_logging) == "table" then
+		S.SYSTEM_TABLES[_G.devtools_logging] = true
+	end
+	-- Guard key engine/UI namespaces from traversal
+	if _G.ImGui and type(_G.ImGui) == "table" then
+		S.SYSTEM_TABLES[_G.ImGui] = true
+	end
+	if _G.DIK_keys and type(_G.DIK_keys) == "table" then
+		S.SYSTEM_TABLES[_G.DIK_keys] = true
+	end
+end

@@ -1,0 +1,182 @@
+
+--[[
+Navs Masks, an exersize in extracting a mod from a core game script using monkey patching.
+16/11/2020
+Unless superceeded by an existing license on Anomaly's actor_effects.script this work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License
+This is 90+% just a chopped down actor_effects.script by Tronex, but the chopping and small additions were made by:
+Author: RavenAscendant
+--]]
+
+
+-- copies of the relevant local constants used in local in actor_effects they as long as i havn't missed anything they are all static so if we derive them the same way we should be golden
+cam_dist = 0
+
+local RENDERER = get_console_cmd(0,"renderer")
+local STATIC_LIGHT = 'renderer_r1'
+local IS_R1 = (RENDERER == STATIC_LIGHT)
+local STATIC_VINGETTE = false -- for +R2 - if true, it will draw vingette instead of relying on r2_mask_control
+local STATIC_MASK = true -- For R1 - if true, it will ignore distortion shader and use old mask overlay
+local helm_r1_vingette = "hud_vingette"
+local ini_eff = ini_file("plugins\\actor_effects.ltx")
+
+
+local opt = {}  -- The functions that build out this version of the opt table are asking for optimization, any entry that isn't used in this script should be culled
+
+function init_settings()
+	local n = 0
+	local tbl = {}
+
+	opt.radiation_ppe_threshold = ini_eff:r_float_ex("settings","radiation_ppe_threshold") or 0.45
+	opt.cam_dist = ini_eff:r_float_ex("settings","cam_dist") or 4
+
+	opt.speed = {}
+	n = ini_eff:line_count("settings_speed")
+	for i=0,n-1 do
+		local result, id, value	= ini_eff:r_line_ex("settings_speed",i,"","")
+		if id and value then
+			opt.speed[id] = tonumber(value)
+		end
+	end
+
+	opt.health = {}
+	opt.health.level1 = ini_eff:r_float_ex("settings_health","level1")
+	opt.health.level2 = ini_eff:r_float_ex("settings_health","level2")
+	opt.health.little_delta = ini_eff:r_float_ex("settings_health","little_delta")
+	opt.health.little_ppe = ini_eff:r_string_ex("settings_health","little_ppe")  or "amk_shoot.ppe"
+	opt.health.middle_delta = ini_eff:r_float_ex("settings_health","middle_delta")
+	opt.health.middle_anm = parse_list(ini_eff,"settings_health","middle_anm")
+	opt.health.middle_snd = parse_list(ini_eff,"settings_health","middle_snd")
+	opt.health.huge_delta = ini_eff:r_float_ex("settings_health","huge_delta")
+	opt.health.huge_ppe = ini_eff:r_string_ex("settings_health","huge_ppe") or "total_recall.ppe"
+	opt.health.huge_anm = parse_list(ini_eff,"settings_health","huge_anm")
+	opt.health.huge_snd = parse_list(ini_eff,"settings_health","huge_snd")
+	opt.health.drop_wnp_prob = ini_eff:r_float_ex("settings_health","drop_wnp_prob")
+	opt.health.no_drop_wnp = parse_list(ini_eff,"settings_health","no_drop_wnp",true)
+	opt.health.injury_snd = {}
+	local injury_snd = parse_list(ini_eff,"settings_health","injury_snd")
+	for i=1,#injury_snd do
+		for k,v in string.gmatch(injury_snd[i], "([%w_%-%s%.]+)=([%w_%-%s%.]+)") do
+			opt.health.injury_snd[k] = tonumber(v)
+		end
+	end
+
+	opt.helmets = {}
+	n = ini_eff:line_count("settings_helm")
+	for i=0,n-1 do
+		local result, id, value	= ini_eff:r_line_ex("settings_helm",i,"","")
+		if id and value then
+			empty_table(tbl)
+			tbl = parse_list(ini_eff,"settings_helm",id)
+
+			opt.helmets[id] = {}
+			opt.helmets[id].hud = tbl[1] or "hud_gas"
+			opt.helmets[id].breakable = (tbl[2] == "true") and true or false
+			opt.helmets[id].blurs = tbl[3] and tonumber(tbl[3]) or 2.5
+			opt.helmets[id].respi = (tbl[4] == "true") and true or false
+		end
+	end
+
+	opt.helmets_vingette = {}
+	n = ini_eff:line_count("settings_helm_vingette")
+	for i=0,n-1 do
+		local result, id, value	= ini_eff:r_line_ex("settings_helm_vingette",i,"","")
+		if id and value then
+			opt.helmets_vingette[id] = tonumber(value)
+		end
+	end
+
+	opt.helmets_reflect = {}
+	n = ini_eff:line_count("settings_helm_reflection")
+	for i=0,n-1 do
+		local result, id, value	= ini_eff:r_line_ex("settings_helm_reflection",i,"","")
+		if id then
+			opt.helmets_reflect[id] = true
+		end
+	end
+
+	opt.helmets_con = {}
+	n = ini_eff:line_count("settings_helm_con")
+	for i=0,n-1 do
+		local result, id, value	= ini_eff:r_line_ex("settings_helm_con",i,"","")
+		if id and value then
+			empty_table(tbl)
+			tbl = parse_list(ini_eff,"settings_helm_con",id)
+
+			opt.helmets_con[id] = {}
+			opt.helmets_con[id].con = tbl[1] and tonumber(tbl[1]) or 0
+			opt.helmets_con[id].hud = tbl[2]
+			opt.helmets_con[id].fx = tbl[3] and tonumber(tbl[3]) or 0
+		end
+	end
+end
+function init_main_settings()
+	opt.enable_animations          = ui_options.get("video/player/animations")
+	opt.enable_shoot_effects       = ui_options.get("video/player/shoot_effects")
+	opt.enable_mask_hud            = ui_options.get("video/player/mask_hud")
+	opt.enable_breathing_sound     = ui_options.get("sound/environment/breathing_sound")
+	opt.enable_breathing_fog       = ui_options.get("video/player/breathing_fog")
+	opt.enable_radiation_effect    = ui_options.get("video/player/radiation_effect")
+	opt.enable_blood_splash        = ui_options.get("video/player/blood_splash")
+	opt.enable_bleed_effect        = ui_options.get("video/player/bleed_effect")
+	opt.enable_hit_impact_effect   = true --axr_main.config:r_value("mm_fx_options","enable_hit_impact_effect",1,true)
+	opt.enable_item_swap_animation = ui_options.get("video/player/item_swap_animation")
+	opt.enable_visor_reflection    = ui_options.get("video/player/visor_reflection")
+end
+
+
+	origional_HUD_mask = actor_effects.HUD_mask -- save a copy of the origional function so we can call it at the end of our version.
+
+
+-- this is the actor_effects HUD_mask() function with everything that isn't performed based on an IS_R1 test or logic leading up to an IS_R1 test removed.
+-- We then invert IS_R1 for every test. This ensures the R1 stuff will be done once and only once, no matter what. 
+-- We then call the orginal function to let it do all the other stuff that will run just fine no matter if the R1 stuff is done here or there 
+function actor_effects.HUD_mask(helm_hud, helm_name, helm_respi)
+	curr_hud = actor_effects.is_mask_on() -- this gets curr_hud from actor_effects.script, you would think this function would return a bool, but instead it returns nil or a string, functions the same in lua and i will not question gifts when i find them.
+
+	cam_dist = db.actor:bone_position("bip01_head"):distance_to_sqr(device().cam_pos) -- actor_effects does this in on_actor_update, i'm just going to do it when i need it.
+	local hud = get_hud()
+
+	if (not helm_hud) or (cam_dist > opt.cam_dist) then
+		if not IS_R1 then -- Distortion/Mask UI
+			local wchud = hud:GetCustomStatic(curr_hud)
+			if wchud then
+				hud:RemoveCustomStatic(curr_hud)
+			end
+		end
+
+		if ((not IS_R1) and (not STATIC_MASK)) or STATIC_VINGETTE then -- Vingette
+			local wchud = hud:GetCustomStatic(helm_r1_vingette)
+			if wchud then
+				hud:RemoveCustomStatic(helm_r1_vingette)
+			end
+		end
+
+	elseif (helm_hud ~= curr_hud) then
+		if not IS_R1 then -- Distortion/Mask UI
+			if curr_hud then
+				hud:RemoveCustomStatic(curr_hud)
+			end
+
+			hud:AddCustomStatic(helm_hud)
+		end
+
+		if ((not IS_R1) and (not STATIC_MASK)) or STATIC_VINGETTE then -- Vingette
+			local wchud = hud:GetCustomStatic(helm_r1_vingette)
+			if (not wchud) then
+				hud:AddCustomStatic(helm_r1_vingette)
+			end
+		end
+	end
+	origional_HUD_mask(helm_hud, helm_name, helm_respi) -- calling the original version 
+end
+
+
+function on_game_start()
+	init_settings()
+
+
+	RegisterScriptCallback("actor_on_first_update",init_main_settings)
+
+	RegisterScriptCallback("on_option_change",init_main_settings)
+
+end

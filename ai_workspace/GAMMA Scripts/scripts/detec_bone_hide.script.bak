@@ -1,0 +1,43 @@
+-- Script by Utjan for Barry's Detector Remodel and Reanimations
+
+-- Table of detectors to handle, and which light bones to toggle
+valid_detectors = {
+    ["detector_simple"] = {["light_bone_1"] = true, ["light_bone_3"] = true},
+    ["detector_advanced"] = {["light_bone_1"] = true, ["light_bone_2"] = true, ["screen_bone_1"] = true, ["screen_bone"] = true},
+    ["detector_elite"] = {["light_bone_1"] = true, ["light_bone_2"] = true, ["light_bone_3"] = true, ["light_bone_4"] = true, ["light_bone_5"] = true, ["light_bone_6"] = true, ["light_bone_7"] = true, ["light_bone_8"] = true, ["light_bone_9"] = true, ["cover_power"] = true},
+    ["detector_scientific"] = {["light_bone_1"] = true, ["light_bone_2"] = true, ["light_bone_3"] = true, ["light_bone_4"] = true, ["light_bone_5"] = true, ["light_bone_6"] = true, ["light_bone_7"] = true, ["light_bone_8"] = true, ["light_bone_9"] = true, ["cover_power"] = true},
+    ["detector_radio"] = {["light_bone"] = true, ["light_bone.001"] = true, ["screen_bone"] = true},
+    ["detector_anomaly"] = {["light_bone_1"] = true},
+    ["detector_geiger"] = {["cover"] = true},
+    ["device_flashlight"] = {["light_bone_1"] = true},
+}
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_update", actor_on_update)
+end
+
+function actor_on_update()
+    local active_device = db.actor:active_detector()
+    if not active_device then return end
+
+    if active_device:get_state() == 2 then return end -- Thank you Lucy and Aoldri for this fix
+
+    local det_bones = valid_detectors[active_device:section()] or nil
+    if not det_bones then return end
+
+    if active_device:condition() <= 0.05 then
+        for bone_name, v in pairs(det_bones) do
+            if active_device:bone_visible(bone_name, true) then
+                active_device:set_bone_visible(bone_name, false, false, true)
+                --printf("Hidden bone " .. bone_name)
+            end
+        end
+    else
+        for bone_name, v in pairs(det_bones) do
+            if not active_device:bone_visible(bone_name, true) then
+                active_device:set_bone_visible(bone_name, true, false, true)
+                ---printf("Shown bone " .. bone_name)
+            end
+        end
+    end
+end

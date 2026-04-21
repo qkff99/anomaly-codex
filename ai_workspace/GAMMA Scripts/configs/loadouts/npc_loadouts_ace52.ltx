@@ -1,0 +1,44 @@
+; section name can be anything as long as it is unique
+[anim_ace52]
+loadout_sec = monolith_novice_primary
+; this is the section of weapons in wep_importer we want to add
+weapons_sec = ace52
+; !!!! This will override vanilla loadouts in npc_loadouts.ltx. Use if you want to completely redefine what an NPC class can use. 
+; If ANY of these sections passes this as true, it will apply for this loadout section. 
+ignore_vanilla = false
+
+
+[anim_ace52_monolith]:anim_ace52
+loadout_sec = monolith_veteran_primary, monolith_master_primary
+
+;-----------------------------------------------------------------------
+
+[anim_ace52_csky]:anim_ace52_monolith
+loadout_sec = csky_master_primary
+
+;-----------------------------------------------------------------------
+
+[anim_ace52_freedom]:anim_ace52_monolith
+loadout_sec = freedom_veteran_primary, freedom_master_primary
+
+;-----------------------------------------------------------------------
+
+[anim_ace52_stalker]:anim_ace52_monolith
+loadout_sec = master_primary, stalker_expert_primary
+;-----------------------------------------------------------------------
+
+[anim_ace52_ecolog]:anim_ace52_monolith
+loadout_sec = ecolog_merc_primary
+
+;-----------------------------------------------------------------------
+
+[anim_ace52_killer]:anim_ace52_monolith
+loadout_sec = killer_veteran_primary, killer_master_primary
+;-----------------------------------------------------------------------
+
+[anim_ace52_greh]:anim_ace52_monolith
+loadout_sec = greh_experienced_primary, greh_veteran_primary, greh_master_primary
+;-----------------------------------------------------------------------
+
+[anim_ace52_isg]:anim_ace52_monolith
+loadout_sec = isg_master_primary, isg_primary

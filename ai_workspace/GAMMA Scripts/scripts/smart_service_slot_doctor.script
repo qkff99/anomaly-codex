@@ -1,0 +1,1641 @@
+smart_service_slot_doctor = smart_service_slot_doctor or {}
+
+local type = _G.type
+local pcall = _G.pcall
+local pairs = _G.pairs
+local ipairs = _G.ipairs
+local tostring = _G.tostring
+local tonumber = _G.tonumber
+local time_global = _G.time_global
+local io = _G.io
+local math_floor = math.floor
+local table_sort = table.sort
+local RegisterScriptCallback = _G.RegisterScriptCallback
+local db = _G.db
+local level = _G.level
+local alife = _G.alife
+local load_var = _G.load_var
+local utils_data = _G.utils_data
+local utils_obj = _G.utils_obj
+
+local inst = smart_service_slot_doctor
+
+local SCAN_COOLDOWN_MS = 250
+local ACTION_COOLDOWN_MS = 2000
+local POST_COMPLETE_EXIT_VERIFY_MS = 3000
+local POST_COMPLETE_TRADE_TO_TECH_VERIFY_MS = 10000
+local POST_TECH_UNKNOWN_GRACE_MS = 10000
+local POST_TECH_UNKNOWN_STALL_MS = 15000
+local POST_TECH_UNKNOWN_WATCH_MAX_MS = 45000
+local STATE_FLUSH_UPDATES = 5
+local INGRESS_WATCH_SMARTS = {
+    jup_a6 = true,
+}
+local INGRESS_NO_PROGRESS_MS = {
+    trade = 25000,
+    tech = 35000,
+}
+local INGRESS_OCCUPIED_BONUS_MS = {
+    trade = 10000,
+    tech = 15000,
+}
+
+local RULES = {
+    {
+        name = "trade",
+        fragment = "_beh_trade_job_",
+        slot_prefix = "logic@",
+        active_prefix = "beh@",
+        no_progress_ms = 20000,
+        has_intent = function(st)
+            if not st then
+                return false
+            end
+            if st.has_items_to_sell == true then
+                return true
+            end
+            local t = st.trade_items
+            if type(t) ~= "table" then
+                return false
+            end
+            for _, v in pairs(t) do
+                if (tonumber(v) or 0) > 0 then
+                    return true
+                end
+            end
+            return false
+        end,
+    },
+    {
+        name = "tech",
+        fragment = "_beh_tech_job_",
+        slot_prefix = "logic@",
+        active_prefix = "beh@",
+        no_progress_ms = 60000,
+        has_intent = function(st)
+            if not st then
+                return false
+            end
+            if st.has_tech_items == true then
+                return true
+            end
+            local t = st.tech_items
+            if type(t) ~= "table" then
+                return false
+            end
+            for _, v in pairs(t) do
+                if (tonumber(v) or 0) > 0 then
+                    return true
+                end
+            end
+            return false
+        end,
+    },
+}
+
+local resolve_issue_with_flush
+local arm_post_tech_watch
+
+local RUNTIME = {
+    callbacks_registered = false,
+    ready = false,
+    smart_next_scan_tg = {},
+    smart_diag_next_tg = {},
+    smart_skip_diag_next_tg = {},
+    smart_rule_cache = {},
+    smart_seen = {},
+    by_npc = {},
+    completed_watch_by_npc = {},
+    progress_by_npc = {},
+    post_tech_watch_by_npc = {},
+    ingress_by_npc = {},
+}
+
+local function now()
+    return (time_global and time_global()) or 0
+end
+
+local function reset_runtime()
+    RUNTIME.smart_next_scan_tg = {}
+    RUNTIME.smart_diag_next_tg = {}
+    RUNTIME.smart_skip_diag_next_tg = {}
+    RUNTIME.smart_rule_cache = {}
+    RUNTIME.smart_seen = {}
+    RUNTIME.by_npc = {}
+    RUNTIME.completed_watch_by_npc = {}
+    RUNTIME.progress_by_npc = {}
+    RUNTIME.post_tech_watch_by_npc = {}
+    RUNTIME.ingress_by_npc = {}
+end
+
+local function mark_runtime_ready()
+    RUNTIME.ready = true
+    reset_runtime()
+end
+
+local function get_logger()
+    local log = siski and siski.log
+    if type(log) ~= "table" then
+        return nil
+    end
+    return log
+end
+
+local function current_level_name()
+    if not (level and type(level.name) == "function") then
+        return "-"
+    end
+    local ok, res = pcall(level.name)
+    if ok and type(res) == "string" and res ~= "" then
+        return res
+    end
+    return "-"
+end
+
+local function append_fallback_log(level_name, line)
+    if not (io and io.open) then
+        return
+    end
+    local f = io.open("siski.log", "a")
+    if not f then
+        return
+    end
+    f:write(string.format("[%d][%s][SERVICE_DOCTOR] %s\n", now(), tostring(level_name or "INFO"), tostring(line or "")))
+    f:close()
+end
+
+local function log_with(level_name, fmt, ...)
+    local line = nil
+    if select("#", ...) > 0 then
+        local ok_fmt, res = pcall(string.format, tostring(fmt), ...)
+        line = ok_fmt and res or tostring(fmt)
+    else
+        line = tostring(fmt)
+    end
+    line = string.format("level=%s %s", tostring(current_level_name()), tostring(line))
+
+    local log = get_logger()
+    if log and type(log[level_name]) == "function" then
+        local ok = pcall(log[level_name], "SERVICE_DOCTOR", line)
+        if ok then
+            return
+        end
+    end
+    append_fallback_log(string.upper(tostring(level_name or "INFO")), line)
+    if type(printf) == "function" then
+        pcall(printf, "[SERVICE_DOCTOR] %s", line)
+    end
+end
+
+local function log_info(fmt, ...)
+    log_with("info", fmt, ...)
+end
+
+local function log_warn(fmt, ...)
+    log_with("warn", fmt, ...)
+end
+
+local function log_smart_skip(smart, reason)
+    return
+end
+
+local function starts_with(str, prefix)
+    return type(str) == "string" and type(prefix) == "string" and str:sub(1, #prefix) == prefix
+end
+
+local function string_has(str, fragment)
+    return type(str) == "string" and type(fragment) == "string" and string.find(str, fragment, 1, true) ~= nil
+end
+
+local function is_alive_object(obj)
+    if not obj then
+        return false
+    end
+    if type(obj.alive) ~= "function" then
+        return true
+    end
+    local ok, res = pcall(obj.alive, obj)
+    return ok and res == true
+end
+
+local function get_level_object(id)
+    if not (level and level.object_by_id and id) then
+        return nil
+    end
+    local ok, obj = pcall(level.object_by_id, id)
+    if ok then
+        return obj
+    end
+    return nil
+end
+
+local function get_live_object(id)
+    if not id then
+        return nil
+    end
+    local st = db and db.storage and db.storage[id] or nil
+    local obj = st and st.object or get_level_object(id)
+    if is_alive_object(obj) then
+        return obj
+    end
+    return nil
+end
+
+local function normalize_id(id)
+    id = tonumber(id) or 0
+    if id <= 0 or id == 65535 then
+        return nil
+    end
+    return id
+end
+
+local function resolve_squad_id_from_npc_id(npc_id)
+    npc_id = normalize_id(npc_id)
+    if not npc_id then
+        return nil
+    end
+
+    if siski and siski.trade and type(siski.trade.resolve_squad_id_from_npc_id) == "function" then
+        local ok_sid, sid = pcall(siski.trade.resolve_squad_id_from_npc_id, npc_id)
+        sid = ok_sid and normalize_id(sid) or nil
+        if sid then
+            return sid
+        end
+    end
+
+    if not alife then
+        return nil
+    end
+    local sim = alife()
+    if not sim then
+        return nil
+    end
+
+    local ok_obj, se_npc = pcall(function() return sim:object(npc_id) end)
+    if not (ok_obj and se_npc) then
+        return nil
+    end
+
+    local ok_sid, sid = pcall(function() return se_npc.group_id end)
+    sid = ok_sid and normalize_id(sid) or nil
+    if sid then
+        return sid
+    end
+
+    local ok_sid_fn, sid_fn = pcall(function() return se_npc:group_id() end)
+    sid_fn = ok_sid_fn and normalize_id(sid_fn) or nil
+    if sid_fn then
+        return sid_fn
+    end
+
+    return nil
+end
+
+local function get_current_squad_task_for_npc(npc_id)
+    if not (siski and siski.memory and type(siski.memory.get_squad_entry) == "function") then
+        return nil, nil, false
+    end
+
+    local squad_id = resolve_squad_id_from_npc_id(npc_id)
+    if not squad_id then
+        return nil, nil, false
+    end
+
+    local entry = siski.memory.get_squad_entry(squad_id)
+    if type(entry) ~= "table" then
+        return squad_id, nil, false
+    end
+
+    local task = entry.tasks and entry.tasks.current or nil
+    return squad_id, task, true
+end
+
+local function resolve_current_smart_for_npc_id(npc_id)
+    npc_id = normalize_id(npc_id)
+    if not npc_id or not alife then
+        return nil, nil
+    end
+
+    local sim = alife()
+    if not sim then
+        return nil, nil
+    end
+
+    local ok_obj, se_npc = pcall(function() return sim:object(npc_id) end)
+    if not (ok_obj and se_npc) then
+        return nil, nil
+    end
+
+    local smart_id = nil
+    local ok_sid, raw_sid = pcall(function() return se_npc.m_smart_terrain_id end)
+    smart_id = ok_sid and normalize_id(raw_sid) or nil
+    if not smart_id then
+        local ok_sid_fn, sid_fn = pcall(function() return se_npc:m_smart_terrain_id() end)
+        smart_id = ok_sid_fn and normalize_id(sid_fn) or nil
+    end
+    if not smart_id then
+        return nil, nil
+    end
+
+    local ok_smart, smart = pcall(function() return sim:object(smart_id) end)
+    if not (ok_smart and smart) then
+        return smart_id, nil
+    end
+    return smart_id, smart
+end
+
+local function safe_position(obj)
+    if not (obj and type(obj.position) == "function") then
+        return nil
+    end
+    local ok, pos = pcall(obj.position, obj)
+    if ok then
+        return pos
+    end
+    return nil
+end
+
+local function safe_current_point_index(obj)
+    if not (obj and type(obj.get_current_point_index) == "function") then
+        return nil
+    end
+    local ok, idx = pcall(obj.get_current_point_index, obj)
+    if ok then
+        return tonumber(idx) or nil
+    end
+    return nil
+end
+
+local function safe_path_index(obj)
+    if not (obj and load_var) then
+        return nil
+    end
+    local ok, idx = pcall(load_var, obj, "path_index", nil)
+    if ok then
+        return tonumber(idx) or nil
+    end
+    return nil
+end
+
+local function section_to_logic_from_active(active_section)
+    if not starts_with(active_section, "beh@") then
+        return nil
+    end
+    return "logic@" .. active_section:sub(5)
+end
+
+local function active_section_matches_rule(rule, active_section)
+    return starts_with(active_section, rule.active_prefix) and string_has(active_section, rule.fragment)
+end
+
+local function slot_section_matches_rule(rule, slot_section)
+    return starts_with(slot_section, rule.slot_prefix) and string_has(slot_section, rule.fragment)
+end
+
+local function get_smart_name(smart)
+    if not (smart and type(smart.name) == "function") then
+        return tostring(smart and smart.id or "nil")
+    end
+    local ok, name = pcall(smart.name, smart)
+    if ok and type(name) == "string" and name ~= "" then
+        return name
+    end
+    return tostring(smart and smart.id or "nil")
+end
+
+local function get_rule_cache_for_smart(smart)
+    local smart_id = tonumber(smart and smart.id) or nil
+    if not smart_id then
+        return nil
+    end
+    local cached = RUNTIME.smart_rule_cache[smart_id]
+    if cached then
+        return cached
+    end
+
+    local cache = {
+        service_slots = {},
+        has_service_slots = false,
+    }
+
+    local jobs = smart and smart.stalker_jobs
+    if type(jobs) == "table" then
+        for i = 1, #jobs do
+            local job = jobs[i]
+            local section = job and job.section or nil
+            if type(section) == "string" then
+                for _, rule in ipairs(RULES) do
+                    if slot_section_matches_rule(rule, section) then
+                        cache.service_slots[section] = {
+                            rule = rule,
+                            section = section,
+                        }
+                        cache.has_service_slots = true
+                        break
+                    end
+                end
+            end
+        end
+    end
+
+    RUNTIME.smart_rule_cache[smart_id] = cache
+    return cache
+end
+
+local function find_job_by_section(smart, section)
+    if not (smart and section and type(smart.find_job_by_section) == "function") then
+        return nil
+    end
+    local ok, job = pcall(smart.find_job_by_section, smart, section)
+    if ok then
+        return job
+    end
+    return nil
+end
+
+local function clear_job_idle(job)
+    if type(job) == "table" then
+        job.idle = nil
+    end
+end
+
+local function build_smart_snapshot(smart)
+    local smart_id = tonumber(smart and smart.id) or nil
+    if not smart_id then
+        return nil
+    end
+
+    local cache = get_rule_cache_for_smart(smart)
+    if not (cache and cache.has_service_slots) then
+        return nil
+    end
+
+    local snapshot = {
+        smart = smart,
+        smart_id = smart_id,
+        smart_name = get_smart_name(smart),
+        entries = {},
+        service_slots = {},
+    }
+
+    local npc_info = smart.npc_info
+    if type(npc_info) == "table" then
+        for id, info in pairs(npc_info) do
+            local nid = tonumber(id) or nil
+            if nid then
+                local st = db and db.storage and db.storage[nid] or nil
+                local obj = st and st.object or get_live_object(nid)
+                local job = info and info.job or nil
+                local active_section = st and st.active_section or nil
+                local active_scheme = st and st.active_scheme or nil
+                snapshot.entries[nid] = {
+                    id = nid,
+                    info = info,
+                    st = st,
+                    obj = obj,
+                    job = job,
+                    job_section = job and job.section or nil,
+                    active_section = active_section,
+                    active_scheme = active_scheme,
+                    path_index = (active_scheme == "beh") and safe_path_index(obj) or nil,
+                    current_point_index = safe_current_point_index(obj),
+                    position = safe_position(obj),
+                }
+            end
+        end
+    end
+
+    for slot_section, slot_cache in pairs(cache.service_slots) do
+        local owner_id = smart.npc_by_job_section and tonumber(smart.npc_by_job_section[slot_section]) or nil
+        snapshot.service_slots[slot_section] = {
+            section = slot_section,
+            rule = slot_cache.rule,
+            owner_id = owner_id,
+            owner = owner_id and snapshot.entries[owner_id] or nil,
+            job = find_job_by_section(smart, slot_section),
+        }
+    end
+
+    return snapshot
+end
+
+local function count_table_entries(t)
+    if type(t) ~= "table" then
+        return 0
+    end
+    local n = 0
+    for _ in pairs(t) do
+        n = n + 1
+    end
+    return n
+end
+
+local function get_service_rule_by_active_section(active_section)
+    for _, rule in ipairs(RULES) do
+        if active_section_matches_rule(rule, active_section) then
+            return rule
+        end
+    end
+    return nil
+end
+
+local function log_smart_seen(snapshot)
+    return
+end
+
+local function log_service_snapshot(snapshot, issues)
+    return
+end
+
+local function clear_runtime_state_for_npc(npc_id)
+    npc_id = tonumber(npc_id) or nil
+    if npc_id then
+        RUNTIME.by_npc[npc_id] = nil
+        RUNTIME.completed_watch_by_npc[npc_id] = nil
+        RUNTIME.progress_by_npc[npc_id] = nil
+        RUNTIME.post_tech_watch_by_npc[npc_id] = nil
+        RUNTIME.ingress_by_npc[npc_id] = nil
+    end
+end
+
+local function clear_runtime_state_for_smart(smart_id)
+    smart_id = tonumber(smart_id) or nil
+    if not smart_id then
+        return
+    end
+    RUNTIME.smart_next_scan_tg[smart_id] = nil
+    RUNTIME.smart_rule_cache[smart_id] = nil
+    for npc_id, state in pairs(RUNTIME.by_npc) do
+        if state.smart_id == smart_id then
+            RUNTIME.by_npc[npc_id] = nil
+        end
+    end
+    for npc_id, watch in pairs(RUNTIME.completed_watch_by_npc) do
+        if watch.smart_id == smart_id then
+            RUNTIME.completed_watch_by_npc[npc_id] = nil
+        end
+    end
+    for npc_id, state in pairs(RUNTIME.progress_by_npc) do
+        if state.smart_id == smart_id then
+            RUNTIME.progress_by_npc[npc_id] = nil
+        end
+    end
+    for npc_id, watch in pairs(RUNTIME.post_tech_watch_by_npc) do
+        if watch.smart_id == smart_id then
+            RUNTIME.post_tech_watch_by_npc[npc_id] = nil
+        end
+    end
+    for npc_id, state in pairs(RUNTIME.ingress_by_npc) do
+        if state.smart_id == smart_id then
+            RUNTIME.ingress_by_npc[npc_id] = nil
+        end
+    end
+end
+
+local function quantize_coord(v)
+    local n = tonumber(v)
+    if not n then
+        return "-"
+    end
+    return tostring(math_floor(n * 5 + 0.5) / 5)
+end
+
+local function quantize_coord_coarse(v)
+    local n = tonumber(v)
+    if not n then
+        return "-"
+    end
+    return tostring(math_floor(n + 0.5))
+end
+
+local function stable_table_fingerprint(t)
+    if type(t) ~= "table" then
+        return "-"
+    end
+    local keys = {}
+    for k, v in pairs(t) do
+        if v ~= nil then
+            keys[#keys + 1] = {
+                raw = k,
+                sort = tostring(k),
+            }
+        end
+    end
+    if #keys == 0 then
+        return "-"
+    end
+    table_sort(keys, function(a, b)
+        return a.sort < b.sort
+    end)
+    local parts = {}
+    for i = 1, #keys do
+        local item = keys[i]
+        parts[#parts + 1] = tostring(item.sort) .. "=" .. tostring(t[item.raw] or 0)
+    end
+    return table.concat(parts, ";")
+end
+
+local function safe_money(obj)
+    if not (obj and type(obj.money) == "function") then
+        return "-"
+    end
+    local ok, value = pcall(obj.money, obj)
+    if ok then
+        return tostring(tonumber(value) or value or "-")
+    end
+    return "-"
+end
+
+local function safe_best_weapon(obj)
+    if not (obj and type(obj.best_weapon) == "function") then
+        return nil
+    end
+    local ok, wpn = pcall(obj.best_weapon, obj)
+    if ok and wpn then
+        return wpn
+    end
+    return nil
+end
+
+local function safe_item_section(item)
+    if not (item and type(item.section) == "function") then
+        return "-"
+    end
+    local ok, sec = pcall(item.section, item)
+    if ok and sec then
+        return tostring(sec)
+    end
+    return "-"
+end
+
+local function safe_installed_upgrades_fingerprint(item)
+    if not (item and utils_item and type(utils_item.get_upgrades_installed) == "function") then
+        return "-"
+    end
+    local ok, installed = pcall(utils_item.get_upgrades_installed, item, nil, true)
+    if not (ok and type(installed) == "table") then
+        return "-"
+    end
+    return stable_table_fingerprint(installed)
+end
+
+local function build_progress_signature(entry, rule)
+    local st = entry and entry.st or nil
+    local obj = entry and entry.obj or nil
+    local base = table.concat({
+        tostring(rule and rule.name or "-"),
+        tostring(entry and entry.active_section or "-"),
+        tostring(entry and entry.job_section or "-"),
+        safe_money(obj),
+    }, "|")
+
+    if rule and rule.name == "trade" then
+        return base .. "|seller=" .. tostring(entry and entry.info and entry.info.job and entry.info.job.seller_id or "-")
+            .. "|items=" .. stable_table_fingerprint(st and st.trade_items)
+    end
+
+    local wpn = safe_best_weapon(obj)
+    return base
+        .. "|mechanic=" .. tostring(entry and entry.info and entry.info.job and entry.info.job.mechanic_id or "-")
+        .. "|items=" .. stable_table_fingerprint(st and st.tech_items)
+        .. "|weapon=" .. safe_item_section(wpn)
+        .. "|upgrades=" .. safe_installed_upgrades_fingerprint(wpn)
+end
+
+local function build_post_tech_signature(npc, info, st)
+    local pos = safe_position(npc)
+    local job = info and info.job or nil
+    return table.concat({
+        tostring(st and st.active_section or "-"),
+        tostring(st and st.active_scheme or "-"),
+        tostring(job and job.section or "-"),
+        tostring(safe_current_point_index(npc) or "-"),
+        tostring(safe_path_index(npc) or "-"),
+        quantize_coord(pos and pos.x),
+        quantize_coord(pos and pos.y),
+        quantize_coord(pos and pos.z),
+    }, "|")
+end
+
+local function is_ingress_watch_smart(snapshot)
+    return type(snapshot) == "table" and INGRESS_WATCH_SMARTS[tostring(snapshot.smart_name or "")] == true
+end
+
+local function get_service_slot_for_rule(snapshot, rule)
+    if not (type(snapshot) == "table" and type(snapshot.service_slots) == "table" and type(rule) == "table") then
+        return nil, nil
+    end
+    for slot_section, slot in pairs(snapshot.service_slots) do
+        if slot and slot.rule == rule then
+            return slot_section, slot
+        end
+    end
+    return nil, nil
+end
+
+local function build_ingress_signature(entry, slot_owner_id)
+    local pos = entry and entry.position or nil
+    return table.concat({
+        tostring(entry and entry.active_section or "-"),
+        tostring(entry and entry.active_scheme or "-"),
+        tostring(entry and entry.job_section or "-"),
+        tostring(slot_owner_id or "-"),
+        quantize_coord_coarse(pos and pos.x),
+        quantize_coord_coarse(pos and pos.y),
+        quantize_coord_coarse(pos and pos.z),
+    }, "|")
+end
+
+local function choose_ingress_rule(snapshot, entry)
+    if not (type(snapshot) == "table" and type(entry) == "table") then
+        return nil
+    end
+
+    local active_rule = get_service_rule_by_active_section(entry.active_section)
+    if active_rule then
+        return nil
+    end
+
+    local job_section = entry.job_section
+    if type(job_section) == "string" then
+        for _, rule in ipairs(RULES) do
+            if slot_section_matches_rule(rule, job_section) and rule.has_intent(entry.st) == true then
+                return rule
+            end
+        end
+    end
+
+    local trade_intent = RULES[1] and RULES[1].has_intent(entry.st) == true or false
+    local tech_intent = RULES[2] and RULES[2].has_intent(entry.st) == true or false
+
+    if trade_intent and not tech_intent then
+        return RULES[1]
+    end
+    if tech_intent and not trade_intent then
+        return RULES[2]
+    end
+    if trade_intent and tech_intent then
+        return RULES[1]
+    end
+    return nil
+end
+
+local function maybe_arm_departed_post_tech_watch(snapshot, npc_id, state, tg)
+    if type(state) ~= "table" or state.rule_name ~= "tech" then
+        return
+    end
+    if state.last_intent ~= true then
+        return
+    end
+    if (tg - (tonumber(state.first_seen_tg) or tg)) < POST_COMPLETE_EXIT_VERIFY_MS then
+        return
+    end
+    if RUNTIME.completed_watch_by_npc[npc_id] ~= nil then
+        return
+    end
+    if RUNTIME.post_tech_watch_by_npc[npc_id] ~= nil then
+        return
+    end
+
+    local entry = snapshot.entries[npc_id]
+    local npc = entry and entry.obj or get_live_object(npc_id)
+    if not is_alive_object(npc) then
+        return
+    end
+
+    arm_post_tech_watch(npc, snapshot.smart, "departed_tech_with_live_intent", tg)
+end
+
+local function refresh_progress_tracking(snapshot)
+    local tg = now()
+    local active_service_ids = {}
+
+    for npc_id, entry in pairs(snapshot.entries) do
+        if entry.active_section and entry.active_scheme == "beh" then
+            local rule = get_service_rule_by_active_section(entry.active_section)
+            if rule then
+                active_service_ids[npc_id] = true
+                local signature = build_progress_signature(entry, rule)
+                local state = RUNTIME.progress_by_npc[npc_id]
+                if not state
+                    or state.smart_id ~= snapshot.smart_id
+                    or state.rule_name ~= rule.name
+                    or state.active_section ~= entry.active_section
+                    or state.slot_section ~= tostring(entry.job_section or "-")
+                then
+                    RUNTIME.progress_by_npc[npc_id] = {
+                        smart_id = snapshot.smart_id,
+                        rule_name = rule.name,
+                        active_section = entry.active_section,
+                        slot_section = tostring(entry.job_section or "-"),
+                        last_signature = signature,
+                        last_progress_tg = tg,
+                        last_seen_tg = tg,
+                        first_seen_tg = tg,
+                        last_intent = rule.has_intent(entry.st) == true,
+                    }
+                else
+                    state.last_seen_tg = tg
+                    state.last_intent = rule.has_intent(entry.st) == true
+                    if state.last_signature ~= signature then
+                        state.last_signature = signature
+                        state.last_progress_tg = tg
+                    end
+                end
+            end
+        end
+    end
+
+    for npc_id, state in pairs(RUNTIME.progress_by_npc) do
+        if state.smart_id == snapshot.smart_id and active_service_ids[npc_id] ~= true then
+            maybe_arm_departed_post_tech_watch(snapshot, npc_id, state, tg)
+            RUNTIME.progress_by_npc[npc_id] = nil
+        end
+    end
+end
+
+local function refresh_ingress_tracking(snapshot)
+    local tg = now()
+    local active_ids = {}
+    local ingress_enabled = is_ingress_watch_smart(snapshot)
+
+    if ingress_enabled then
+        for npc_id, entry in pairs(snapshot.entries) do
+            local rule = choose_ingress_rule(snapshot, entry)
+            if rule then
+                local _, slot = get_service_slot_for_rule(snapshot, rule)
+                local slot_owner_id = slot and tonumber(slot.owner_id) or nil
+                local signature = build_ingress_signature(entry, slot_owner_id)
+                local state = RUNTIME.ingress_by_npc[npc_id]
+                active_ids[npc_id] = true
+
+                if not state
+                    or state.smart_id ~= snapshot.smart_id
+                    or state.rule_name ~= rule.name
+                then
+                    RUNTIME.ingress_by_npc[npc_id] = {
+                        smart_id = snapshot.smart_id,
+                        smart_name = snapshot.smart_name,
+                        rule_name = rule.name,
+                        last_signature = signature,
+                        last_progress_tg = tg,
+                        last_seen_tg = tg,
+                        first_seen_tg = tg,
+                        slot_owner_id = slot_owner_id,
+                    }
+                else
+                    state.last_seen_tg = tg
+                    state.slot_owner_id = slot_owner_id
+                    if state.last_signature ~= signature then
+                        state.last_signature = signature
+                        state.last_progress_tg = tg
+                    end
+                end
+            end
+        end
+    end
+
+    for npc_id, state in pairs(RUNTIME.ingress_by_npc) do
+        if state.smart_id == snapshot.smart_id and active_ids[npc_id] ~= true then
+            RUNTIME.ingress_by_npc[npc_id] = nil
+        end
+    end
+end
+
+local function sanitize_service_slots(snapshot)
+    local changed = false
+    for slot_section, slot in pairs(snapshot.service_slots) do
+        local owner_id = slot.owner_id
+        if owner_id then
+            local owner = slot.owner
+            local owner_info = owner and owner.info or nil
+            local owner_job_section = owner and owner.job_section or nil
+            local owner_obj = owner and owner.obj or nil
+            local invalid = false
+
+            if not owner_info then
+                invalid = true
+            elseif owner_job_section ~= slot_section then
+                invalid = true
+            elseif not is_alive_object(owner_obj) then
+                invalid = true
+            end
+
+            if invalid then
+                if snapshot.smart.npc_by_job_section then
+                    snapshot.smart.npc_by_job_section[slot_section] = nil
+                end
+                clear_job_idle(slot.job)
+                changed = true
+                snapshot.service_slots[slot_section].owner_id = nil
+                snapshot.service_slots[slot_section].owner = nil
+            end
+        end
+    end
+    return changed
+end
+
+local function make_post_complete_issue(snapshot, entry, rule, slot_section, linked, watch)
+    return {
+        kind = "service_post_complete_stuck",
+        smart = snapshot.smart,
+        smart_id = snapshot.smart_id,
+        smart_name = snapshot.smart_name,
+        rule = rule,
+        npc_id = entry.id,
+        entry = entry,
+        slot_section = slot_section,
+        linked = linked == true,
+        active_section = entry.active_section,
+        active_scheme = entry.active_scheme,
+        watch = watch,
+    }
+end
+
+local function make_orphan_issue(snapshot, entry, rule, slot_section, linked, squad_id, current_task)
+    return {
+        kind = "service_orphaned",
+        smart = snapshot.smart,
+        smart_id = snapshot.smart_id,
+        smart_name = snapshot.smart_name,
+        rule = rule,
+        npc_id = entry.id,
+        entry = entry,
+        slot_section = slot_section,
+        linked = linked == true,
+        active_section = entry.active_section,
+        active_scheme = entry.active_scheme,
+        squad_id = squad_id,
+        current_task = current_task,
+    }
+end
+
+local function make_no_progress_issue(snapshot, entry, rule, slot_section, linked, stalled_ms)
+    return {
+        kind = "service_no_progress",
+        smart = snapshot.smart,
+        smart_id = snapshot.smart_id,
+        smart_name = snapshot.smart_name,
+        rule = rule,
+        npc_id = entry.id,
+        entry = entry,
+        slot_section = slot_section,
+        linked = linked == true,
+        active_section = entry.active_section,
+        active_scheme = entry.active_scheme,
+        stalled_ms = stalled_ms,
+    }
+end
+
+local function make_ingress_issue(snapshot, entry, rule, slot_section, linked, stalled_ms, slot_owner_id)
+    return {
+        kind = "service_ingress_stuck",
+        smart = snapshot.smart,
+        smart_id = snapshot.smart_id,
+        smart_name = snapshot.smart_name,
+        rule = rule,
+        npc_id = entry.id,
+        entry = entry,
+        slot_section = slot_section,
+        linked = linked == true,
+        active_section = entry.active_section,
+        active_scheme = entry.active_scheme,
+        stalled_ms = stalled_ms,
+        slot_owner_id = slot_owner_id,
+    }
+end
+
+local function clear_completed_watch(npc_id)
+    npc_id = tonumber(npc_id) or nil
+    if npc_id then
+        RUNTIME.completed_watch_by_npc[npc_id] = nil
+    end
+end
+
+local function clear_post_tech_watch(npc_id)
+    npc_id = tonumber(npc_id) or nil
+    if npc_id then
+        RUNTIME.post_tech_watch_by_npc[npc_id] = nil
+    end
+end
+
+local function arm_completed_watch(npc, smart, kind, status, reason)
+    if status ~= "completed" then
+        return false
+    end
+    if not (npc and type(npc.id) == "function") then
+        return false
+    end
+
+    local npc_id = tonumber(npc:id()) or nil
+    local smart_id = tonumber(smart and smart.id) or nil
+    if not (npc_id and smart_id) then
+        return false
+    end
+
+    local st = db and db.storage and db.storage[npc_id] or nil
+    local expect = "exit"
+    if tostring(kind) == "trade" and RULES[2] and RULES[2].has_intent(st) then
+        expect = "tech_or_exit"
+    end
+
+    RUNTIME.completed_watch_by_npc[npc_id] = {
+        npc_id = npc_id,
+        smart_id = smart_id,
+        smart_name = get_smart_name(smart),
+        kind = tostring(kind or "-"),
+        expect = expect,
+        reason = tostring(reason or "-"),
+        armed_tg = now(),
+    }
+
+    return true
+end
+
+arm_post_tech_watch = function(npc, smart, reason, left_service_tg)
+    if not (npc and type(npc.id) == "function") then
+        return false
+    end
+
+    local npc_id = tonumber(npc:id()) or nil
+    local smart_id = tonumber(smart and smart.id) or nil
+    if not (npc_id and smart_id) then
+        return false
+    end
+
+    local st = db and db.storage and db.storage[npc_id] or nil
+    local info = smart and smart.npc_info and smart.npc_info[npc_id] or nil
+    local tg = now()
+    local watch = RUNTIME.post_tech_watch_by_npc[npc_id]
+
+    if watch and watch.smart_id ~= smart_id then
+        watch = nil
+    end
+
+    if not watch then
+        watch = {
+            npc_id = npc_id,
+            smart_id = smart_id,
+            smart_name = get_smart_name(smart),
+            armed_tg = tg,
+            reason = tostring(reason or "-"),
+            left_service_tg = left_service_tg,
+            last_signature = build_post_tech_signature(npc, info, st),
+            last_progress_tg = tg,
+        }
+        RUNTIME.post_tech_watch_by_npc[npc_id] = watch
+    else
+        watch.smart_name = get_smart_name(smart)
+        watch.reason = tostring(reason or watch.reason or "-")
+        if left_service_tg and not watch.left_service_tg then
+            watch.left_service_tg = left_service_tg
+        end
+        watch.last_signature = build_post_tech_signature(npc, info, st)
+        watch.last_progress_tg = tg
+    end
+
+    return true
+end
+
+local function arm_post_tech_unknown_watch(npc, smart, kind, status, reason)
+    if not (status == "completed" and tostring(kind) == "tech") then
+        return false
+    end
+    return arm_post_tech_watch(npc, smart, reason, nil)
+end
+
+local function detect_post_complete_issues(snapshot, issued)
+    local issues = {}
+    local tg = now()
+
+    for npc_id, watch in pairs(RUNTIME.completed_watch_by_npc) do
+        if watch.smart_id == snapshot.smart_id then
+            local entry = snapshot.entries[npc_id]
+            if not (entry and entry.st and entry.active_section and entry.active_scheme == "beh") then
+                clear_completed_watch(npc_id)
+            else
+                local active_rule = get_service_rule_by_active_section(entry.active_section)
+                local slot_section = entry.job_section
+                if active_rule and not slot_section_matches_rule(active_rule, slot_section) then
+                    slot_section = section_to_logic_from_active(entry.active_section)
+                end
+                local slot = slot_section and snapshot.service_slots[slot_section] or nil
+                local linked_owner_id = slot and slot.owner_id or nil
+                local verify_ms = watch.expect == "tech_or_exit" and POST_COMPLETE_TRADE_TO_TECH_VERIFY_MS or POST_COMPLETE_EXIT_VERIFY_MS
+
+                if (tg - (tonumber(watch.armed_tg) or tg)) < verify_ms then
+                    -- wait for vanilla to transition out of service or into tech
+                elseif watch.kind == "trade" then
+                    if active_rule == nil then
+                        clear_completed_watch(npc_id)
+                    elseif watch.expect == "tech_or_exit" then
+                        if active_rule.name == "trade" then
+                            issues[#issues + 1] = make_post_complete_issue(snapshot, entry, active_rule, slot_section, linked_owner_id == npc_id, watch)
+                            issued[npc_id] = true
+                        else
+                            clear_completed_watch(npc_id)
+                        end
+                    elseif active_rule.name == "trade" or active_rule.name == "tech" then
+                        issues[#issues + 1] = make_post_complete_issue(snapshot, entry, active_rule, slot_section, linked_owner_id == npc_id, watch)
+                        issued[npc_id] = true
+                    else
+                        clear_completed_watch(npc_id)
+                    end
+                elseif watch.kind == "tech" then
+                    if active_rule == nil then
+                        clear_completed_watch(npc_id)
+                    else
+                        issues[#issues + 1] = make_post_complete_issue(snapshot, entry, active_rule, slot_section, linked_owner_id == npc_id, watch)
+                        issued[npc_id] = true
+                    end
+                else
+                    clear_completed_watch(npc_id)
+                end
+            end
+        end
+    end
+
+    return issues
+end
+
+local function detect_orphan_service_issues(snapshot, issued)
+    local issues = {}
+
+    if not (siski and siski.memory and type(siski.memory.get_squad_entry) == "function") then
+        return issues
+    end
+
+    for npc_id, entry in pairs(snapshot.entries) do
+        if issued[npc_id] ~= true and entry.active_section and entry.active_scheme == "beh" then
+            local rule = get_service_rule_by_active_section(entry.active_section)
+            if rule then
+                local slot_section = entry.job_section
+                if not slot_section_matches_rule(rule, slot_section) then
+                    slot_section = section_to_logic_from_active(entry.active_section)
+                end
+                local slot = slot_section and snapshot.service_slots[slot_section] or nil
+                local linked = slot and slot.owner_id == npc_id or false
+                local squad_id, current_task, has_memory_entry = get_current_squad_task_for_npc(npc_id)
+
+                if has_memory_entry
+                    and squad_id
+                    and rule.name == "trade"
+                    and (type(current_task) ~= "table" or current_task.type ~= "TRADE" or current_task.target ~= snapshot.smart_name)
+                then
+                    issues[#issues + 1] = make_orphan_issue(snapshot, entry, rule, slot_section, linked, squad_id, current_task)
+                    issued[npc_id] = true
+                end
+            end
+        end
+    end
+
+    return issues
+end
+
+local function detect_no_progress_issues(snapshot, issued)
+    local issues = {}
+    local tg = now()
+
+    for npc_id, entry in pairs(snapshot.entries) do
+        if issued[npc_id] ~= true and entry.active_section and entry.active_scheme == "beh" then
+            local rule = get_service_rule_by_active_section(entry.active_section)
+            if rule and RUNTIME.completed_watch_by_npc[npc_id] == nil then
+                local slot_section = entry.job_section
+                if not slot_section_matches_rule(rule, slot_section) then
+                    slot_section = section_to_logic_from_active(entry.active_section)
+                end
+                local slot = slot_section and snapshot.service_slots[slot_section] or nil
+                local linked = slot and slot.owner_id == npc_id or false
+                local progress = RUNTIME.progress_by_npc[npc_id]
+                local stalled_ms = tg - (tonumber(progress and progress.last_progress_tg) or tg)
+                local limit_ms = tonumber(rule.no_progress_ms) or 0
+                if progress and stalled_ms >= limit_ms then
+                    issues[#issues + 1] = make_no_progress_issue(snapshot, entry, rule, slot_section, linked, stalled_ms)
+                    issued[npc_id] = true
+                end
+            end
+        end
+    end
+
+    return issues
+end
+
+local function detect_ingress_issues(snapshot, issued)
+    local issues = {}
+    local tg = now()
+
+    if not is_ingress_watch_smart(snapshot) then
+        return issues
+    end
+
+    for npc_id, entry in pairs(snapshot.entries) do
+        if issued[npc_id] ~= true then
+            local progress = RUNTIME.ingress_by_npc[npc_id]
+            if progress and progress.smart_id == snapshot.smart_id then
+                local rule = choose_ingress_rule(snapshot, entry)
+                if rule and progress.rule_name == rule.name then
+                    local slot_section, slot = get_service_slot_for_rule(snapshot, rule)
+                    local slot_owner_id = slot and tonumber(slot.owner_id) or nil
+                    local linked = slot_owner_id == npc_id
+                    local stalled_ms = tg - (tonumber(progress.last_progress_tg) or tg)
+                    local limit_ms = tonumber(INGRESS_NO_PROGRESS_MS[rule.name]) or 0
+                    if slot_owner_id and slot_owner_id ~= npc_id then
+                        limit_ms = limit_ms + (tonumber(INGRESS_OCCUPIED_BONUS_MS[rule.name]) or 0)
+                    end
+                    if stalled_ms >= limit_ms then
+                        issues[#issues + 1] = make_ingress_issue(snapshot, entry, rule, slot_section, linked, stalled_ms, slot_owner_id)
+                        issued[npc_id] = true
+                    end
+                end
+            end
+        end
+    end
+
+    return issues
+end
+
+local function detect_cleanup_issues(snapshot)
+    local issues = {}
+    local issued = {}
+
+    local post_complete_issues = detect_post_complete_issues(snapshot, issued)
+    for i = 1, #post_complete_issues do
+        issues[#issues + 1] = post_complete_issues[i]
+    end
+
+    local orphan_issues = detect_orphan_service_issues(snapshot, issued)
+    for i = 1, #orphan_issues do
+        issues[#issues + 1] = orphan_issues[i]
+    end
+
+    local ingress_issues = detect_ingress_issues(snapshot, issued)
+    for i = 1, #ingress_issues do
+        issues[#issues + 1] = ingress_issues[i]
+    end
+
+    local no_progress_issues = detect_no_progress_issues(snapshot, issued)
+    for i = 1, #no_progress_issues do
+        issues[#issues + 1] = no_progress_issues[i]
+    end
+
+    return issues, issued
+end
+
+local function ensure_state(issue)
+    local tg = now()
+    local npc_id = issue.npc_id
+    local issue_key = table.concat({
+        issue.kind,
+        issue.rule and issue.rule.name or "-",
+        tostring(issue.slot_section or "-"),
+        tostring(issue.active_section or "-"),
+    }, "|")
+
+    local state = RUNTIME.by_npc[npc_id]
+    if not state or state.issue_key ~= issue_key then
+        state = {
+            issue_key = issue_key,
+            smart_id = issue.smart_id,
+            first_seen_tg = tg,
+            last_seen_tg = tg,
+            last_action_tg = 0,
+        }
+        RUNTIME.by_npc[npc_id] = state
+        log_info(
+            "issue_seen kind=%s smart=%s npc=%s id=%s rule=%s linked=%s slot=%s active=%s",
+            tostring(issue.kind),
+            tostring(issue.smart_name),
+            issue.entry and issue.entry.obj and issue.entry.obj:name() or tostring(issue.npc_id),
+            tostring(issue.npc_id),
+            issue.rule and issue.rule.name or "?",
+            tostring(issue.linked),
+            tostring(issue.slot_section),
+            tostring(issue.active_section)
+        )
+        return state, true
+    end
+
+    state.smart_id = issue.smart_id
+    state.last_seen_tg = tg
+    return state, false
+end
+
+local function flush_npc_runtime_state(issue)
+    local entry = issue and issue.entry or nil
+    local npc = entry and entry.obj or nil
+    local st = entry and entry.st or nil
+    if not is_alive_object(npc) then
+        return false, "no_live_npc"
+    end
+
+    local npc_id = issue and issue.npc_id or nil
+    local state_mgr = st and st.state_mgr or nil
+
+    if type(npc.clear_animations) == "function" then
+        pcall(npc.clear_animations, npc)
+    end
+
+    if type(npc.inactualize_patrol_path) == "function" then
+        pcall(npc.inactualize_patrol_path, npc)
+    end
+
+    if utils_obj and type(utils_obj.send_to_nearest_accessible_vertex) == "function" and type(npc.level_vertex_id) == "function" then
+        local ok_lvid, lvid = pcall(npc.level_vertex_id, npc)
+        if ok_lvid and lvid then
+            pcall(utils_obj.send_to_nearest_accessible_vertex, npc, lvid, "smart_service_slot_doctor")
+        end
+    end
+
+    if state_mgr then
+        local animation = state_mgr.animation
+        if animation and type(animation.set_state) == "function" then
+            pcall(animation.set_state, animation, nil, true)
+            if type(animation.set_control) == "function" then
+                pcall(animation.set_control, animation)
+            end
+        end
+
+        local animstate = state_mgr.animstate
+        if animstate and type(animstate.set_state) == "function" then
+            pcall(animstate.set_state, animstate, nil, true)
+            if type(animstate.set_control) == "function" then
+                pcall(animstate.set_control, animstate)
+            end
+        end
+
+        if type(state_mgr.set_state) == "function" then
+            pcall(state_mgr.set_state, state_mgr, "idle", nil, nil, nil, {fast_set = true})
+        end
+
+        if type(state_mgr.update) == "function" then
+            for _ = 1, STATE_FLUSH_UPDATES do
+                pcall(state_mgr.update, state_mgr)
+            end
+        end
+    end
+
+    log_warn(
+        "state_flush smart=%s npc=%s id=%s kind=%s rule=%s active=%s",
+        tostring(issue and issue.smart_name or "-"),
+        entry and entry.obj and entry.obj:name() or tostring(npc_id),
+        tostring(npc_id),
+        tostring(issue and issue.kind or "-"),
+        issue and issue.rule and issue.rule.name or "?",
+        tostring(issue and issue.active_section or "-")
+    )
+
+    return true, nil
+end
+
+resolve_issue_with_flush = function(issue, tag)
+    local tg = now()
+    local state, _ = ensure_state(issue)
+
+    if tg < ((tonumber(state.last_action_tg) or 0) + ACTION_COOLDOWN_MS) then
+        return
+    end
+
+    state.last_action_tg = tg
+
+    local ok_flush, reason = flush_npc_runtime_state(issue)
+    if not ok_flush then
+        log_warn(
+            "state_flush_failed smart=%s id=%s kind=%s rule=%s reason=%s slot=%s active=%s tag=%s",
+            issue.smart_name,
+            tostring(issue.npc_id),
+            tostring(issue.kind or "-"),
+            issue.rule and issue.rule.name or "?",
+            tostring(reason),
+            tostring(issue.slot_section),
+            tostring(issue.active_section),
+            tostring(tag or "-")
+        )
+    end
+end
+
+local function resolve_service_post_complete_stuck(issue)
+    resolve_issue_with_flush(issue, "post_complete")
+end
+
+local function resolve_service_orphaned_issue(issue)
+    clear_completed_watch(issue.npc_id)
+    resolve_issue_with_flush(issue, "orphaned")
+end
+
+local function resolve_service_no_progress_issue(issue)
+    resolve_issue_with_flush(issue, "no_progress")
+end
+
+local function resolve_service_ingress_stuck_issue(issue)
+    resolve_issue_with_flush(issue, "ingress")
+end
+
+local RESOLVERS = {
+    service_post_complete_stuck = resolve_service_post_complete_stuck,
+    service_orphaned = resolve_service_orphaned_issue,
+    service_ingress_stuck = resolve_service_ingress_stuck_issue,
+    service_no_progress = resolve_service_no_progress_issue,
+}
+
+local function clear_resolved_states(snapshot, issued)
+    local current_ids = {}
+    for npc_id in pairs(snapshot.entries) do
+        current_ids[npc_id] = true
+    end
+
+    for npc_id, state in pairs(RUNTIME.by_npc) do
+        if state.smart_id == snapshot.smart_id and current_ids[npc_id] and issued[npc_id] ~= true then
+            RUNTIME.by_npc[npc_id] = nil
+        end
+    end
+end
+
+local function process_smart(smart)
+    if RUNTIME.ready ~= true then
+        return
+    end
+
+    local smart_id = tonumber(smart and smart.id) or nil
+    if not smart_id then
+        return
+    end
+    if smart.disabled then
+        log_smart_skip(smart, "disabled")
+        return
+    end
+    if smart.is_on_actor_level ~= true then
+        log_smart_skip(smart, "not_actor_level")
+        return
+    end
+
+    local tg = now()
+    if tg < (tonumber(RUNTIME.smart_next_scan_tg[smart_id]) or 0) then
+        return
+    end
+    RUNTIME.smart_next_scan_tg[smart_id] = tg + SCAN_COOLDOWN_MS
+
+    local snapshot = build_smart_snapshot(smart)
+    if not snapshot then
+        log_smart_skip(smart, "no_snapshot")
+        return
+    end
+
+    log_smart_seen(snapshot)
+
+    sanitize_service_slots(snapshot)
+    refresh_progress_tracking(snapshot)
+    refresh_ingress_tracking(snapshot)
+
+    local issues, issued = detect_cleanup_issues(snapshot)
+    log_service_snapshot(snapshot, issues)
+    for i = 1, #issues do
+        local issue = issues[i]
+        local resolver = RESOLVERS[issue.kind]
+        if resolver then
+            resolver(issue)
+        end
+    end
+
+    clear_resolved_states(snapshot, issued)
+end
+
+local function on_actor_first_update()
+    mark_runtime_ready()
+end
+
+local function on_load_state()
+    mark_runtime_ready()
+end
+
+local function on_server_entity_unregister(se_obj, type_name)
+    local id = se_obj and tonumber(se_obj.id) or nil
+    if id then
+        clear_runtime_state_for_npc(id)
+    end
+    if type_name == "se_smart_terrain" and id then
+        clear_runtime_state_for_smart(id)
+    end
+end
+
+local function on_smart_terrain_update(smart)
+    process_smart(smart)
+end
+
+local function on_npc_update(npc)
+    if RUNTIME.ready ~= true then
+        return
+    end
+    if not (npc and type(npc.id) == "function") then
+        return
+    end
+
+    local npc_id = tonumber(npc:id()) or nil
+    local watch = npc_id and RUNTIME.post_tech_watch_by_npc[npc_id] or nil
+    if not watch then
+        return
+    end
+
+    if not is_alive_object(npc) then
+        clear_post_tech_watch(npc_id)
+        return
+    end
+
+    local tg = now()
+    if (tg - (tonumber(watch.armed_tg) or tg)) > POST_TECH_UNKNOWN_WATCH_MAX_MS then
+        clear_post_tech_watch(npc_id)
+        return
+    end
+
+    local st = db and db.storage and db.storage[npc_id] or nil
+    if not st then
+        clear_post_tech_watch(npc_id)
+        return
+    end
+
+    local smart_id, smart = resolve_current_smart_for_npc_id(npc_id)
+    if smart_id and watch.smart_id and smart_id ~= watch.smart_id then
+        clear_post_tech_watch(npc_id)
+        return
+    end
+    if not (smart and smart.npc_info and smart.npc_info[npc_id]) then
+        return
+    end
+
+    local info = smart.npc_info[npc_id]
+    local active_section = st.active_section
+    local active_scheme = st.active_scheme
+    local in_service_tech = active_scheme == "beh" and get_service_rule_by_active_section(active_section) == RULES[2]
+
+    local signature = build_post_tech_signature(npc, info, st)
+    if watch.last_signature ~= signature then
+        watch.last_signature = signature
+        watch.last_progress_tg = tg
+    end
+
+    if in_service_tech then
+        return
+    end
+
+    if not watch.left_service_tg then
+        watch.left_service_tg = tg
+        watch.last_progress_tg = tg
+        return
+    end
+
+    if (tg - watch.left_service_tg) < POST_TECH_UNKNOWN_GRACE_MS then
+        return
+    end
+    if (tg - (tonumber(watch.last_progress_tg) or tg)) < POST_TECH_UNKNOWN_STALL_MS then
+        return
+    end
+
+    local issue = {
+        kind = "post_tech_unknown_scheme",
+        smart = smart,
+        smart_id = tonumber(smart.id) or watch.smart_id,
+        smart_name = get_smart_name(smart),
+        rule = RULES[2],
+        npc_id = npc_id,
+        entry = {
+            id = npc_id,
+            info = info,
+            st = st,
+            obj = npc,
+            job = info and info.job or nil,
+            job_section = info and info.job and info.job.section or nil,
+            active_section = active_section,
+            active_scheme = active_scheme,
+        },
+        slot_section = info and info.job and info.job.section or nil,
+        linked = info and info.job and smart.npc_by_job_section and smart.npc_by_job_section[info.job.section] == npc_id or false,
+        active_section = active_section,
+        active_scheme = active_scheme,
+        stalled_ms = tg - (tonumber(watch.last_progress_tg) or tg),
+    }
+
+    resolve_issue_with_flush(issue, "post_tech_unknown")
+    clear_post_tech_watch(npc_id)
+end
+
+local function register_callbacks_once()
+    if RUNTIME.callbacks_registered == true then
+        return
+    end
+    RUNTIME.callbacks_registered = true
+    RegisterScriptCallback("actor_on_first_update", on_actor_first_update)
+    RegisterScriptCallback("load_state", on_load_state)
+    RegisterScriptCallback("server_entity_on_unregister", on_server_entity_unregister)
+    RegisterScriptCallback("smart_terrain_on_update", on_smart_terrain_update)
+    RegisterScriptCallback("npc_on_update", on_npc_update)
+end
+
+function on_game_start()
+    register_callbacks_once()
+end
+
+function inst.on_axr_service_result(npc, smart, kind, status, reason)
+    arm_completed_watch(npc, smart, kind, status, reason)
+    arm_post_tech_unknown_watch(npc, smart, kind, status, reason)
+end
+
+inst.on_game_start = on_game_start

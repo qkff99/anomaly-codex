@@ -1,0 +1,104 @@
+--[[
+	=====================================================================
+	Addon      : Overheat Gunsmoke
+	Link       : https://www.moddb.com/mods/stalker-anomaly/addons/overheat-gunsmoke
+	Author     : party_50
+	Credits    : Tosox
+	Date       : 21.01.2024
+	Last Edit  : 22.01.2024
+	=====================================================================
+--]]
+
+item_weapon.update_overheat = function()
+	if item_weapon.overheat < item_weapon.overheat_threshold then
+		item_weapon.decrease_quant = 0.2
+	else
+		item_weapon.decrease_quant = 0.1
+	end
+	
+	-- decrease quantity over time
+	item_weapon.overheat = item_weapon.overheat - item_weapon.decrease_quant >= 0 and item_weapon.overheat - item_weapon.decrease_quant or 0
+
+
+	local wpn = db.actor:active_item()
+	if not wpn then
+		if (item_weapon.smoke and item_weapon.smoke:playing()) then
+			item_weapon.smoke:stop_deffered()
+		end
+		return
+	end
+	if IsMelee(wpn) then return end
+	
+	
+	if IsWeapon(wpn) then
+		-- reset overheat value on weapon change
+		if not (item_weapon.last_wpn_id) then
+			item_weapon.last_wpn_id = wpn:id()
+		end
+
+		if (item_weapon.last_wpn_id ~= wpn:id()) then
+			item_weapon.overheat = 0
+			item_weapon.last_wpn_id = wpn:id()
+		end
+
+		if not (item_weapon.can_overheat) then
+			return
+		end
+
+		local rpm = ui_wpn_params.GetRPM(wpn:section())
+		
+		-- Grab packet data
+		local se_wpn = alife_object(wpn:id())
+		local data = utils_stpk.get_weapon_data(se_wpn)
+
+		if not data then return end
+		
+		--printf("RPM: "..rpm)
+		item_weapon.time_quant = rpm/100
+		
+		-- Check if weapon firing
+		if (data.weapon_state == 5) then
+
+			-- increase overheat quantity over time
+			item_weapon.overheat = item_weapon.overheat + item_weapon.time_quant <= item_weapon.max_overheat and item_weapon.overheat + item_weapon.time_quant or item_weapon.max_overheat
+
+		else
+			-- Stop playing particle if value less then threshold
+			if (item_weapon.overheat < item_weapon.overheat_threshold) then
+				if (item_weapon.smoke and item_weapon.smoke:playing()) then
+					item_weapon.smoke:stop_deffered()
+				end
+			end
+		end
+
+		--printf("-heat: "..overheat.."/"..overheat_threshold)
+
+		-- if overheating greater then threshold
+		if (item_weapon.overheat >= item_weapon.overheat_threshold) then
+			-- create particle if not exist
+			if not (item_weapon.smoke) then
+				item_weapon.smoke = particles_object("industrial_particles\\weapon_smoke")
+			end
+
+			-- play at bone position
+			if not (item_weapon.smoke:playing()) then
+				item_weapon.smoke:play_at_pos(wpn:bone_position("wpn_body", true))
+			end
+
+			-- move to firepoint
+			local hud = utils_data.read_from_ini(nil, wpn:section(), "hud", "string", nil)
+			local fire_bone = utils_data.read_from_ini(nil, hud,"fire_bone", "string", nil) or "wpn_body"
+			local offset = utils_data.read_from_ini(nil, hud, "fire_point", "string", nil) or VEC_ZERO
+			offset = offset and utils_data.string_to_vector(offset)
+
+			-- wpn:direction() is not always equal to actual gun direction.
+			-- To make smoke position match barrel end better, obtain
+			-- fire_bone direction instead (probably requires engine edits).
+			-- Also, :mul(offset.z) ignores x and y offsets of fire bone,
+			-- to use them you should rotate offset around matrixprod((0, 0, 1), direction)
+			offset = wpn:direction():mul(offset.z)
+
+			item_weapon.smoke:move_to(wpn:bone_position(fire_bone, true):add(offset), VEC_ZERO)
+		end
+	end
+end

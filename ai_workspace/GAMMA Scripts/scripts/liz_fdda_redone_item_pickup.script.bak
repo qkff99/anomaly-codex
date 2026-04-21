@@ -1,0 +1,210 @@
+---TODO:
+---add options to disable pickup animatons
+---refactor for bitwise mask. Will allow for more granular config of when what action to use
+
+local mcm_pickup_enable = true
+local mcm_multipickup = false
+local mcm_pickup_speed = 1.2
+local mcm_use_attachments = false
+local list_hand_cooldown = {
+	[0] = 0,
+	[1] = 0,
+}
+local items_in_pickup = {}
+
+
+function on_game_start()
+	RegisterScriptCallback("on_game_load", initialize)
+	RegisterScriptCallback("on_option_change", initialize)
+	RegisterScriptCallback("actor_on_item_before_pickup", actor_on_item_before_pickup)
+end
+
+
+function initialize()
+	mcm_pickup_enable = liz_fdda_redone_mcm.get_config("pickup/enable")
+	mcm_multipickup = liz_fdda_redone_mcm.get_config("pickup/multipickup")
+	mcm_pickup_speed = liz_fdda_redone_mcm.get_config("pickup/speed")
+	mcm_use_attachments = liz_fdda_redone_mcm.get_config("pickup/use_attachments")
+end
+
+
+function actor_on_item_before_pickup(item, flags)
+	if not mcm_pickup_enable then return end
+
+	flags.ret_value = false
+
+	--if something other than pickup is playing right now, don't do anything
+	if lam2.is_running() and not lam2.get_action_with_tag("item_pickup") then return end
+	--if item in pickup list ignore it
+	if items_in_pickup[item:id()] then return end
+	--if have body search in queue don't pickup items. Body search have priority
+	if lam2.get_action_with_tag("body_search") then return end
+
+	local hand
+	local anm_name
+	-- local wpn = db.actor:active_slot() ~= 0
+	local active_slot = db.actor:active_slot()
+	local wpn = active_slot ~= 0 and active_slot ~= 15 -- support for wpn_hands
+	local det = db.actor:active_detector() or nil
+	local rhf = (not wpn and not is_hand_busy(0)) == true and true or false
+	local lhf = (not det and not is_hand_busy(1)) == true and true or false
+
+	if rhf and lhf then
+		hand = math.random(0,1)
+		local al = {
+			[0] = "anm_ea_taker",
+			[1] = "anm_ea_takel"
+		}
+		anm_name = al[hand]
+	elseif rhf then
+		hand = 0
+		anm_name = "anm_ea_taker"
+	elseif lhf then
+		hand = 1
+		anm_name = wpn and "anm_ea_takelw" or "anm_ea_takel"
+	elseif wpn and det then
+		hand = 1
+		anm_name = wpn and "anm_ea_takelw" or "anm_ea_takel"
+	else
+		return
+	end
+
+	-- bit ugly workaround
+	-- will book selected hand for 1 sec. to prevent queueng unnecessary actions
+	-- proper timing will be set when action actually starts
+	set_hand_busy(hand, 1)
+
+	local action = get_template_action_pickup(hand, anm_name)
+
+	if not mcm_multipickup then
+		local item_id = item:id()
+		items_in_pickup[item_id] = true
+		action.item_id = item_id
+		action.on_take = function (self)
+			local item_obj = level.object_by_id(self.item_id)
+			if item_obj then
+				if mcm_use_attachments then
+					attach_to_hand(item_obj:section(), self.hands)
+				end
+				items_in_pickup[self.item_id] = nil
+				db.actor:take_item(item_obj)
+			end
+		end
+		action.on_exit = function(self)
+			if mcm_use_attachments and not self.is_short then
+				db.actor:remove_attachment("liz_pickup")
+			end
+		end
+
+	elseif mcm_multipickup then
+		local items = {}
+		table.insert(items, item:id())
+		get_pickup_items(items, 1.5, 0.75)
+		get_pickup_items(items, 1, 0.5)
+		get_pickup_items(items, 0.5, 0.25)
+		for _, v in pairs(items) do
+			items_in_pickup[v] = true
+		end
+		action.items = items
+		action.on_take = function (self)
+			local actor = db.actor
+			local last_item_section
+			for _, v in pairs(self.items) do
+				items_in_pickup[v] = nil
+				local item_obj = level.object_by_id(v)
+				if item_obj then
+					if mcm_use_attachments then last_item_section = item_obj:section() end
+					actor:take_item(item_obj)
+				end
+			end
+			if last_item_section then
+				attach_to_hand(last_item_section, self.hands)
+			end
+		end
+		action.on_exit = function (self)
+			if mcm_use_attachments and not self.is_short then
+				db.actor:remove_attachment("liz_pickup")
+			end
+		end
+	end
+
+	local current_pickup_action = lam2.get_action_with_tag("item_pickup")
+	if current_pickup_action then current_pickup_action.is_short = true end
+	lam2.add_action(action)
+end
+
+--- -----------------------------------------------------------------
+--- utils
+--- -----------------------------------------------------------------
+
+function get_pickup_items(item_table, dist, radius)
+	local pos = device().cam_pos
+	local dir = device().cam_dir
+	pos = pos:add(dir:mul(dist))
+	level.iterate_nearest(pos, dist, function (obj)
+		if obj:cast_InventoryItem() and (pos:distance_to(obj:position()) <= radius) then
+			table.insert(item_table, obj:id())
+		end
+	end)
+	pos = nil	--? not needed. took from fdda
+	dir = nil	--? not needed. took from fdda
+end
+
+function set_hand_busy(hand, duration)
+	list_hand_cooldown[hand] = time_global() + duration * 1000
+end
+
+function is_hand_busy(hand)
+	return list_hand_cooldown[hand] > time_global() and true or false
+end
+
+function attach_to_hand(section, hand)
+	if section then
+		local world_model = ini_sys:r_string_ex(section, "visual") or nil
+		if world_model then
+			world_model = string.gsub(world_model, ".ogf", "")
+			att_hand = db.actor:add_attachment("liz_pickup", world_model)
+			att_hand:set_type(0)
+			att_hand:set_parent_bone(hand == 0 and 27 or 6)
+			att_hand:set_scale(0.65)
+		end
+	end
+end
+
+--- -----------------------------------------------------------------
+--- action tmeplates
+--- -----------------------------------------------------------------
+
+function get_template_action_pickup(hand, anim_name)
+
+	local a = lam2.get_template_action_play_animation()
+	a.tag = "item_pickup"
+	a.name = "item_pickup_" .. hand
+	a.hands = hand
+	a.sec = "item_ea_take_hud"
+	a.anm = anim_name
+	a.anm_blend = true
+	a.speed = mcm_pickup_speed
+	a.is_taken = false
+	a.on_enter = function (self)
+		set_hand_busy(self.hands, self.duration)
+	end
+	a.on_execute = function (self, time)
+		if not self.is_taken and time > self.duration / 2 then
+			self.is_taken = true
+			if self.on_take then self:on_take() end
+		end
+		if time > self.duration / 2 then
+			if self.is_short then
+				return lam2.states.success
+			end
+		end
+	end
+	a.on_skip = function (self)
+		if not self.is_taken then
+			items_in_pickup = {}
+		end
+	end
+
+	return a
+end

@@ -1,0 +1,243 @@
+function on_mcm_load(options)
+    op = {
+        id = "apm_main", sh = true, gr = {
+            {id = "banner", type = "slide", text = "ui_mcm_ui_popup_messages_title", size = {512, 50}, spacing = 20},
+
+            {id = "pos_x", type = "track", val = 2, def = 0, min = -1024, max = 1024, step = 1, precondition = {function() return false end}},        
+            {id = "pos_y", type = "track", val = 2, def = 0, min = -768, max = 768, step = 1, precondition = {function() return false end}},
+
+            
+            {id = "scaling", type = "track", val = 2, def = 1, min = 1, max = 4, step = 1},
+            {id = "window_amount", type = "track", val = 2, def = 5, min = 2, max = 10, step = 1},
+            {id = "display_time", type = "track", val = 2, def = 3000, min = 500, max = 10000, step = 100},
+            {id = "animation_time", type = "track", val = 2, def = 500, min = 100, max = 1000, step = 10},
+
+            {id = "divider", type = "line"},
+
+            {id = "item_shadow", type = "check", val = 1, def = true},
+            {id = "shadow_alpha", type = "track", val = 2, def = 120, min = 5, max = 255, step = 5},
+            {id = "text_background", type = "list", val = 0, def="ui_apm_background", content= {
+                {"ui_apm_background","apm_background"},
+                {"ui_apm_background2","apm_background2"},
+                --{"ui_apm_background3", "apm_background3"}, 
+                {"ui_apm_background4", "apm_background4"}}, 
+              },
+            {id = "animate_style", type = "list", val = 0, def="CircularEaseOut", content= {
+                {"CircularEaseOut","CircularEaseOut"},
+                {"BackEaseOut","BackEaseOut"}, 
+                {"BackEaseOutQuadratic", "BackEaseOutQuadratic"}},
+              },
+
+            {id = "divider", type = "line"},
+
+            {id = "color_r", type = "track", val = 2, def = 238, min = 0, max = 255, step = 1},
+            {id = "color_g", type = "track", val = 2, def = 155, min = 0, max = 255, step = 1},
+            {id = "color_b", type = "track", val = 2, def = 23, min = 0, max = 255, step = 1},
+
+            {id = "color_r_bg", type = "track", val = 2, def = 238, min = 0, max = 255, step = 1},
+            {id = "color_g_bg", type = "track", val = 2, def = 155, min = 0, max = 255, step = 1},
+            {id = "color_b_bg", type = "track", val = 2, def = 23, min = 0, max = 255, step = 1},
+
+            {id = "divider", type = "line", precondition = {level_present}},
+            {id = "position", type = "button", functor_ui = {start_ui}, precondition = {level_present}},
+            {id = "divider", type = "line", precondition = {level_present}}
+
+        }
+    }
+    return op, "ui_popup_messages"
+end
+
+function update_option(k, val)
+    if ui_popup_messages.GUI then
+        ui_popup_messages.GUI:UpdateOption(k, val or ui_mcm.get("ui_popup_messages/apm_main/" .. k))
+    end
+end
+
+-- Special
+function start_ui(self)
+    self:On_Cancel()
+    start()
+end
+
+-- Preconditions
+function level_present()
+    return level.present()
+end
+
+local commands = {
+    { 
+        name = "ui_mcm_ui_popup_messages_apm_main_scaling",
+        get = function() return ui_mcm.get("ui_popup_messages/apm_main/scaling") end,
+        set = function(val) ui_mcm.set("ui_popup_messages/apm_main/scaling", val); update_option("scaling", val) end,
+        def = 1,
+        min = 1,
+        max = 4,
+        step = 1
+    },
+    {   
+        name = "ui_mcm_ui_popup_messages_apm_main_window_amount",
+        get = function() return ui_mcm.get("ui_popup_messages/apm_main/window_amount") end,
+        set = function(val) ui_mcm.set("ui_popup_messages/apm_main/window_amount", val); update_option("window_amount") end,
+        def = 5,
+        min = 0,
+        max = 10,
+        step = 1
+    },
+    -- {   
+    --     name = "ui_mcm_ui_popup_messages_apm_main_pos_x",
+    --     get = function() return ui_mcm.get("ui_popup_messages/apm_main/pos_x") end,
+    --     set = function(val) ui_mcm.set("ui_popup_messages/apm_main/pos_x", val); update_option("pos_x", val) end,
+    --     def = 0,
+    --     min = -1024,
+    --     max = 1024,
+    --     step = 1
+    -- },
+    { 
+        name = "ui_mcm_ui_popup_messages_apm_main_pos_y",
+        get = function() return ui_mcm.get("ui_popup_messages/apm_main/pos_y") end,
+        set = function(val) ui_mcm.set("ui_popup_messages/apm_main/pos_y", val); update_option("pos_y", val) end,
+        def = 0,
+        min = -768,
+        max = 768,
+        step = 1
+    },
+}
+
+-------------------------------------------------------------------
+GUI = nil -- instance, don't touch
+function start()
+    exec_console_cmd("main_menu off")
+        
+    if (not GUI) then
+        GUI = UIPopupControl()
+    end
+
+    if (GUI) and (not GUI:IsShown()) then
+        GUI:ShowDialog(true)
+        Register_UI("UIPopupControl","ui_popup_messages_mcm")
+        ui_popup_messages.GUI:SwitchTestMode(true)
+        RemoveDelayDisableTestMode()
+    end
+end
+
+function DelayDisableTestMode()
+    CreateTimeEvent("ui_popup_messages_mcm", "DelayDisableTestMode", 2, function()
+        if ui_popup_messages.GUI then
+            ui_popup_messages.GUI:SwitchTestMode(false)
+        end
+        return true
+    end) 
+end
+
+function RemoveDelayDisableTestMode()
+    RemoveTimeEvent("ui_popup_messages_mcm", "DelayDisableTestMode")
+end
+
+-------------------------------------------------------------------
+class "UIPopupControl" (CUIScriptWnd)
+
+function UIPopupControl:__init() super()
+    self:InitControls()
+    RegisterScriptCallback("actor_on_net_destroy", self)
+end
+
+function UIPopupControl:__finalize()
+    DelayDisableTestMode()
+end
+
+function UIPopupControl:actor_on_net_destroy()
+    self:Close()
+    DelayDisableTestMode()
+    GUI = nil
+end
+
+function UIPopupControl:InitControls()
+    self:SetWndRect         (Frect():set(0,0,1024,768))
+    self:SetAutoDelete(true)
+    
+    self.xml = CScriptXmlInit()
+    
+    local xml = self.xml
+    xml:ParseFile           ("ui_options.xml")
+    
+    self.dialog = xml:InitStatic("ctrl_lighting", self)
+    
+    xml:InitFrame("ctrl_lighting:frame", self.dialog)
+    local cap = xml:InitStatic("ctrl_lighting:cap_main",self.dialog)
+    cap:TextControl():SetText("Offsets")
+    self.scroll = xml:InitScrollView("ctrl_lighting:scroll", self.dialog)
+    self.scroll:Clear()
+    
+    self.Track = {}
+    self.Value = {}
+    self.Num = {}
+    for i=1,#commands do
+        local _st = xml:InitStatic("ctrl_lighting:st", nil)
+        
+        local tbl = commands[i]
+        local name = tbl.name
+        local val = tbl.get()
+        local cap = xml:InitStatic("ctrl_lighting:cap", _st)
+        cap:TextControl():SetText( game.translate_string(name) )
+        
+        self.Track[i] = xml:InitTrackBar("ctrl_lighting:track", _st)
+        self.Track[i]:SetStep(tbl.step)
+        self.Track[i]:SetOptFBounds(tbl.min, tbl.max)
+        self.Track[i]:SetFValue(val)
+        self.Value[i] = val
+        self.Num[i] = xml:InitTextWnd("ctrl_lighting:num", _st)
+        self.Num[i]:SetText(val)
+        
+        self.scroll:AddWindow(_st, true)
+        _st:SetAutoDelete(true)
+    end
+end
+
+function UIPopupControl:Callback_Track(i, val)
+    local cmd = commands[i].set
+    if cmd and val then
+        cmd(val)
+        self.Num[i]:SetText(val)
+    end
+end
+
+function UIPopupControl:Update()
+    CUIScriptWnd.Update(self)
+    
+    -- Hack to simulate tracing method for TrackBar value changes. TODO: add callback support for CUITrackBar in engine, this is just silly
+    for i,ctrl in pairs(self.Track) do
+        if ctrl:IsCursorOverWindow() then
+            local val = round_idp(ctrl:GetFValue(), precision)
+            if (val ~= self.Value[i]) then
+                self.Value[i] = val
+                self:Callback_Track(i, val)
+                return
+            end
+        end
+    end
+end
+
+function UIPopupControl:OnKeyboard(dik, keyboard_action)
+    local res = CUIScriptWnd.OnKeyboard(self,dik,keyboard_action)
+    if (res == false) then
+        local bind = dik_to_bind(dik)
+        if keyboard_action == ui_events.WINDOW_KEY_PRESSED then
+        
+            if dik == DIK_keys.DIK_ESCAPE then
+                self:Close()
+            end
+
+        end
+    end
+
+    return res
+end
+
+function UIPopupControl:Close()
+    self:HideDialog()
+    self:Show(false)
+
+    Unregister_UI("UIPopupControl")
+    DelayDisableTestMode()
+    GUI = nil
+end

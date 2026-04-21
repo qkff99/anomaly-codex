@@ -1,0 +1,386 @@
+;==============================================================================		
+![wpn_aug_merc]
+parent_section				 = wpn_aug_merc
+>scopes						 = aim_acro, he510, p1x42, romeo4, triji, spec_alt, mark8_rmr, gee36, gauss_sight, t12
+<scopes						 = point_aimpro, mepro, marchf
+
+lewd_lens_hide_enabled       = true
+lewd_lens_hide_bone          = lens
+lewd_lens_hide_delays        = 0.1,0
+lewd_lens_hide_aim_mode      = true, false, false
+
+	s3ds_reticle_size 	= 
+	s3ds_eye_relief 	= 
+	s3ds_exit_pupil		= 
+	s3ds_chroma_power	= 
+	magnifications 		= 
+	
+![wpn_aug_merc_hud]
+fire_bone                                = muzzle
+fire_point                               = 0, 0.0, 0.005
+
+        aim_hud_offset_pos               = -0.060099, 0.024121, -0.044569
+        aim_hud_offset_pos_16x9          = -0.060099, 0.024121, -0.044569
+        aim_hud_offset_rot               = 0.001183, 0.000556, -0.008708
+        aim_hud_offset_rot_16x9          = 0.001183, 0.000556, -0.008708
+
+;---------------------------------------------------SIGHTS---------------------------------------------------
+![wpn_aug_merc_kemper]
+1icon_layer		= kemper_x
+1icon_layer_x      = 90
+![wpn_aug_merc_kemper_hud]
+        aim_hud_offset_pos               = -0.060804, 0.013695, -0.03
+        aim_hud_offset_pos_16x9          = -0.060804, 0.013695, -0.03
+        aim_hud_offset_rot               = -0.000324, 0.000579, 0.005
+        aim_hud_offset_rot_16x9          = -0.000324, 0.000579, 0.005
+
+![wpn_aug_merc_compm4s]
+1icon_layer		= compm4s_x	
+1icon_layer_x      = 93
+1icon_layer_y      = -17	
+![wpn_aug_merc_compm4s_hud]
+        aim_hud_offset_pos               = -0.06099, 0.020447, -0.03
+        aim_hud_offset_pos_16x9          = -0.06099, 0.020447, -0.03
+        aim_hud_offset_rot               = 0.002476, 0.001086, 0.005
+        aim_hud_offset_rot_16x9          = 0.002476, 0.001086, 0.005
+
+![wpn_aug_merc_e0t2]
+1icon_layer		= e0t2_x
+1icon_layer_x      = 90
+1icon_layer_y      = -16			
+![wpn_aug_merc_e0t2_hud]
+        aim_hud_offset_pos               = -0.060636, 0.018417, -0.03
+        aim_hud_offset_pos_16x9          = -0.060636, 0.018417, -0.03
+        aim_hud_offset_rot               = -0.00131, 0.000509, 0.005
+        aim_hud_offset_rot_16x9          = -0.00131, 0.000509, 0.005
+
+![wpn_aug_merc_ekp8_18]
+1icon_layer		= ekp8_18_x	
+1icon_layer_y      = -4
+![wpn_aug_merc_ekp8_18_hud]
+        aim_hud_offset_pos               = -0.061204, 0.002444, -0.03
+        aim_hud_offset_pos_16x9          = -0.061204, 0.002444, -0.03
+        aim_hud_offset_rot               = -0.014574, 0.001291, 0.005
+        aim_hud_offset_rot_16x9          = -0.014574, 0.001291, 0.005
+
+![wpn_aug_merc_aimpoint]
+1icon_layer		= aimpoint_x
+1icon_layer_x      = 90
+1icon_layer_y      = -19			
+![wpn_aug_merc_aimpoint_hud]
+        aim_hud_offset_pos               = -0.060532, 0.01628, -0.03
+        aim_hud_offset_pos_16x9          = -0.060532, 0.01628, -0.03
+        aim_hud_offset_rot               = 0.001148, 0.000856, 0.005
+        aim_hud_offset_rot_16x9          = 0.001148, 0.000856, 0.005
+
+![wpn_aug_merc_ac10632_hud]
+        aim_hud_offset_pos               = -0.060618, 0.019141, -0.03
+        aim_hud_offset_pos_16x9          = -0.060618, 0.019141, -0.03
+        aim_hud_offset_rot               = -0.000144, 0.000427, 0.005
+        aim_hud_offset_rot_16x9          = -0.000144, 0.000427, 0.005
+		
+![wpn_aug_merc_eot_hud]
+        aim_hud_offset_pos               = -0.060457, 0.00944, -0.03
+        aim_hud_offset_pos_16x9          = -0.060457, 0.00944, -0.03
+        aim_hud_offset_rot               = 0.000836, 0.00079, 0.005
+        aim_hud_offset_rot_16x9          = 0.000836, 0.00079, 0.005
+			
+![wpn_aug_merc_c-more_hud]
+        aim_hud_offset_pos               = -0.061117, 0.018468, -0.03
+        aim_hud_offset_pos_16x9          = -0.061117, 0.018468, -0.03
+        aim_hud_offset_rot               = 0.000648, 0.000977, 0.005
+        aim_hud_offset_rot_16x9          = 0.000648, 0.000977, 0.005	
+
+;--------------------------------------------------------------------------------
+[wpn_aug_merc_t12]:wpn_aug_merc
+hud                                      = wpn_aug_merc_t12_hud
+
+1icon_layer                              = t12_x
+1icon_layer_x                            = 102
+1icon_layer_y                            = -16
+
+[wpn_aug_merc_t12_hud]:wpn_aug_merc_hud
+item_visual                              = anomaly_weapons\wpn_aug_thales\wpn_aug_thales_t12_hud.ogf
+        aim_hud_offset_pos               = -0.058698, 0.02059, -0.03
+        aim_hud_offset_pos_16x9          = -0.058698, 0.02059, -0.03
+        aim_hud_offset_rot               = 0.006711, -0.004473, 0
+        aim_hud_offset_rot_16x9          = 0.006711, -0.004473, 0
+
+;----------------------------------------------------------------------------------------------------		
+[wpn_aug_merc_he510]:wpn_aug_merc
+hud					= wpn_aug_merc_he510_hud
+
+1icon_layer                              = he510_x
+1icon_layer_x                            = 90
+1icon_layer_y                            = -15
+
+[wpn_aug_merc_he510_hud]:wpn_aug_merc_hud
+item_visual                		= anomaly_weapons\wpn_aug_thales\wpn_aug_thales_he510_hud.ogf
+        aim_hud_offset_pos               = -0.060555, 0.020841, -0.03
+        aim_hud_offset_pos_16x9          = -0.060555, 0.020841, -0.03
+        aim_hud_offset_rot               = 0.001039, 0.000647, -0.005
+        aim_hud_offset_rot_16x9          = 0.001039, 0.000647, -0.005
+;----------------------------------------------------------------------------------------------------		
+[wpn_aug_merc_p1x42]:wpn_aug_merc
+hud					= wpn_aug_merc_p1x42_hud
+
+1icon_layer                              = p1x42_x
+1icon_layer_x                            = 85
+1icon_layer_y                            = -19
+
+[wpn_aug_merc_p1x42_hud]:wpn_aug_merc_hud
+item_visual                		= anomaly_weapons\wpn_aug_thales\wpn_aug_thales_p1x42_hud.ogf
+        aim_hud_offset_pos               = -0.060736, 0.022287, -0.03
+        aim_hud_offset_pos_16x9          = -0.060736, 0.022287, -0.03
+        aim_hud_offset_rot               = 0.002661, 0.000583, -0.005
+        aim_hud_offset_rot_16x9          = 0.002661, 0.000583, -0.005
+;-----------------------------------------------------------------------
+[wpn_aug_merc_aim_acro]:wpn_aug_merc
+hud					= wpn_aug_merc_aim_acro_hud
+
+1icon_layer                              = aim_acro_x
+1icon_layer_x                            = 96
+1icon_layer_y                            = -24
+
+[wpn_aug_merc_aim_acro_hud]:wpn_aug_merc_hud
+item_visual                		= anomaly_weapons\wpn_aug_thales\wpn_aug_thales_aim_acro_hud.ogf
+        aim_hud_offset_pos               = -0.060866, 0.020506, -0.03
+        aim_hud_offset_pos_16x9          = -0.060866, 0.020506, -0.03
+        aim_hud_offset_rot               = -0.000507, 0.001229, -0.005
+        aim_hud_offset_rot_16x9          = -0.000507, 0.001229, -0.005
+;-----------------------------------------------------------------------
+[wpn_aug_merc_romeo4]:wpn_aug_merc
+hud                                      = wpn_aug_merc_romeo4_hud
+
+1icon_layer                              = romeo4_x
+1icon_layer_x                            = 85
+1icon_layer_y                            = -20
+
+[wpn_aug_merc_romeo4_hud]:wpn_aug_merc_hud
+item_visual                              = anomaly_weapons\wpn_aug_thales\wpn_aug_thales_romeo4_hud.ogf
+        aim_hud_offset_pos               = -0.060801, 0.018217, -0.03
+        aim_hud_offset_pos_16x9          = -0.060801, 0.018217, -0.03
+        aim_hud_offset_rot               = 0.000683, 0.001048, -0.005
+        aim_hud_offset_rot_16x9          = 0.000683, 0.001048, -0.005
+		
+;---------------------------------------------------SCOPES---------------------------------------------------		
+![wpn_aug_merc_specter]
+1icon_layer		= specter_x
+
+zoom_step_count					 = 1
+scope_zoom_factor                = 30
+scope_texture                    =
+
+![wpn_aug_merc_specter_hud]		
+        aim_hud_offset_pos               = -0.059311, 0.017607, -0.07622
+        aim_hud_offset_pos_16x9          = -0.059311, 0.017607, -0.07622
+        aim_hud_offset_rot               = 0.004529, -0.003692, 0
+        aim_hud_offset_rot_16x9          = 0.004529, -0.003692, 0
+		
+        aim_hud_offset_alt_pos           = -0.060029, -0.011491, -0.081795
+        aim_hud_offset_alt_pos_16x9      = -0.060029, -0.011491, -0.081795
+        aim_hud_offset_alt_rot           = 0.007299, 0.00053, 0.001
+        aim_hud_offset_alt_rot_16x9      = 0.007299, 0.00053, 0.001
+		
+![wpn_aug_merc_leupold]
+1icon_layer		= leupold_x
+1icon_layer_y      = -15
+
+scope_zoom_factor                = 15
+scope_texture                    =
+
+use_alt_aim_hud                  = false
+
+![wpn_aug_merc_leupold_hud]
+        aim_hud_offset_pos               = -0.059565, 0.015787, -0.042449
+        aim_hud_offset_pos_16x9          = -0.059565, 0.015787, -0.042449
+        aim_hud_offset_rot               = 0.004115, -0.003508, 0.001
+        aim_hud_offset_rot_16x9          = 0.004115, -0.003508, 0.001
+		
+        aim_hud_offset_alt_pos           = -0.092232, -0.037837, -0.004757
+        aim_hud_offset_alt_pos_16x9      = -0.092232, -0.037837, -0.004757
+        aim_hud_offset_alt_rot           = 0, 0, 0.76
+        aim_hud_offset_alt_rot_16x9      = 0, 0, 0.76
+		
+![wpn_aug_merc_susat]
+1icon_layer		= susat_x
+1icon_layer_y      = -13
+
+scope_zoom_factor                = 30
+scope_texture                    =
+
+![wpn_aug_merc_susat_hud]
+        aim_hud_offset_alt_pos           = -0.060589, -0.014936, -0.078303
+        aim_hud_offset_alt_pos_16x9      = -0.060589, -0.014936, -0.078303
+        aim_hud_offset_alt_rot           = 0.008137, 0.000907, 0.001
+        aim_hud_offset_alt_rot_16x9      = 0.008137, 0.000907, 0.001
+		
+        aim_hud_offset_pos               = -0.059755, 0.006412, -0.078303
+        aim_hud_offset_pos_16x9          = -0.059755, 0.006412, -0.078303
+        aim_hud_offset_rot               = 0.003178, -0.003451, 0.001
+        aim_hud_offset_rot_16x9          = 0.003178, -0.003451, 0.001
+		
+![wpn_aug_merc_marchf]
+1icon_layer		= marchf_x
+
+scope_zoom_factor                = 5
+min_scope_zoom_factor			 = 40
+scope_texture                    =
+
+use_alt_aim_hud                  = false	
+
+![wpn_aug_merc_marchf_hud]
+        aim_hud_offset_pos               = -0.058346, 0.020457, -0.071296
+        aim_hud_offset_pos_16x9          = -0.058346, 0.020457, -0.071296
+        aim_hud_offset_rot               = 0.004402, -0.003401, 0.001
+        aim_hud_offset_rot_16x9          = 0.004402, -0.003401, 0.001
+		
+![wpn_aug_merc_acog]
+!inv_grid_x                               = 10	
+!inv_grid_y                               = 0
+
+1icon_layer			    = acog_x
+1icon_layer_x			= 80
+1icon_layer_y			= -14
+
+use_alt_aim_hud         = false	
+
+scope_zoom_factor       = 42.86
+scope_texture           =	
+
+![wpn_aug_merc_acog_hud]
+        aim_hud_offset_pos               = -0.059937, 0.019273, -0.064405
+        aim_hud_offset_pos_16x9          = -0.059937, 0.019273, -0.064405
+        aim_hud_offset_rot               = 0.005918, -0.003726, 0.001
+        aim_hud_offset_rot_16x9          = 0.005918, -0.003726, 0.001
+
+;----------------------------------------------------------------------------------------------------------------------------
+[wpn_aug_merc_triji]:wpn_aug_merc
+hud					        = wpn_aug_merc_triji_hud
+
+inv_grid_x                  = 10	
+inv_grid_y                  = 0
+
+inv_weight					= 3.520
+zoom_rotate_time		    = 0.25		
+use_alt_aim_hud             = true
+
+scope_status				= 1
+scope_zoom_factor           = 42.86
+
+[wpn_aug_merc_triji_hud]:wpn_aug_merc_hud
+item_visual                              = anomaly_weapons\wpn_aug_thales\wpn_aug_thales_triji_hud.ogf
+        aim_hud_offset_alt_pos           = -0.091325, -0.046301, -0.067691
+        aim_hud_offset_alt_pos_16x9      = -0.091325, -0.046301, -0.067691
+        aim_hud_offset_alt_rot           = -0.001207, 0.001331, 0.78
+        aim_hud_offset_alt_rot_16x9      = -0.001207, 0.001331, 0.78
+		
+        aim_hud_offset_pos               = -0.059937, 0.019273, -0.064405
+        aim_hud_offset_pos_16x9          = -0.059937, 0.019273, -0.064405
+        aim_hud_offset_rot               = 0.005918, -0.003726, 0.001
+        aim_hud_offset_rot_16x9          = 0.005918, -0.003726, 0.001
+;----------------------------------------------------------------------------------------------------------------------------
+[wpn_aug_merc_spec_alt]:wpn_aug_merc
+hud					= wpn_aug_merc_spec_alt_hud
+
+1icon_layer                   = specter_x
+1icon_layer_x                 = 65
+1icon_layer_y                 = -17
+
+inv_weight                    = 3.620
+zoom_rotate_time		      = 0.25
+use_alt_aim_hud               = true	
+
+zoom_step_count				= 1
+scope_status				= 1
+scope_zoom_factor           = 30
+scope_dynamic_zoom          = on		
+
+[wpn_aug_merc_spec_alt_hud]:wpn_aug_merc_hud
+item_visual                              = anomaly_weapons\wpn_aug_thales\wpn_aug_thales_specalt_hud.ogf
+        aim_hud_offset_alt_pos           = -0.091325, -0.046301, -0.067691
+        aim_hud_offset_alt_pos_16x9      = -0.091325, -0.046301, -0.067691
+        aim_hud_offset_alt_rot           = -0.001207, 0.001331, 0.78
+        aim_hud_offset_alt_rot_16x9      = -0.001207, 0.001331, 0.78
+		
+        aim_hud_offset_pos               = -0.059311, 0.017607, -0.07622
+        aim_hud_offset_pos_16x9          = -0.059311, 0.017607, -0.07622
+        aim_hud_offset_rot               = 0.004529, -0.003692, 0
+        aim_hud_offset_rot_16x9          = 0.004529, -0.003692, 0
+;-------------------------------------------------------------------------------------------------------------------------------
+[wpn_aug_merc_mark8_rmr]:wpn_aug_merc
+hud					= wpn_aug_merc_mark8_rmr_hud
+
+1icon_layer                              = leupold_x
+1icon_layer_x                            = 65
+1icon_layer_y                            = -15
+		
+inv_weight                  = 3.620
+zoom_rotate_time		    = 0.25
+use_alt_aim_hud             = true	
+	
+scope_zoom_factor           = 15
+scope_status				= 1
+scope_dynamic_zoom         	= on
+
+[wpn_aug_merc_mark8_rmr_hud]:wpn_aug_merc_hud
+item_visual                              = anomaly_weapons\wpn_aug_thales\wpn_aug_thales_mark8_hud.ogf
+        aim_hud_offset_alt_pos           = -0.091325, -0.046301, -0.067691
+        aim_hud_offset_alt_pos_16x9      = -0.091325, -0.046301, -0.067691
+        aim_hud_offset_alt_rot           = -0.001207, 0.001331, 0.78
+        aim_hud_offset_alt_rot_16x9      = -0.001207, 0.001331, 0.78
+		
+        aim_hud_offset_pos               = -0.059565, 0.015787, -0.042449
+        aim_hud_offset_pos_16x9          = -0.059565, 0.015787, -0.042449
+        aim_hud_offset_rot               = 0.004115, -0.003508, 0.001
+        aim_hud_offset_rot_16x9          = 0.004115, -0.003508, 0.001
+;-------------------------------------------------------------------------------------------------------------------------------	
+[wpn_aug_merc_gauss_sight]:wpn_aug_merc
+hud                        = wpn_aug_merc_gauss_sight_hud
+
+1icon_layer				= gauss_sight_x
+1icon_layer_x			= 58
+1icon_layer_y			= -9
+
+inv_weight              = 4.80
+zoom_rotate_time        = 0.25
+
+scope_status                     = 1
+scope_zoom_factor                = 12
+scope_dynamic_zoom               = on
+
+[wpn_aug_merc_gauss_sight_hud]:wpn_aug_merc_hud
+item_visual                              = anomaly_weapons\wpn_aug_thales\wpn_aug_thales_gauss_hud.ogf	
+        aim_hud_offset_pos               = -0.059334, 0.019686, -0.114846
+        aim_hud_offset_pos_16x9          = -0.059334, 0.019686, -0.114846
+        aim_hud_offset_rot               = 0.00413, -0.003251, -0.008708
+        aim_hud_offset_rot_16x9          = 0.00413, -0.003251, -0.008708
+		
+;-------------------------------------------------------------------------------------------------------------------------------	
+[wpn_aug_merc_gee36]:wpn_aug_merc
+hud                        = wpn_aug_merc_gee36_hud
+
+1icon_layer				= gee36_x
+1icon_layer_x			= 62
+1icon_layer_y			= -14
+
+inv_weight              = 4.56
+zoom_rotate_time        = 0.25
+use_alt_aim_hud         = true
+
+scope_status                     = 1
+scope_zoom_factor                = 40
+scope_dynamic_zoom               = off
+
+[wpn_aug_merc_gee36_hud]:wpn_aug_merc_hud
+item_visual                              = anomaly_weapons\wpn_aug_thales\wpn_aug_thales_gee36_hud.ogf	
+        aim_hud_offset_alt_rot           = 0.00387, 0.001125, -0.010025
+        aim_hud_offset_alt_rot_16x9      = 0.00387, 0.001125, -0.010025
+        aim_hud_offset_alt_pos           = -0.060567, -0.004112, -0.081189
+        aim_hud_offset_alt_pos_16x9      = -0.060567, -0.004112, -0.081189
+		
+        aim_hud_offset_pos               = -0.059534, 0.014728, -0.068527
+        aim_hud_offset_pos_16x9          = -0.059534, 0.014728, -0.068527
+        aim_hud_offset_rot               = 0.003872, -0.003551, -0.008708
+        aim_hud_offset_rot_16x9          = 0.003872, -0.003551, -0.008708
+		

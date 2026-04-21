@@ -1,0 +1,1949 @@
+siski = siski or {}
+
+local type = _G.type
+local pcall = _G.pcall
+local require = _G.require
+local setmetatable = _G.setmetatable
+local tonumber = _G.tonumber
+local tostring = _G.tostring
+local pairs = _G.pairs
+local table_sort = _G.table and _G.table.sort or nil
+local math_random = _G.math and _G.math.random or nil
+local math_min = _G.math and _G.math.min or nil
+local math_max = _G.math and _G.math.max or nil
+local math_floor = _G.math and _G.math.floor or nil
+local string_find = _G.string and _G.string.find or nil
+local string_gsub = _G.string and _G.string.gsub or nil
+local string_lower = _G.string and _G.string.lower or nil
+local time_global = _G.time_global
+local level = _G.level
+local db = _G.db
+local game_graph = _G.game_graph
+local alife = _G.alife
+local alife_create = _G.alife_create
+local ini_sys = _G.ini_sys
+local math_sqrt = _G.math and _G.math.sqrt or nil
+
+local function ensure_class()
+    local type = type
+    if type(siski.class) == "function" then
+        local ok, probe = pcall(siski.class, "_probe")
+        if ok and type(probe) == "table" then
+            return
+        end
+    end
+
+    if require then
+        pcall(require, "siski_oop")
+    end
+
+    local function define()
+        function siski.class(name)
+            local cls = {}
+            cls.__index = cls
+            cls.__name = name or "class"
+            function cls.new(...)
+                local self = setmetatable({}, cls)
+                if self.__init then
+                    self:__init(...)
+                end
+                return self
+            end
+            return cls
+        end
+    end
+
+    if type(siski.class) ~= "function" then
+        define()
+        return
+    end
+
+    local ok2, probe2 = pcall(siski.class, "_probe")
+    if not (ok2 and type(probe2) == "table") then
+        define()
+    end
+end
+
+ensure_class()
+
+local BaseFiller = siski.class("BaseFiller")
+BaseFiller.__index = BaseFiller
+
+local CAMPER_TOKEN = "_sim_squad_camper_"
+local LEGACY_CAMPER_TOKEN = "_base_camper_"
+local CAMPER_TIERS = { "novice", "advanced" }
+local CAMPER_FACTIONS = {
+    "stalker",
+    "bandit",
+    "duty",
+    "freedom",
+    "merc",
+    "army",
+    "ecolog",
+    "monolith",
+    "csky",
+    "renegade",
+    "greh",
+    "isg",
+}
+
+local DEFAULT_DAILY_HOURS = 24
+local DEFAULT_NPC_MIN = 5
+local DEFAULT_NPC_MAX = 8
+local NPC_COUNT_MIN = 1
+local NPC_COUNT_MAX = 8
+local ACTIVE_CAMPER_COUNT_REFRESH_MS = 30000
+local NEAR_ACTOR_BLOCK_DIST_M = 50
+local NEAR_ACTOR_BLOCK_DIST_SQR = NEAR_ACTOR_BLOCK_DIST_M * NEAR_ACTOR_BLOCK_DIST_M
+local STATE_VERSION = "1.0.1"
+
+local function tg()
+    return (time_global and time_global()) or 0
+end
+
+local function is_valid_server_id(id)
+    id = tonumber(id) or 0
+    return id > 0 and id ~= 65535
+end
+
+local function loaded_level_name()
+    if level and level.name then
+        local ok, name = pcall(function() return level.name() end)
+        if ok and type(name) == "string" and name ~= "" then
+            return name
+        end
+    end
+    return nil
+end
+
+local function object_name(obj)
+    if type(obj) ~= "table" then
+        return nil
+    end
+    local raw_name = obj.name
+    if type(raw_name) == "string" and raw_name ~= "" then
+        return raw_name
+    end
+    local ok_name, res_name = pcall(function()
+        return obj:name()
+    end)
+    if ok_name and type(res_name) == "string" and res_name ~= "" then
+        return res_name
+    end
+    return nil
+end
+
+local function release_squad_safe(se_squad, reason)
+    local sid = tonumber(se_squad and se_squad.id) or nil
+    if not sid then
+        return false
+    end
+
+    local released = false
+    local rel = _G.alife_release_id
+    if type(rel) == "function" then
+        local ok, res = pcall(function() return rel(sid, reason) end)
+        if ok and res ~= false then
+            released = true
+        end
+    end
+
+    if not released then
+        local ok_remove, res_remove = pcall(function() return se_squad:remove_squad() end)
+        if ok_remove and res_remove ~= false then
+            released = true
+        end
+    end
+
+    if not released then
+        local sim = alife and alife() or nil
+        if sim and sim.release then
+            local ok_release, res_release = pcall(function() return sim:release(se_squad, true) end)
+            if ok_release and res_release ~= false then
+                released = true
+            end
+        end
+    end
+
+    if siski.memory and siski.memory.purge_squad_entry then
+        siski.memory.purge_squad_entry(sid, "spawn_section_mismatch", "base_filler_release")
+    end
+
+    return released
+end
+
+local function has_game_time()
+    return game and game.get_game_time and game.CTime
+end
+
+local function ctime_to_table(ct)
+    if not (ct and ct.get) then return nil end
+    local ok, Y, M, D, h, m, s, ms = pcall(function()
+        return ct:get(0, 0, 0, 0, 0, 0, 0)
+    end)
+    if not ok then return nil end
+    return { Y = Y, M = M, D = D, h = h, m = m, s = s, ms = ms }
+end
+
+local function ctime_from_table(t)
+    if not (has_game_time() and type(t) == "table") then
+        return nil
+    end
+    local ok_new, ct = pcall(function() return game.CTime() end)
+    if not (ok_new and ct and ct.set) then
+        return nil
+    end
+    local ok_set = pcall(function()
+        ct:set(t.Y, t.M, t.D, t.h, t.m, t.s, t.ms)
+    end)
+    if not ok_set then
+        return nil
+    end
+    return ct
+end
+
+local function game_time_now()
+    if not has_game_time() then
+        return nil
+    end
+    local ok, ct = pcall(function() return game.get_game_time() end)
+    return ok and ct or nil
+end
+
+local function game_time_diff_sec(start_ct)
+    local now = game_time_now()
+    if not (now and now.diffSec and start_ct) then
+        return nil
+    end
+    local ok, sec = pcall(function() return now:diffSec(start_ct) end)
+    return ok and tonumber(sec) or nil
+end
+
+local function now_level_name_by_gvid(gvid)
+    if not (gvid and alife and game_graph) then
+        return nil
+    end
+    local ok, level_name = pcall(function()
+        local gv = game_graph():vertex(gvid)
+        if not gv then return nil end
+        return alife():level_name(gv:level_id())
+    end)
+    return ok and level_name or nil
+end
+
+local function get_board()
+    if SIMBOARD then return SIMBOARD end
+    if sim_board and sim_board.get_sim_board then
+        local ok, board = pcall(function() return sim_board.get_sim_board() end)
+        if ok then return board end
+    end
+    return nil
+end
+
+local function clone_ctime_table(src)
+    if type(src) ~= "table" then
+        return nil
+    end
+    local out = {
+        Y = tonumber(src.Y),
+        M = tonumber(src.M),
+        D = tonumber(src.D),
+        h = tonumber(src.h),
+        m = tonumber(src.m),
+        s = tonumber(src.s),
+        ms = tonumber(src.ms),
+    }
+    if out.Y == nil or out.M == nil or out.D == nil or out.h == nil or out.m == nil or out.s == nil or out.ms == nil then
+        return nil
+    end
+    return out
+end
+
+local function count_keys(src)
+    local count = 0
+    if type(src) ~= "table" then
+        return count
+    end
+    for _ in pairs(src) do
+        count = count + 1
+    end
+    return count
+end
+
+local function safe_actor_position()
+    if not (db and db.actor and db.actor.position) then
+        return nil
+    end
+    local ok, pos = pcall(function() return db.actor:position() end)
+    return ok and pos or nil
+end
+
+local function safe_smart_position(smart)
+    if not smart then
+        return nil
+    end
+    local ok, pos = pcall(function() return smart.position end)
+    if ok and pos then
+        return pos
+    end
+    return nil
+end
+
+local function safe_distance_sqr(pos_a, pos_b)
+    if not (pos_a and pos_b) then
+        return nil
+    end
+    if pos_a.distance_to_sqr then
+        local ok, d2 = pcall(function() return pos_a:distance_to_sqr(pos_b) end)
+        if ok and tonumber(d2) then
+            return tonumber(d2)
+        end
+    end
+    local ax = tonumber(pos_a.x)
+    local ay = tonumber(pos_a.y)
+    local az = tonumber(pos_a.z)
+    local bx = tonumber(pos_b.x)
+    local by = tonumber(pos_b.y)
+    local bz = tonumber(pos_b.z)
+    if not (ax and ay and az and bx and by and bz) then
+        return nil
+    end
+    local dx = ax - bx
+    local dy = ay - by
+    local dz = az - bz
+    return (dx * dx) + (dy * dy) + (dz * dz)
+end
+
+local function format_distance_m(d2)
+    d2 = tonumber(d2)
+    if not d2 then
+        return "-"
+    end
+    if math_sqrt then
+        return tostring(math.floor((math_sqrt(d2) * 10) + 0.5) / 10)
+    end
+    return tostring(d2)
+end
+
+local function parse_csv(s)
+    if type(s) ~= "string" then return {} end
+    local out = {}
+    local n = 0
+    for token in string.gmatch(s, "([^,]+)") do
+        local t = string_gsub(token, "^%s*(.-)%s*$", "%1")
+        if t ~= "" then
+            n = n + 1
+            out[n] = t
+        end
+    end
+    return out
+end
+
+local function normalize_community(name)
+    if type(name) ~= "string" then return nil end
+    local key = string_lower(string_gsub(name, "^%s*(.-)%s*$", "%1"))
+    if key == "" then return nil end
+    if siski.config and siski.config.get_faction_alias then
+        local alias = siski.config.get_faction_alias(key)
+        if type(alias) == "string" and alias ~= "" then
+            key = string_lower(string_gsub(alias, "^%s*(.-)%s*$", "%1"))
+        end
+    end
+    if key == "dolg" then key = "duty" end
+    if key == "killer" then key = "merc" end
+    return key
+end
+
+local function safe_section(se_squad)
+    if not se_squad then return nil end
+    if siski.safe and siski.safe.safe_section then
+        return siski.safe.safe_section(se_squad)
+    end
+    local ok, section = pcall(function() return se_squad:section_name() end)
+    if ok and type(section) == "string" then
+        return section
+    end
+    return nil
+end
+
+local function safe_community(se_obj)
+    if not se_obj then return nil end
+    local ok, comm = pcall(function() return se_obj:community() end)
+    if ok and type(comm) == "string" and comm ~= "" then
+        return comm
+    end
+    ok, comm = pcall(function() return se_obj.community end)
+    if ok and type(comm) == "string" and comm ~= "" then
+        return comm
+    end
+    return nil
+end
+
+local function is_base_camper_section(section)
+    return type(section) == "string"
+        and section ~= ""
+        and (
+            string_find(section, CAMPER_TOKEN, 1, true) ~= nil
+            or string_find(section, LEGACY_CAMPER_TOKEN, 1, true) ~= nil
+        )
+end
+
+local function clear_squad_runtime_target(se_squad)
+    if not se_squad then return end
+    se_squad.current_action = 0
+    se_squad.current_target_id = nil
+    se_squad.task_target_id = nil
+    se_squad.stay_time = nil
+    se_squad.arrive_time = nil
+end
+
+local function extract_member_candidate_id(k, v)
+    if type(v) == "table" then
+        local idv = tonumber(v.id) or tonumber(v.object_id) or tonumber(v.squad_id)
+        if idv and idv > 0 then
+            return idv
+        end
+    end
+    local id = tonumber(v)
+    if id and id > 0 then
+        return id
+    end
+    id = tonumber(k)
+    if id and id > 0 then
+        return id
+    end
+    return nil
+end
+
+local ACTIVE_SPAWN_OVERRIDE = nil
+local ACTIVE_SPAWN_OVERRIDE_ORIGINAL_INI = nil
+local INI_SYS_PROXY = nil
+
+local function active_spawn_override_count_range()
+    local override = ACTIVE_SPAWN_OVERRIDE
+    if type(override) ~= "table" or override.active ~= true then
+        return nil, nil
+    end
+    local min_count = tonumber(override.min_count)
+    local max_count = tonumber(override.max_count)
+    if not (min_count and max_count) then
+        return nil, nil
+    end
+    return min_count, max_count
+end
+
+local function should_override_spawn_count(section_name, key)
+    local override = ACTIVE_SPAWN_OVERRIDE
+    if type(override) ~= "table" or override.active ~= true then
+        return false
+    end
+    if key ~= "npc_in_squad" then
+        return false
+    end
+    if type(section_name) ~= "string" or section_name == "" then
+        return false
+    end
+    if section_name ~= override.section then
+        return false
+    end
+    return is_base_camper_section(section_name)
+end
+
+local function build_ini_sys_proxy()
+    if INI_SYS_PROXY then
+        return INI_SYS_PROXY
+    end
+
+    local proxy = {}
+    setmetatable(proxy, {
+        __index = function(_, key)
+            if key == "r_string_ex" then
+                return function(_, section_name, value_key)
+                    local original = ACTIVE_SPAWN_OVERRIDE_ORIGINAL_INI or _G.ini_sys or ini_sys
+                    if not original then
+                        return nil
+                    end
+                    if should_override_spawn_count(section_name, value_key) then
+                        local min_count, max_count = active_spawn_override_count_range()
+                        if min_count and max_count then
+                            return tostring(min_count) .. "," .. tostring(max_count)
+                        end
+                    end
+                    return original:r_string_ex(section_name, value_key)
+                end
+            end
+
+            local original = ACTIVE_SPAWN_OVERRIDE_ORIGINAL_INI or _G.ini_sys or ini_sys
+            if not original then
+                return nil
+            end
+            local value = original[key]
+            if type(value) == "function" then
+                return function(_, ...)
+                    return value(original, ...)
+                end
+            end
+            return value
+        end,
+    })
+
+    INI_SYS_PROXY = proxy
+    return proxy
+end
+
+function BaseFiller:__init()
+    self.STATE = {
+        version = STATE_VERSION,
+        last_fill_gt_by_level = {},
+        default_last_fill_gt = nil,
+    }
+    self.RUNTIME = {
+        last_update_tg = 0,
+        last_active_count_tg = 0,
+        targets_by_level = {},
+        target_set_by_level = {},
+        target_level_by_name = {},
+        dirty_targets_by_level = {},
+        dirty_force_spawn_by_level = {},
+        smart_to_sid = {},
+        sid_to_smart = {},
+        cleaned_sids = {},
+        initial_fill_done = false,
+        disabled_logged = false,
+        loaded_from_save = false,
+        loaded_state_present = false,
+        warn_next_tg_by_key = {},
+        spawn_override = {
+            active = false,
+            section = nil,
+            smart_name = nil,
+            min_count = nil,
+            max_count = nil,
+        },
+        stats = {
+            ticks = 0,
+            reconcile_runs = 0,
+            targets = 0,
+            spawn_attempts = 0,
+            spawn_success = 0,
+            spawn_failed = 0,
+            spawn_no_faction = 0,
+            spawn_no_section = 0,
+            spawn_section_mismatch = 0,
+            spawn_blocked_policy = 0,
+            spawn_blocked_actor_near = 0,
+            spawn_smart_missing = 0,
+            pin_reassert = 0,
+            discover_hits = 0,
+            active_campers = 0,
+        },
+    }
+    self.SECTIONS_BY_FACTION = {}
+    self.AVAILABLE_FACTIONS = {}
+end
+
+function BaseFiller:_normalize_npc_count(value, default)
+    local n = tonumber(value)
+    if not n then
+        n = default
+    end
+    if math_floor then
+        n = math_floor(n)
+    end
+    if math_max then
+        n = math_max(NPC_COUNT_MIN, n)
+    elseif n < NPC_COUNT_MIN then
+        n = NPC_COUNT_MIN
+    end
+    if math_min then
+        n = math_min(NPC_COUNT_MAX, n)
+    elseif n > NPC_COUNT_MAX then
+        n = NPC_COUNT_MAX
+    end
+    return n
+end
+
+function BaseFiller:_get_spawn_size_range()
+    local min_count = self:_normalize_npc_count(
+        self:_num_cfg("base_filler_npc_min", DEFAULT_NPC_MIN, NPC_COUNT_MIN),
+        DEFAULT_NPC_MIN
+    )
+    local max_count = self:_normalize_npc_count(
+        self:_num_cfg("base_filler_npc_max", DEFAULT_NPC_MAX, NPC_COUNT_MIN),
+        DEFAULT_NPC_MAX
+    )
+    if min_count > max_count then
+        min_count, max_count = max_count, min_count
+    end
+    return min_count, max_count
+end
+
+function BaseFiller:_begin_spawn_override(section, smart_name)
+    local min_count, max_count = self:_get_spawn_size_range()
+    ACTIVE_SPAWN_OVERRIDE = {
+        active = true,
+        section = section,
+        smart_name = smart_name,
+        min_count = min_count,
+        max_count = max_count,
+    }
+    ACTIVE_SPAWN_OVERRIDE_ORIGINAL_INI = _G.ini_sys
+    self.RUNTIME.spawn_override = {
+        active = true,
+        section = section,
+        smart_name = smart_name,
+        min_count = min_count,
+        max_count = max_count,
+    }
+    _G.ini_sys = build_ini_sys_proxy()
+end
+
+function BaseFiller:_end_spawn_override()
+    local original = ACTIVE_SPAWN_OVERRIDE_ORIGINAL_INI
+    ACTIVE_SPAWN_OVERRIDE = nil
+    ACTIVE_SPAWN_OVERRIDE_ORIGINAL_INI = nil
+    self.RUNTIME.spawn_override = {
+        active = false,
+        section = nil,
+        smart_name = nil,
+        min_count = nil,
+        max_count = nil,
+    }
+    _G.ini_sys = original or ini_sys
+end
+
+function BaseFiller:_call_with_spawn_override(section, smart_name, fn)
+    if type(fn) ~= "function" then
+        return false, nil
+    end
+    self:_begin_spawn_override(section, smart_name)
+    local ok, result = pcall(fn)
+    self:_end_spawn_override()
+    return ok, result
+end
+
+function BaseFiller:_state_has_explicit_mark(level_name)
+    if type(level_name) ~= "string" or level_name == "" then
+        return false
+    end
+    return type(self.STATE and self.STATE.last_fill_gt_by_level and self.STATE.last_fill_gt_by_level[level_name]) == "table"
+end
+
+function BaseFiller:_state_has_default_mark()
+    return type(self.STATE and self.STATE.default_last_fill_gt) == "table"
+end
+
+function BaseFiller:_get_level_fill_mark(level_name)
+    if self:_state_has_explicit_mark(level_name) then
+        return self.STATE.last_fill_gt_by_level[level_name], "level"
+    end
+    if self:_state_has_default_mark() then
+        return self.STATE.default_last_fill_gt, "default"
+    end
+    return nil, nil
+end
+
+function BaseFiller:_is_level_refill_due(level_name)
+    local hours = self:_num_cfg("base_filler_daily_respawn_game_hours", DEFAULT_DAILY_HOURS, 0.1)
+    local last = self:_get_level_fill_mark(level_name)
+    if type(last) ~= "table" then
+        return true
+    end
+    local last_ct = ctime_from_table(last)
+    if not last_ct then
+        return true
+    end
+    local elapsed = game_time_diff_sec(last_ct)
+    if not elapsed then
+        return false
+    end
+    return elapsed >= (hours * 3600)
+end
+
+function BaseFiller:_mark_level_fill_now(level_name)
+    if type(level_name) ~= "string" or level_name == "" then
+        return nil
+    end
+    local now_gt = game_time_now()
+    local stamp = now_gt and ctime_to_table(now_gt) or nil
+    self.STATE.last_fill_gt_by_level[level_name] = stamp
+    return stamp
+end
+
+function BaseFiller:_seed_default_fill_now()
+    local now_gt = game_time_now()
+    local stamp = now_gt and ctime_to_table(now_gt) or nil
+    self.STATE.default_last_fill_gt = stamp
+    return stamp
+end
+
+function BaseFiller:_is_spawn_blocked_near_actor(smart)
+    local actor_pos = safe_actor_position()
+    if not actor_pos then
+        return false, nil
+    end
+    local smart_pos = safe_smart_position(smart)
+    if not smart_pos then
+        return false, nil
+    end
+    local d2 = safe_distance_sqr(actor_pos, smart_pos)
+    if not d2 then
+        return false, nil
+    end
+    return d2 < NEAR_ACTOR_BLOCK_DIST_SQR, d2
+end
+
+function BaseFiller:_num_cfg(key, default, min_v)
+    local value = default
+    if siski.config and siski.config.get then
+        local read = siski.config.get(key, default)
+        if tonumber(read) then
+            value = tonumber(read)
+        end
+    end
+    if min_v ~= nil and value < min_v then
+        value = min_v
+    end
+    return value
+end
+
+function BaseFiller:_is_enabled()
+    if not (siski.config and siski.config.get) then
+        return true
+    end
+    if siski.config.get("enabled", true) ~= true then
+        return false
+    end
+    return siski.config.get("base_filler_enabled", true) ~= false
+end
+
+function BaseFiller:_log_warn(fmt, ...)
+    if siski.log and siski.log.warn then
+        siski.log.warn("BASE_FILLER", fmt, ...)
+    end
+end
+
+function BaseFiller:_log_info(fmt, ...)
+    if siski.log and siski.log.info then
+        siski.log.info("BASE_FILLER", fmt, ...)
+    end
+end
+
+function BaseFiller:_warn_throttled(key, interval_ms, fmt, ...)
+    if type(key) ~= "string" or key == "" then
+        self:_log_warn(fmt, ...)
+        return
+    end
+    local now = tg()
+    local next_tg = tonumber(self.RUNTIME.warn_next_tg_by_key[key]) or 0
+    if now < next_tg then
+        return
+    end
+    self.RUNTIME.warn_next_tg_by_key[key] = now + (tonumber(interval_ms) or 30000)
+    self:_log_warn(fmt, ...)
+end
+
+function BaseFiller:_section_exists(section)
+    if type(section) ~= "string" or section == "" then
+        return false
+    end
+    if ini_sys and ini_sys.section_exist then
+        local ok, exists = pcall(function() return ini_sys:section_exist(section) end)
+        if ok then
+            return exists == true
+        end
+    end
+    return true
+end
+
+function BaseFiller:_refresh_sections_index()
+    local by_faction = {}
+    local available = {}
+    for i = 1, #CAMPER_FACTIONS do
+        local faction = CAMPER_FACTIONS[i]
+        local list = {}
+        local n = 0
+        for j = 1, #CAMPER_TIERS do
+            local tier = CAMPER_TIERS[j]
+            local section = faction .. CAMPER_TOKEN .. tier
+            if not self:_section_exists(section) then
+                section = faction .. LEGACY_CAMPER_TOKEN .. tier
+            end
+            if self:_section_exists(section) then
+                n = n + 1
+                list[n] = section
+            end
+        end
+        if n > 0 then
+            by_faction[faction] = list
+            available[#available + 1] = faction
+        end
+    end
+    self.SECTIONS_BY_FACTION = by_faction
+    self.AVAILABLE_FACTIONS = available
+end
+
+function BaseFiller:_clear_smart_mapping(smart_name)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return
+    end
+    local sid = self.RUNTIME.smart_to_sid[smart_name]
+    if sid then
+        self.RUNTIME.sid_to_smart[sid] = nil
+        self.RUNTIME.cleaned_sids[sid] = nil
+    end
+    self.RUNTIME.smart_to_sid[smart_name] = nil
+end
+
+function BaseFiller:_remember_mapping(smart_name, sid)
+    sid = tonumber(sid)
+    if type(smart_name) ~= "string" or smart_name == "" or not sid then
+        return
+    end
+    local prev_sid = self.RUNTIME.smart_to_sid[smart_name]
+    if prev_sid and prev_sid ~= sid then
+        self.RUNTIME.sid_to_smart[prev_sid] = nil
+        self.RUNTIME.cleaned_sids[prev_sid] = nil
+    end
+    local prev_smart = self.RUNTIME.sid_to_smart[sid]
+    if prev_smart and prev_smart ~= smart_name then
+        self.RUNTIME.smart_to_sid[prev_smart] = nil
+    end
+    self.RUNTIME.smart_to_sid[smart_name] = sid
+    self.RUNTIME.sid_to_smart[sid] = smart_name
+end
+
+function BaseFiller:_pick_random_fallback_faction()
+    local count = #self.AVAILABLE_FACTIONS
+    if count <= 0 then
+        return nil
+    end
+    if math_random then
+        return self.AVAILABLE_FACTIONS[math_random(1, count)]
+    end
+    return self.AVAILABLE_FACTIONS[1]
+end
+
+function BaseFiller:_resolve_faction_from_npc_info(smart)
+    if not (smart and type(smart.npc_info) == "table") then
+        return nil
+    end
+    local counts = {}
+    local best = nil
+    local best_count = 0
+    for _, info in pairs(smart.npc_info) do
+        local se_obj = type(info) == "table" and info.se_obj or nil
+        local comm = normalize_community(safe_community(se_obj))
+        if comm and self.SECTIONS_BY_FACTION[comm] then
+            local c = (counts[comm] or 0) + 1
+            counts[comm] = c
+            if c > best_count then
+                best_count = c
+                best = comm
+            end
+        end
+    end
+    return best
+end
+
+function BaseFiller:_resolve_faction_from_smart_meta(smart)
+    if not smart then return nil end
+    local candidates = {}
+    local n = 0
+
+    if type(smart.faction) == "string" and smart.faction ~= "" then
+        n = n + 1
+        candidates[n] = smart.faction
+    end
+    if type(smart.default_faction) == "string" and smart.default_faction ~= "" then
+        n = n + 1
+        candidates[n] = smart.default_faction
+    end
+    if type(smart.faction_controlled) == "string" and smart.faction_controlled ~= "" then
+        local list = parse_csv(smart.faction_controlled)
+        for i = 1, #list do
+            n = n + 1
+            candidates[n] = list[i]
+        end
+    end
+    if type(smart.respawn_params) == "table" then
+        for _, v in pairs(smart.respawn_params) do
+            if type(v) == "table" and type(v.faction) == "string" and v.faction ~= "" then
+                n = n + 1
+                candidates[n] = v.faction
+            end
+        end
+    end
+
+    for i = 1, #candidates do
+        local comm = normalize_community(candidates[i])
+        if comm and self.SECTIONS_BY_FACTION[comm] then
+            return comm
+        end
+    end
+    return nil
+end
+
+function BaseFiller:_pick_faction_for_smart(smart)
+    local faction = self:_resolve_faction_from_npc_info(smart)
+    if faction then return faction end
+
+    faction = self:_resolve_faction_from_smart_meta(smart)
+    if faction then return faction end
+
+    return self:_pick_random_fallback_faction()
+end
+
+function BaseFiller:_pick_camper_section(faction)
+    local list = faction and self.SECTIONS_BY_FACTION[faction] or nil
+    local count = list and #list or 0
+    if count <= 0 then
+        return nil
+    end
+    if count == 1 or not math_random then
+        return list[1]
+    end
+    return list[math_random(1, count)]
+end
+
+function BaseFiller:_is_spawn_target_allowed(smart_name, smart, faction, section)
+    if not (siski.tasks and siski.tasks.is_smart_spawn_allowed) then
+        return true, "ok"
+    end
+
+    local level_name = nil
+    local gvid = smart and tonumber(smart.m_game_vertex_id) or nil
+    if gvid then
+        level_name = now_level_name_by_gvid(gvid)
+    end
+    local community = normalize_community(faction)
+    local ok, allowed, reason = pcall(
+        siski.tasks.is_smart_spawn_allowed,
+        smart_name,
+        community,
+        level_name,
+        section
+    )
+    if not ok then
+        self:_warn_throttled(
+            "spawn_policy_error:" .. tostring(smart_name),
+            30000,
+            "spawn_policy_error smart=%s err=%s",
+            tostring(smart_name),
+            tostring(allowed)
+        )
+        return true, "policy_error"
+    end
+    if allowed == true then
+        return true, tostring(reason or "ok")
+    end
+    return false, tostring(reason or "policy_reject")
+end
+
+function BaseFiller:_refresh_target_stats()
+    local total = 0
+    for _, list in pairs(self.RUNTIME.targets_by_level or {}) do
+        total = total + #list
+    end
+    self.RUNTIME.stats.targets = total
+end
+
+function BaseFiller:_set_level_targets(level_name, list)
+    if type(level_name) ~= "string" or level_name == "" then
+        return
+    end
+
+    local next_list = {}
+    local next_set = {}
+    for i = 1, #(list or {}) do
+        local smart_name = list[i]
+        if type(smart_name) == "string" and smart_name ~= "" and next_set[smart_name] ~= true then
+            next_set[smart_name] = true
+            next_list[#next_list + 1] = smart_name
+        end
+    end
+    if table_sort then
+        table_sort(next_list)
+    end
+
+    local prev_list = self.RUNTIME.targets_by_level[level_name] or {}
+    for i = 1, #prev_list do
+        local smart_name = prev_list[i]
+        if next_set[smart_name] ~= true then
+            self:_drop_target(smart_name)
+        end
+    end
+
+    if #next_list > 0 then
+        self.RUNTIME.targets_by_level[level_name] = next_list
+        self.RUNTIME.target_set_by_level[level_name] = next_set
+        for i = 1, #next_list do
+            self.RUNTIME.target_level_by_name[next_list[i]] = level_name
+        end
+    else
+        self.RUNTIME.targets_by_level[level_name] = nil
+        self.RUNTIME.target_set_by_level[level_name] = nil
+        self.RUNTIME.dirty_targets_by_level[level_name] = nil
+        self.RUNTIME.dirty_force_spawn_by_level[level_name] = nil
+    end
+
+    self:_refresh_target_stats()
+end
+
+function BaseFiller:_sync_targets_from_index()
+    local cfg = siski.config
+    local board_index = siski.board_index
+    local levels = cfg and cfg.get_level_bases_levels and cfg.get_level_bases_levels() or {}
+    local seen_levels = {}
+
+    for i = 1, #levels do
+        local level_name = levels[i]
+        seen_levels[level_name] = true
+        local list = board_index and board_index.get_base_smarts and board_index.get_base_smarts(level_name) or {}
+        self:_set_level_targets(level_name, list)
+    end
+
+    for level_name in pairs(self.RUNTIME.targets_by_level or {}) do
+        if seen_levels[level_name] ~= true then
+            self:_set_level_targets(level_name, {})
+        end
+    end
+end
+
+function BaseFiller:_mark_all_index_targets_dirty(force_spawn, reason)
+    local dirty = {}
+    for level_name, list in pairs(self.RUNTIME.targets_by_level or {}) do
+        if #list > 0 then
+            local bucket = dirty[level_name] or {}
+            dirty[level_name] = bucket
+            for i = 1, #list do
+                bucket[list[i]] = true
+            end
+            if force_spawn == true then
+                self.RUNTIME.dirty_force_spawn_by_level[level_name] = true
+            end
+        end
+    end
+    self.RUNTIME.dirty_targets_by_level = dirty
+end
+
+function BaseFiller:_drop_target(smart_name)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return false
+    end
+    local level_name = self.RUNTIME.target_level_by_name[smart_name]
+    if type(level_name) ~= "string" or level_name == "" then
+        return false
+    end
+
+    local set = self.RUNTIME.target_set_by_level[level_name]
+    local list = self.RUNTIME.targets_by_level[level_name]
+    if type(set) == "table" then
+        set[smart_name] = nil
+    end
+    if type(list) == "table" then
+        local next_list = {}
+        for i = 1, #list do
+            if list[i] ~= smart_name then
+                next_list[#next_list + 1] = list[i]
+            end
+        end
+        list = next_list
+    end
+
+    if type(list) == "table" and #list > 0 and type(set) == "table" and next(set) ~= nil then
+        self.RUNTIME.targets_by_level[level_name] = list
+        self.RUNTIME.target_set_by_level[level_name] = set
+    else
+        self.RUNTIME.targets_by_level[level_name] = nil
+        self.RUNTIME.target_set_by_level[level_name] = nil
+        self.RUNTIME.dirty_targets_by_level[level_name] = nil
+        self.RUNTIME.dirty_force_spawn_by_level[level_name] = nil
+    end
+
+    self.RUNTIME.target_level_by_name[smart_name] = nil
+    self:_clear_smart_mapping(smart_name)
+    self:_refresh_target_stats()
+    return true
+end
+
+function BaseFiller:_smart_is_config_target(smart_name, level_name)
+    if not (type(smart_name) == "string" and smart_name ~= "" and type(level_name) == "string" and level_name ~= "") then
+        return false
+    end
+    local list = siski.config and siski.config.get_level_bases and siski.config.get_level_bases(level_name) or {}
+    for i = 1, #list do
+        if list[i] == smart_name then
+            return true
+        end
+    end
+    return false
+end
+
+function BaseFiller:_upsert_target_from_smart(smart, reason)
+    local smart_name = object_name(smart)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return nil, false
+    end
+
+    local level_name = siski.board_index and siski.board_index.get_smart_level and siski.board_index.get_smart_level(smart_name) or nil
+    if type(level_name) ~= "string" or level_name == "" then
+        local gvid = smart and tonumber(smart.m_game_vertex_id) or nil
+        level_name = gvid and now_level_name_by_gvid(gvid) or nil
+    end
+    if type(level_name) ~= "string" or level_name == "" then
+        return smart_name, false
+    end
+
+    if self:_smart_is_config_target(smart_name, level_name) ~= true then
+        self:_drop_target(smart_name)
+        return smart_name, false
+    end
+
+    local prev_level = self.RUNTIME.target_level_by_name[smart_name]
+    if prev_level and prev_level ~= level_name then
+        self:_drop_target(smart_name)
+    end
+
+    local set = self.RUNTIME.target_set_by_level[level_name]
+    local list = self.RUNTIME.targets_by_level[level_name]
+    if type(set) ~= "table" then
+        set = {}
+        self.RUNTIME.target_set_by_level[level_name] = set
+    end
+    if type(list) ~= "table" then
+        list = {}
+        self.RUNTIME.targets_by_level[level_name] = list
+    end
+
+    if set[smart_name] ~= true then
+        set[smart_name] = true
+        list[#list + 1] = smart_name
+        if table_sort then
+            table_sort(list)
+        end
+        self:_refresh_target_stats()
+    end
+    self.RUNTIME.target_level_by_name[smart_name] = level_name
+    return smart_name, true
+end
+
+function BaseFiller:_is_target_smart(smart_name)
+    local level_name = self.RUNTIME.target_level_by_name[type(smart_name) == "string" and smart_name or ""]
+    return type(level_name) == "string"
+        and level_name ~= ""
+        and type(self.RUNTIME.target_set_by_level[level_name]) == "table"
+        and self.RUNTIME.target_set_by_level[level_name][smart_name] == true
+end
+
+function BaseFiller:_resolve_target_smart_name_from_squad(se_squad)
+    if not se_squad then
+        return nil
+    end
+
+    local mapped = self.RUNTIME.sid_to_smart[tonumber(se_squad.id) or -1]
+    if self:_is_target_smart(mapped) then
+        return mapped
+    end
+
+    local scripted = type(se_squad.scripted_target) == "string" and se_squad.scripted_target or nil
+    if self:_is_target_smart(scripted) then
+        return scripted
+    end
+
+    local smart_id = tonumber(se_squad.smart_id) or nil
+    if smart_id and siski.board_index and siski.board_index.get_smart_name_by_id then
+        local smart_name = siski.board_index.get_smart_name_by_id(smart_id)
+        if self:_is_target_smart(smart_name) then
+            return smart_name
+        end
+    end
+
+    return nil
+end
+
+function BaseFiller:_consume_dirty_targets(level_name)
+    local out = {}
+    local dirty = type(self.RUNTIME.dirty_targets_by_level) == "table" and self.RUNTIME.dirty_targets_by_level[level_name] or nil
+    if type(dirty) ~= "table" then
+        return out
+    end
+    for smart_name in pairs(dirty) do
+        if self:_is_target_smart(smart_name) then
+            out[#out + 1] = smart_name
+        end
+        dirty[smart_name] = nil
+    end
+    if table_sort then
+        table_sort(out)
+    end
+    if next(dirty) == nil then
+        self.RUNTIME.dirty_targets_by_level[level_name] = nil
+    end
+    return out
+end
+
+function BaseFiller:_mark_target_dirty(smart_name, force_spawn, reason)
+    local level_name = self.RUNTIME.target_level_by_name[type(smart_name) == "string" and smart_name or ""]
+    if type(level_name) ~= "string" or level_name == "" or self:_is_target_smart(smart_name) ~= true then
+        return false
+    end
+    self.RUNTIME.dirty_targets_by_level = type(self.RUNTIME.dirty_targets_by_level) == "table" and self.RUNTIME.dirty_targets_by_level or {}
+    local dirty = self.RUNTIME.dirty_targets_by_level[level_name]
+    if type(dirty) ~= "table" then
+        dirty = {}
+        self.RUNTIME.dirty_targets_by_level[level_name] = dirty
+    end
+    dirty[smart_name] = true
+    if force_spawn == true then
+        self.RUNTIME.dirty_force_spawn_by_level[level_name] = true
+    end
+    return self:_run_dirty_reconcile(reason or "dirty")
+end
+
+function BaseFiller:_pin_squad_to_smart(board, se_squad, smart_name, smart)
+    if not (se_squad and type(smart_name) == "string" and smart_name ~= "") then
+        return false
+    end
+    local section = safe_section(se_squad)
+    if not is_base_camper_section(section) then
+        self:_warn_throttled(
+            "pin_non_camper:" .. tostring(se_squad and se_squad.id or "-"),
+            15000,
+            "pin_skipped reason=non_camper sid=%s smart=%s section=%s",
+            tostring(se_squad and se_squad.id or "-"),
+            tostring(smart_name),
+            tostring(section or "-")
+        )
+        return false
+    end
+    board = board or get_board()
+    smart = smart or (board and board.smarts_by_names and board.smarts_by_names[smart_name] or nil)
+    if not smart then
+        return false
+    end
+
+    local smart_id = tonumber(smart.id) or nil
+    local changed = false
+
+    if se_squad.scripted_target ~= smart_name then
+        se_squad.scripted_target = smart_name
+        changed = true
+    end
+    if smart_id and tonumber(se_squad.assigned_target_id) ~= smart_id then
+        se_squad.assigned_target_id = smart_id
+        changed = true
+    end
+
+    clear_squad_runtime_target(se_squad)
+
+    if smart_id and board and board.assign_squad_to_smart then
+        local cur_smart = tonumber(se_squad.smart_id) or nil
+        if cur_smart ~= smart_id then
+            local ok = pcall(function() board:assign_squad_to_smart(se_squad, smart_id) end)
+            if ok then
+                changed = true
+            end
+        end
+    end
+
+    if changed then
+        self.RUNTIME.stats.pin_reassert = (tonumber(self.RUNTIME.stats.pin_reassert) or 0) + 1
+    end
+    return true
+end
+
+function BaseFiller:_sync_memory_for_camper(se_squad, clear_once)
+    if not (se_squad and siski.memory) then return end
+
+    local sid = tonumber(se_squad.id)
+    local touched = sid and siski.memory.get_squad_entry and siski.memory.get_squad_entry(sid) or nil
+    if sid and clear_once and (not self.RUNTIME.cleaned_sids[sid]) then
+        if touched and siski.memory.clear_tasks then
+            siski.memory.clear_tasks(sid)
+            self.RUNTIME.cleaned_sids[sid] = true
+        end
+    end
+end
+
+function BaseFiller:_iter_camper_members(se_squad)
+    local out = {}
+    if not se_squad then
+        return out
+    end
+
+    local seen = {}
+    local function push(id)
+        id = tonumber(id)
+        if not id or id <= 0 or seen[id] then
+            return
+        end
+        seen[id] = true
+        out[#out + 1] = id
+    end
+
+    local ok_members, a, b, c = pcall(function() return se_squad:squad_members() end)
+    if ok_members and a ~= nil then
+        local ok_iter = pcall(function()
+            for member in a, b, c do
+                local mid = extract_member_candidate_id(nil, member)
+                push(mid)
+            end
+        end)
+        if (not ok_iter) and type(a) == "table" then
+            for k, v in pairs(a) do
+                push(extract_member_candidate_id(k, v))
+            end
+        end
+    end
+
+    if #out <= 0 then
+        local cid = nil
+        local ok_cid = pcall(function() cid = tonumber(se_squad:commander_id()) end)
+        if ok_cid and cid then
+            push(cid)
+        else
+            self:_warn_throttled(
+                "members_unreadable:" .. tostring(se_squad and se_squad.id or "-"),
+                30000,
+                "members_unreadable sid=%s",
+                tostring(se_squad and se_squad.id or "-")
+            )
+        end
+    end
+
+    return out
+end
+
+function BaseFiller:_resolve_smart_runtime(smart_name)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return nil, nil, nil
+    end
+    local board = get_board()
+    if not (board and board.smarts_by_names) then
+        return nil, nil, board
+    end
+    local smart = board.smarts_by_names[smart_name]
+    if not smart then
+        return nil, nil, board
+    end
+    local smart_id = tonumber(smart.id) or nil
+    local node = smart_id and board.smarts and board.smarts[smart_id] or nil
+    return smart, node, board
+end
+
+function BaseFiller:_is_smart_on_actor_level(smart)
+    if not smart then
+        return false
+    end
+    local ok_actor, actor_level = pcall(function() return smart.is_on_actor_level end)
+    if ok_actor and actor_level ~= nil then
+        return actor_level == true
+    end
+
+    local active_level = loaded_level_name()
+    local gvid = tonumber(smart.m_game_vertex_id) or nil
+    local smart_level = gvid and now_level_name_by_gvid(gvid) or nil
+    return smart_level ~= nil and smart_level == active_level
+end
+
+function BaseFiller:_get_npc_info(smart, npc_id)
+    if not (smart and type(smart.npc_info) == "table") then
+        return nil
+    end
+    local id = tonumber(npc_id)
+    if id then
+        return smart.npc_info[id] or smart.npc_info[tostring(id)]
+    end
+    return smart.npc_info[npc_id]
+end
+
+function BaseFiller:_resolve_existing_camper(board, smart_name)
+    board = board or get_board()
+    if not (board and smart_name) then
+        self:_clear_smart_mapping(smart_name)
+        return nil, nil
+    end
+
+    local sim = alife and alife() or nil
+    if not sim then
+        self:_clear_smart_mapping(smart_name)
+        return nil, nil
+    end
+
+    local mapped_sid = tonumber(self.RUNTIME.smart_to_sid[smart_name]) or nil
+    if is_valid_server_id(mapped_sid) then
+        local ok_obj, mapped = pcall(function() return sim:object(mapped_sid) end)
+        if ok_obj and mapped and is_base_camper_section(safe_section(mapped)) then
+            return mapped, mapped_sid
+        end
+        self:_clear_smart_mapping(smart_name)
+    end
+
+    local smart = board.smarts_by_names and board.smarts_by_names[smart_name] or nil
+    local smart_id = smart and tonumber(smart.id) or nil
+    local node = smart_id and board.smarts and board.smarts[smart_id] or nil
+    if not (node and type(node.squads) == "table") then
+        return nil, nil
+    end
+
+    local selected = nil
+    local selected_sid = nil
+    for sid in pairs(node.squads) do
+        local id = tonumber(sid) or sid
+        if is_valid_server_id(id) then
+            local ok_obj, se_squad = pcall(function() return sim:object(id) end)
+            if ok_obj and se_squad and is_base_camper_section(safe_section(se_squad)) then
+                if not selected_sid then
+                    selected = se_squad
+                    selected_sid = tonumber(se_squad.id) or tonumber(id)
+                end
+            end
+        end
+    end
+
+    if selected_sid then
+        self:_remember_mapping(smart_name, selected_sid)
+        self.RUNTIME.stats.discover_hits = (tonumber(self.RUNTIME.stats.discover_hits) or 0) + 1
+        return selected, selected_sid
+    end
+    return nil, nil
+end
+
+function BaseFiller:_spawn_via_board(board, smart_name, section)
+    if not (board and board.create_squad and board.smarts_by_names) then
+        return nil
+    end
+    local smart = board.smarts_by_names[smart_name]
+    if not smart then
+        return nil
+    end
+    local ok, squad = self:_call_with_spawn_override(section, smart_name, function()
+        return board:create_squad(smart, section)
+    end)
+    if ok and squad then
+        return squad
+    end
+    return nil
+end
+
+function BaseFiller:_spawn_via_utils_obj(smart_name, section)
+    if not (utils_obj and utils_obj.create_squad) then
+        return nil
+    end
+    local ok, squad = self:_call_with_spawn_override(section, smart_name, function()
+        return utils_obj.create_squad(section, smart_name)
+    end)
+    if ok and squad then
+        return squad
+    end
+    return nil
+end
+
+function BaseFiller:_spawn_via_alife_fallback(board, smart_name, section)
+    board = board or get_board()
+    if not (board and board.smarts_by_names) then
+        return nil
+    end
+    local smart = board.smarts_by_names[smart_name]
+    if not smart then
+        return nil
+    end
+
+    local ok, squad = self:_call_with_spawn_override(section, smart_name, function()
+        local created_squad = nil
+        local sim = alife and alife() or nil
+        if sim and sim.create then
+            local pos = smart.position
+            local lvid = smart.m_level_vertex_id
+            local gvid = smart.m_game_vertex_id
+            local attempts = {
+                function() return sim:create(section, pos, lvid, gvid) end,
+                function() return sim:create(section, pos, lvid, gvid, 0, 0) end,
+                function() return sim:create(section, lvid, gvid, pos) end,
+            }
+            for i = 1, #attempts do
+                local ok_create, created = pcall(attempts[i])
+                if ok_create and created then
+                    created_squad = created
+                    break
+                end
+            end
+        end
+
+        if (not created_squad) and alife_create then
+            local ok_create, created = pcall(function()
+                return alife_create(section, smart.position, smart.m_level_vertex_id, smart.m_game_vertex_id)
+            end)
+            if ok_create and created then
+                created_squad = created
+            end
+        end
+
+        if not created_squad then
+            return nil
+        end
+
+        if created_squad.create_npc then
+            pcall(function() created_squad:create_npc(smart) end)
+        end
+        if board.assign_squad_to_smart then
+            pcall(function() board:assign_squad_to_smart(created_squad, smart.id) end)
+        end
+        return created_squad
+    end)
+    if ok and squad then
+        return squad
+    end
+    return nil
+end
+
+function BaseFiller:_spawn_camper(board, smart_name)
+    board = board or get_board()
+    if not (board and board.smarts_by_names and board.smarts_by_names[smart_name]) then
+        self.RUNTIME.stats.spawn_failed = (tonumber(self.RUNTIME.stats.spawn_failed) or 0) + 1
+        self.RUNTIME.stats.spawn_smart_missing = (tonumber(self.RUNTIME.stats.spawn_smart_missing) or 0) + 1
+        self:_warn_throttled("spawn_smart_missing:" .. tostring(smart_name), 30000, "spawn_skipped reason=smart_missing smart=%s", tostring(smart_name))
+        return nil, "smart_missing"
+    end
+
+    local smart = board.smarts_by_names[smart_name]
+    local actor_near, actor_dist_sqr = self:_is_spawn_blocked_near_actor(smart)
+    if actor_near then
+        self.RUNTIME.stats.spawn_failed = (tonumber(self.RUNTIME.stats.spawn_failed) or 0) + 1
+        self.RUNTIME.stats.spawn_blocked_actor_near = (tonumber(self.RUNTIME.stats.spawn_blocked_actor_near) or 0) + 1
+        self:_warn_throttled(
+            "spawn_actor_near:" .. tostring(smart_name),
+            10000,
+            "spawn_skipped reason=actor_near smart=%s dist=%s limit=%s",
+            tostring(smart_name),
+            format_distance_m(actor_dist_sqr),
+            tostring(NEAR_ACTOR_BLOCK_DIST_M)
+        )
+        return nil, "actor_near"
+    end
+
+    local faction = self:_pick_faction_for_smart(smart)
+    if not faction then
+        self.RUNTIME.stats.spawn_failed = (tonumber(self.RUNTIME.stats.spawn_failed) or 0) + 1
+        self.RUNTIME.stats.spawn_no_faction = (tonumber(self.RUNTIME.stats.spawn_no_faction) or 0) + 1
+        self:_warn_throttled("spawn_no_faction:" .. tostring(smart_name), 30000, "spawn_skipped reason=no_faction smart=%s", tostring(smart_name))
+        return nil, "no_faction"
+    end
+    local section = self:_pick_camper_section(faction)
+    if not section then
+        self.RUNTIME.stats.spawn_failed = (tonumber(self.RUNTIME.stats.spawn_failed) or 0) + 1
+        self.RUNTIME.stats.spawn_no_section = (tonumber(self.RUNTIME.stats.spawn_no_section) or 0) + 1
+        self:_warn_throttled(
+            "spawn_no_section:" .. tostring(smart_name),
+            30000,
+            "spawn_skipped reason=no_section smart=%s faction=%s",
+            tostring(smart_name),
+            tostring(faction)
+        )
+        return nil, "no_section"
+    end
+
+    local allowed, policy_reason = self:_is_spawn_target_allowed(smart_name, smart, faction, section)
+    if not allowed then
+        self.RUNTIME.stats.spawn_failed = (tonumber(self.RUNTIME.stats.spawn_failed) or 0) + 1
+        self.RUNTIME.stats.spawn_blocked_policy = (tonumber(self.RUNTIME.stats.spawn_blocked_policy) or 0) + 1
+        self:_warn_throttled(
+            "spawn_policy_reject:" .. tostring(policy_reason) .. ":" .. tostring(smart_name),
+            10000,
+            "spawn_skipped reason=policy_%s smart=%s faction=%s section=%s",
+            tostring(policy_reason),
+            tostring(smart_name),
+            tostring(faction),
+            tostring(section)
+        )
+        return nil, "policy_" .. tostring(policy_reason)
+    end
+
+    self.RUNTIME.stats.spawn_attempts = (tonumber(self.RUNTIME.stats.spawn_attempts) or 0) + 1
+
+    local squad = self:_spawn_via_board(board, smart_name, section)
+    if not squad then
+        squad = self:_spawn_via_utils_obj(smart_name, section)
+    end
+    if not squad then
+        squad = self:_spawn_via_alife_fallback(board, smart_name, section)
+    end
+    if not squad then
+        self.RUNTIME.stats.spawn_failed = (tonumber(self.RUNTIME.stats.spawn_failed) or 0) + 1
+        self:_log_warn("spawn_failed smart=%s faction=%s section=%s", tostring(smart_name), tostring(faction), tostring(section))
+        return nil, "spawn_failed"
+    end
+    local spawned_section = safe_section(squad)
+    if not is_base_camper_section(spawned_section) then
+        self.RUNTIME.stats.spawn_failed = (tonumber(self.RUNTIME.stats.spawn_failed) or 0) + 1
+        self.RUNTIME.stats.spawn_section_mismatch = (tonumber(self.RUNTIME.stats.spawn_section_mismatch) or 0) + 1
+        self:_warn_throttled(
+            "spawn_section_mismatch:" .. tostring(smart_name),
+            10000,
+            "spawn_reject reason=section_mismatch smart=%s sid=%s expected=%s got=%s",
+            tostring(smart_name),
+            tostring(squad and squad.id or "-"),
+            tostring(section),
+            tostring(spawned_section or "-")
+        )
+        release_squad_safe(squad, "siski_base_filler_section_mismatch")
+        return nil, "section_mismatch"
+    end
+
+    self.RUNTIME.stats.spawn_success = (tonumber(self.RUNTIME.stats.spawn_success) or 0) + 1
+    local min_count, max_count = self:_get_spawn_size_range()
+    self:_log_info("spawn_success sid=%s smart=%s faction=%s section=%s size_range=%s-%s",
+        tostring(squad and squad.id or "-"),
+        tostring(smart_name),
+        tostring(faction),
+        tostring(section),
+        tostring(min_count),
+        tostring(max_count)
+    )
+    return squad, nil
+end
+
+function BaseFiller:_active_camper_count()
+    local total = 0
+    local sim = alife and alife() or nil
+    if not sim then
+        return 0
+    end
+    for sid, smart_name in pairs(self.RUNTIME.sid_to_smart or {}) do
+        local id = tonumber(sid)
+        if is_valid_server_id(id) and type(smart_name) == "string" then
+            local ok, se_squad = pcall(function() return sim:object(id) end)
+            if ok and se_squad and is_base_camper_section(safe_section(se_squad)) then
+                total = total + 1
+            end
+        end
+    end
+    return total
+end
+
+function BaseFiller:_reconcile(force_spawn, full_pass, level_name, target_names)
+    local board = get_board()
+    if not board then
+        return
+    end
+    local now = tg()
+    local targets = type(target_names) == "table" and target_names or {}
+    local count = #targets
+    if count <= 0 then
+        self:_warn_throttled(
+            "reconcile_no_targets:" .. tostring(level_name or "-"),
+            15000,
+            "reconcile_skip reason=no_targets level=%s",
+            tostring(level_name or "-")
+        )
+        return
+    end
+
+    for idx = 1, count do
+        local smart_name = targets[idx]
+        local smart = board.smarts_by_names and board.smarts_by_names[smart_name] or nil
+        if smart then
+            local camper, sid = self:_resolve_existing_camper(board, smart_name)
+            if camper and sid then
+                self:_remember_mapping(smart_name, sid)
+                self:_pin_squad_to_smart(board, camper, smart_name, smart)
+                self:_sync_memory_for_camper(camper, true)
+            elseif force_spawn then
+                local spawned = self:_spawn_camper(board, smart_name)
+                if spawned then
+                    local spawned_sid = tonumber(spawned.id)
+                    self:_remember_mapping(smart_name, spawned_sid)
+                    self:_pin_squad_to_smart(board, spawned, smart_name, smart)
+                    self:_sync_memory_for_camper(spawned, true)
+                end
+            else
+                self:_clear_smart_mapping(smart_name)
+            end
+        else
+            self:_clear_smart_mapping(smart_name)
+        end
+    end
+    if full_pass or force_spawn or now >= ((tonumber(self.RUNTIME.last_active_count_tg) or 0) + ACTIVE_CAMPER_COUNT_REFRESH_MS) then
+        self.RUNTIME.stats.active_campers = self:_active_camper_count()
+        self.RUNTIME.last_active_count_tg = now
+    end
+    self.RUNTIME.stats.reconcile_runs = (tonumber(self.RUNTIME.stats.reconcile_runs) or 0) + 1
+end
+
+function BaseFiller:_run_dirty_reconcile(reason)
+    if self.RUNTIME.reconcile_running == true then
+        self.RUNTIME.reconcile_pending = true
+        return false
+    end
+
+    self.RUNTIME.reconcile_running = true
+    local ok, err = pcall(function()
+        repeat
+            self.RUNTIME.reconcile_pending = false
+
+            local levels = {}
+            for level_name in pairs(self.RUNTIME.dirty_targets_by_level or {}) do
+                if type(level_name) == "string" and level_name ~= "" then
+                    levels[#levels + 1] = level_name
+                end
+            end
+            if table_sort then
+                table_sort(levels)
+            end
+
+            for i = 1, #levels do
+                local level_name = levels[i]
+                local targets = self:_consume_dirty_targets(level_name)
+                if #targets > 0 then
+                    local force_spawn = self.RUNTIME.dirty_force_spawn_by_level[level_name] == true
+                        or self:_is_level_refill_due(level_name)
+                    self.RUNTIME.dirty_force_spawn_by_level[level_name] = nil
+                    self:_reconcile(force_spawn, true, level_name, targets)
+                    if force_spawn then
+                        self:_mark_level_fill_now(level_name)
+                    end
+                end
+            end
+        until self.RUNTIME.reconcile_pending ~= true
+    end)
+    self.RUNTIME.reconcile_running = false
+    if not ok then
+        error(err)
+    end
+    return true
+end
+
+function BaseFiller:_mark_dirty_from_squad(se_squad, force_spawn, reason)
+    if not se_squad then
+        return false
+    end
+    local smart_name = self:_resolve_target_smart_name_from_squad(se_squad)
+    if smart_name then
+        return self:_mark_target_dirty(smart_name, force_spawn, reason)
+    end
+    return false
+end
+
+function BaseFiller:_mark_dirty_from_smart(smart, force_spawn, reason)
+    local smart_name, is_target = self:_upsert_target_from_smart(smart, reason)
+    if is_target ~= true then
+        if type(smart_name) == "string" and smart_name ~= "" then
+            self:_drop_target(smart_name)
+        end
+        return false
+    end
+    return self:_mark_target_dirty(smart_name, force_spawn, reason)
+end
+
+function BaseFiller:_reactivate_runtime(reason)
+    if not self:_is_enabled() then
+        return
+    end
+    self.RUNTIME.targets_by_level = {}
+    self.RUNTIME.target_set_by_level = {}
+    self.RUNTIME.target_level_by_name = {}
+    self.RUNTIME.dirty_targets_by_level = {}
+    self.RUNTIME.dirty_force_spawn_by_level = {}
+    self.RUNTIME.smart_to_sid = {}
+    self.RUNTIME.sid_to_smart = {}
+    self.RUNTIME.cleaned_sids = {}
+    self:_refresh_sections_index()
+    self:_sync_targets_from_index()
+    self:_mark_all_index_targets_dirty(false, reason)
+    self:_run_dirty_reconcile(reason or "reactivate")
+end
+
+function BaseFiller:_on_first_update()
+    local active_level = loaded_level_name() or "-"
+    if not self:_is_enabled() then
+        if not self.RUNTIME.disabled_logged then
+            self:_log_warn("disabled level=%s source=on_first_update", tostring(active_level))
+            self.RUNTIME.disabled_logged = true
+        end
+        return
+    end
+    self.RUNTIME.disabled_logged = false
+
+    self:_refresh_sections_index()
+    self:_sync_targets_from_index()
+    self:_log_info(
+        "init level=%s targets=%s factions=%s",
+        tostring(active_level),
+        tostring(self.RUNTIME.stats.targets or 0),
+        tostring(#(self.AVAILABLE_FACTIONS or {}))
+    )
+    if (tonumber(self.RUNTIME.stats.targets) or 0) <= 0 then
+        self:_log_warn("targets_empty level=%s", tostring(active_level))
+    end
+    self:_log_info(
+        "init level=%s total_targets=%s levels=%s loaded_from_save=%s",
+        tostring(active_level),
+        tostring(self.RUNTIME.stats.targets or 0),
+        tostring(count_keys(self.RUNTIME.targets_by_level)),
+        tostring(self.RUNTIME.loaded_from_save == true)
+    )
+    self:_mark_all_index_targets_dirty(false, "first_update")
+    self:_run_dirty_reconcile("first_update")
+    self:_log_info(
+        "first_fill_done level=%s spawned=%s failed=%s active=%s",
+        tostring(active_level),
+        tostring(self.RUNTIME.stats.spawn_success or 0),
+        tostring(self.RUNTIME.stats.spawn_failed or 0),
+        tostring(self.RUNTIME.stats.active_campers or 0)
+    )
+    self.RUNTIME.initial_fill_done = true
+    self.RUNTIME.last_update_tg = tg()
+end
+
+function BaseFiller:_save_state(m_data)
+    if not m_data then
+        return
+    end
+    local out = {
+        version = STATE_VERSION,
+        last_fill_gt_by_level = {},
+        default_last_fill_gt = clone_ctime_table(self.STATE and self.STATE.default_last_fill_gt),
+    }
+    for level_name, mark in pairs(self.STATE and self.STATE.last_fill_gt_by_level or {}) do
+        local key = type(level_name) == "string" and level_name or nil
+        local stamp = clone_ctime_table(mark)
+        if key and key ~= "" and stamp then
+            out.last_fill_gt_by_level[key] = stamp
+        end
+    end
+    m_data.siski_base_filler_state = out
+end
+
+function BaseFiller:_load_state(m_data)
+    self.RUNTIME.loaded_from_save = true
+    self.RUNTIME.initial_fill_done = false
+    self.RUNTIME.targets_by_level = {}
+    self.RUNTIME.target_set_by_level = {}
+    self.RUNTIME.target_level_by_name = {}
+    self.RUNTIME.dirty_targets_by_level = {}
+    self.RUNTIME.dirty_force_spawn_by_level = {}
+    self.RUNTIME.smart_to_sid = {}
+    self.RUNTIME.sid_to_smart = {}
+    self.RUNTIME.cleaned_sids = {}
+    self.RUNTIME.reconcile_running = false
+    self.RUNTIME.reconcile_pending = false
+
+    local loaded = m_data and m_data.siski_base_filler_state or nil
+    if type(loaded) == "table" then
+        local state = {
+            version = STATE_VERSION,
+            last_fill_gt_by_level = {},
+            default_last_fill_gt = clone_ctime_table(loaded.default_last_fill_gt),
+        }
+        for level_name, mark in pairs(type(loaded.last_fill_gt_by_level) == "table" and loaded.last_fill_gt_by_level or {}) do
+            local key = type(level_name) == "string" and level_name or nil
+            local stamp = clone_ctime_table(mark)
+            if key and key ~= "" and stamp then
+                state.last_fill_gt_by_level[key] = stamp
+            end
+        end
+        self.STATE = state
+        self.RUNTIME.loaded_state_present = true
+        self:_log_info(
+            "load_state restored levels=%s default_mark=%s",
+            tostring(count_keys(state.last_fill_gt_by_level)),
+            tostring(state.default_last_fill_gt ~= nil)
+        )
+        return
+    end
+
+    self.STATE = {
+        version = STATE_VERSION,
+        last_fill_gt_by_level = {},
+        default_last_fill_gt = nil,
+    }
+    self.RUNTIME.loaded_state_present = false
+    self:_log_info("load_state empty_state=true")
+end
+
+function BaseFiller:_get_runtime_stats()
+    local src = self.RUNTIME and self.RUNTIME.stats or {}
+    local out = {}
+    for k, v in pairs(src) do
+        out[k] = v
+    end
+    out.targets = tonumber(src.targets) or 0
+    out.initial_fill_done = self.RUNTIME.initial_fill_done == true
+    out.daily_fill_mark = self:_get_level_fill_mark(loaded_level_name())
+    out.default_fill_mark = self.STATE and self.STATE.default_last_fill_gt or nil
+    out.level_fill_marks = count_keys(self.STATE and self.STATE.last_fill_gt_by_level or nil)
+    out.target_levels = count_keys(self.RUNTIME and self.RUNTIME.targets_by_level or nil)
+    return out
+end
+
+local inst = BaseFiller.new and BaseFiller.new() or setmetatable({}, BaseFiller)
+if not inst.RUNTIME then
+    BaseFiller.__init(inst)
+end
+
+local function bus_args(payload)
+    if type(payload) ~= "table" then
+        return {}
+    end
+    return type(payload.args) == "table" and payload.args or {}
+end
+
+if siski and siski.bus and siski.bus.subscribe then
+    siski.bus.subscribe("load_state", "siski_base_filler", function()
+        inst:_reactivate_runtime("load_state")
+    end)
+    siski.bus.subscribe("on_option_change", "siski_base_filler", function()
+        inst:_reactivate_runtime("option_change")
+    end)
+    siski.bus.subscribe("squad_on_enter_smart", "siski_base_filler", function(payload)
+        local args = bus_args(payload)
+        inst:_mark_dirty_from_squad(args[1], false, "enter_smart")
+    end)
+    siski.bus.subscribe("squad_on_leave_smart", "siski_base_filler", function(payload)
+        local args = bus_args(payload)
+        inst:_mark_dirty_from_squad(args[1], false, "leave_smart")
+    end)
+    siski.bus.subscribe("squad_on_after_level_change", "siski_base_filler", function(payload)
+        local args = bus_args(payload)
+        inst:_mark_dirty_from_squad(args[1], false, "after_level_change")
+    end)
+    siski.bus.subscribe("squad_on_npc_creation", "siski_base_filler", function(payload)
+        local args = bus_args(payload)
+        inst:_mark_dirty_from_squad(args[1], false, "npc_creation")
+    end)
+    siski.bus.subscribe("squad_on_npc_death", "siski_base_filler", function(payload)
+        local args = bus_args(payload)
+        inst:_mark_dirty_from_squad(args[1], false, "npc_death")
+    end)
+    siski.bus.subscribe("smart_terrain_on_update", "siski_base_filler", function(payload)
+        local args = bus_args(payload)
+        inst:_mark_dirty_from_smart(args[1], false, "smart_update")
+    end)
+    siski.bus.subscribe("server_entity_on_unregister", "siski_base_filler", function(payload)
+        local args = bus_args(payload)
+        local se_obj = args[1]
+        local smart_name = object_name(se_obj)
+        if inst:_is_target_smart(smart_name) then
+            inst:_drop_target(smart_name)
+            return
+        end
+        local sid = tonumber(se_obj and se_obj.id) or nil
+        smart_name = sid and inst.RUNTIME.sid_to_smart[sid] or nil
+        if sid then
+            inst.RUNTIME.sid_to_smart[sid] = nil
+        end
+        if type(smart_name) == "string" and smart_name ~= "" then
+            inst.RUNTIME.smart_to_sid[smart_name] = nil
+            inst:_mark_target_dirty(smart_name, false, "server_unregister")
+        end
+    end)
+end
+
+inst.on_first_update = function() return inst:_on_first_update() end
+inst.save_state = function(m_data) return inst:_save_state(m_data) end
+inst.load_state = function(m_data) return inst:_load_state(m_data) end
+inst.is_base_camper_section = function(section) return is_base_camper_section(section) end
+inst.get_runtime_stats = function() return inst:_get_runtime_stats() end
+
+siski.base_filler = inst

@@ -1,0 +1,377 @@
+-- add array via ltx with weapon nmes to ignore selected weapons from lowering
+
+local lower_weapon_sprint_status = false
+local lower_weapon_sprint_safe_mode_active = false
+local lower_weapon_sprint_aim = false
+local lower_weapon_sprint_fire = false
+local lowered_sprint_equip_weapon = false
+local sec = nil
+local exclude = {}
+
+exclude["wpn_mosin"] = 1
+exclude["wpn_mp412"] = 2
+exclude["wpn_howa20"] = 3
+exclude["wpn_axe"] = 4
+exclude["wpn_axe2"] = 5
+exclude["wpn_axe3"] = 6
+exclude["wpn_aug"] = 8
+exclude["wpn_aug_freedom"] = 9
+exclude["wpn_aug_custom"] = 10
+exclude["wpn_aug_merc"] = 11
+exclude["wpn_aug_modern"] = 12
+exclude["wpn_pp2000"] = 13
+exclude["wpn_l96a1"] = 14
+exclude["wpn_l96a1m"] = 15
+exclude["wpn_knife1"] = 16
+exclude["wpn_knife2"] = 17
+exclude["wpn_knife3"] = 18
+exclude["wpn_knife4"] = 19
+exclude["wpn_knife5"] = 20
+exclude["wpn_knife6"] = 21
+exclude["wpn_knife7"] = 22
+exclude["wpn_knife8"] = 23
+exclude["wpn_knife9"] = 24
+exclude["wpn_pp2000_ac10632"] = 25
+exclude["wpn_pp2000_acog"] = 26
+exclude["wpn_pp2000_eot"] = 27
+exclude["wpn_sig552"] = 28
+exclude["wpn_sig550"] = 29
+exclude["wpn_sig550_camo"] = 30
+exclude["wpn_sig550_custom"] = 31
+exclude["wpn_sig550_luckygun"] = 32
+exclude["wpn_sig550_sniper"] = 33
+exclude["wpn_mp5"] = 34
+exclude["wpn_mp5_alt"] = 35
+exclude["wpn_mp5_custom"] = 36
+exclude["wpn_mp5_nimble"] = 37
+exclude["wpn_mp5sd"] = 38
+exclude["wpn_mp5sd_custom"] = 39
+exclude["wpn_mp5sd_new"] = 40
+exclude["wpn_aps"] = 41
+exclude["wpn_pb"] = 42
+exclude["wpn_pb_custom"] = 43
+exclude["wpn_toz34"] = 45
+exclude["wpn_toz34_bull"] = 46
+exclude["wpn_toz34_custom"] = 47
+exclude["wpn_toz34_decor"] = 48
+exclude["wpn_toz34_obrez"] = 49
+exclude["wpn_toz34_obrez_custom"] = 50
+exclude["wpn_toz34_obrez_decor"] = 51
+exclude["wpn_toz34_mark4"] = 52
+exclude["wpn_toz34_mark4_23"] = 53
+exclude["wpn_groza"] = 54
+exclude["wpn_groza_nimble"] = 55
+exclude["wpn_p90tac"] = 56
+exclude["wpn_pm"] = 58
+exclude["wpn_pmm"] = 59
+exclude["wpn_pm_custom"] = 60
+exclude["wpn_pm_actor"] = 61
+exclude["wpn_beretta"] = 63
+exclude["wpn_beretta_alt"] = 64
+exclude["wpn_beretta_modern"] = 65
+exclude["wpn_beretta_camo"] = 66
+exclude["wpn_colt1911"] = 67
+exclude["wpn_colt1911_alt"] = 68
+exclude["wpn_colt1911_camo"] = 69
+exclude["wpn_colt1911_custom"] = 70
+exclude["wpn_colt1911_merc"] = 71
+exclude["wpn_colt1911_duty"] = 72
+exclude["wpn_colt1911_modern"] = 73
+exclude["wpn_colt1911_new"] = 74
+exclude["wpn_colt_kimber"] = 75
+exclude["wpn_fn57"] = 76
+exclude["wpn_fnp45"] = 77
+exclude["wpn_fnp45_custom"] = 78
+exclude["wpn_fnx45"] = 79
+exclude["wpn_fnx45_alt"] = 80
+exclude["wpn_fnx45_custom"] = 81
+exclude["wpn_glock"] = 82
+exclude["wpn_glock_custom"] = 83
+exclude["wpn_glock_modern"] = 84
+exclude["wpn_mp443"] = 85
+exclude["wpn_gsh18"] = 86
+exclude["wpn_gsh18_custom"] = 87
+exclude["wpn_hpsa"] = 88
+exclude["wpn_hpsa_alt"] = 89
+exclude["wpn_oc33"] = 90
+exclude["wpn_sig220"] = 91
+exclude["wpn_sig220_custom"] = 92
+exclude["wpn_sig220_nimble"] = 93
+exclude["wpn_tt33"] = 94
+exclude["wpn_tt33_modern"] = 95
+exclude["wpn_usp"] = 96
+exclude["wpn_usp_custom"] = 97
+exclude["wpn_usp_match"] = 98
+exclude["wpn_usp_nimble"] = 99
+exclude["wpn_walther"] = 100
+exclude["wpn_walther_custom"] = 101
+exclude["wpn_g36v_rwap"] = 103
+exclude["wpn_g36ka4_rwap"] = 104
+exclude["wpn_thompson_m1a1"] = 105
+exclude["wpn_thompson_1921"] = 106
+exclude["wpn_spas12"] = 107
+exclude["wpn_spas12_nimble"] = 108
+exclude["wpn_spas12_custom"] = 109
+exclude["wpn_svu"] = 110
+exclude["wpn_svu_nimble"] = 111
+exclude["wpn_svu_alt"] = 112
+exclude["wpn_saiga12s_m1"] = 113
+-- exclude["wpn_desert_eagle"] = 114
+-- exclude["wpn_desert_eagle_steppe"] = 115
+-- exclude["wpn_desert_eagle_modern"] = 116
+-- exclude["wpn_desert_eagle_custom"] = 117
+-- exclude["wpn_desert_eagle_nimble"] = 118
+exclude["wpn_vihr"] = 119
+exclude["wpn_9a91"] = 120
+exclude["wpn_saiga12s_m2"] = 121
+exclude["wpn_ak12_m1"] = 122
+exclude["wpn_ak12_custom_mono_kit"] = 123
+exclude["wpn_ak74_pmc"] = 124
+exclude["wpn_ak74_isg"] = 125
+exclude["wpn_ak74m_beard"] = 126
+exclude["wpn_akm_alfa"] = 127
+exclude["wpn_m4_ru556"] = 128
+exclude["wpn_vintorez_m1"] = 129
+exclude["wpn_vintorez_m2"] = 130
+exclude["wpn_abakan_n"] = 131
+exclude["wpn_sv98"] = 132
+exclude["wpn_sv98_custom"] = 133
+exclude["wpn_svu"] = 134
+exclude["wpn_svu_alt"] = 135
+exclude["wpn_svu_nimble"] = 136
+exclude["wpn_vssk"] = 137
+exclude["wpn_k98"] = 138
+exclude["wpn_fort"] = 139
+exclude["wpn_fort17"] = 140
+exclude["wpn_raptr"] = 141
+exclude["wpn_saiga12s_isg"] = 142
+exclude["wpn_vityaz"] = 143
+exclude["wpn_ump45"] = 147
+exclude["wpn_kriss_vector"] = 148
+exclude["wpn_rpk"] = 149
+exclude["wpn_rpk74"] = 150
+exclude["wpn_akm_alfa"] = 151
+exclude["wpn_mp7"] = 152
+exclude["wpn_kiparis"] = 153
+exclude["wpn_udp9"] = 154
+exclude["wpn_winchester1873"] = 155
+exclude["wpn_ace52"] = 156
+exclude["wpn_pkm_siber"] = 157
+exclude["wpn_pkp_siber"] = 158
+exclude["wpn_pkm_zenit_siber"] = 159
+exclude["wpn_val"] = 160
+exclude["wpn_val_modern"] = 161
+exclude["wpn_benelli_m1014"] = 162
+exclude["wpn_mossberg590"] = 163
+exclude["wpn_mossberg590_rail"] = 164
+exclude["wpn_mp9"] = 165
+exclude["wpn_glock17"] = 166
+exclude["wpn_glock17_m1"] = 167
+exclude["wpn_pl15"] = 168
+exclude["wpn_pl15_tan"] = 169
+exclude["wpn_sig226"] = 170
+exclude["wpn_sig226_226sig_kit"] = 171
+exclude["wpn_sig220_n"] = 172
+exclude["wpn_sig220_n_upg220"] = 173
+exclude["wpn_sig220_n_u2p2g0r"] = 174
+exclude["wpn_korth"] = 175
+exclude["wpn_korth_custom"] = 176
+exclude["wpn_sr1m"] = 177
+exclude["wpn_sr1m_gurza_up"] = 178
+exclude["wpn_sr1m_sr1upgr1"] = 179
+exclude["wpn_usp_tac"] = 180
+exclude["wpn_usp_tac_45"] = 181
+exclude["wpn_fn2000"] = 182
+exclude["wpn_fn2000_camo"] = 183
+exclude["wpn_fn2000_custom"] = 184
+exclude["wpn_fn2000_nimble"] = 185
+-- exclude["wpn_mp155"] = 186	-- sprint breaks if un-commented
+exclude["wpn_colt1911_n"] = 186
+exclude["wpn_walther_p99"] = 187
+exclude["wpn_walther_p99_mod9"] = 188
+
+local function is_excluded(sec)
+	sec = ini_sys:r_string_ex(sec,"parent_section") or sec --ensures scoped variants also register excluded
+	for k, v in pairs(exclude) do 
+		--printe(k)
+		--printe(sec)
+		if exclude[sec] then
+			--printe('excluded')
+			return true
+		else
+			--printe('not excluded')
+			return false
+		end
+	end
+    end   
+
+-- TimeEvents
+local function lower_sprint_delay_fire_func()
+	level.press_action(bind_to_dik(key_bindings.kWPN_FIRE))
+	return true
+end
+
+local function lower_sprint_delay_toggle_aim_func()
+	if not (axr_main.weapon_is_zoomed) then
+		level.press_action(bind_to_dik(key_bindings.kWPN_ZOOM))
+	end
+	return true
+end
+
+local function lower_sprint_delay_safemode_func()
+	if (game.actor_weapon_lowered()) then
+		lower_weapon_sprint_safe_mode_active = true
+	end
+	return true
+end
+
+local function lowered_sprint_delay_previous_weapon_func()
+	lowered_sprint_equip_weapon = false
+	return true
+end
+
+-- Actor On Update(Every tick)
+local function actor_on_update()
+
+	-- Prevent quick aim when 
+	local wpn = db.actor:active_item()
+	local is_weapon = wpn and IsWeapon(wpn) or false
+	if (is_weapon) then
+		local state = wpn:get_state()
+		if state == 3 then
+			lowered_sprint_equip_weapon = true
+			CreateTimeEvent(0, "lowered_sprint_delay_previous_weapon", 0.5, lowered_sprint_delay_previous_weapon_func)
+			
+			wpn = nil
+			return true
+		end
+	else
+		
+	end
+	
+	if lower_weapon_sprint_fire == true and actor_menu.last_mode == 0 then
+		if (is_weapon) then
+			local state = wpn:get_state()
+
+			if state == 0 then
+				if not (SYS_GetParam(0,wpn:section(),"kind") == "w_melee") then
+					wpn:switch_state(0)
+					CreateTimeEvent(0, "lower_sprint_delay_fire", 0, lower_sprint_delay_fire_func)
+				else
+					if not (state == 5) then
+						wpn:switch_state(0)
+					end
+				end
+				lower_weapon_sprint_fire = false
+			end
+		end
+		wpn = nil
+		return true
+	end
+	
+	if lower_weapon_sprint_aim == true and actor_menu.last_mode == 0 then
+		if (is_weapon) then
+			local state = wpn:get_state()
+
+			if state == 0 then
+				wpn:switch_state(0)
+			end
+
+			if lowered_sprint_equip_weapon == false then
+				if not (axr_main.weapon_is_zoomed) and game.actor_weapon_lowered() then
+					CreateTimeEvent(0, "lower_sprint_delay_toggle_aim", 0, lower_sprint_delay_toggle_aim_func)
+				else
+					lower_weapon_sprint_aim = false
+				end
+			end
+		end
+		wpn = nil
+		return true
+	end
+	
+	-- Prevent weapon from raising after weapon has already been lowered manually
+	if (lower_weapon_sprint_safe_mode_active == true and game.actor_weapon_lowered()) then
+		wpn = nil
+		return true
+	else
+		lower_weapon_sprint_safe_mode_active = false
+	end
+		
+	if not (IsMoveState("mcFall") or IsMoveState("mcJump") or IsMoveState("mcLanding")) and lower_weapon_sprint_aim == false then
+		if IsMoveState("mcSprint") then
+			if (wpn) and not is_excluded(wpn:section()) == true then
+				local can_be_lowered = wpn and IsWeapon(wpn) and ini_sys:r_bool_ex(wpn:section(), "can_be_lowered", false) or false
+				local state = wpn:get_state()
+				if (can_be_lowered and not(state == 0 or state == 1) or arti_jamming.anim_playing) then can_be_lowered = false end
+				
+				if (can_be_lowered) then
+					if (not game.actor_weapon_lowered()) then
+						game.actor_lower_weapon(true)
+					end
+				end
+			end
+			lower_weapon_sprint_status = true
+		else 
+			if (wpn) and not is_excluded(wpn:section()) == true then
+				local can_be_lowered = wpn and IsWeapon(wpn) and ini_sys:r_bool_ex(wpn:section(), "can_be_lowered", false) or false
+				local state = wpn:get_state()
+				if (can_be_lowered and not(state == 0 or state == 1) or arti_jamming.anim_playing) then can_be_lowered = false end
+					
+				if (can_be_lowered) then
+					if (game.actor_weapon_lowered()) then
+						if lower_weapon_sprint_status == true then
+							game.actor_lower_weapon(false)
+							wpn:switch_state(0)
+						end
+					else 
+						lower_weapon_sprint_status = false
+					end
+				end
+			end
+		end
+	end
+	wpn = nil
+end
+
+RegisterScriptCallback("actor_on_update",actor_on_update)
+
+
+-- Key Presses
+local function on_key_press(key)
+	-- allow fire on sprint
+	if (key == bind_to_dik(key_bindings.kWPN_FIRE)) then
+		if IsMoveState("mcSprint") and lowered_sprint_equip_weapon == false and game.actor_weapon_lowered() then
+			if (actor_menu.last_mode == 0) and (pda.dialog_closed == true) and (not Check_UI()) and (not db.actor:has_info("ui_pda")) then
+				lower_weapon_sprint_fire = true
+			end
+		end
+	end
+	
+	-- Prevent ignore aim when weapon is lowering
+	if (key == bind_to_dik(key_bindings.kWPN_ZOOM)) then
+		if IsMoveState("mcSprint") and lowered_sprint_equip_weapon == false and game.actor_weapon_lowered() then
+			if (actor_menu.last_mode == 0) and (pda.dialog_closed == true) and (not Check_UI()) and (not db.actor:has_info("ui_pda")) then
+				lower_weapon_sprint_aim = true
+			end
+		end
+	end
+	
+	if (key == bind_to_dik(key_bindings.kSAFEMODE)) then
+		CreateTimeEvent(0, "lower_sprint_delay_safemode", 0, lower_sprint_delay_safemode_func)
+	end
+end
+
+RegisterScriptCallback("on_key_press",on_key_press)
+
+
+-- Key Releases
+local function on_key_release(key)
+	-- Prevent ignore aim when weapon is lowering
+	if (key == bind_to_dik(key_bindings.kWPN_ZOOM)) then
+		if not (ui_options.get("control/general/aim_toggle")) then
+			lower_weapon_sprint_aim = false
+		end
+	end
+end
+RegisterScriptCallback("on_key_release",on_key_release)
+

@@ -1,0 +1,396 @@
+--TODO:
+--remove dependency on fdda. Ether move all funcs to patches or add more checks
+--move instant unequip code from outfit_animations.script into this script
+----------------------------------------
+-- action example
+----------------------------------------
+-- function get_action()
+--     local action = {
+--         sec = "",               --section with animation info
+--         anm = "",               --animation name from animation section,      if empty "anm_use" will be used by default
+--         cam = "",               --camera motion name from animation section,  if empty "cam" will be used by default
+--         snd = "",               --sound path name from animation section,     if empty "snd" will be used by default
+--         params = {
+--             delay = 0,          --delay before animation will be played
+--             length = 0,         --set custom action length independant of animation length. Example: play idle animation while some audio plays
+--             can_walk = true,    --self explanatory
+--             hud_fov = 0.6,      --self explanatory
+--         },
+--         fnc = {
+--             [1] = "",
+--             [2] = "",
+--         }
+--     }
+--     return action
+-- end
+
+----------------------------------------
+-- moneky patches
+----------------------------------------
+--makes that you can't open backpack while animation palys
+if zzz_ea_addon_backpack then
+    local originalBMO = zzz_ea_addon_backpack.backpack_m_open
+    zzz_ea_addon_backpack.backpack_m_open = function(name)
+        if lam.is_playing() then return end
+        originalBMO(name)
+    end
+end
+
+--makes that you can't pick up items while animation plays. Was causeing crash to desktop
+if take_item_anim then
+    local originalAOIBP = take_item_anim.actor_on_item_before_pickup
+    function take_item_anim.actor_on_item_before_pickup(item, flags)
+        if is_playing() then
+            flags.ret_value = false
+            return
+        end
+        originalAOIBP(item, flags)
+    end
+end
+
+----------------------------------------
+-- action list
+----------------------------------------
+local actions_first = 0
+local actions_last = -1
+local actions = {}
+local snd_obj = nil
+local current_action = nil
+
+
+function add_action(action)
+    actions_last = actions_last + 1
+    actions[actions_last] = action
+    -- printf("first %s | last %s | length %s", actions_first, actions_last, actions_count())
+    on_action_added()
+end
+
+
+function get_next_action()
+    if actions_first > actions_last then return nil end --if list of action is empty
+    local val = actions[actions_first]
+    actions[actions_first] = nil
+    actions_first = actions_first + 1
+    return val
+end
+
+
+function actions_count()
+    local count = 0
+    for i, v in pairs(actions) do
+        count = count + 1
+    end
+    return count
+end
+
+----------------------------------------
+-- public functions (sorta api i guess)
+----------------------------------------
+local _is_enabled = false
+local _is_playing = false
+
+
+function is_enabled()
+    return _is_enabled
+end
+
+
+function stop_current_action()
+    if is_playing() then
+        game.stop_hud_motion()
+        level.remove_cam_effector(2190)
+        if snd_obj then snd_obj:stop() end
+
+        if current_action then
+            local fnc = current_action.fnc
+            if fnc then
+                for i,v in pairs(fnc) do
+                    RemoveTimeEvent("liz_animation_manager", "play_action_func_" .. i .. "_te")
+                end
+            end
+            RemoveTimeEvent("liz_animation_manager", "play_action_end_te")
+
+            if current_action.params.can_walk then
+                game.only_allow_movekeys(false)
+            else
+                level.enable_input()
+            end
+
+            if current_action.params.hud_fov then
+                lam_fov_manager.restore_fov()
+            end
+        end
+
+        current_action = nil
+        snd_obj = nil
+        on_action_end()
+    end
+end
+
+
+function stop_all_actions()
+    if is_playing() then
+        --clear action list
+        actions = {}
+        actions_first = 0
+        actions_last = -1
+
+        stop_current_action()
+    end
+end
+
+
+function is_playing()
+    return _is_playing
+end
+
+
+function is_able_to_play()
+    --all safety checks go here
+    if not _is_enabled then return false end                                    --script is disabled
+    if not db.actor:alive() then return end                                     --player is dead
+    if has_alife_info("BAR_ARENA_FIGHT") then return end                        --is fighting on arena
+    if enhanced_animations and enhanced_animations.used_item then return end    --possible compatibility issues?
+
+    return true
+end
+
+
+--add action to play queue if nothing other plays
+function try_play_action(action)
+    if not is_enabled() then return false end
+    if is_playing() then return false end
+    add_action(action)
+    return true
+end
+
+
+--add action to paly queue no matter if something already palys
+function add_action_to_queue(action)
+    if not is_enabled() then return end
+    add_action(action)
+end
+
+----------------------------------------
+-- callbacks
+----------------------------------------
+function on_game_start()
+    RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+    -- RegisterScriptCallback("on_before_key_press", on_before_key_press)
+end
+
+
+function actor_on_first_update()
+    CreateTimeEvent("liz_animation_manager", "initialize_te", 3, function ()
+        _is_enabled = true
+        return true
+    end)
+end
+
+
+-- function on_before_key_press(dik, bind, dis, flags)
+--     if is_playing() then
+--         if dik == DIK_keys.DIK_K then
+--             stop_current_action()
+--         elseif dik == DIK_keys.DIK_L then
+--             stop_all_actions()
+--         end
+
+--         if _lock_keys_allow_movement then
+--             if
+--                 dik ~= DIK_keys.DIK_W
+--                 and dik ~= DIK_keys.DIK_A
+--                 and dik ~= DIK_keys.DIK_S
+--                 and dik ~= DIK_keys.DIK_D
+--             then
+--                 flags.ret_value = false
+--                 return
+--             end
+--         elseif _lock_keys_all then
+--             flags.ret_value = false
+--             return
+--         end
+--     end
+-- end
+
+
+function on_action_added()
+    if is_playing() then return end
+    process_next_action()
+end
+
+
+function on_action_end()
+    process_next_action()
+end
+
+----------------------------------------
+-- main
+----------------------------------------
+local cur_slot
+local det_active
+function process_next_action()
+    --out of actions show weapon set playing flag to false    
+    if actions_count() == 0 then
+        show_weapons()
+        _is_playing = false
+        return
+    end
+
+    --semething else don't allow to play action, then skip it
+    if not is_able_to_play() then
+        get_next_action()
+        process_next_action()
+        return
+    end
+
+    if not is_playing() then
+        _is_playing = true
+        hide_weapons()
+        CreateTimeEvent("liz_animation_manager", "wait_for_free_hands_te", 0, function()
+            if
+                db.actor:active_slot() == 0
+                and not db.actor:active_detector()
+                and (not enhanced_animations or not enhanced_animations.used_item)
+            then
+                -- play_action()
+                CreateTimeEvent("liz_animation_manager", "wait_for_free_hands_delay_te", 0, function () --"fix" for 1.5.1 why it works I do not know ¯\(°_o)/¯
+                    play_action()
+                    return true
+                end)
+                return true
+            end
+            return false
+        end)
+        return
+    end
+
+    CreateTimeEvent("liz_animation_manager", "play_next_action_te", 0.01, function()
+        play_action()
+        return true
+    end)
+end
+
+
+function hide_weapons()
+    --fdda compatibility
+    if enhanced_animations and (zzz_ea_addon_backpack and zzz_ea_addon_backpack.anim_enabled and zzz_ea_addon_backpack.backpack_open_flag) then
+        cur_slot = zzz_ea_addon_backpack.active_slot
+        det_active = zzz_ea_addon_backpack.det_active
+        zzz_ea_addon_backpack.active_slot = nil
+        zzz_ea_addon_backpack.det_active = nil
+    else
+        cur_slot = db.actor:active_slot()
+        det_active = db.actor:active_detector() or nil
+        if det_active then det_active:switch_state(2) end
+    end
+    hide_hud_inventory()
+    db.actor:activate_slot(0)
+end
+
+
+function show_weapons()
+    db.actor:activate_slot(cur_slot or 0)
+    if det_active then det_active:switch_state(1) end
+end
+
+
+-- local ae = actor_effects --sortcut cuz i'm lazy to type full script name every time
+function play_action()
+    local action = get_next_action()
+    current_action = action
+    local params = action.params or {}
+    local length = params.length or game.get_motion_length(action.sec, action.anm or "anm_use", 1) / 1000
+    local delay = params.delay or 0
+
+    --handle params start
+    if params.can_walk then
+        game.only_allow_movekeys(true)
+    else
+        level.disable_input()
+    end
+
+    if params.hud_fov then
+        lam_fov_manager.set_fov(0.6)
+    end
+    --handle params end
+
+    --play animation
+    CreateTimeEvent("liz_animation_manager", "play_action_te", delay, function()
+        game.play_hud_motion(2, action.sec, action.anm or "anm_use", false, 1)
+
+        local cam = ini_sys:r_string_ex(action.sec, action.cam or "cam")
+        if cam then
+            level.add_cam_effector(cam, 2190, false, "")
+        end
+
+        local snd = ini_sys:r_string_ex(action.sec, action.snd or "snd")
+        if snd then
+            -- xr_effects.play_snd(db.actor, nil, { [1] = snd })
+            snd_obj = sound_object(snd)
+            snd_obj:play(db.actor, 0, sound_object.s2d)
+        end
+
+        return true
+    end)
+
+    --create time events for all additional actions
+    local last_fnc = 0
+    local animation_end = delay + length
+    local fnc = action.fnc
+    if fnc then
+        for i,v in pairs(fnc) do
+            if i > last_fnc then
+                last_fnc = i
+            end
+            CreateTimeEvent("liz_animation_manager", "play_action_func_" .. i .. "_te", i/1000, function ()
+                assert(loadstring(v))() --this bound to blowup in my face at some point
+                return true
+            end)
+        end
+    end
+
+    last_fnc = last_fnc / 1000
+    local action_end = animation_end > last_fnc and animation_end or last_fnc
+
+    --callback after action ends
+    CreateTimeEvent("liz_animation_manager", "play_action_end_te", action_end, function ()
+        --handle params start
+        if params.can_walk then
+            game.only_allow_movekeys(false)
+        else
+            level.enable_input()
+        end
+
+        if params.hud_fov then
+            lam_fov_manager.restore_fov()
+        end
+        --handle params end
+
+        current_action = nil
+        snd_obj = nil
+        on_action_end()
+        return true
+    end)
+
+    -- is it good idea to piggyback on actor_effects code?
+    -- if (time_global() > ae.time_disabled) then
+    --     local tg = tostring(time_global())
+    --     local te = (delay + length) * 1000
+    --     ae.item_not_in_use = false
+    --     ae.item_in_use[tg] = action.fnc or {} -- should actually find last object in array. if it fiers after animation then add callback after it
+    --     if params.can_walk then
+    --         ae.item_in_use[tg][te] = "game.only_allow_movekeys(false)"
+    --     else
+    --         ae.item_in_use[tg][te] = "level.disable_input()"
+    --     end
+    --     ae.item_in_use[tg][te + 1] = "liz_anim_manager.on_action_end()"
+
+    --     for i,v in pairs(ae.item_in_use[tg]) do
+    --         printf("%s = %s", i, v)
+    --     end
+    -- end
+end
+
+-- local _lock_keys_allow_movement = false
+-- local _lock_keys_all = false

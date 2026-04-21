@@ -1,0 +1,1817 @@
+siski = siski or {}
+siski.story_events = siski.story_events or {}
+
+local story_events = siski.story_events
+
+local type = _G.type
+local pcall = _G.pcall
+local rawget = _G.rawget
+local tonumber = _G.tonumber
+local tostring = _G.tostring
+local pairs = _G.pairs
+local next = _G.next
+local time_global = _G.time_global
+local alife = _G.alife
+local game_graph = _G.game_graph
+local db = _G.db
+local level = _G.level
+local math_floor = _G.math and _G.math.floor or nil
+local math_random = _G.math and _G.math.random or nil
+
+local table_sort = table.sort
+local string_gsub = string.gsub
+local string_lower = string.lower
+
+local STATE_KEY = "siski_story_events_state"
+local EVENT_NORTH_MIGRATION = "north_migration"
+local TASK_NORTH_MIGRATION = "STORY EVENT: NORTH MIGRATION"
+local DISTANCE_FALLBACK = 1000000000
+local ENEMIES_THRESHOLD = tonumber(_G.game_relations and _G.game_relations.ENEMIES) or -1000
+local STORY_ARRIVAL_LIVE_GRACE_MS = 5000
+local STORY_ARRIVAL_CONFIRM_MS = 3000
+
+local NORTH_LEVELS = {
+    "zaton",
+    "jupiter",
+    "pripyat",
+}
+
+local NORTH_LEVEL_SET = {
+    zaton = true,
+    jupiter = true,
+    pripyat = true,
+}
+
+local EXCLUDED_COMMUNITIES = {
+    monolith = true,
+    greh = true,
+    isg = true,
+}
+
+local RUNTIME = {
+    surge_cache_active = false,
+    surge_cache_next_tg = 0,
+    rollout_running = false,
+}
+
+local function new_state()
+    return {
+        initialized = true,
+        north_migration = {
+            fired = false,
+            legacy_skipped = false,
+            selected_by_sid = {},
+            status_by_sid = {},
+        },
+    }
+end
+
+local STATE = new_state()
+local is_story_task
+
+local function tg()
+    return (time_global and time_global()) or 0
+end
+
+local function log_info(fmt, ...)
+    if siski.log and siski.log.info then
+        siski.log.info("STORY_EVENTS", fmt, ...)
+    end
+end
+
+local function log_warn(fmt, ...)
+    if siski.log and siski.log.warn then
+        siski.log.warn("STORY_EVENTS", fmt, ...)
+    end
+end
+
+local function trim(value)
+    if type(value) ~= "string" then
+        return nil
+    end
+    value = string_gsub(value, "^%s*(.-)%s*$", "%1")
+    if value == "" then
+        return nil
+    end
+    return value
+end
+
+local function lower_trim(value)
+    value = trim(value)
+    if not value then
+        return nil
+    end
+    return string_lower(value)
+end
+
+local function normalize_community_key(value)
+    if value == nil then
+        return nil
+    end
+    if type(value) ~= "string" then
+        value = tostring(value)
+    end
+    local key = lower_trim(value)
+    if not key then
+        return nil
+    end
+    if siski.config and siski.config.get_faction_alias then
+        local alias = siski.config.get_faction_alias(key)
+        alias = lower_trim(alias)
+        if alias then
+            key = alias
+        end
+    end
+    return key
+end
+
+local function normalize_status(value)
+    value = lower_trim(value)
+    if value == "travel" or value == "done" or value == "dead_or_invalid" then
+        return value
+    end
+    return "pending"
+end
+
+local function normalize_sid(value)
+    local sid = tonumber(value)
+    if not sid or sid <= 0 or sid == 65535 then
+        return nil
+    end
+    return sid
+end
+
+local function resolve_alife_object(id)
+    id = normalize_sid(id)
+    if not (id and alife) then
+        return nil
+    end
+    local sim = alife()
+    if not sim then
+        return nil
+    end
+    local ok, obj = pcall(function()
+        return sim:object(id)
+    end)
+    if ok then
+        return obj
+    end
+    return nil
+end
+
+local function now_level_name_by_gvid(gvid)
+    gvid = tonumber(gvid)
+    if not (gvid and alife and game_graph) then
+        return nil
+    end
+    local ok, res = pcall(function()
+        local gg = game_graph()
+        if not gg then
+            return nil
+        end
+        local gv = gg:vertex(gvid)
+        if not gv then
+            return nil
+        end
+        local sim = alife()
+        if not sim then
+            return nil
+        end
+        return sim:level_name(gv:level_id())
+    end)
+    if ok and type(res) == "string" and res ~= "" then
+        return res
+    end
+    return nil
+end
+
+local function get_board()
+    if rawget(_G, "SIMBOARD") then
+        return rawget(_G, "SIMBOARD")
+    end
+    if _G.sim_board and _G.sim_board.get_sim_board then
+        local ok, board = pcall(function()
+            return _G.sim_board.get_sim_board()
+        end)
+        if ok then
+            return board
+        end
+    end
+    return nil
+end
+
+local function resolve_smart_by_name(smart_name)
+    smart_name = trim(smart_name)
+    if not smart_name then
+        return nil
+    end
+    local board = get_board()
+    if not (board and board.smarts_by_names) then
+        return nil
+    end
+    return board.smarts_by_names[smart_name]
+end
+
+local function resolve_smart_id(smart_name)
+    local smart = resolve_smart_by_name(smart_name)
+    return tonumber(smart and smart.id) or nil, smart
+end
+
+local function resolve_smart_level_name(smart_name, fallback_level)
+    smart_name = trim(smart_name)
+    if not smart_name then
+        return fallback_level
+    end
+    if siski.board_index and siski.board_index.get_smart_level then
+        local indexed = siski.board_index.get_smart_level(smart_name)
+        if type(indexed) == "string" and indexed ~= "" then
+            return indexed
+        end
+    end
+    local smart = resolve_smart_by_name(smart_name)
+    local gvid = tonumber(smart and smart.m_game_vertex_id) or nil
+    if gvid then
+        return now_level_name_by_gvid(gvid) or fallback_level
+    end
+    return fallback_level
+end
+
+local function has_alife_info_safe(info)
+    if type(info) ~= "string" or info == "" then
+        return false
+    end
+
+    local fn = rawget(_G, "has_alife_info")
+    if type(fn) == "function" then
+        local ok, has = pcall(fn, info)
+        if ok then
+            return has == true
+        end
+    end
+
+    local actor = db and db.actor or nil
+    if actor and actor.has_info then
+        local ok, has = pcall(function()
+            return actor:has_info(info)
+        end)
+        if ok then
+            return has == true
+        end
+    end
+
+    return false
+end
+
+local function is_story_mode_active()
+    return has_alife_info_safe("story_mode_disabled") ~= true
+end
+
+local function get_cfg_bool(key, fallback)
+    if siski.config and siski.config.get then
+        local value = siski.config.get(key, fallback)
+        if value ~= nil then
+            return value == true
+        end
+    end
+    return fallback == true
+end
+
+local function feature_enabled_now()
+    if siski.switches and siski.switches.story_events == false then
+        return false
+    end
+    if get_cfg_bool("enabled", true) ~= true then
+        return false
+    end
+    if get_cfg_bool("story_events_enabled", true) ~= true then
+        return false
+    end
+    if get_cfg_bool("story_events_north_migration_enabled", true) ~= true then
+        return false
+    end
+    return true
+end
+
+local function migration_trigger_active()
+    if is_story_mode_active() ~= true then
+        return false
+    end
+    return has_alife_info_safe("bar_deactivate_radar_done") == true
+end
+
+local function get_north_migration_percent()
+    local percent = tonumber(siski.config and siski.config.get and siski.config.get("story_events_north_migration_percent", 50) or 50) or 50
+    if percent < 0 then
+        percent = 0
+    elseif percent > 100 then
+        percent = 100
+    end
+    return percent
+end
+
+local function is_protected_squad(se_squad)
+    if siski.memory and siski.memory.is_protected_squad then
+        local ok, protected = pcall(siski.memory.is_protected_squad, se_squad)
+        if ok then
+            return protected == true
+        end
+    end
+    return false
+end
+
+local function get_state_event()
+    if type(STATE) ~= "table" then
+        STATE = new_state()
+    end
+    if type(STATE.north_migration) ~= "table" then
+        STATE.north_migration = {
+            fired = false,
+            legacy_skipped = false,
+            selected_by_sid = {},
+            status_by_sid = {},
+        }
+    end
+    STATE.initialized = true
+    STATE.north_migration.selected_by_sid = type(STATE.north_migration.selected_by_sid) == "table" and STATE.north_migration.selected_by_sid or {}
+    STATE.north_migration.status_by_sid = type(STATE.north_migration.status_by_sid) == "table" and STATE.north_migration.status_by_sid or {}
+    return STATE.north_migration
+end
+
+local function set_sid_status(sid, status)
+    sid = normalize_sid(sid)
+    if not sid then
+        return
+    end
+    local event = get_state_event()
+    event.status_by_sid[sid] = normalize_status(status)
+end
+
+local function recover_story_selection_from_entry(sid, entry, source)
+    sid = normalize_sid(sid or (type(entry) == "table" and entry.squad_id))
+    if not sid or type(entry) ~= "table" then
+        return false
+    end
+    local current = entry.tasks and entry.tasks.current or nil
+    if is_story_task(current) ~= true then
+        return false
+    end
+    local event = get_state_event()
+    event.selected_by_sid[sid] = true
+    if normalize_status(event.status_by_sid[sid]) ~= "done" then
+        event.status_by_sid[sid] = "travel"
+    end
+    if siski.log and siski.log.info and source then
+        siski.log.info("STORY_EVENTS", "north_migration_recover sid=%s source=%s target=%s",
+            tostring(sid),
+            tostring(source),
+            tostring(current.target or "-")
+        )
+    end
+    return true
+end
+
+local function recover_story_selection_from_memory(source)
+    local state = siski.memory and siski.memory.get_state and siski.memory.get_state() or nil
+    local squads = type(state) == "table" and type(state.squads) == "table" and state.squads or nil
+    if type(squads) ~= "table" then
+        return 0
+    end
+    local recovered = 0
+    for sid, entry in pairs(squads) do
+        if recover_story_selection_from_entry(sid, entry, source) == true then
+            recovered = recovered + 1
+        end
+    end
+    return recovered
+end
+
+local function is_transient_reconcile_source(source)
+    source = tostring(source or "")
+    return source == "load_state" or source == "actor_on_first_update"
+end
+
+local function is_sid_selected(sid)
+    sid = normalize_sid(sid)
+    if not sid then
+        return false
+    end
+    local event = get_state_event()
+    return event.selected_by_sid[sid] == true
+end
+
+local function is_sid_locked(sid)
+    sid = normalize_sid(sid)
+    if not sid then
+        return false
+    end
+    if feature_enabled_now() ~= true then
+        return false
+    end
+    if is_sid_selected(sid) ~= true then
+        return false
+    end
+    local event = get_state_event()
+    local status = normalize_status(event.status_by_sid[sid])
+    return status ~= "done" and status ~= "dead_or_invalid"
+end
+
+local function normalize_sid_set(src)
+    local out = {}
+    if type(src) ~= "table" then
+        return out
+    end
+    for k, v in pairs(src) do
+        local sid = normalize_sid(k)
+        if sid and v ~= false and v ~= nil then
+            out[sid] = true
+        elseif sid == nil then
+            sid = normalize_sid(v)
+            if sid then
+                out[sid] = true
+            end
+        end
+    end
+    return out
+end
+
+local function normalize_status_map(src)
+    local out = {}
+    if type(src) ~= "table" then
+        return out
+    end
+    for k, v in pairs(src) do
+        local sid = normalize_sid(k)
+        if sid then
+            out[sid] = normalize_status(v)
+        end
+    end
+    return out
+end
+
+local function load_state_blob(m_data)
+    local blob = type(m_data) == "table" and m_data[STATE_KEY] or nil
+    if type(blob) == "table" then
+        STATE = {
+            initialized = blob.initialized == true,
+            north_migration = {
+                fired = type(blob.north_migration) == "table" and blob.north_migration.fired == true or false,
+                legacy_skipped = type(blob.north_migration) == "table" and blob.north_migration.legacy_skipped == true or false,
+                selected_by_sid = normalize_sid_set(type(blob.north_migration) == "table" and blob.north_migration.selected_by_sid or nil),
+                status_by_sid = normalize_status_map(type(blob.north_migration) == "table" and blob.north_migration.status_by_sid or nil),
+            },
+        }
+        STATE.initialized = true
+        return
+    end
+
+    STATE = new_state()
+    if migration_trigger_active() == true then
+        local event = get_state_event()
+        event.fired = true
+        event.legacy_skipped = true
+    end
+end
+
+local function save_state_blob(m_data)
+    if type(m_data) ~= "table" then
+        return
+    end
+    local event = get_state_event()
+    m_data[STATE_KEY] = {
+        initialized = true,
+        north_migration = {
+            fired = event.fired == true,
+            legacy_skipped = event.legacy_skipped == true,
+            selected_by_sid = normalize_sid_set(event.selected_by_sid),
+            status_by_sid = normalize_status_map(event.status_by_sid),
+        },
+    }
+end
+
+local function get_memory_entry(sid)
+    if not (siski.memory and siski.memory.get_squad_entry) then
+        return nil
+    end
+    return siski.memory.get_squad_entry(sid)
+end
+
+local function touch_or_get_entry(se_squad, sid, source)
+    sid = normalize_sid(sid or (se_squad and se_squad.id))
+    if not sid then
+        return nil
+    end
+    if se_squad and siski.memory and siski.memory.upsert_snapshot then
+        local ok, entry = pcall(siski.memory.upsert_snapshot, se_squad, tostring(source or "story_events"))
+        if ok and type(entry) == "table" then
+            return entry
+        end
+    end
+    return get_memory_entry(sid)
+end
+
+is_story_task = function(task)
+    if type(task) ~= "table" then
+        return false
+    end
+    if task.type ~= TASK_NORTH_MIGRATION then
+        return false
+    end
+    local params = type(task.params) == "table" and task.params or nil
+    if not params then
+        return false
+    end
+    if params.story_event == true and params.story_event_name == EVENT_NORTH_MIGRATION then
+        return true
+    end
+    return false
+end
+
+local function make_story_task(target, target_level)
+    local now = tg()
+    return {
+        id = TASK_NORTH_MIGRATION .. "_" .. tostring(now),
+        type = TASK_NORTH_MIGRATION,
+        target = target,
+        created_at_tg = now,
+        priority = 100,
+        params = {
+            story_event = true,
+            story_event_name = EVENT_NORTH_MIGRATION,
+            target_level = target_level,
+            started_at_tg = now,
+            arrival_live_check_after_tg = now + STORY_ARRIVAL_LIVE_GRACE_MS,
+            in_transit = true,
+        },
+    }
+end
+
+local function clear_task_apply_state(task)
+    if type(task) ~= "table" then
+        return
+    end
+    task.params = type(task.params) == "table" and task.params or {}
+    task.params._applied = nil
+    task.params.online_intent_next_tg = nil
+    task.params.arrival_candidate_source = nil
+    task.params.arrival_candidate_tg = nil
+    task.params.arrival_candidate_smart = nil
+end
+
+local function set_squad_always_arrived(se_squad, should_hold)
+    if not se_squad then
+        return
+    end
+    pcall(function()
+        se_squad.always_arrived = should_hold == true
+    end)
+end
+
+local function is_target_sync_enabled()
+    return get_cfg_bool("target_sync_enabled", true) == true
+end
+
+local function get_online_intent_enforce_enabled()
+    return get_cfg_bool("online_intent_enforce_enabled", true) == true
+end
+
+local function set_scripted_target(se_squad, smart_name, params, opts)
+    if not se_squad then
+        return false
+    end
+    se_squad.scripted_target = smart_name
+    if se_squad.task_target_id ~= nil then
+        se_squad.task_target_id = nil
+    end
+
+    if not is_target_sync_enabled() then
+        return true
+    end
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return true
+    end
+
+    params = type(params) == "table" and params or nil
+    local now = tg()
+    local smart_id = nil
+    smart_id = resolve_smart_id(smart_name)
+    local force_sync = opts and opts.force_sync == true
+
+    local changed = false
+    if params then
+        changed = params.target_sync_name ~= smart_name
+        params.target_sync_name = smart_name
+        params.target_sync_smart_id = smart_id or nil
+        if changed then
+            params.target_sync_started_tg = now
+            params.target_last_progress_tg = now
+            params.target_last_gvid = tonumber(se_squad.m_game_vertex_id) or nil
+            params.target_last_assigned_id = tonumber(se_squad.assigned_target_id) or nil
+            params.target_last_current_id = tonumber(se_squad.current_target_id) or nil
+            params.target_last_action = tonumber(se_squad.current_action) or nil
+        end
+    end
+
+    if changed or force_sync then
+        se_squad.current_action = 0
+        se_squad.current_target_id = nil
+        if smart_id then
+            se_squad.assigned_target_id = smart_id
+        end
+        se_squad.stay_time = nil
+        se_squad.arrive_time = nil
+        if params then
+            params.target_last_progress_tg = now
+            params.target_last_gvid = tonumber(se_squad.m_game_vertex_id) or nil
+            params.target_last_assigned_id = tonumber(se_squad.assigned_target_id) or nil
+            params.target_last_current_id = tonumber(se_squad.current_target_id) or nil
+            params.target_last_action = tonumber(se_squad.current_action) or nil
+        end
+    end
+
+    return true
+end
+
+local function is_online_squad(se_squad)
+    if not se_squad then
+        return false
+    end
+    local ok, online = pcall(function()
+        return se_squad.online
+    end)
+    return ok and online == true
+end
+
+local function should_enforce_online_intent(task, now, entry)
+    if siski.tasks and type(siski.tasks._should_enforce_online_intent) == "function" then
+        return siski.tasks._should_enforce_online_intent(task, now, entry) == true
+    end
+    task = type(task) == "table" and task or nil
+    if not task then
+        return false
+    end
+    local params = type(task.params) == "table" and task.params or nil
+    if not params then
+        return false
+    end
+    local next_tg = tonumber(params.online_intent_next_tg) or 0
+    return tonumber(now) >= next_tg
+end
+
+local function enforce_online_task_intent(se_squad, entry, task)
+    if get_online_intent_enforce_enabled() ~= true then
+        return
+    end
+    if not (se_squad and entry and type(task) == "table") then
+        return
+    end
+    if not is_online_squad(se_squad) then
+        return
+    end
+    if type(task.target) ~= "string" or task.target == "" then
+        return
+    end
+
+    local target_id = resolve_smart_id(task.target)
+    local scripted_target = se_squad.scripted_target
+    local assigned_target = tonumber(se_squad.assigned_target_id) or nil
+    local current_action = tonumber(se_squad.current_action) or nil
+    local mismatch = false
+
+    if scripted_target ~= task.target then mismatch = true end
+    if target_id and assigned_target and assigned_target ~= target_id then mismatch = true end
+    if current_action == nil then mismatch = true end
+
+    if mismatch then
+        set_scripted_target(se_squad, task.target, task.params, { force_sync = true, reason = "online_intent_enforce" })
+    end
+end
+
+local function clear_live_task_state(se_squad)
+    if not se_squad then
+        return
+    end
+    set_squad_always_arrived(se_squad, false)
+    pcall(function() se_squad.scripted_target = nil end)
+    pcall(function() se_squad.assigned_target_id = nil end)
+    pcall(function() se_squad.current_target_id = nil end)
+    pcall(function() se_squad.task_target_id = nil end)
+    pcall(function() se_squad.current_action = 0 end)
+    pcall(function() se_squad.stay_time = nil end)
+    pcall(function() se_squad.arrive_time = nil end)
+end
+
+local function sync_story_task_live_state(se_squad, task)
+    if not (se_squad and type(task) == "table") then
+        return
+    end
+    task.params = type(task.params) == "table" and task.params or {}
+    set_squad_always_arrived(se_squad, false)
+    if set_scripted_target(se_squad, task.target, task.params, {
+        force_sync = task.params._applied ~= true or se_squad.scripted_target ~= task.target,
+        reason = "story_event_sync",
+    }) then
+        task.params._applied = true
+    end
+end
+
+local function get_arrive_dist_cap_m()
+    local value = tonumber(siski.config and siski.config.get and siski.config.get("task_arrive_dist_cap_m", 5) or 5) or 5
+    if value < 0 then
+        value = 0
+    end
+    return value
+end
+
+local function vanilla_am_i_reached(se_squad, smart)
+    if not (se_squad and smart) then
+        return false
+    end
+
+    local sgvid = tonumber(se_squad.m_game_vertex_id) or nil
+    local tgvid = tonumber(smart.m_game_vertex_id) or nil
+    if sgvid and tgvid and sgvid == tgvid then
+        return true
+    end
+
+    if sgvid and tgvid and game_graph then
+        local ok_lvl, same_level = pcall(function()
+            local gg = game_graph()
+            return gg and gg:vertex(sgvid):level_id() == gg:vertex(tgvid):level_id()
+        end)
+        if ok_lvl and same_level == false then
+            return false
+        end
+    end
+
+    local cap_m = get_arrive_dist_cap_m()
+    if cap_m <= 0 then
+        return false
+    end
+
+    local pos_s = siski.safe and siski.safe.safe_position and siski.safe.safe_position(se_squad) or nil
+    local pos_t = smart.position
+    if not (pos_s and pos_t and pos_s.distance_to_sqr) then
+        return false
+    end
+
+    local arrive_dist = tonumber(smart.arrive_dist) or cap_m
+    if arrive_dist > cap_m then
+        arrive_dist = cap_m
+    end
+
+    local ok_alw, alw = pcall(function()
+        return se_squad.always_arrived
+    end)
+    if ok_alw and alw == true then
+        return true
+    end
+
+    local ok_d2, d2 = pcall(function()
+        return pos_s:distance_to_sqr(pos_t)
+    end)
+    d2 = ok_d2 and tonumber(d2) or nil
+    if not d2 then
+        return false
+    end
+
+    return d2 <= (arrive_dist * arrive_dist)
+end
+
+local function get_story_live_arrival_signal(se_squad, smart_name)
+    local smart = resolve_smart_by_name(smart_name)
+    if not (se_squad and smart) then
+        return nil
+    end
+
+    local current_action = tonumber(se_squad.current_action) or nil
+    local current_target = tonumber(se_squad.current_target_id) or nil
+    local smart_slot = tonumber(se_squad.smart_id) or nil
+    local smart_id = tonumber(smart.id) or nil
+
+    if current_action == 1 and smart_id and ((current_target and current_target == smart_id) or (smart_slot and smart_slot == smart_id)) then
+        return "fast_current"
+    end
+
+    if smart.am_i_reached then
+        local ok, reached = pcall(function()
+            return smart:am_i_reached(se_squad)
+        end)
+        if ok and reached == true then
+            return "smart_am_i_reached"
+        end
+    end
+
+    if vanilla_am_i_reached(se_squad, smart) == true then
+        return "vanilla_fallback"
+    end
+    return nil
+end
+
+local function entry_arrived_to_smart(entry, smart_name, smart_id)
+    if type(entry) ~= "table" then
+        return false
+    end
+    local params = entry.tasks and entry.tasks.current and entry.tasks.current.params or nil
+    if params and params.entered_target_smart == smart_name then
+        return true
+    end
+    local current_action = tonumber(entry.current_action) or tonumber(entry.tasks and entry.tasks.current and entry.tasks.current.params and entry.tasks.current.params.target_last_action) or nil
+    local entry_smart_id = tonumber(entry.smart_id) or nil
+    if current_action == 1 and smart_id and entry_smart_id and entry_smart_id == smart_id then
+        return true
+    end
+    return false
+end
+
+local function live_arrival_check_allowed(task)
+    local params = type(task) == "table" and type(task.params) == "table" and task.params or nil
+    if not params then
+        return true
+    end
+    local check_after = tonumber(params.arrival_live_check_after_tg) or 0
+    return tg() >= check_after
+end
+
+local function clear_story_arrival_candidate(task)
+    local params = type(task) == "table" and type(task.params) == "table" and task.params or nil
+    if not params then
+        return
+    end
+    params.arrival_candidate_source = nil
+    params.arrival_candidate_tg = nil
+    params.arrival_candidate_smart = nil
+end
+
+local function consume_story_live_arrival_signal(task, signal, smart_name)
+    local params = type(task) == "table" and type(task.params) == "table" and task.params or nil
+    if not params then
+        return false
+    end
+
+    if not signal then
+        clear_story_arrival_candidate(task)
+        return false
+    end
+
+    if signal == "fast_current" then
+        clear_story_arrival_candidate(task)
+        return true
+    end
+
+    if signal == "smart_am_i_reached" then
+        local now = tg()
+        local same_source = params.arrival_candidate_source == signal
+        local same_smart = params.arrival_candidate_smart == smart_name
+        local candidate_tg = tonumber(params.arrival_candidate_tg) or 0
+        if same_source and same_smart and now >= (candidate_tg + STORY_ARRIVAL_CONFIRM_MS) then
+            clear_story_arrival_candidate(task)
+            return true
+        end
+        params.arrival_candidate_source = signal
+        params.arrival_candidate_tg = now
+        params.arrival_candidate_smart = smart_name
+        return false
+    end
+
+    params.arrival_candidate_source = signal
+    params.arrival_candidate_tg = tg()
+    params.arrival_candidate_smart = smart_name
+    return false
+end
+
+local function is_story_arrived(entry, se_squad, smart_name, smart_id, task)
+    if entry_arrived_to_smart(entry, smart_name, smart_id) then
+        clear_story_arrival_candidate(task)
+        return true
+    end
+    if se_squad and live_arrival_check_allowed(task) then
+        local signal = get_story_live_arrival_signal(se_squad, smart_name)
+        return consume_story_live_arrival_signal(task, signal, smart_name) == true
+    end
+    return false
+end
+
+local function try_game_graph_distance(sgvid, tgvid)
+    sgvid = tonumber(sgvid)
+    tgvid = tonumber(tgvid)
+    if not (sgvid and tgvid and game_graph) then
+        return nil
+    end
+    local ok, distance = pcall(function()
+        local gg = game_graph()
+        if not gg then
+            return nil
+        end
+        return gg:distance(sgvid, tgvid)
+    end)
+    distance = ok and tonumber(distance) or nil
+    return distance
+end
+
+local function surge_active_uncached()
+    local xr = _G.xr_conditions
+    local surge_started = xr and xr.surge_started or nil
+    if type(surge_started) == "function" then
+        local ok, active = pcall(surge_started)
+        if ok and (active == true or active == false) then
+            return active == true
+        end
+    end
+
+    local fn = _G.surge_started
+    if type(fn) == "function" then
+        local ok, active = pcall(fn)
+        if ok and (active == true or active == false) then
+            return active == true
+        end
+    end
+
+    local psm = _G.psi_storm_manager
+    if psm and type(psm.is_loaded) == "function" and type(psm.is_started) == "function" then
+        local ok_loaded, loaded = pcall(function() return psm.is_loaded() end)
+        if ok_loaded and loaded == true then
+            local ok_started, started = pcall(function() return psm.is_started() end)
+            if ok_started and started == true then
+                return true
+            end
+        end
+    end
+
+    local sm = _G.surge_manager
+    if sm and type(sm.is_loaded) == "function" and type(sm.is_started) == "function" then
+        local ok_loaded, loaded = pcall(function() return sm.is_loaded() end)
+        if ok_loaded and loaded == true then
+            local ok_started, started = pcall(function() return sm.is_started() end)
+            if ok_started and started == true then
+                return true
+            end
+        end
+    end
+
+    if level and type(level.is_surge) == "function" then
+        local ok, active = pcall(function() return level.is_surge() end)
+        if ok and active == true then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function is_surge_active_now()
+    local now = tg()
+    if now < (tonumber(RUNTIME.surge_cache_next_tg) or 0) then
+        return RUNTIME.surge_cache_active == true
+    end
+    local active = surge_active_uncached() == true
+    local cache_ms = tonumber(siski.config and siski.config.get and siski.config.get("surge_check_cache_ms", 250) or 250) or 250
+    if cache_ms < 0 then
+        cache_ms = 0
+    end
+    RUNTIME.surge_cache_active = active
+    RUNTIME.surge_cache_next_tg = now + cache_ms
+    return active
+end
+
+local function shuffle_in_place(arr)
+    if type(arr) ~= "table" or not math_random then
+        return arr
+    end
+    for i = #arr, 2, -1 do
+        local j = math_random(i)
+        if j ~= i then
+            arr[i], arr[j] = arr[j], arr[i]
+        end
+    end
+    return arr
+end
+
+local function pick_random(arr)
+    if type(arr) ~= "table" or #arr <= 0 or not math_random then
+        return nil
+    end
+    return arr[math_random(#arr)]
+end
+
+local function relation_allows_coexist(source_community, other_community)
+    source_community = normalize_community_key(source_community)
+    other_community = normalize_community_key(other_community)
+    if not (source_community and other_community) then
+        return false
+    end
+    if source_community == other_community then
+        return true
+    end
+    if _G.game_relations and type(_G.game_relations.get_factions_community) == "function" then
+        local ok, relation = pcall(function()
+            return _G.game_relations.get_factions_community(source_community, other_community)
+        end)
+        relation = ok and tonumber(relation) or nil
+        if relation ~= nil then
+            return relation > ENEMIES_THRESHOLD
+        end
+    end
+    return false
+end
+
+local function collect_smart_communities(level_name, smart_name)
+    local out = {}
+    local seen = {}
+    if not (type(level_name) == "string" and level_name ~= "" and type(smart_name) == "string" and smart_name ~= "") then
+        return out
+    end
+    local index = siski.memory and siski.memory.get_communities_by_smart_level and siski.memory.get_communities_by_smart_level() or nil
+    if type(index) == "table" then
+        local by_level = type(index[smart_name]) == "table" and index[smart_name][level_name] or nil
+        if type(by_level) == "table" then
+            for community in pairs(by_level) do
+                local key = normalize_community_key(community)
+                if key and seen[key] ~= true then
+                    seen[key] = true
+                    out[#out + 1] = key
+                end
+            end
+        end
+    end
+
+    local event = get_state_event()
+    for sid in pairs(event.selected_by_sid) do
+        local status = normalize_status(event.status_by_sid[sid])
+        if status ~= "done" and status ~= "dead_or_invalid" then
+            local entry = get_memory_entry(sid)
+            local current = entry and entry.tasks and entry.tasks.current or nil
+            if is_story_task(current) == true and current.target == smart_name then
+                local current_level = resolve_smart_level_name(current.target, current.params and current.params.target_level or entry and entry.level or nil)
+                if current_level == level_name then
+                    local key = normalize_community_key(entry and entry.community)
+                    if key and seen[key] ~= true then
+                        seen[key] = true
+                        out[#out + 1] = key
+                    end
+                end
+            end
+        end
+    end
+
+    return out
+end
+
+local function is_story_target_safe(smart_name, level_name, community, section_name)
+    if not (type(smart_name) == "string" and smart_name ~= "" and type(level_name) == "string" and level_name ~= "") then
+        return false, "invalid_target"
+    end
+    if not (siski.tasks and siski.tasks.is_smart_spawn_allowed) then
+        return false, "tasks_gate_missing"
+    end
+    local allowed, reason = siski.tasks.is_smart_spawn_allowed(smart_name, community, level_name, section_name)
+    if allowed ~= true then
+        return false, tostring(reason or "blocked")
+    end
+    local occupancy = collect_smart_communities(level_name, smart_name)
+    for i = 1, #occupancy do
+        if relation_allows_coexist(community, occupancy[i]) ~= true then
+            return false, "relation:" .. tostring(occupancy[i])
+        end
+    end
+    return true
+end
+
+local function distance_to_smart(se_squad, entry, smart_name)
+    smart_name = trim(smart_name)
+    if not smart_name then
+        return DISTANCE_FALLBACK
+    end
+    local smart = resolve_smart_by_name(smart_name)
+    if not smart then
+        return DISTANCE_FALLBACK
+    end
+    local squad_gvid = tonumber(se_squad and se_squad.m_game_vertex_id) or tonumber(entry and entry.level_gvid) or nil
+    local smart_gvid = tonumber(smart.m_game_vertex_id) or nil
+    local distance = try_game_graph_distance(squad_gvid, smart_gvid)
+    if distance ~= nil then
+        return distance
+    end
+    local pos_s = siski.safe and siski.safe.safe_position and siski.safe.safe_position(se_squad) or nil
+    local pos_t = smart.position
+    if pos_s and pos_t and pos_s.distance_to then
+        local ok, fallback = pcall(function()
+            return pos_s:distance_to(pos_t)
+        end)
+        fallback = ok and tonumber(fallback) or nil
+        if fallback ~= nil then
+            return fallback
+        end
+    end
+    return DISTANCE_FALLBACK
+end
+
+local function get_level_base_smarts(level_name)
+    if siski.board_index and siski.board_index.get_base_smarts then
+        return siski.board_index.get_base_smarts(level_name) or {}
+    end
+    return {}
+end
+
+local function get_level_smarts(level_name)
+    if siski.board_index and siski.board_index.get_level_smarts then
+        return siski.board_index.get_level_smarts(level_name) or {}
+    end
+    return {}
+end
+
+local function get_level_territory_smarts(level_name)
+    if not (siski.board_index and siski.board_index.get_level_smarts) then
+        return {}
+    end
+    return siski.board_index.get_level_smarts(level_name, function(smart_name)
+        local smart = resolve_smart_by_name(smart_name)
+        local props = smart and smart.props or nil
+        return tonumber(props and props.territory) and tonumber(props and props.territory) > 0 or false
+    end) or {}
+end
+
+local function get_level_neighbors(level_name, community, section_name)
+    if type(level_name) ~= "string" or level_name == "" then
+        return {}
+    end
+    if siski.board_index and siski.board_index.get_level_neighbors then
+        local res = siski.board_index.get_level_neighbors(level_name, {
+            community = community,
+            section_name = section_name,
+        })
+        if type(res) == "table" then
+            return res
+        end
+    end
+    return {}
+end
+
+local function get_north_level_projected_load(level_name, exclude_sid)
+    level_name = lower_trim(level_name)
+    exclude_sid = normalize_sid(exclude_sid)
+    if not level_name or NORTH_LEVEL_SET[level_name] ~= true then
+        return 0
+    end
+
+    local event = get_state_event()
+    local load = 0
+    for sid in pairs(event.selected_by_sid) do
+        sid = normalize_sid(sid)
+        if sid and sid ~= exclude_sid then
+            local status = normalize_status(event.status_by_sid[sid])
+            if status ~= "dead_or_invalid" then
+                local entry = get_memory_entry(sid)
+                local current = entry and entry.tasks and entry.tasks.current or nil
+                local current_level = nil
+                if is_story_task(current) == true then
+                    current_level = resolve_smart_level_name(current.target, current.params and current.params.target_level or entry and entry.level or nil)
+                elseif status == "done" and type(entry) == "table" then
+                    current_level = lower_trim(entry.level)
+                end
+                current_level = lower_trim(current_level)
+                if current_level == level_name then
+                    load = load + 1
+                end
+            end
+        end
+    end
+    return load
+end
+
+local function level_order_for_squad(se_squad, entry)
+    local scored = {}
+    local source_sid = normalize_sid(entry and entry.squad_id)
+    for i = 1, #NORTH_LEVELS do
+        local level_name = NORTH_LEVELS[i]
+        local bases = get_level_base_smarts(level_name)
+        local best = DISTANCE_FALLBACK
+        for j = 1, #bases do
+            local d = distance_to_smart(se_squad, entry, bases[j])
+            if d < best then
+                best = d
+            end
+        end
+        scored[#scored + 1] = {
+            level = level_name,
+            load = get_north_level_projected_load(level_name, source_sid),
+            distance = best,
+            order = i,
+        }
+    end
+
+    table_sort(scored, function(a, b)
+        local la = tonumber(a and a.load) or 0
+        local lb = tonumber(b and b.load) or 0
+        if la ~= lb then
+            return la < lb
+        end
+        local da = tonumber(a and a.distance) or DISTANCE_FALLBACK
+        local dbv = tonumber(b and b.distance) or DISTANCE_FALLBACK
+        if da ~= dbv then
+            return da < dbv
+        end
+        return (tonumber(a and a.order) or 0) < (tonumber(b and b.order) or 0)
+    end)
+
+    local out = {}
+    for i = 1, #scored do
+        out[i] = scored[i].level
+    end
+    return out
+end
+
+local function pick_nearest_safe_base_on_level(se_squad, entry, community, section_name, level_name)
+    local bases = get_level_base_smarts(level_name)
+    if #bases <= 0 then
+        return nil
+    end
+
+    local best_name = nil
+    local best_distance = nil
+    local fallback = {}
+
+    for i = 1, #bases do
+        local smart_name = bases[i]
+        local safe = is_story_target_safe(smart_name, level_name, community, section_name)
+        if safe == true then
+            local d = distance_to_smart(se_squad, entry, smart_name)
+            if d < DISTANCE_FALLBACK then
+                if best_distance == nil or d < best_distance then
+                    best_distance = d
+                    best_name = smart_name
+                end
+            else
+                fallback[#fallback + 1] = smart_name
+            end
+        end
+    end
+
+    if best_name then
+        return best_name
+    end
+    return pick_random(fallback)
+end
+
+local function pick_nearest_safe_territory_on_level(se_squad, entry, community, section_name, level_name)
+    local territories = get_level_territory_smarts(level_name)
+    if #territories <= 0 then
+        return nil
+    end
+
+    local best_name = nil
+    local best_distance = nil
+    local fallback = {}
+
+    for i = 1, #territories do
+        local smart_name = territories[i]
+        local safe = is_story_target_safe(smart_name, level_name, community, section_name)
+        if safe == true then
+            local d = distance_to_smart(se_squad, entry, smart_name)
+            if d < DISTANCE_FALLBACK then
+                if best_distance == nil or d < best_distance then
+                    best_distance = d
+                    best_name = smart_name
+                end
+            else
+                fallback[#fallback + 1] = smart_name
+            end
+        end
+    end
+
+    if best_name then
+        return best_name
+    end
+    return pick_random(fallback)
+end
+
+local function pick_random_safe_smart_on_level(community, section_name, level_name)
+    local smarts = get_level_smarts(level_name)
+    if #smarts <= 0 then
+        return nil
+    end
+    local safe = {}
+    for i = 1, #smarts do
+        local smart_name = smarts[i]
+        local ok_safe = is_story_target_safe(smart_name, level_name, community, section_name)
+        if ok_safe == true then
+            safe[#safe + 1] = smart_name
+        end
+    end
+    return pick_random(safe)
+end
+
+local function pick_safe_target_on_level(se_squad, entry, community, section_name, level_name)
+    local best_base = pick_nearest_safe_base_on_level(se_squad, entry, community, section_name, level_name)
+    if best_base then
+        return best_base, level_name
+    end
+    local best_territory = pick_nearest_safe_territory_on_level(se_squad, entry, community, section_name, level_name)
+    if best_territory then
+        return best_territory, level_name
+    end
+    local fallback = pick_random_safe_smart_on_level(community, section_name, level_name)
+    if fallback then
+        return fallback, level_name
+    end
+    return nil, nil
+end
+
+local function pick_north_migration_target(se_squad, entry)
+    if type(entry) ~= "table" then
+        return nil, nil
+    end
+    local community = normalize_community_key(entry.community)
+    local section_name = entry.section
+    if not (community and type(section_name) == "string" and section_name ~= "") then
+        return nil, nil
+    end
+
+    local ordered_levels = level_order_for_squad(se_squad, entry)
+    local searched_levels = {}
+    for i = 1, #ordered_levels do
+        local level_name = ordered_levels[i]
+        if searched_levels[level_name] ~= true then
+            searched_levels[level_name] = true
+            local target, target_level = pick_safe_target_on_level(se_squad, entry, community, section_name, level_name)
+            if target then
+                return target, target_level
+            end
+        end
+
+        local neighbors = get_level_neighbors(level_name, community, section_name)
+        for j = 1, #neighbors do
+            local neighbor_level = neighbors[j]
+            if searched_levels[neighbor_level] ~= true then
+                searched_levels[neighbor_level] = true
+                local target, target_level = pick_safe_target_on_level(se_squad, entry, community, section_name, neighbor_level)
+                if target then
+                    return target, target_level
+                end
+            end
+        end
+    end
+
+    return nil, nil
+end
+
+local function is_eligible_human_entry(entry, se_squad)
+    if type(entry) ~= "table" then
+        return false
+    end
+    if entry.allowed ~= true then
+        return false
+    end
+    if entry.npc_kind ~= "stalker" then
+        return false
+    end
+    local community = normalize_community_key(entry.community)
+    if not community or EXCLUDED_COMMUNITIES[community] == true then
+        return false
+    end
+    if not se_squad then
+        return false
+    end
+    if is_protected_squad(se_squad) then
+        return false
+    end
+    return true
+end
+
+local function maybe_finish_as_rest(se_squad, sid, source)
+    sid = normalize_sid(sid)
+    if not (sid and se_squad and siski.tasks and siski.tasks.force_rest_after_external_reclaim) then
+        return false
+    end
+    return siski.tasks.force_rest_after_external_reclaim(se_squad, source or "story_event_done") == true
+end
+
+local function log_story_rest_transition(sid, target, level_name, reason, rest_ok)
+    log_info(
+        "north_migration_rest sid=%s target=%s level=%s reason=%s rest_ok=%s",
+        tostring(sid or "-"),
+        tostring(target or "-"),
+        tostring(level_name or "-"),
+        tostring(reason or "-"),
+        tostring(rest_ok == true)
+    )
+end
+
+local function clear_story_task_if_present(se_squad, sid, current, reason)
+    sid = normalize_sid(sid)
+    if not sid then
+        return false
+    end
+    if is_story_task(current) ~= true then
+        return false
+    end
+    clear_live_task_state(se_squad)
+    if siski.memory and siski.memory.set_task_current then
+        siski.memory.set_task_current(sid, nil)
+    end
+    log_info("north_migration_clear sid=%s reason=%s", tostring(sid), tostring(reason or "clear"))
+    return true
+end
+
+local function assign_story_task(se_squad, sid, target, target_level, source)
+    sid = normalize_sid(sid)
+    target = trim(target)
+    if not (sid and target and siski.memory and siski.memory.set_task_current) then
+        return false
+    end
+    local task = make_story_task(target, target_level)
+    clear_task_apply_state(task)
+    siski.memory.set_task_current(sid, task)
+    local current = get_memory_entry(sid)
+    current = current and current.tasks and current.tasks.current or task
+    set_sid_status(sid, "travel")
+    if se_squad then
+        sync_story_task_live_state(se_squad, current)
+        local now = tg()
+        if should_enforce_online_intent(current, now, get_memory_entry(sid)) then
+            pcall(enforce_online_task_intent, se_squad, get_memory_entry(sid), current)
+        end
+    end
+    log_info("north_migration_assign sid=%s target=%s level=%s source=%s", tostring(sid), tostring(target), tostring(target_level), tostring(source or "assign"))
+    return true
+end
+
+local function retarget_story_task(se_squad, sid, entry, current_story, source)
+    local target, target_level = pick_north_migration_target(se_squad, entry)
+    if not target then
+        clear_story_task_if_present(se_squad, sid, current_story, "unsafe_target_pending")
+        set_sid_status(sid, "pending")
+        return false
+    end
+    if assign_story_task(se_squad, sid, target, target_level, source or "retarget") ~= true then
+        clear_story_task_if_present(se_squad, sid, current_story, "unsafe_target_pending")
+        set_sid_status(sid, "pending")
+        return false
+    end
+    log_info(
+        "north_migration_retarget sid=%s from=%s to=%s level=%s source=%s",
+        tostring(sid or "-"),
+        tostring(current_story and current_story.target or "-"),
+        tostring(target or "-"),
+        tostring(target_level or "-"),
+        tostring(source or "retarget")
+    )
+    return true
+end
+
+local function reconcile_selected_statuses(source)
+    recover_story_selection_from_memory(source or "reconcile")
+    local event = get_state_event()
+    for sid in pairs(event.selected_by_sid) do
+        local status = normalize_status(event.status_by_sid[sid])
+        if status ~= "done" and status ~= "dead_or_invalid" then
+            local entry = get_memory_entry(sid)
+            if type(entry) ~= "table" then
+                if is_transient_reconcile_source(source) == true then
+                    event.status_by_sid[sid] = "pending"
+                else
+                    event.status_by_sid[sid] = "dead_or_invalid"
+                end
+            else
+                local community = normalize_community_key(entry.community)
+                if entry.allowed ~= true or entry.npc_kind ~= "stalker" or not community or EXCLUDED_COMMUNITIES[community] == true then
+                    event.status_by_sid[sid] = "dead_or_invalid"
+                elseif is_story_task(entry.tasks and entry.tasks.current or nil) == true then
+                    event.status_by_sid[sid] = "travel"
+                end
+            end
+        end
+    end
+    log_info("north_migration_reconcile source=%s selected=%s", tostring(source or "reconcile"), tostring(next(event.selected_by_sid) ~= nil))
+end
+
+local function collect_eligible_sids()
+    local out = {}
+    local seen = {}
+    if not (siski.memory and siski.memory.get_managed_squads_by_level) then
+        return out
+    end
+    local by_level = siski.memory.get_managed_squads_by_level()
+    if type(by_level) ~= "table" then
+        return out
+    end
+    for _, bucket in pairs(by_level) do
+        if type(bucket) == "table" then
+            for sid in pairs(bucket) do
+                sid = normalize_sid(sid)
+                if sid and seen[sid] ~= true then
+                    seen[sid] = true
+                    local se_squad = resolve_alife_object(sid)
+                    local entry = touch_or_get_entry(se_squad, sid, "story_events_rollout_probe")
+                    if is_eligible_human_entry(entry, se_squad) == true then
+                        out[#out + 1] = sid
+                    end
+                end
+            end
+        end
+    end
+    return out
+end
+
+local function activate_selected_sid(sid, source, se_squad, ctx)
+    sid = normalize_sid(sid)
+    if not sid or is_sid_selected(sid) ~= true then
+        return false
+    end
+
+    local event = get_state_event()
+    local status = normalize_status(event.status_by_sid[sid])
+    if status == "done" or status == "dead_or_invalid" then
+        local entry_done = get_memory_entry(sid)
+        local current_done = entry_done and entry_done.tasks and entry_done.tasks.current or nil
+        clear_story_task_if_present(se_squad, sid, current_done, "terminal_status")
+        return false
+    end
+
+    se_squad = se_squad or resolve_alife_object(sid)
+    local entry = nil
+    if se_squad and ctx and ctx.prevalidated == true and siski.memory and siski.memory.get_squad_entry then
+        entry = siski.memory.get_squad_entry(sid)
+    else
+        entry = touch_or_get_entry(se_squad, sid, "story_events_activate:" .. tostring(source or "activate"))
+    end
+    local current = entry and entry.tasks and entry.tasks.current or nil
+
+    if type(entry) ~= "table" then
+        clear_story_task_if_present(se_squad, sid, current, "missing_entry")
+        event.status_by_sid[sid] = "dead_or_invalid"
+        return false
+    end
+
+    if not se_squad then
+        if is_story_task(current) == true then
+            event.status_by_sid[sid] = "travel"
+        elseif status ~= "done" then
+            event.status_by_sid[sid] = "pending"
+        end
+        return false
+    end
+
+    if is_eligible_human_entry(entry, se_squad) ~= true then
+        clear_story_task_if_present(se_squad, sid, current, "no_longer_eligible")
+        local community = normalize_community_key(entry.community)
+        if entry.allowed ~= true or entry.npc_kind ~= "stalker" or not community or EXCLUDED_COMMUNITIES[community] == true then
+            event.status_by_sid[sid] = "dead_or_invalid"
+        end
+        return false
+    end
+
+    if is_surge_active_now() == true then
+        return false
+    end
+
+    local community = normalize_community_key(entry.community)
+    local section_name = entry.section
+    local current_story = is_story_task(current) == true and current or nil
+
+    if current_story then
+        local target_level = resolve_smart_level_name(current_story.target, current_story.params and current_story.params.target_level or entry.level)
+        local safe = is_story_target_safe(current_story.target, target_level, community, section_name)
+        if safe == true then
+            local smart_id = resolve_smart_id(current_story.target)
+            if is_story_arrived(entry, se_squad, current_story.target, smart_id, current_story) == true then
+                event.status_by_sid[sid] = "done"
+                local rest_ok = maybe_finish_as_rest(se_squad, sid, "story_events_arrived")
+                log_story_rest_transition(sid, current_story.target, target_level, "story_events_arrived", rest_ok)
+                return false
+            end
+            event.status_by_sid[sid] = "travel"
+            sync_story_task_live_state(se_squad, current_story)
+            if should_enforce_online_intent(current_story, tg(), entry) then
+                pcall(enforce_online_task_intent, se_squad, entry, current_story)
+            end
+            return true
+        end
+        if retarget_story_task(se_squad, sid, entry, current_story, "unsafe_target") ~= true then
+            return false
+        end
+        entry = get_memory_entry(sid) or entry
+        local retargeted = entry and entry.tasks and entry.tasks.current or nil
+        if is_story_task(retargeted) == true then
+            local smart_id = resolve_smart_id(retargeted.target)
+            if is_story_arrived(entry, se_squad, retargeted.target, smart_id, retargeted) == true then
+                event.status_by_sid[sid] = "done"
+                local rest_ok = maybe_finish_as_rest(se_squad, sid, "story_events_arrived_immediate")
+                log_story_rest_transition(sid, retargeted.target, resolve_smart_level_name(retargeted.target, retargeted.params and retargeted.params.target_level or entry.level), "story_events_arrived_immediate", rest_ok)
+                return false
+            end
+            return true
+        end
+        event.status_by_sid[sid] = "pending"
+        return false
+    end
+
+    local target, target_level = pick_north_migration_target(se_squad, entry)
+    if not target then
+        event.status_by_sid[sid] = "pending"
+        return false
+    end
+
+    if assign_story_task(se_squad, sid, target, target_level, source or "assign") ~= true then
+        event.status_by_sid[sid] = "pending"
+        return false
+    end
+
+    entry = get_memory_entry(sid) or entry
+    local assigned = entry and entry.tasks and entry.tasks.current or nil
+    if is_story_task(assigned) == true then
+        local smart_id = resolve_smart_id(assigned.target)
+        if is_story_arrived(entry, se_squad, assigned.target, smart_id, assigned) == true then
+            event.status_by_sid[sid] = "done"
+            local rest_ok = maybe_finish_as_rest(se_squad, sid, "story_events_arrived_immediate")
+            log_story_rest_transition(sid, assigned.target, target_level, "story_events_arrived_immediate", rest_ok)
+            return false
+        end
+        return true
+    end
+
+    event.status_by_sid[sid] = "pending"
+    return false
+end
+
+local function maybe_fire_north_migration(source)
+    local event = get_state_event()
+    if event.fired == true then
+        return false
+    end
+    if migration_trigger_active() ~= true then
+        return false
+    end
+    if RUNTIME.rollout_running == true then
+        return false
+    end
+
+    RUNTIME.rollout_running = true
+    event.fired = true
+    event.legacy_skipped = false
+
+    local eligible = collect_eligible_sids()
+    shuffle_in_place(eligible)
+
+    local percent = get_north_migration_percent()
+    local selected_count = math_floor and math_floor(#eligible * (percent / 100)) or 0
+    if selected_count < 0 then
+        selected_count = 0
+    end
+
+    for i = 1, selected_count do
+        local sid = normalize_sid(eligible[i])
+        if sid then
+            event.selected_by_sid[sid] = true
+            event.status_by_sid[sid] = "pending"
+        end
+    end
+
+    log_info(
+        "north_migration_fire source=%s eligible=%s selected=%s percent=%s",
+        tostring(source or "fire"),
+        tostring(#eligible),
+        tostring(selected_count),
+        tostring(percent)
+    )
+
+    if is_surge_active_now() ~= true then
+        for i = 1, selected_count do
+            activate_selected_sid(eligible[i], "north_migration_rollout")
+        end
+    end
+
+    RUNTIME.rollout_running = false
+    return true
+end
+
+local function clear_story_task_when_disabled(se_squad, sid, entry)
+    sid = normalize_sid(sid)
+    if not sid then
+        return false
+    end
+    local current = entry and entry.tasks and entry.tasks.current or nil
+    if is_story_task(current) ~= true then
+        return false
+    end
+    clear_story_task_if_present(se_squad, sid, current, "feature_disabled")
+    return true
+end
+
+function story_events.update_squad_tasks(se_squad, ctx)
+    if not (siski.memory and (siski.memory.get_squad_entry or siski.memory.touch_squad_validated)) then
+        return false
+    end
+    local sid = normalize_sid(se_squad and se_squad.id)
+    if not sid then
+        return false
+    end
+
+    local entry = nil
+    if ctx and ctx.prevalidated == true and siski.memory.get_squad_entry then
+        entry = siski.memory.get_squad_entry(sid)
+    elseif siski.memory.touch_squad_validated then
+        entry = siski.memory.touch_squad_validated(se_squad, false, "story_events")
+    end
+    if type(entry) ~= "table" then
+        return false
+    end
+
+    if feature_enabled_now() ~= true then
+        clear_story_task_when_disabled(se_squad, sid, entry)
+        return false
+    end
+
+    if maybe_fire_north_migration("squad_update") == true then
+        entry = get_memory_entry(sid) or entry
+    end
+
+    local current = entry.tasks and entry.tasks.current or nil
+    if is_sid_selected(sid) ~= true and is_story_task(current) == true then
+        recover_story_selection_from_entry(sid, entry, "update_current_task")
+    end
+    if is_sid_selected(sid) ~= true then
+        clear_story_task_if_present(se_squad, sid, current, "not_selected")
+        return false
+    end
+
+    local handled = activate_selected_sid(sid, "update", se_squad, ctx) == true
+    if handled == true then
+        return true
+    end
+    if is_surge_active_now() == true then
+        return false
+    end
+    return is_sid_locked(sid)
+end
+
+local function bus_args(payload)
+    if type(payload) ~= "table" or type(payload.args) ~= "table" then
+        return {}
+    end
+    return payload.args
+end
+
+local function ensure_bus_subscriptions()
+    local bus = siski and siski.bus or nil
+    if not (type(bus) == "table" and type(bus.subscribe) == "function") then
+        return false
+    end
+
+    local function ensure(event_name, fn)
+        if type(bus.has) == "function" then
+            local ok_has, has = pcall(bus.has, event_name, "siski_story_events")
+            if ok_has and has == true then
+                return true
+            end
+        end
+        local ok_sub, res = pcall(bus.subscribe, event_name, "siski_story_events", fn)
+        return ok_sub and res ~= false
+    end
+
+    ensure("save_state", function(payload)
+        local args = bus_args(payload)
+        save_state_blob(args[1])
+    end)
+
+    ensure("load_state", function(payload)
+        local args = bus_args(payload)
+        load_state_blob(args[1])
+        reconcile_selected_statuses("load_state")
+    end)
+
+    ensure("actor_on_first_update", function()
+        get_state_event()
+        reconcile_selected_statuses("actor_on_first_update")
+    end)
+
+    ensure("on_option_change", function()
+        get_state_event()
+        reconcile_selected_statuses("on_option_change")
+    end)
+
+    ensure("server_entity_on_unregister", function(payload)
+        local args = bus_args(payload)
+        local se_obj = args[1]
+        local sid = normalize_sid(se_obj and se_obj.id)
+        if sid and is_sid_selected(sid) == true then
+            local event = get_state_event()
+            if normalize_status(event.status_by_sid[sid]) ~= "done" then
+                set_sid_status(sid, "pending")
+            end
+        end
+    end)
+
+    return true
+end
+
+ensure_bus_subscriptions()
+
+story_events.on_game_start = ensure_bus_subscriptions
+story_events.get_state = function()
+    return get_state_event()
+end
+story_events.is_story_task = is_story_task
+story_events.is_sid_selected = is_sid_selected
+story_events.is_sid_locked = is_sid_locked
+
+return story_events

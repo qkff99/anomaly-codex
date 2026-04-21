@@ -1,0 +1,65 @@
+local Dart  = dart_core
+local MCM   = dart_mcm
+local Utils = dart_utils
+
+
+local config = {
+  anchor   = {"RIGHT", "BOTTOM"},
+  offset   = {-12, -96},
+  safezone = true,
+  scale    = 1,
+}
+
+Dart.config.companionList = config
+Dart.state.companionList = {}
+
+
+function mcmOnConfig(mcmConfig)
+  local offsetX = ui_mcm.get("dart/dart_companionList/offsetX")
+  local offsetY = ui_mcm.get("dart/dart_companionList/offsetY")
+  local scale   = ui_mcm.get("dart/dart_companionList/scale")
+
+  if scale then
+    mcmConfig.companionList.scale = scale
+  end
+
+  mcmConfig.companionList.offset = {
+    offsetX or config.offset[1],
+    offsetY or config.offset[2],
+  }
+end
+
+
+function mcmOnLoad(options)
+  options[2] = {
+    id = "dart_companionList",
+    sh = true,
+    gr = {
+      MCM.getTitle(),
+      MCM.getSubtitle({text = "ui_mcm_dart_companionList_title"}),
+      MCM.getScaleField({def = config.scale}),
+      MCM.getNote({text = "ui_mcm_dart_scale_note"}),
+      MCM.getLine(),
+      MCM.getOffsetXField({def = config.offset[1]}),
+      MCM.getOffsetYField({def = config.offset[2]}),
+    }
+  }
+end
+
+
+function onPreRefresh()
+  axr_companions.deactivate_hud()
+  actor_status.deactivate_hud()
+  utils_xml.XML_HUD  = nil
+end
+
+function onPostRefresh()
+  axr_companions.activate_hud()
+  actor_status.activate_hud()
+end
+
+
+RegisterScriptCallback("on_dart_mcm_load", mcmOnLoad)
+RegisterScriptCallback("on_dart_mcm_config", mcmOnConfig)
+RegisterScriptCallback("on_dart_pre_refresh", onPreRefresh)
+RegisterScriptCallback("on_dart_post_refresh", onPostRefresh)

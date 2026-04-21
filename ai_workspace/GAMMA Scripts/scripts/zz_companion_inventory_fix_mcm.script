@@ -1,0 +1,116 @@
+--[[
+Companion Inventory Fix
+30JUN2021
+This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License
+Author: RavenAscendant
+--]]
+
+
+show_klep = true
+show_all = false
+
+
+local spawned_items ={}
+local npc_props = {
+		device_torch = true,
+		pda_for_nps = true,
+		sigaret_for_nps = true,
+		anomaly_scaner = true,
+		bolt = true,
+		bolt_bullet = true,
+	}
+
+
+
+function on_game_start()
+	if rax_persistent_highlight then
+		rax_persistent_highlight.register("npc_items", check_owned)
+		rax_persistent_highlight.register("klep_npc_items", check_klep)
+	end
+	RegisterScriptCallback("npc_on_update", npc_on_update)
+	RegisterScriptCallback("save_state", save_state)
+	RegisterScriptCallback("load_state", load_state)
+	RegisterScriptCallback("server_entity_on_unregister", server_entity_on_unregister)
+
+end
+
+
+	function on_mcm_load()
+		op = { id= "companion_inv"      	 	,sh=true ,gr={
+				{ id= "slide_example_example"				 ,type= "slide"	  ,link= "ui_options_slider_player"	 ,text= "ui_mcm_menu_companion_inv"		,size= {512,50}		,spacing= 20 },
+				{id = "show_klep", type = "check", val = 1, def = true},
+				{id = "show_all", type = "check", val = 1, def = false},
+				}
+			}
+			
+		return op
+	end
+
+
+
+axrbase = axr_companions.is_assigned_item
+
+function axr_companions.is_assigned_item(npc_id, item_id)
+	
+	return (npc_in_squad(npc_id) and ((ui_mcm and ui_mcm.get("companion_inv/show_all")or ((not ui_mcm)and show_all)) or  is_klep(npc_id, item_id, level.object_by_id(item_id):section())))  or axrbase(npc_id, item_id)
+end
+
+function server_entity_on_unregister(se_obj)
+	spawned_items[se_obj.id] = nil
+end
+
+function npc_on_update(npc)
+	if npc:has_info("npcx_is_companion") and not spawned_items[npc:id()] then
+		spawned_items[npc:id()] = {}
+		function itr(itm)
+			spawned_items[npc:id()][itm:id()] = not axrbase(npc:id(), itm:id())
+		end
+		npc:inventory_for_each(itr)
+	end
+end
+
+
+ function npc_in_squad(npc_id)
+	for id,squad in pairs(axr_companions.companion_squads) do
+		if (squad and squad.commander_id) then
+			for k in squad:squad_members() do
+				if k and k.id == npc_id then
+					return true
+				end
+			end
+		end
+	end
+return false
+end
+
+
+function is_klep(npc, id, sec)
+	if (not axrbase(npc, id)) then
+	 return (ui_mcm and ui_mcm.get("companion_inv/show_klep") or ((not ui_mcm)and show_klep)) and (not (spawned_items[npc] and spawned_items[npc][id])) and (not npc_props[sec])
+	end
+end
+
+
+function check_klep(cell)
+
+	if cell.container and cell.container.owner and cell.container.owner.npc_is_companion then
+		npc = cell.container.owner.npc_id
+		return  cell.container.ID == "npc_bag" and cell.ID  and is_klep(npc, cell.ID, cell.section) and GetARGB(50, 212, 175,  55)
+	end
+end
+
+
+function check_owned(cell)
+	if cell.container and cell.container.owner and cell.container.owner.npc_is_companion then
+		npc = cell.container.owner.npc_id
+		return (ui_mcm and ui_mcm.get("companion_inv/show_all")or ((not ui_mcm)and show_all)) and cell.container.ID == "npc_bag" and cell.ID and (not is_klep(npc, cell.ID, cell.section)) and (not axrbase(npc,cell.ID)) and GetARGB(50, 204, 0, 0)
+	end
+end
+
+function load_state(data)
+	spawned_items = data.RAX_CIM_spawned_items or {}
+end
+
+function save_state(data)
+	data.RAX_CIM_spawned_items = spawned_items 
+end

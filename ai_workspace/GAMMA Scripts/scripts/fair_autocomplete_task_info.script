@@ -1,0 +1,395 @@
+-- Fair Autocomplete - Extended Task Info
+-- Displays detailed information about task targets
+-- Based on concepts from Extended Task Info by Coverdrave
+
+local function get_mcm_config(category, key)
+    if fair_autocomplete_mcm and fair_autocomplete_mcm.get_config then
+        return fair_autocomplete_mcm.get_config(category, key)
+    end
+    return nil
+end
+-- Monster Name Mapping
+local monster_names = {
+    [clsid.bloodsucker]     = "bloodsucker",
+    [clsid.bloodsucker_s]   = "bloodsucker",
+    [clsid.boar]            = "boar",
+    [clsid.boar_s]          = "boar",
+    [clsid.burer]           = "burer",
+    [clsid.burer_s]         = "burer",
+    [clsid.cat]             = "cat",
+    [clsid.cat_s]           = "cat",
+    [clsid.chimera]         = "chimera",
+    [clsid.chimera_s]       = "chimera",
+    [clsid.controller]      = "controller",
+    [clsid.controller_s]    = "controller",
+    [clsid.dog_red]         = "dog",
+    [clsid.dog_s]           = "dog",
+    [clsid.dog_black]       = "dog",
+    [clsid.flesh]           = "flesh",
+    [clsid.flesh_s]         = "flesh",
+    [clsid.fracture]        = "fracture",
+    [clsid.fracture_s]      = "fracture",
+    [clsid.gigant_s]        = "pseudogiant",
+    [clsid.pseudo_gigant]   = "pseudogiant",
+    [clsid.pseudodog_s]     = "pseudodog",
+    [clsid.psy_dog_s]       = "psy_dog",
+    [clsid.rat]             = "rat",
+    [clsid.rat_s]           = "rat",
+    [clsid.snork]           = "snork",
+    [clsid.snork_s]         = "snork",
+    [clsid.tushkano]        = "tushkano",
+    [clsid.tushkano_s]      = "tushkano",
+    [clsid.zombie]          = "zombie",
+    [clsid.zombie_s]        = "zombie",
+}
+-- Color Helpers
+local function get_faction_color(se_obj)
+    if not se_obj then return "%c[255,255,255,1]" end
+    
+    local success, result = pcall(function()
+        local obj_community = se_obj:community()
+        local actor_community = db.actor:character_community()
+        
+        if game_relations.is_factions_enemies(actor_community, obj_community) then
+            return "%c[255,255,1,1]"  -- Yellow for enemies
+        elseif game_relations.is_factions_friends(actor_community, obj_community) then
+            return "%c[255,1,255,1]"  -- Green for friends
+        end
+        return "%c[255,255,255,1]"  -- White for neutral
+    end)
+    
+    return success and result or "%c[255,255,255,1]"
+end
+
+local function get_reputation_color(reputation)
+    if reputation <= -500 then
+        return "%c[255,255,1,1]"  -- Yellow for bad rep
+    elseif reputation >= 500 then
+        return "%c[255,1,255,1]"  -- Green for good rep
+    end
+    return "%c[255,255,255,1]"  -- White for neutral
+end
+-- Character Description Builder
+function build_character_description(se_obj, include_location)
+    if not se_obj then return "" end
+    
+    local default_color = utils_xml.get_color("pda_white")
+    local lines = {}
+    
+    -- Name
+    local name = ""
+    local success_name = pcall(function()
+        name = se_obj:character_name()
+    end)
+    if success_name and name and name ~= "" then
+        local name_str = default_color .. game.translate_string("st_mm_new_game_name") .. " " .. name
+        lines[#lines+1] = name_str
+    end
+    
+    -- Faction/Community
+    local faction_color = get_faction_color(se_obj)
+    local community = ""
+    local success_comm = pcall(function()
+        community = se_obj:community()
+    end)
+    if success_comm and community and community ~= "" then
+        local faction_str = default_color .. game.translate_string("ui_st_community") .. ": " .. 
+                           faction_color .. game.translate_string(community) .. "%c[default]"
+        lines[#lines+1] = faction_str
+    end
+    
+    -- Rank
+    local rank = 0
+    local success_rank = pcall(function()
+        rank = se_obj:rank()
+    end)
+    if success_rank then
+        local rank_name = ranks and ranks.get_se_obj_rank_name and ranks.get_se_obj_rank_name(se_obj) or "novice"
+        local rank_str = default_color .. game.translate_string("ui_st_rank") .. ": " .. 
+                        "%c[255,215,215,215]" .. game.translate_string("st_rank_" .. rank_name) .. 
+                        " %c[255,110,110,255]" .. tostring(rank) .. "%c[default]"
+        lines[#lines+1] = rank_str
+    end
+    
+    -- Reputation
+    local reputation = 0
+    local success_rep = pcall(function()
+        reputation = se_obj:reputation()
+    end)
+    if success_rep then
+        local repu_color = get_reputation_color(reputation)
+        local repu_name = utils_obj and utils_obj.get_reputation_name and 
+                         utils_obj.get_reputation_name(reputation) or "neutral"
+        local repu_str = default_color .. game.translate_string("ui_st_reputation") .. ": " .. 
+                        repu_color .. game.translate_string(repu_name) .. "%c[default]"
+        lines[#lines+1] = repu_str
+    end
+    
+    -- Location (optional)
+    if include_location then
+        local location = ""
+        local success_loc = pcall(function()
+            if dynamic_news_helper and dynamic_news_helper.GetPointDescription then
+                location = dynamic_news_helper.GetPointDescription(se_obj)
+            else
+                -- Fallback: get level name
+                local gg = game_graph()
+                local level_id = gg:vertex(se_obj.m_game_vertex_id):level_id()
+                location = alife():level_name(level_id)
+                location = game.translate_string(location)
+            end
+        end)
+        if success_loc and location and location ~= "" then
+            local location_str = default_color .. game.translate_string("st_location") .. " " .. location
+            lines[#lines+1] = location_str
+        end
+    end
+    
+    return table.concat(lines, " \\n ")
+end
+-- Monster Description
+function get_monster_name(obj)
+    if not obj then return "???" end
+    
+    local cls = nil
+    local success = pcall(function()
+        cls = obj:clsid()
+    end)
+    
+    if not success or not cls then return "???" end
+    
+    local name_key = monster_names[cls]
+    if name_key then
+        return game.translate_string("st_fa_monster_" .. name_key)
+    end
+    
+    return "???"
+end
+
+function build_monster_description(se_obj, include_location)
+    if not se_obj then return "" end
+    
+    local default_color = utils_xml.get_color("pda_white")
+    local lines = {}
+    
+    -- Monster type
+    local monster_name = get_monster_name(se_obj)
+    local type_str = default_color .. game.translate_string("st_fa_target_type") .. ": " .. 
+                    "%c[255,255,128,128]" .. monster_name .. "%c[default]"
+    lines[#lines+1] = type_str
+    
+    -- Location (optional)
+    if include_location then
+        local location = ""
+        local success_loc = pcall(function()
+            if dynamic_news_helper and dynamic_news_helper.GetPointDescription then
+                location = dynamic_news_helper.GetPointDescription(se_obj)
+            else
+                local gg = game_graph()
+                local level_id = gg:vertex(se_obj.m_game_vertex_id):level_id()
+                location = alife():level_name(level_id)
+                location = game.translate_string(location)
+            end
+        end)
+        if success_loc and location and location ~= "" then
+            local location_str = default_color .. game.translate_string("st_location") .. " " .. location
+            lines[#lines+1] = location_str
+        end
+    end
+    
+    return table.concat(lines, " \\n ")
+end
+-- Squad Info
+function get_squad_info(squad_id)
+    local squad = alife_object(squad_id)
+    if not squad then return "", "" end
+    
+    local news_caption = game.translate_string("st_fa_squad_info")
+    local members = {}
+    
+    local success = pcall(function()
+        for k in squad:squad_members() do
+            local se_obj = k.object or alife_object(k.id)
+            if se_obj then
+                local desc = build_character_description(se_obj, false)
+                if desc and desc ~= "" then
+                    members[#members+1] = desc
+                end
+            end
+        end
+    end)
+    
+    if not success or #members == 0 then
+        return "", ""
+    end
+    
+    local news_text = table.concat(members, " \\n \\n ")
+    return news_text, news_caption
+end
+-- Target Info Display
+function get_target_info(target_id, is_squad)
+    if not target_id then return "", "" end
+    
+    local se_obj = alife_object(target_id)
+    if not se_obj then return "", "" end
+    
+    -- Check if it's a monster
+    local is_monster = false
+    pcall(function()
+        is_monster = IsMonster(nil, se_obj:clsid())
+    end)
+    
+    if is_monster then
+        return build_monster_description(se_obj, true), ""
+    end
+    
+    -- Check if it's a squad request
+    if is_squad then
+        return get_squad_info(target_id)
+    end
+    
+    -- Single stalker
+    return build_character_description(se_obj, true), ""
+end
+-- Task Info Hooks (standalone implementation)
+-- Store original functions
+local _original_bounty_postpone = nil
+local _original_assault_postpone = nil
+local _original_agent_postpone = nil
+
+-- Hook for bounty tasks
+function hook_bounty_task_info(task_id, target_id)
+    if not get_mcm_config(nil, "show_target_info") then
+        return
+    end
+    
+    if not target_id then
+        -- Try to get target from axr_task_manager
+        target_id = axr_task_manager and axr_task_manager.bounties_by_id and 
+                   axr_task_manager.bounties_by_id[task_id]
+    end
+    
+    if not target_id then
+        local var = load_var(db.actor, task_id)
+        target_id = var and var.target_id
+    end
+    
+    if not target_id then return end
+    
+    local se_obj = alife_object(target_id)
+    if not se_obj then return end
+    
+    local news_text = build_character_description(se_obj, true)
+    if news_text == "" then return end
+    
+    local news_caption = game.translate_string("st_fa_target_info")
+    local news_icon = ""
+    pcall(function()
+        news_icon = se_obj:character_icon()
+    end)
+    
+    -- Display info
+    CreateTimeEvent("fa_bounty_info", task_id, 0.1, function()
+        db.actor:give_talk_message2(news_caption, news_text, news_icon, "iconed_answer_item")
+        return true
+    end)
+end
+
+-- Hook for assault tasks
+function hook_assault_task_info(task_id, squad_id)
+    if not get_mcm_config(nil, "show_target_info") then
+        return
+    end
+    
+    if not squad_id then return end
+    
+    local squad = alife_object(squad_id)
+    if not squad then return end
+    
+    -- Don't show info for mutant squads
+    local is_monster_squad = false
+    pcall(function()
+        is_monster_squad = is_squad_monster and is_squad_monster[squad.player_id]
+    end)
+    if is_monster_squad then return end
+    
+    local news_text, news_caption = get_squad_info(squad_id)
+    if news_text == "" then return end
+    
+    -- Display info
+    CreateTimeEvent("fa_assault_info", task_id, 0.1, function()
+        db.actor:give_talk_message2(news_caption, news_text, "", "iconed_answer_item")
+        return true
+    end)
+end
+-- Display Target Info for Active Task
+function show_active_task_target_info(task_id)
+    if not task_id then return end
+    
+    -- Get task info
+    local tm = task_manager.get_task_manager()
+    if not tm or not tm.task_info then return end
+    
+    local task_info = tm.task_info[task_id]
+    if not task_info then return end
+    
+    -- Parse task definition
+    local tsk = utils_data.parse_ini_section_to_array(task_manager.task_ini, task_id)
+    if not tsk then return end
+    
+    local target_functor = tsk.target_functor
+    if not target_functor then return end
+    
+    -- Get targets based on functor type
+    local news_text = ""
+    local news_caption = ""
+    
+    if target_functor == "general_bounty_task" then
+        local target_id = axr_task_manager and axr_task_manager.bounties_by_id and 
+                         axr_task_manager.bounties_by_id[task_id]
+        if not target_id then
+            local var = load_var(db.actor, task_id)
+            target_id = var and var.target_id
+        end
+        
+        if target_id then
+            news_text = build_character_description(alife_object(target_id), true)
+            news_caption = game.translate_string("st_fa_target_info")
+        end
+        
+    elseif target_functor == "assault_task_target_functor" then
+        local var = load_var(db.actor, task_id)
+        if var and var.squad_id then
+            news_text, news_caption = get_squad_info(var.squad_id)
+        end
+        
+    elseif target_functor == "simulation_task_target" then
+        -- Hostage/spy rescue
+        local var = load_var(db.actor, task_id)
+        if var and var.squad_id then
+            news_text, news_caption = get_squad_info(var.squad_id)
+        end
+        
+    elseif target_functor == "mutants_in_map_target" then
+        -- Mutant hunt
+        local var = load_var(db.actor, task_id)
+        if var and var.mutant_type then
+            local mutant_name = game.translate_string(var.mutant_type) or var.mutant_type
+            news_text = game.translate_string("st_fa_target_type") .. ": " .. mutant_name
+            if var.smart then
+                local smart_name = game.translate_string(var.smart) or var.smart
+                news_text = news_text .. " \\n " .. game.translate_string("st_location") .. " " .. smart_name
+            end
+            news_caption = game.translate_string("st_fa_target_info")
+        end
+    end
+    
+    if news_text ~= "" then
+        db.actor:give_talk_message2(news_caption, news_text, "", "iconed_answer_item")
+    end
+end
+-- Initialization
+function on_game_start()
+    -- We don't hook vanilla functions to stay standalone
+    -- Instead, our main mod can call these functions when appropriate
+end

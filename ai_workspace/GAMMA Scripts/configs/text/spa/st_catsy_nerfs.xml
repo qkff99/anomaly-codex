@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="Windows-1252"?><string_table>
+	<string id="ui_mcm_menu_nerfs">
+		<text>Fuentes NERF</text>
+	</string>
+
+	<string id="ui_mcm_menu_nerfmain">
+		<text>Ajustes principales</text>
+	</string>
+
+	<string id="ui_mcm_menu_nerfwidget">
+		<text>Accesibilidad</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfmain_enable_rrfr">
+		<text>Activar compatibilidad con Reworked RF Receiver</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfmain_enable_rrfr_desc">
+		<text>Si tienes el mod Reworked RF Receiver de Coverdrave instalado, activar esta opción hará que NERFS use los ajustes de MCM de ese mod para el estado del equipo, los pitidos y los cambios de frecuencia. Todas las demás mejoras de RRFR están incluidas en NERFS.\n \nTen en cuenta que, si utilizas Devices of Anomaly Redone, anulará la configuración de si el receptor de RF debe estar equipado para funcionar.</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfmain_debuglogs">
+		<text>Activar registros de depuración</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfmain_debuglogs_desc">
+		<text>Ruidoso, pero contiene información de depuración útil. Si quieres informar de un problema, PRIMERO:\n\n
+				1. Activa esta opción\n
+				2. Sal del juego por completo\n
+				3. Vuelve a cargar el juego y reproduce el problema, a ser posible sin otros complementos\n
+				4. Sal del juego\n\n
+				Luego comprime el registro del juego de [carpeta_anomaly]/appdata/logs y súbelo a alguna parte</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfmain_max_freq">
+		<text>Frecuencia máxima de RF</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfmain_max_freq_desc">
+		<text>El receptor de RF puede mostrar un máximo de tres dígitos, pero está limitado a rangos de VHF (30-300 MHz). Sin embargo, algunas fuentes de señal del juego base están fuera de ese rango. Este ajuste amplía tanto el rango de frecuencias del receptor como el rango que el juego utiliza al asignar tareas.</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfmain_header1">
+		<text>New Extensible RF Sources mejora el receptor de RF de varias maneras:\n
+				 • Amplía el abanico de frecuencias de 300 a 999 (configurable más abajo)\n
+				 • Añade nuevas e interesantes fuentes de ruido de radiofrecuencia\n
+				 • Traslada todas las fuentes de RF a un marco extensible basado en LTX, diseñado para ser modificable y libre de conflictos\n
+				 • Añade notas para saquear (con artículos enciclopédicos adjuntos) que se pueden encontrar aleatoriamente en stalkers muertos, lo que permite a los jugadores conocer frecuencias útiles a través del juego\n
+				 • Añade un indicador opcional en el HUD de la intensidad de la señal, por accesibilidad o preferencia\n
+				 • Incluye soporte para Reworked RF Receiver y TB's RF Tasks
+		</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfmain_header2">
+		<text>Para más información, consulta la página de ModDB:\nhttps://www.moddb.com/mods/stalker-anomaly/addons/new-extensible-rf-sources
+		</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_scrolldown">
+		<text>** Desplázate hacia abajo para ver más ajustes **</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfwidget_show">
+		<text>Mostrar widget de accesibilidad</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfwidget_show_desc">
+		<text>El widget de accesibilidad proporciona un indicador visual en el HUD de la intensidad de la señal de radiofrecuencia, que solo aparecerá cuando el dispositivo receptor de radiofrecuencia esté activo. Está pensado para personas sordas o con problemas de audición, pero puede utilizarlo cualquier persona a la que le resulte difícil identificar las señales de audio. La posición y los colores del indicador pueden personalizarse según las preferencias o el daltonismo.</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfwidget_lo_header">
+		<text>\n\nEl indicador mostrará este color cuando la intensidad de la señal sea baja.\nPor defecto (gris): 255,50,50,50\n\n</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfwidget_hi_header">
+		<text>\n\nEl indicador mostrará este color cuando la intensidad de la señal sea alta.\nPor defecto (verde): 255,0,250,0</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfwidget_em_header">
+		<text>\n\nEl indicador mostrará este color durante las emisiones.\nPor defecto (rojo): 128,200,0,0\n\n</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfwidget_clr_a">
+		<text>Alfa</text>
+	</string>	
+	<string id="ui_mcm_nerfs_nerfwidget_clr_r">
+		<text>Rojo</text>
+	</string>
+	<string id="ui_mcm_nerfs_nerfwidget_clr_g">
+		<text>Verde</text>
+	</string>
+	<string id="ui_mcm_nerfs_nerfwidget_clr_b">
+		<text>Azul</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfwidget_headerxy">
+		<text>Posición XY de la esquina superior izquierda del widget:</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfwidget_headerxy_desc">
+		<text>0,0 es la esquina superior izquierda, 1024,768 es la inferior derecha. El juego lo convierte a tu resolución. El valor por defecto (inferior centro) es 491,670.</text>
+	</string>
+	<string id="ui_mcm_nerfs_nerfwidget_pos_x">
+		<text>Coordenada X (horizontal, izquierda-derecha)</text>
+	</string>
+	<string id="ui_mcm_nerfs_nerfwidget_pos_y">
+		<text>Coordenada Y (vertical, arriba-abajo)</text>
+	</string>
+
+<!-- Added in 1.2 -->
+
+	<string id="ui_mcm_nerfs_nerfmain_use_mwheel">
+		<text>Usar la rueda del ratón para cambiar de frecuencia</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfmain_use_mwheel_desc">
+		<text>Si se activa, la rueda del ratón puede desplazarse hacia arriba y hacia abajo para cambiar la frecuencia. Al igual que en el juego base, si mantienes pulsado Mayús. o Alt cambiarás el incremento a 10 o 50, respectivamente. Los incrementos son mucho más rápidos al desplazar la rueda.\n \nEsta característica requiere los binarios modificados, versión 20230701 o más reciente. Actualmente no es compatible con GAMMA.</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfmain_binaries">
+		<text>Binarios modificados por demonized: https://github.com/themrdemonized/xray-monolith
+		</text>
+	</string>
+
+<!-- Added in 1.3 -->
+
+	<string id="ui_mcm_menu_nerfpresets">
+		<text>Predefinido</text>
+	</string>
+
+	<string id="ui_mcm_nerfpresets_header1">
+		<text>Puedes definir hasta nueve frecuencias predefinidas y asignar un acceso directo diferente a cada una de ellas.</text>
+	</string>
+
+	<string id="ui_mcm_nerfpresets_header2">
+		<text>Si la rueda del ratón está activada, también puedes mantener pulsada la tecla Ctrl mientras usas la rueda para recorrer las siguientes frecuencias predefinidas.</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_preset1_freq">
+		<text>Frecuencia predefinida 1</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_kb_preset1">
+		<text>Tecla asignada para la frecuencia 1</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_preset2_freq">
+		<text>Frecuencia predefinida 2</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_kb_preset2">
+		<text>Tecla asignada para la frecuencia 2</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_preset3_freq">
+		<text>Frecuencia predefinida 3</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_kb_preset3">
+		<text>Tecla asignada para la frecuencia 3</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_preset4_freq">
+		<text>Frecuencia predefinida 4</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_kb_preset4">
+		<text>Tecla asignada para la frecuencia 4</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_preset5_freq">
+		<text>Frecuencia predefinida 5</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_kb_preset5">
+		<text>Tecla asignada para la frecuencia 5</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_preset6_freq">
+		<text>Frecuencia predefinida 6</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_kb_preset6">
+		<text>Tecla asignada para la frecuencia 6</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_preset7_freq">
+		<text>Frecuencia predefinida 7</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_kb_preset7">
+		<text>Tecla asignada para la frecuencia 7</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_preset8_freq">
+		<text>Frecuencia predefinida 8</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_kb_preset8">
+		<text>Tecla asignada para la frecuencia 8</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_preset9_freq">
+		<text>Frecuencia predefinida 9</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfpresets_kb_preset9">
+		<text>Tecla asignada para la frecuencia 9</text>
+	</string>
+
+	<string id="st_nerfs_freq_preset">
+		<text>Frecuencia predefinida %s: %s MHz</text>
+	</string>
+
+<!-- Added in 1.5 -->
+
+	<string id="ui_mcm_nerfs_nerfmain_loadfailed1">
+		<text>¡ERROR: item_radio.script es incorrecto, NERFS no se ha instalado correctamente!\n</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfmain_loadfailed2">
+		<text>
+			\nNew Extensible RF Sources encontró la copia incorrecta de item_radio.script instalada. Esto es casi seguro causado por la carga de otro mod después de NERFS que modifica este archivo.\n
+
+			\nDEBES instalar NERFS después de cualquier otro mod que modifique item_radio.script. Si utilizas Reworked RF Receiver, RF Tasks, Remote Controlled Explosives o Bizarre Interference, NERFS tiene opciones de compatibilidad que permitirán que estos mods funcionen con normalidad.\n
+
+			\nSi utilizas Devices of Anomaly Redone, cárgalo antes que NERFS: deberías sobrescribir la versión reducida y embebida de NERFS que se incluye con él.
+		</text>
+	</string>
+
+<!-- Added in 1.6 -->
+
+	<string id="ui_mcm_nerfs_nerfwidget_preview_aspect">
+		<text>Relación de aspecto para la vista previa de la pantalla anterior</text>
+	</string>
+
+	<string id="ui_mcm_lst_preview_aspect_4_3">
+		<text>4:3 (definición estándar)</text>
+	</string>
+
+	<string id="ui_mcm_lst_preview_aspect_16_10">
+		<text>16:10 (1920 x 1200, 2560 x 1600)</text>
+	</string>
+
+	<string id="ui_mcm_lst_preview_aspect_16_9">
+		<text>16:9 (1080p, 1440p, 2160p)</text>
+	</string>
+
+	<string id="ui_mcm_lst_preview_aspect_21_9">
+		<text>21:9 (ultraancho)</text>
+	</string>
+	
+	<string id="ui_mcm_nerfs_nerfmain_header_complex1">
+		<text>$clr_def
+			$clr_prpNew Extensible RF Sources$clr_def mejora el receptor de RF de varias maneras:\n
+				 • $clr_gldAmplía el abanico de frecuencias$clr_def de $clr_lbl300$clr_def a $clr_lbl999$clr_def (configurable más abajo)\n
+				 • Añade $clr_gldnuevas e interesantes fuentes$clr_def de ruido de radiofrecuencia\n
+				 • Traslada todas las fuentes de RF a un $clr_gldmarco extensible basado en LTX$clr_def, diseñado para ser $clr_gldmodificable y libre de conflictos\n
+				 $clr_def• Añade $clr_gldnotas para saquear$clr_def (con artículos enciclopédicos adjuntos) que se pueden encontrar aleatoriamente en stalkers muertos, lo que permite a los jugadores $clr_gldconocer frecuencias útiles$clr_def a través del juego\n
+				 • Añade un $clr_gldindicador opcional en el HUD$clr_def de la intensidad de la señal, por accesibilidad o preferencia\n
+				 • Incluye soporte para $clr_gldReworked RF Receiver$clr_def y $clr_gldTB's RF Tasks
+		</text>
+	</string>
+
+	<string id="ui_mcm_nerfs_nerfmain_header_complex2">
+		<text>$clr_def
+			Para más información, consulta la página de ModDB:\n$clr_lblhttps://www.moddb.com/mods/stalker-anomaly/addons/new-extensible-rf-sources
+		</text>
+	</string>
+
+<!-- Added in 1.7 -->
+
+	<string id="encyclopedia_addons">
+		<text>Complementos</text>
+	</string>
+
+    <string id="encyclopedia_addons_nerfs">
+        <text>New Extensible RF Sources</text>
+    </string>
+
+    <string id="encyclopedia_addons_nerfs_text">
+        <text>
+            \n%c[255,137,48,225]New Extensible RF Sources%c[ui_gray_1] mejora el receptor de RF de varias maneras:\n \n
+				 • %c[pda_yellow]Amplía el abanico de frecuencias%c[ui_gray_1] de %c[255,0,200,220]300%c[ui_gray_1] a %c[255,0,200,220]999%c[ui_gray_1] (configurable en el MCM)\n
+				 • Añade %c[pda_yellow]nuevas e interesantes fuentes%c[ui_gray_1] de ruido de radiofrecuencia, como interferencias celulares de PDA de stalkers\n
+				 • Traslada todas las fuentes de RF a un %c[pda_yellow]marco extensible basado en LTX%c[ui_gray_1] diseñado para ser %c[pda_yellow]modificable y libre de conflictos\n
+				 %c[ui_gray_1]• Añade %c[pda_yellow]notas para saquear%c[ui_gray_1] (con artículos enciclopédicos adjuntos) que se pueden encontrar aleatoriamente en stalkers muertos, lo que permite a los jugadores %c[pda_yellow]conocer frecuencias útiles%c[ui_gray_1] a través del juego\n
+				 • Añade un %c[pda_yellow]indicador opcional en el HUD%c[ui_gray_1] para visualizar la intensidad de la señal, por accesibilidad o preferencia\n
+				 • Incluye soporte para %c[pda_yellow]Reworked RF Receiver%c[ui_gray_1], %c[pda_yellow]Remote Controlled Explosives%c[ui_gray_1] y %c[pda_yellow]TB's RF Tasks%c[ui_gray_1] \n
+
+			\n%c[pda_white]Vídeo de muestra: %c[ui_gray_1]https://www.youtube.com/watch?v=7sdVkImQS_Q
+
+            \n%c[pda_white]ModDB: %c[ui_gray_1]https://www.moddb.com/mods/stalker-anomaly/addons/new-extensible-rf-sources\n 
+
+			\n%c[pda_white]Para personalizar los ajustes, ve a %c[pda_yellow]MCM > Fuentes NERF%c[pda_white]:\n
+			%c[pda_yellow]Ajustes principales%c[pda_white]: funciones, depuración, compatibilidad.\n 
+			%c[pda_yellow]Predefinido%c[pda_white]: configurar las frecuencias predefinidas y sus accesos rápidos.\n 
+			%c[pda_yellow]Accesibilidad%c[pda_white]: ajustes para el widget de accesibilidad.\n 
+
+	        \n%c[ui_gray_1]--------------------------------------------------------------------------------\n 
+            \n%c[pda_red]SOLUCIÓN DE PROBLEMAS\n \n
+
+            %c[pda_white]Si puedes ver esta entrada de la enciclopedia, tus binarios son compatibles con DLTX. %c[ui_gray_1]Buen trabajo: tener archivos exe modificados es la mitad de la batalla. Tener archivos del mod actualizados y las opciones correctas instaladas es la mayor parte del resto.\n \n
+
+            Si has recibido esta copia de NERFS con %c[pda_white]Devices of Anomaly Redone%c[ui_gray_1], deberías descargarte e instalar la versión completa de NERFS. Puede que no todas sus funciones estén disponibles en la versión embebida.\n 
+
+            \n%c[pda_red]IMPORTANTE: Para informar de cualquier bug, debes hacer lo siguiente:\n \n
+            %c[pda_white]1. Ve a %c[pda_yellow]MCM > Fuentes NERF > Ajustes principales\n
+            %c[pda_white]2. Activa los %c[pda_yellow]registros de depuración%c[pda_white]\n
+            %c[pda_white]3. Sal y reinicia el juego\n
+			%c[pda_white]4. Reproduce el problema de la forma más sencilla posible\n
+			%c[pda_white]5. Coge el registro de %c[pda_yellow](tu carpeta de Anomaly)\appdata\logs%c[pda_white] y súbelo a alguna parte\n \n
+			
+			%c[ui_gray_1]Si no lo haces, es poco probable que tu registro contenga la información que necesito.\n
+
+			\nNo me llegan notificaciones de los comentarios en ModDB, así que generalmente obtendrás la respuesta más rápida en el Discord de GAMMA, en el canal de discusión de Anomalous RF Signals / New Extensible RF Sources. Los MD no solicitados serán ignorados.\n
+        </text>
+    </string>
+
+</string_table>

@@ -1,0 +1,24 @@
+-- If you don't use MCM, change your defaults from here
+local defaults = {
+	["keybind"] = DIK_keys.DIK_EQUALS
+}
+
+function get_config(key)
+	if ui_mcm then
+		return ui_mcm.get("mark_switch/" .. key)
+	else
+		return defaults[key]
+	end
+end
+
+function on_mcm_load()
+	op = {
+		id = "mark_switch",
+		sh = true,
+		gr = {
+			{id = "title", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_mark_switch_title", size = {512, 50}, spacing = 20},
+			{id = "keybind", type = "key_bind", val = 2, def = DIK_keys.DIK_EQUALS},
+		}
+	}
+	return op
+end

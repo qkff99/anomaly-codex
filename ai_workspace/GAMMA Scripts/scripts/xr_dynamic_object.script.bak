@@ -1,0 +1,197 @@
+
+local dynamic_object_storage = {}
+
+function dynamic_object(actor,obj,p)
+	local ini = p and p[1] and ini_file(p[1])
+	local smart_name = ini and ini:r_string_ex("dynamic_object_configs","smart")
+	local smart = smart_name and SIMBOARD.smarts_by_names[smart_name]
+	
+	if not (smart) then
+		return
+	end
+	
+	if not (dynamic_object_storage[smart_name]) then
+		dynamic_object_storage[smart_name] = {}
+	end
+	
+	local lst = dynamic_object_storage[smart_name]
+	
+	local n = ini:line_count("exclusive")
+	for k=0,n-1 do
+		local r,i,v = ini:r_line("exclusive",k)
+		local s = get_object_config(v)
+		if (i and s) then
+			local idx = lst[i]
+			local sec = s.sec
+			local pos = s.pos
+			local ang = s.ang
+			local con = s.con and ini:r_string_to_condlist("dynamic_object_configs",s.con,"true")
+			if (xr_logic.pick_section_from_condlist(db.actor,obj,con) == "true") then
+				local se = idx and tonumber(idx.id) and alife():object(tonumber(idx.id))
+				if (se and string.find(se:name(),sec)) then
+					-- Correct. Update object.
+					se.position = vector():set(pos)
+					se.angle = vector():set(ang)
+				else
+					-- Wrong object or doesn't exit. Try to delete the old object and create a new one.
+					if (se and idx.sec and string.find(se:name(),idx.sec)) then
+						alife_release(se)
+					end
+					local new_se = alife():create(sec,pos,smart.m_level_vertex_id,smart.m_game_vertex_id)
+					if (new_se) then
+						new_se.angle = vector():set(ang)
+						lst[i] = {id = tonumber(new_se.id),sec = tostring(sec)}
+						--printf("GhenTuong: dynamic_object create %s [%s]",new_se.id,new_se:name())
+					end
+				end
+			else
+				if (idx) then
+					local se = tonumber(idx.id) and alife():object(tonumber(idx.id))
+					if (se and idx.sec and string.find(se:name(),idx.sec)) then
+						--printf("GhenTuong: dynamic_object delete %s [%s]",se.id,se:name())
+						alife_release(se)
+					end
+					lst[i] = nil
+				end
+			end
+		end
+	end
+	
+	for i,idx in pairs(lst) do
+		if (i and idx) then
+			if not (ini:line_exist("exclusive",i)) then
+				local se = idx and tonumber(idx.id) and alife():object(tonumber(idx.id))
+				if (se and idx.sec and string.find(se:name(),idx.sec)) then
+					--printf("GhenTuong: dynamic_object delete %s [%s]",se.id,se:name())
+					alife_release(se)
+				end
+				lst[i] = nil
+			end
+		else
+			lst[i] = nil
+		end
+	end
+end
+--[[
+if not (ini:section_exist("exclusive") and ini:line_exist("exclusive",i)) then
+	return
+end
+
+local v = ini:r_string_ex("exclusive",i)
+--]]
+
+function get_object_config(v)
+	local str = v and str_explode(v,"|")
+	local sec = str[1] and (str[1] ~= "") and (str[1] ~= "nil") and tostring(str[1])
+	
+	local tp = str[2] and str_explode(str[2],",") or nil
+	local td = str[3] and str_explode(str[3],",") or nil
+	local pox = tp and tonumber(tp[1])
+	local poy = tp and tonumber(tp[2])
+	local poz = tp and tonumber(tp[3])
+	local rox = td and tonumber(td[1]) and math.rad(tonumber(td[1]))
+	local roy = td and tonumber(td[2]) and math.rad(tonumber(td[2]))
+	local roz = td and tonumber(td[3]) and math.rad(tonumber(td[3]))
+	local con = str[4] or "nil"
+	
+	if not (pox and poy and poz and rox and roy and roz and con) then
+		return
+	end
+	return {sec = sec, pos = vector():set(pox,poy,poz), ang = vector():set(rox,roy,roz), con = con}
+end
+
+function get_object(smart_name,index)
+	local idx = dynamic_object_storage_loaded and dynamic_object_storage[smart_name] and dynamic_object_storage[smart_name][index]
+	return idx and {id = tonumber(idx.id),sec = tostring(idx.sec)}
+end
+
+--[[----------------------------------------------------------------------------------------------------
+	Lighting
+	p[1] action
+	p[2] sec
+	p[3] bone
+------------------------------------------------------------------------------------------------------]]
+function light(actor,obj,p)
+	local sec = p[1]
+	local pos = p[2] and obj:bone_position(p[2]) or obj:position()
+	
+	local st = db.storage[obj:id()]
+	
+	if not (st and sec and pos) then
+		return
+	end
+	
+	if (st.dynamic_light) then
+		--Switch
+		if (st.dynamic_light.light) then
+			local new_state = (tonumber(p[3]) == 1) and true or false
+			if (st.dynamic_light.light.enabled ~= new_state) then
+				st.dynamic_light.light.enabled = new_state
+				st.dynamic_light.light:update()
+			end
+			--Position
+			st.dynamic_light.light:set_position(pos)
+		end
+	else
+		st.dynamic_light = {}
+		st.dynamic_light.light = script_light()
+		st.dynamic_light.sec = tostring(sec)
+		
+		if (st.dynamic_light.light) then
+			local ini = st.ini
+			local n = ini:line_count(sec)
+			for k=0,n-1 do
+				local result,i,v = ini:r_line(sec,k)
+				--Basic
+				if (i == "range") then
+					st.dynamic_light.light.range = tonumber(v)
+				end
+				if (i == "color") then
+					st.dynamic_light.light.color = (tonumber(v) and fcolor():set(tonumber(v)))
+				end
+				if (i == "shadow") then
+					st.dynamic_light.light.shadow = (v == "true")
+				end
+				--Volumetric
+				if (i == "volumetric") then
+					st.dynamic_light.light.volumetric = (v == "true")
+				end
+				if (i == "volumetric_quality") then
+					st.dynamic_light.light.volumetric_quality = tonumber(v)
+				end
+				if (i == "volumetric_distance") then
+					st.dynamic_light.light.volumetric_distance = tonumber(v)
+				end
+				if (i == "volumetric_intensity") then
+					st.dynamic_light.light.volumetric_intensity = tonumber(v)
+				end
+				--Texture/Light animation
+				if (i == "texture") then
+					st.dynamic_light.light.texture = tostring(v)
+				end
+				if (i == "lanim") then
+					st.dynamic_light.light.lanim = tostring(v)
+				end
+				if (i == "lanim_brightness") then
+					st.dynamic_light.light.lanim_brightness = tonumber(v)
+				end
+			end
+			
+			st.dynamic_light.light:set_position(pos)
+			st.dynamic_light.light:update()
+		end
+	end
+end
+
+function save_state(m_data)
+	m_data.xr_dynamic_object_storage = dynamic_object_storage
+end
+
+function load_state(m_data)
+	dynamic_object_storage = m_data.xr_dynamic_object_storage or {}
+end
+
+function on_game_start()
+    RegisterScriptCallback("save_state",save_state)
+    RegisterScriptCallback("load_state",load_state)
+end

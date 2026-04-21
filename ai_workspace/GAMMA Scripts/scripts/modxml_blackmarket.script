@@ -1,0 +1,209 @@
+--This script injects the actual dialogue definitions/structure whatever you wanna call it to the dialogs.xml file for use by the traders, Many thanks to Demonized, the legend who made DLTX/DXML possible.
+
+
+function on_xml_read()
+    RegisterScriptCallback("on_xml_read", function(xml_file_name, xml_obj)
+        -- XML file i want to change
+        local xml_to_change = [[gameplay\dialogs.xml]]
+
+        -- Check if its the file i want to change
+        if xml_file_name == xml_to_change then
+            -- Here is my code to change XML
+            local black_market_text = 
+[[
+<dialog id="blackmarket_no">
+        <phrase_list>
+            <phrase id="0">
+                <text>blackmarket_no_0</text>
+                <next>1</next>
+            </phrase>
+            <phrase id="1">
+                <text>blackmarket_no_1</text>
+                <next>2</next>
+            </phrase>
+            <phrase id="2">
+                <text>blackmarket_no_2</text>
+            </phrase>
+        </phrase_list>
+</dialog>
+
+<dialog id="blackmarket_eco_1">
+        <phrase_list>
+            <phrase id="0">
+                <text>blackmarket_eco_1_0</text>
+                <next>1</next>
+            </phrase>
+            <phrase id="1">
+                <text>blackmarket_eco_1_1</text>
+                <next>2</next>
+            </phrase>
+            <phrase id="2">
+                <text>blackmarket_eco_1_2</text>
+            </phrase>
+        </phrase_list>
+</dialog>
+
+<dialog id="blackmarket_eco_3">
+        <phrase_list>
+            <phrase id="0">
+                <text>blackmarket_eco_3_0</text>
+                <next>1</next>
+            </phrase>
+            <phrase id="1">
+                <text>blackmarket_eco_3_1</text>
+                <next>2</next>
+            </phrase>
+            <phrase id="2">
+                <text>blackmarket_eco_3_2</text>
+            </phrase>
+        </phrase_list>
+</dialog>
+
+<dialog id="blackmarket_wp_1">
+        <phrase_list>
+            <phrase id="0">
+                <text>blackmarket_wp_1_0</text>
+                <next>1</next>
+            </phrase>
+            <phrase id="1">
+                <text>blackmarket_wp_1_1</text>
+                <next>2</next>
+            </phrase>
+            <phrase id="2">
+                <text>blackmarket_wp_1_2</text>
+            </phrase>
+        </phrase_list>
+</dialog>
+
+<dialog id="blackmarket_wp_2">
+        <phrase_list>
+            <phrase id="0">
+                <text>blackmarket_wp_2_0</text>
+                <next>1</next>
+            </phrase>
+            <phrase id="1">
+                <text>blackmarket_wp_2_1</text>
+                <next>2</next>
+            </phrase>
+            <phrase id="2">
+                <text>blackmarket_wp_2_2</text>
+            </phrase>
+        </phrase_list>
+</dialog>
+
+<dialog id="blackmarket_wp_3">
+        <phrase_list>
+            <phrase id="0">
+                <text>blackmarket_wp_3_0</text>
+                <next>1</next>
+            </phrase>
+            <phrase id="1">
+                <text>blackmarket_wp_3_1</text>
+                <next>2</next>
+            </phrase>
+            <phrase id="2">
+                <text>blackmarket_wp_3_2</text>
+            </phrase>
+        </phrase_list>
+</dialog>
+
+<dialog id="blackmarket_nato_1">
+        <phrase_list>
+            <phrase id="0">
+                <text>blackmarket_nato_1_0</text>
+                <next>1</next>
+            </phrase>
+            <phrase id="1">
+                <text>blackmarket_nato_1_1</text>
+                <next>2</next>
+            </phrase>
+            <phrase id="2">
+                <text>blackmarket_nato_1_2</text>
+            </phrase>
+        </phrase_list>
+</dialog>
+
+<dialog id="blackmarket_nato_2">
+        <phrase_list>
+            <phrase id="0">
+                <text>blackmarket_nato_2_0</text>
+                <next>1</next>
+            </phrase>
+            <phrase id="1">
+                <text>blackmarket_nato_2_1</text>
+                <next>2</next>
+            </phrase>
+            <phrase id="2">
+                <text>blackmarket_nato_2_2</text>
+            </phrase>
+        </phrase_list>
+</dialog>
+
+<dialog id="blackmarket_nato_3">
+        <phrase_list>
+            <phrase id="0">
+                <text>blackmarket_nato_3_0</text>
+                <next>1</next>
+            </phrase>
+            <phrase id="1">
+                <text>blackmarket_nato_3_1</text>
+                <next>2</next>
+            </phrase>
+            <phrase id="2">
+                <text>blackmarket_nato_3_2</text>
+            </phrase>
+        </phrase_list>
+</dialog>
+
+<dialog id="blackmarket_any_1">
+        <phrase_list>
+            <phrase id="0">
+                <text>blackmarket_any_1_0</text>
+                <next>1</next>
+            </phrase>
+            <phrase id="1">
+                <text>blackmarket_any_1_1</text>
+                <next>2</next>
+            </phrase>
+            <phrase id="2">
+                <text>blackmarket_any_1_2</text>
+            </phrase>
+        </phrase_list>
+</dialog>
+
+<dialog id="blackmarket_any_2">
+        <phrase_list>
+            <phrase id="0">
+                <text>blackmarket_any_2_0</text>
+                <next>1</next>
+            </phrase>
+            <phrase id="1">
+                <text>blackmarket_any_2_1</text>
+                <next>2</next>
+            </phrase>
+            <phrase id="2">
+                <text>blackmarket_any_2_2</text>
+            </phrase>
+        </phrase_list>
+</dialog>
+
+<dialog id="blackmarket_any_3">
+        <phrase_list>
+            <phrase id="0">
+                <text>blackmarket_any_3_0</text>
+                <next>1</next>
+            </phrase>
+            <phrase id="1">
+                <text>blackmarket_any_3_1</text>
+                <next>2</next>
+            </phrase>
+            <phrase id="2">
+                <text>blackmarket_any_3_2</text>
+            </phrase>
+        </phrase_list>
+</dialog>
+]]
+            xml_obj:insertFromXMLString(black_market_text)
+        end
+    end)
+end

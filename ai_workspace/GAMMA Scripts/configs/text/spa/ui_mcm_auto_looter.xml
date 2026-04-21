@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="Windows-1252"?>
+
+<string_table>	
+	<string id="ui_mcm_menu_auto_looter">
+		<text>Autosaqueador</text>
+	</string>
+	<string id="ui_mcm_auto_looter_base_description">
+		<text>El autosaqueador realiza acciones en un orden específico: desmontar -&gt; quitar piezas/accesorios -&gt; saquea -&gt; eliminar. Por ejemplo, si activas el desmontaje de blindajes, las piezas que recibas de estos se someterán a una comprobación de estado adicional antes de saquearlas si esta función también está activada.</text>
+	</string>
+
+	<string id="ui_mcm_auto_looter_looter_key_title">
+		<text>Teclas asignadas</text>
+	</string>
+	<string id="ui_mcm_auto_looter_looter_key_description">
+		<text>Algunos mods bloquean ciertas teclas en la interfaz del inventario. Se recomienda no cambiar las teclas asignadas de abajo, ya que Alt Izq. jamás debería bloquearse.</text>
+	</string>
+	<string id="ui_mcm_auto_looter_looter_key">
+		<text>Tecla del saqueador</text>
+	</string>
+
+	<string id="ui_mcm_auto_looter_remote_looting_title">
+		<text>Saqueo remoto</text>
+	</string>
+	<string id="ui_mcm_auto_looter_remote_looting_description">
+		<text>Ajusta la distancia máxima hasta la que es posible realizar el saqueo remoto. Ajustarla a 0 desactivará el saqueo remoto. ADVERTENCIA: El saqueo remoto no debería activarse si usas mods que activan scripts adicionales al abrir el inventario de stalkers muertos o cajas. Los jugadores de GAMMA deberían tenerlo siempre desactivado.</text>
+	</string>
+	<string id="ui_mcm_auto_looter_remote_looting_distance">
+		<text>Distancia máxima</text>
+	</string>
+
+	<string id="ui_mcm_auto_looter_proximity_looting_title">
+		<text>EXPERIMENTAL: Saqueo de proximidad</text>
+	</string>
+	<string id="ui_mcm_auto_looter_proximity_looting_description">
+		<text>El saqueo de proximidad funciona de forma parecida al saqueo remoto, solo que se reinicia automáticamente en intervalos configurables e itera sobre todos los cuerpos saqueables (se excluyen las cajas de inventario para no saquear tus propios alijos) en un alcance dado. Ajustar el alcance a 0 desactivará el saqueo de proximidad. ADVERTENCIA: El saqueo de proximidad no debería activarse si usas mods que activan scripts adicionales al abrir el inventario de stalkers muertos. Los jugadores de GAMMA deberían tenerlo siempre desactivado.</text>
+	</string>
+	<string id="ui_mcm_auto_looter_proximity_looting_distance">
+		<text>Alcance de saqueo de proximidad</text>
+	</string>
+	<string id="ui_mcm_auto_looter_proximity_looting_refire_time">
+		<text>Intervalo de saqueo de proximidad</text>
+	</string>
+
+	<string id="ui_mcm_auto_looter_disassemble_title">
+		<text>Ajustes del autodesmontaje</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_ammo">
+		<text>Desmontar munición</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_armor">
+		<text>Desmontar trajes y cascos</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_armor_desc">
+		<text>Las piezas de blindaje utilizables son aquellas con un estado superior al 50 % o aquellas que se pueden usar en recetas de fabricación.</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_weapon">
+		<text>Desmontar armas</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_title">
+		<text>Desmontar objetos misceláneos</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_description">
+		<text>Dado que algunas de las piezas de los objetos misceláneos son casi inútiles y que las tareas por el objeto completo podrían darte alguna recompensa mejor (por ejemplo, revistas porno), puedes definir a continuación qué tipo de objetos misceláneos deben desmontarse y cuáles no. Las PDA que se mencionan al final de la lista hacen referencia a las PDA que sueltan los stalkers y que te pueden dar alijos aleatorios.</text>
+	</string>
+
+	<string id="ui_mcm_auto_looter_strip_title">
+		<text>Ajustes de autodesmontaje de piezas y accesorios</text>
+	</string>
+	<string id="ui_mcm_auto_looter_strip_attachments">
+		<text>Desmontar accesorios</text>
+	</string>
+	<string id="ui_mcm_auto_looter_strip_weapon">
+		<text>Desmontar piezas de arma</text>
+	</string>
+
+	<string id="ui_mcm_auto_looter_loot_title">
+		<text>Ajustes de autosaqueo</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_description">
+		<text>Define qué tipos de objetos quieres saquear (condicionalmente). Se omitirán automáticamente las armas y los blindajes. El resto de los tipos de objeto no descritos abajo (por ejemplo: kits de mejora, accesorios de armas, objetos de reparación, objetos misceláneos no desmontados, etc.) se saquearán automáticamente para no complicar de más el sistema.</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_ammo">
+		<text>Saquear munición</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_ammo_parts">
+		<text>Saquear piezas de munición</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_grenades">
+		<text>Saquear granadas</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_magazines">
+		<text>Saquear cargadores</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_armor_parts">
+		<text>Saquear piezas de blindaje</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_armor_parts_desc">
+		<text>Las piezas de blindaje utilizables son aquellas con un estado superior al 50 % o aquellas que se pueden usar en recetas de fabricación.</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_weapon_parts">
+		<text>Saquear piezas de arma</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_title">
+		<text>Saquear objetos misceláneos</text>
+	</string>
+
+	<string id="ui_mcm_auto_looter_delete_title">
+		<text>Ajustes de eliminación</text>
+	</string>
+	<string id="ui_mcm_auto_looter_delete_description">
+		<text>Los cadáveres apilados molan hasta que empiezan a afectar al rendimiento. Las opciones de abajo te permiten eliminar automáticamente los cuerpos saqueados o los objetos que no vas a coger seguro pero que seguirán afectando al rendimiento por el mero hecho de estar dentro de los alijos saqueados. «Eliminar el resto» suele hacer referencia a las piezas de armas y blindajes que el saqueador no ha cogido.</text>
+	</string>
+	<string id="ui_mcm_auto_looter_delete_body">
+		<text>Eliminar cuerpo entero</text>
+	</string>
+	<string id="ui_mcm_auto_looter_delete_armor">
+		<text>Eliminar trajes y cascos</text>
+	</string>
+	<string id="ui_mcm_auto_looter_delete_weapon">
+		<text>Eliminar armas</text>
+	</string>
+	<string id="ui_mcm_auto_looter_delete_misc">
+		<text>Eliminar el resto</text>
+	</string>
+
+	<string id="ui_mcm_auto_looter_misc_options_title">
+		<text>Otros ajustes</text>
+	</string>
+	<string id="ui_mcm_auto_looter_no_valid_tool_messaging">
+		<text>Mostrar mensaje cuando no haya una herramienta de desmontaje válida</text>
+	</string>
+	<string id="ui_mcm_auto_looter_usable_armor_part_condition_treshold">
+		<text>Umbral de estado para piezas de blindajes utilizables</text>
+	</string>
+	<string id="ui_mcm_auto_looter_usable_weapon_part_condition_treshold">
+		<text>Umbral de estado para piezas de armas utilizables</text>
+	</string>
+	<string id="ui_mcm_auto_looter_always_treat_recipe_part_as_usable">
+		<text>Siempre tratar piezas de recetas como utilizables</text>
+	</string>
+	<string id="ui_mcm_auto_looter_always_treat_recipe_part_as_usable_description">
+		<text>Desactivar esta opción hará que el saqueador solo considere el estado de la pieza del blindaje al decidir si la pieza es utilizable. Se omitirá la aseveración del uso de la pieza dada en las recetas de fabricación.</text>
+	</string><!-- Dropdown options --><string id="ui_mcm_lst_auto_looter_all_label">
+		<text>Todos</text>
+	</string>
+	<string id="ui_mcm_lst_auto_looter_none_label">
+		<text>Ninguno</text>
+	</string>
+	<string id="ui_mcm_lst_auto_looter_non_favourite_label">
+		<text>Solo los no favoritos</text>
+	</string>
+	<string id="ui_mcm_lst_auto_looter_with_usable_parts_label">
+		<text>Con piezas utilizables</text>
+	</string>
+	<string id="ui_mcm_lst_auto_looter_with_usable_barrel_label">
+		<text>Con cañón utilizable</text>
+	</string>
+	<string id="ui_mcm_lst_auto_looter_usable_label">
+		<text>Utilizable</text>
+	</string><!-- To do: remove this section once RavenAscendant adds the support for "text" prop for more fields --> <!-- There might be an exception required for the powder can - can't see XMLs defined for it --> <!-- Other exceptions: Guitar (section: guitar_a, string id: st_guitar_name), Sleeping bag (section: itm_sleepbag, string id: st_itm_sleepbag_name),  --> <!-- PDAs (existing XMLs don't mention whether they are common, uncommon or rare) --><string id="ui_mcm_auto_looter_disassemble_misc_porn">
+		<text>Playboy rusa</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_porn2">
+		<text>Maxim ucraniana</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_beadspread">
+		<text>Colcha</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_synthrope">
+		<text>2 cuerdas sintéticas</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_tarpaulin">
+		<text>Lona camuflada</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_underwear">
+		<text>Ropa interior empapada</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_shovel_old">
+		<text>Pala de metal</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_shovel_mili">
+		<text>Pala de campaña militar</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_ball_hammer">
+		<text>Martillo de bola</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_boots">
+		<text>Botas de cuero</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_broken_detector">
+		<text>Detector roto</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_cutlery">
+		<text>Cubiertos de campaña</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_explo_metalcan_powder">
+		<text>Bidón de pólvora</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_flashlight_broken">
+		<text>Linterna rota</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_gloves">
+		<text>Guantes de cuero</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_hand_watch">
+		<text>Reloj de pulsera</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_headlamp">
+		<text>Linterna frontal vieja</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_mirror">
+		<text>Espejo telescópico</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_radio">
+		<text>Radio pequeña</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_radio2">
+		<text>Radio rota</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_walkie">
+		<text>Walkie-talkie</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_guitar_a">
+		<text>Guitarra</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_compression_bag">
+		<text>Funda de compresión</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_itm_sleepbag">
+		<text>Saco de dormir</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_itm_pda_common">
+		<text>PDA: común</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_itm_pda_uncommon">
+		<text>PDA: poco común</text>
+	</string>
+	<string id="ui_mcm_auto_looter_disassemble_misc_itm_pda_rare">
+		<text>PDA: rara</text>
+	</string>
+
+
+	<string id="ui_mcm_auto_looter_loot_misc_porn">
+		<text>Playboy rusa</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_porn2">
+		<text>Maxim ucraniana</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_beadspread">
+		<text>Colcha</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_synthrope">
+		<text>2 cuerdas sintéticas</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_tarpaulin">
+		<text>Lona camuflada</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_underwear">
+		<text>Ropa interior empapada</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_shovel_old">
+		<text>Pala de metal</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_shovel_mili">
+		<text>Pala de campaña militar</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_ball_hammer">
+		<text>Martillo de bola</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_boots">
+		<text>Botas de cuero</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_broken_detector">
+		<text>Detector roto</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_cutlery">
+		<text>Cubiertos de campaña</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_explo_metalcan_powder">
+		<text>Bidón de pólvora</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_flashlight_broken">
+		<text>Linterna rota</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_gloves">
+		<text>Guantes de cuero</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_hand_watch">
+		<text>Reloj de pulsera</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_headlamp">
+		<text>Linterna frontal vieja</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_mirror">
+		<text>Espejo telescópico</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_radio">
+		<text>Radio pequeña</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_radio2">
+		<text>Radio rota</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_walkie">
+		<text>Walkie-talkie</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_bolt">
+		<text>Perno</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_bolt_bullet">
+		<text>Casquillo</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_guitar_a">
+		<text>Guitarra</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_compression_bag">
+		<text>Funda de compresión</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_itm_sleepbag">
+		<text>Saco de dormir</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_itm_pda_common">
+		<text>PDA: común</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_itm_pda_uncommon">
+		<text>PDA: poco común</text>
+	</string>
+	<string id="ui_mcm_auto_looter_loot_misc_itm_pda_rare">
+		<text>PDA: rara</text>
+	</string>
+</string_table>

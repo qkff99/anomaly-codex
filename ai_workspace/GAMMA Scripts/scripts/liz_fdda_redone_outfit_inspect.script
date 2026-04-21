@@ -1,0 +1,68 @@
+local mcm_keybind = liz_fdda_redone_mcm.get_config("outfit_anm/keybind")
+local mcm_modifier = liz_fdda_redone_mcm.get_config("outfit_anm/modifier")
+local mcm_mode = liz_fdda_redone_mcm.get_config("outfit_anm/mode")
+local mcm_allow_movement = liz_fdda_redone_mcm.get_config("outfit_anm/allow_movement")
+
+local mcm_keybinds = ui_mcm and ui_mcm.key_hold
+-- local fov_manager = lam_fov_manager
+
+----------------------------------------
+-- callbacks
+----------------------------------------
+
+function on_game_start()
+    RegisterScriptCallback("on_option_change", on_option_change)
+    RegisterScriptCallback("on_key_hold", on_key_hold)
+    RegisterScriptCallback("on_key_press", on_key_press)
+end
+
+
+function on_option_change()
+    mcm_keybind = liz_fdda_redone_mcm.get_config("outfit_anm/keybind")
+    mcm_modifier = liz_fdda_redone_mcm.get_config("outfit_anm/modifier")
+    mcm_mode = liz_fdda_redone_mcm.get_config("outfit_anm/mode")
+    mcm_allow_movement = liz_fdda_redone_mcm.get_config("outfit_anm/allow_movement")
+end
+
+
+function on_key_hold(key)
+    if mcm_keybinds and (key == mcm_keybind) and (mcm_mode == 2) and ui_mcm.get_mod_key(mcm_modifier) and ui_mcm.key_hold("liz_outfit_animations", key) then
+		--do stuff on hold
+        play_animation()
+	end	
+end
+
+
+function on_key_press(key)
+    if key ~= mcm_keybind then return end
+    if (not mcm_keybinds) then
+        -- do stuff for non mcm users
+        play_animation()
+        return
+    end
+
+    if (mcm_mode == 0) and ui_mcm.get_mod_key(mcm_modifier) then
+        ui_mcm.simple_press("liz_outfit_animations", key, play_animation)
+    end
+
+    if (mcm_mode == 1) and ui_mcm.get_mod_key(mcm_modifier) and ui_mcm.double_tap("liz_outfit_animations", key) then
+        -- do stuff for double tap
+        play_animation()
+        return
+    end
+end
+
+
+----------------------------------------
+-- main
+----------------------------------------
+
+function play_animation()
+    local action = lam2.get_template_action_play_animation()
+    action.sec = "outfit_animation_inspect_hud"
+    action.anm = "anm_equip"
+    action.can_skip = true
+    action.only_allow_movekeys = mcm_allow_movement
+    action.disable_input = not mcm_allow_movement
+    lam2.add_action(action)
+end

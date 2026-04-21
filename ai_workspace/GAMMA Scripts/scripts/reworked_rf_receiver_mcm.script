@@ -1,0 +1,16 @@
+function get_config(option)
+	if ui_mcm then return ui_mcm.get("reworked_rf_receiver/"..option) end
+end
+
+function on_mcm_load()
+	op = { id= "reworked_rf_receiver",sh=true ,gr={
+			{id= "title",type= "slide",link= "ui_options_slider_player",text="ui_mcm_reworked_rf_receiver_title",size= {512,50},spacing= 20 },
+			{id = "custom_beep_volume", type = "check", val = 1, def = false},
+			{id = "beep_volume", type = "track", val = 2, min=0.05,max=1,step=0.05, def = 1},
+			{id = "update_sources_on_frequency_change", type = "check", val = 1, def = false},
+			{id = "only_equip_rf", type = "check", val = 1, def = false}
+		}
+	}
+
+	return op
+end

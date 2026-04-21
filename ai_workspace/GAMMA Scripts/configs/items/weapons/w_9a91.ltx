@@ -1,0 +1,560 @@
+;------------------------------------------------------------------------------------------------
+[wpn_9a91]:identity_immunities,weapon_probability,default_weapon_params,wpn_9a91_sounds
+GroupControlSection                      = spawn_group
+$npc                                     = off
+$prefetch                                = 8
+$spawn                                   = "weapons\val"
+scheduled                                = off
+cform                                    = skeleton
+parent_section                           = wpn_9a91
+
+class                                    = WP_VAL
+slot                                     = 2
+animation_slot                           = 2
+ef_main_weapon_type                      = 2
+ef_weapon_type                           = 6
+hand_dependence                          = 1
+single_handed                            = 0
+
+default_to_ruck                          = false
+sprint_allowed                           = true
+
+inv_grid_height                          = 2
+inv_grid_width                           = 4
+inv_grid_x                               = 28
+inv_grid_y                               = 34
+inv_name                                 = st_wpn_9a91
+inv_name_short                           = st_wpn_9a91
+description                              = st_wpn_9a91n_descr
+
+kind                                     = w_rifle
+inv_weight                               = 1.8
+cost                                     = 28860
+repair_type                              = rifle_7
+weapon_class                             = assault_rifle
+
+hud                                      = wpn_9a91_hud
+visual                                   = dynamics\weapons\wpn_9a91\wpn_9a91.ogf
+position                                 = -0.026, -0.131, 0
+orientation                              = 0, 0, 0
+fire_point                               = 0, 0.174, 0.562
+fire_point2                              = 0, 0.097, 0.722
+strap_bone0                              = bip01_spine2
+strap_bone1                              = bip01_spine1
+strap_position                           = -0.26, -0.11, 0.25
+strap_orientation                        = -15, -9, 110
+ph_mass                                  = 3
+
+flame_particles                          = weapons\generic_weapon05
+smoke_particles                          = weapons\generic_shoot_00
+grenade_flame_particles                  = weapons\generic_weapon01
+
+shell_point			                     = -0.02,0.167,0.082
+shell_dir		 	                     = 0, 1, 0
+shell_particles         	             = weapons\9x39
+
+light_disabled                           = true
+light_color                              = 0.6, 0.5, 0.3
+light_range                              = 0.01
+light_time                               = 0.2
+light_var_color                          = 0.05
+light_var_range                          = 0.5
+
+upgrades                                 = up_gr_firstab_9a91, up_gr_seconab_9a91, up_gr_thirdab_9a91, up_gr_fourtab_9a91, up_gr_fifthab_9a91
+installed_upgrades                       =
+upgrade_scheme                           = upgrade_scheme_val
+upgr_icon_x                              = 900
+upgr_icon_y                              = 200
+upgr_icon_width                          = 250
+upgr_icon_height                         = 100
+
+fire_modes                               = 1, -1
+ammo_class                               = ammo_9x39_pab9, ammo_9x39_pab9_bad, ammo_9x39_pab9_verybad, ammo_9x39_ap, ammo_9x39_ap_bad, ammo_9x39_ap_verybad
+ammo_elapsed                             = 20
+ammo_mag_size                            = 20
+startup_ammo                             = 90
+
+scopes                                   = kobra, ekp8_02, okp, 1p76, 1p78gs, 1pn93, 1pn93n2_1gs, usp1, pka, pso1m21, ps01, pso2, 1p59, 1p29
+scope_status                             = 0
+scope_zoom_factor                        = 0
+
+silencer_name                            = wpn_sil_9a91
+silencer_status                          = 2
+silencer_x                               = 183
+silencer_y                               = 17
+silencer_light_color                     = 0.6, 0.5, 0.3
+silencer_light_range                     = 0.01
+silencer_light_time                      = 0.2
+silencer_light_var_color                 = 0.05
+silencer_light_var_range                 = 0.5
+silencer_smoke_particles                 = weapons\generic_shoot_00
+
+grenade_launcher_name                    = wpn_addon_grenade_launcher_m203
+grenade_launcher_status                  = 0
+grenade_launcher_x                       = 109
+grenade_launcher_y                       = 30
+launch_speed                             = 0
+
+hit_impulse                              = 33
+hit_power                                = 0.62, 0.62, 0.62, 0.62
+hit_type                                 = fire_wound
+fire_distance                            = 600
+bullet_speed                             = 500
+rpm                                      = 700
+rpm_empty_click                          = 200
+
+use_aim_bullet                           = false
+time_to_aim                              = 0.0 ;  3.0
+zoom_dof                                 = 0.5, 1.0, 180
+zoom_enabled                             = true
+zoom_rotate_time                         = 0.25
+reload_dof                               = 0.0, 0.5, 5, 2
+control_inertion_factor = 1.0f
+crosshair_inertion                       = 4.8
+fire_dispersion_base                     = 0.265
+fire_dispersion_condition_factor         = 0.001
+
+misfire_probability                      = 0.005
+misfire_start_condition                  = 0.7 ;  0.82
+misfire_start_prob                       = 0.007
+misfire_end_condition                    = 0.14
+misfire_end_prob                         = 0.11
+
+condition_queue_shot_dec                 = 0.0009
+condition_shot_dec                       = 0.0009
+
+cam_return                               = 0
+cam_relax_speed                          = 10
+cam_dispersion                           = 0.5
+cam_dispersion_frac                      = 0.9
+cam_dispersion_inc                       = 0.05
+cam_max_angle                            = 44.0
+cam_max_angle_horz                       = 44.0
+cam_step_angle_horz                      = 0.61
+zoom_cam_relax_speed                     = 10
+zoom_cam_dispersion                      = 0.4
+zoom_cam_dispersion_frac                 = 0.9
+zoom_cam_dispersion_inc                  = 0.04
+zoom_cam_max_angle                       = 44.0
+zoom_cam_max_angle_horz                  = 44.0
+zoom_cam_step_angle_horz                 = 0.43
+
+PDM_disp_accel_factor                    = 1.745
+PDM_disp_base                            = 0.73
+PDM_disp_crouch                          = 1.0
+PDM_disp_crouch_no_acc                   = 1.0
+PDM_disp_vel_factor                      = 1.745
+
+cam_relax_speed_ai                       = 360
+zoom_cam_relax_speed_ai                  = 120.75
+holder_fov_modifier                      = 1.0
+holder_range_modifier                    = 1.0
+min_radius                               = 0
+max_radius                               = 500
+hit_probability_gd_novice                = 1.00
+hit_probability_gd_stalker               = 1.00
+hit_probability_gd_veteran               = 1.00
+hit_probability_gd_master                = 1.00
+
+kill_msg_x                               = 0
+kill_msg_y                               = 154
+kill_msg_width                           = 78
+kill_msg_height                          = 21
+
+snd_reload                           = wpn\9a91\9_reload
+snd_reload_empty                           = wpn\9a91\9_reload_empty
+snd_reload_misfire                           = wpn\9a91\9_misfire
+
+[wpn_9a91_hud]:hud_base
+item_visual                              = anomaly_weapons\wpn_9a91\wpn_9a91_hud.ogf
+attach_place_idx                         = 0
+zoom_hide_crosshair                      = true   
+
+item_position                            = 0, 0, 0
+item_orientation                         = 0, 0, 0
+
+        aim_hud_offset_pos               = -0.047154, 0.03345, -0.083171
+        aim_hud_offset_pos_16x9          = -0.047154, 0.03345, -0.083171
+        aim_hud_offset_rot               = 0.023904, -0.005301, -0.060687
+        aim_hud_offset_rot_16x9          = 0.023904, -0.005301, -0.060687
+        hands_orientation                = -0.2286, 1.212665, -4.130005
+        hands_orientation_16x9           = -0.2286, 1.212665, -4.130005
+        hands_position                   = -0.004865, -0.006239, -0.07323
+        hands_position_16x9              = -0.004865, -0.006239, -0.07323
+        lowered_hud_offset_pos           = 0.059549, 0.017928, -0.021047
+        lowered_hud_offset_pos_16x9      = 0.059549, 0.017928, -0.021047
+        lowered_hud_offset_rot           = 0.206531, -0.524959, 0.1
+        lowered_hud_offset_rot_16x9      = 0.206531, -0.524959, 0.1
+
+gl_hud_offset_pos                        = 0, 0, 0
+gl_hud_offset_rot                        = 0, 0, 0
+
+lean_hud_offset_pos                      = 0, 0, 0
+lean_hud_offset_rot                      = 0, 0, 0
+
+anm_bore                                 = 9_h_bore, idle
+anm_hide                                 = 9_h_hide, idle
+anm_idle                                 = 9_h_idle, idle
+anm_idle_aim                             = 9_h_idle_aim, idle
+anm_idle_moving                          = 9_h_walk, idle
+anm_idle_sprint                          = 9_h_sprint, idle
+anm_reload                               = 9_h_reload, 9_g_reload
+anm_reload_empty                               = 9_h_reload_empty, 9_g_reload_empty
+anm_reload_misfire                               = 9_h_misfire, 9_g_misfire 
+anm_shots                                = 9_h_shoot, 9_g_shoot
+anm_show                                 = 9_h_draw, idle
+
+anm_bore_jammed                                  = 9_h_bore, idle_jammed 
+anm_hide_jammed                                 = 9_h_hide, idle_jammed
+anm_idle_jammed                                 = 9_h_idle, idle_jammed
+anm_idle_aim_jammed                             = 9_h_idle_aim, idle_jammed
+anm_idle_moving_jammed                          = 9_h_walk, idle_jammed
+anm_idle_sprint_jammed                          = 9_h_sprint, idle_jammed
+anm_shots_jammed                                = 9_h_shoot, 9_g_shot_jamm
+anm_show_jammed                                 = 9_h_draw, idle_jammed
+
+shell_bone                               = wpn_body
+shell_dir                                = 0, 1, 0
+shell_point                              = 0.02, 0.04, 0.131
+
+fire_bone                                = wpn_body
+fire_bone2                               = wpn_body
+fire_point                               = 0, 0.047854, 0.618059
+fire_point2                              = -0.014, 0.01, -0.037
+
+grenade_bone                             = grenade
+
+freelook_z_offset_mul					 = 0.75
+
+;------------------------------------------------------------------------------------------------
+[wpn_9a91_1p29]:wpn_9a91
+1icon_layer                              = 1p29
+1icon_layer_x                            = 74
+1icon_layer_y                            = 10
+
+hud                                      = wpn_9a91_1p29_hud
+visual                                   = dynamics\weapons\wpn_9a91\wpn_9a91_1p29.ogf
+
+inv_weight                               = 2.63
+
+scope_status                             = 1
+scope_dynamic_zoom                       = on
+scope_texture                            = wpn_crosshair_1p29
+scope_zoom_factor                        = 15
+
+zoom_rotate_time                         = 0.25
+
+
+[wpn_9a91_1p29_hud]:wpn_9a91_hud
+item_visual                              = anomaly_weapons\wpn_9a91\wpn_9a91_1p29_hud.ogf
+
+        aim_hud_offset_pos               = -0.06017, 0.009773, -0.042156
+        aim_hud_offset_pos_16x9          = -0.06017, 0.009773, -0.042156
+		
+        hands_orientation                = 0.518, 1.530533, -4.130005
+        hands_orientation_16x9           = 0.518, 1.530533, -4.130005
+        hands_position                   = 0.010917, -0.022856, -0.056946
+        hands_position_16x9              = 0.010917, -0.022856, -0.056946
+;------------------------------------------------------------------------------------------------
+[wpn_9a91_usp1]:wpn_9a91
+1icon_layer                              = usp1
+1icon_layer_x                            = 74
+1icon_layer_y                            = 10
+
+hud                                      = wpn_9a91_usp1_hud
+visual                                   = dynamics\weapons\wpn_9a91\wpn_9a91_1p29.ogf
+
+inv_weight                               = 2.6
+
+scope_status                             = 1
+scope_dynamic_zoom                       = on
+scope_texture                            = wpn_crosshair_usp1
+scope_zoom_factor                        = 15
+
+zoom_rotate_time                         = 0.25
+
+
+[wpn_9a91_usp1_hud]:wpn_9a91_hud
+item_visual                              = anomaly_weapons\wpn_9a91\wpn_9a91_usp1_hud.ogf
+
+        aim_hud_offset_pos               = -0.062247, 0.003164, -0.048613
+        aim_hud_offset_pos_16x9          = -0.062247, 0.003164, -0.048613
+		
+        hands_orientation                = -0.01, 1.580663, -4.130005
+        hands_orientation_16x9           = -0.01, 1.580663, -4.130005
+        hands_position                   = 0.010067, -0.017814, -0.07323
+        hands_position_16x9              = 0.010067, -0.017814, -0.07323
+;------------------------------------------------------------------------------------------------
+[wpn_9a91_1p78gs]:wpn_9a91
+1icon_layer                              = 1p78gs
+1icon_layer_x                            = 74
+1icon_layer_y                            = 1
+
+hud                                      = wpn_9a91_1p78gs_hud
+visual                                   = dynamics\weapons\wpn_9a91\wpn_9a91_1p29.ogf
+
+inv_weight                               = 2.3
+
+scope_status                             = 1
+scope_dynamic_zoom                       = on
+scope_texture                            = wpn_crosshair_1p78gs
+scope_zoom_factor                        = 15
+
+zoom_rotate_time                         = 0.25
+
+
+[wpn_9a91_1p78gs_hud]:wpn_9a91_hud
+item_visual                              = anomaly_weapons\wpn_9a91\wpn_9a91_1p78gs_hud.ogf
+
+        aim_hud_offset_pos               = -0.059095, 0.01653, -0.046409
+        aim_hud_offset_pos_16x9          = -0.059095, 0.01653, -0.046409
+		
+        hands_orientation                = -0.01, 1.580663, -4.130005
+        hands_orientation_16x9           = -0.01, 1.580663, -4.130005
+        hands_position                   = 0.010067, -0.017814, -0.07323
+        hands_position_16x9              = 0.010067, -0.017814, -0.07323
+;------------------------------------------------------------------------------------------------
+[wpn_9a91_kobra]:wpn_9a91
+1icon_layer                              = kobra
+1icon_layer_x                            = 80
+1icon_layer_y                            = 7
+
+hud                                      = wpn_9a91_kobra_hud
+visual                                   = dynamics\weapons\wpn_9a91\wpn_9a91_kobra.ogf
+inv_weight                               = 2.2
+
+[wpn_9a91_kobra_hud]:wpn_9a91_hud
+item_visual                              = anomaly_weapons\wpn_9a91\wpn_9a91_kobra_hud.ogf
+
+        aim_hud_offset_pos               = -0.042677, -0.000543, -0.083171
+        aim_hud_offset_pos_16x9          = -0.042677, -0.000543, -0.083171
+        aim_hud_offset_rot               = 0.019137, -0.005301, -0.060687
+        aim_hud_offset_rot_16x9          = 0.019137, -0.005301, -0.060687
+;------------------------------------------------------------------------------------------------
+[wpn_9a91_pka]:wpn_9a91
+1icon_layer                              = pka
+1icon_layer_x                            = 80
+1icon_layer_y                            = 7
+
+hud                                      = wpn_9a91_pka_hud
+visual                                   = dynamics\weapons\wpn_9a91\wpn_9a91_kobra.ogf
+inv_weight                               = 2.45
+
+zoom_rotate_time                         = 0.25
+scope_lense_fov                          = 15
+
+[wpn_9a91_pka_hud]:wpn_9a91_hud
+item_visual                              = anomaly_weapons\wpn_9a91\wpn_9a91_pka_hud.ogf
+
+        aim_hud_offset_pos               = -0.037568, 0.007713, -0.083171
+        aim_hud_offset_pos_16x9          = -0.037568, 0.007713, -0.083171
+;------------------------------------------------------------------------------------------------
+[wpn_9a91_1p76]:wpn_9a91
+1icon_layer                              = 1p76
+1icon_layer_x                            = 80
+1icon_layer_y                            = 10
+
+hud                                      = wpn_9a91_1p76_hud
+visual                                   = dynamics\weapons\wpn_9a91\wpn_9a91_kobra.ogf
+inv_weight                               = 2.38
+
+[wpn_9a91_1p76_hud]:wpn_9a91_hud
+item_visual                              = anomaly_weapons\wpn_9a91\wpn_9a91_1p76_hud.ogf
+
+        aim_hud_offset_pos               = -0.044882, -0.002961, -0.083171
+        aim_hud_offset_pos_16x9          = -0.044882, -0.002961, -0.083171
+		
+        lowered_hud_offset_pos           = 0.059116, 0.00344, -0.021047
+        lowered_hud_offset_pos_16x9      = 0.059116, 0.00344, -0.021047
+;------------------------------------------------------------------------------------------------
+[wpn_9a91_ekp8_02]:wpn_9a91
+1icon_layer                              = ekp8_02
+1icon_layer_x                            = 80
+1icon_layer_y                            = 7
+
+hud                                      = wpn_9a91_ekp8_02_hud
+visual                                   = dynamics\weapons\wpn_9a91\wpn_9a91_kobra.ogf
+inv_weight                               = 2.073
+
+[wpn_9a91_ekp8_02_hud]:wpn_9a91_hud
+item_visual                              = anomaly_weapons\wpn_9a91\wpn_9a91_ekp8_02_hud.ogf
+
+        aim_hud_offset_pos               = -0.044238, 0.002447, -0.083171
+        aim_hud_offset_pos_16x9          = -0.044238, 0.002447, -0.083171
+;------------------------------------------------------------------------------------------------
+[wpn_9a91_okp]:wpn_9a91
+1icon_layer                              = okp
+1icon_layer_x                            = 80
+1icon_layer_y                            = 7
+
+hud                                      = wpn_9a91_okp_hud
+visual                                   = dynamics\weapons\wpn_9a91\wpn_9a91_kobra.ogf
+inv_weight                               = 2.055
+
+[wpn_9a91_okp_hud]:wpn_9a91_hud
+item_visual                              = anomaly_weapons\wpn_9a91\wpn_9a91_okp_hud.ogf
+
+        aim_hud_offset_pos               = -0.04055, 0.016743, -0.083171
+        aim_hud_offset_pos_16x9          = -0.04055, 0.016743, -0.083171
+;------------------------------------------------------------------------------------------------
+[wpn_9a91_pso1m21]:wpn_9a91
+1icon_layer                              = pso1m21
+1icon_layer_x                            = 55
+1icon_layer_y                            = 6
+
+hud                                      = wpn_9a91_pso1m21_hud
+inv_weight                               = 2.42
+scope_status                             = 1
+scope_dynamic_zoom                       = off
+scope_texture                            = wpn_crosshair_vss
+scope_zoom_factor                        = 15
+
+
+[wpn_9a91_pso1m21_hud]:wpn_9a91_hud
+item_visual                              = anomaly_weapons\wpn_9a91\wpn_9a91_pso1m21_hud.ogf
+
+        aim_hud_offset_pos               = -0.046574, 0.023704, -0.003531
+        aim_hud_offset_pos_16x9          = -0.046574, 0.023704, -0.003531
+		
+        hands_orientation                = 0.4714, 1.496394, -4.130005
+        hands_orientation_16x9           = 0.4714, 1.496394, -4.130005
+        hands_position                   = 0.01134, -0.023778, -0.049055
+        hands_position_16x9              = 0.01134, -0.023778, -0.049055
+;------------------------------------------------------------------------------------------------
+[wpn_9a91_pso2]:wpn_9a91
+1icon_layer                              = pso2
+1icon_layer_x                            = 58
+1icon_layer_y                            = 6
+
+hud                                      = wpn_9a91_pso2_hud
+visual                                   = dynamics\weapons\wpn_9a91\wpn_9a91_1p29.ogf
+inv_weight                               = 2.42
+scope_status                             = 1
+scope_dynamic_zoom                       = off
+scope_texture                            = wpn_crosshair_pso2_vss
+scope_zoom_factor                        = 25
+
+
+[wpn_9a91_pso2_hud]:wpn_9a91_hud
+item_visual                              = anomaly_weapons\wpn_9a91\wpn_9a91_pso2_hud.ogf
+
+        aim_hud_offset_pos               = -0.054772, 0.031582, -0.030124
+        aim_hud_offset_pos_16x9          = -0.054772, 0.031582, -0.030124
+		
+        hands_orientation                = 0.4948, 1.81, -4.130005
+        hands_orientation_16x9           = 0.4948, 1.81, -4.130005
+        hands_position                   = 0.019217, -0.032445, -0.034493
+        hands_position_16x9              = 0.019217, -0.032445, -0.034493
+;-----------------------------------------------------------------------------------------------------
+[wpn_9a91_1pn93n2_1gs]:wpn_9a91
+
+hud					= wpn_9a91_1pn93n2_1gs_hud
+
+visual                                   = dynamics\weapons\wpn_9a91\wpn_9a91_1p29.ogf
+
+1icon_layer                              = 1pn93n2_1gs
+1icon_layer_x                            = 50
+1icon_layer_y                            = 2
+inv_weight                               = 2.8
+scope_status                             = 1
+scope_dynamic_zoom                       = off
+scope_nightvision                        = scope_nightvision_1gen
+scope_texture                            = wpn_crosshair_1pn93n2_1gs
+scope_zoom_factor                                  = 25
+
+nv_scope_status = 1
+
+
+[wpn_9a91_1pn93n2_1gs_hud]:wpn_9a91_hud
+
+item_visual                		= anomaly_weapons\wpn_9a91\wpn_9a91_1pn93n2_1gs_hud.ogf
+
+        aim_hud_offset_pos               = -0.046028, 0.026055, -0.052322
+        aim_hud_offset_pos_16x9          = -0.046028, 0.026055, -0.052322
+		
+        hands_orientation                = -0.01, 1.580663, -4.130005
+        hands_orientation_16x9           = -0.01, 1.580663, -4.130005
+        hands_position                   = 0.012251, -0.024915, -0.058878
+        hands_position_16x9              = 0.012251, -0.024915, -0.058878
+;---------------------------------------------------------------------------------------------
+[wpn_9a91_1pn93]:wpn_9a91
+
+
+hud				= wpn_9a91_1pn93_hud
+
+1icon_layer			    = 1pn93
+1icon_layer_x			= 50
+1icon_layer_y			= 2
+
+visual                                   = dynamics\weapons\wpn_9a91\wpn_9a91_1p29.ogf
+inv_weight                               = 3.1
+nv_scope_status = 1
+
+scope_status            = 1
+scope_texture			= wpn_crosshair_1pn93
+scope_zoom_factor                                  = 25
+zoom_rotate_time		= 0.25
+
+[wpn_9a91_1pn93_hud]:wpn_9a91_hud
+
+item_visual                	= anomaly_weapons\wpn_9a91\wpn_9a91_1pn93_hud.ogf
+
+        lowered_hud_offset_pos           = 0.047925, -0.000274, -0.021047
+        lowered_hud_offset_pos_16x9      = 0.047925, -0.000274, -0.021047
+		
+        aim_hud_offset_pos               = -0.050614, 0.022848, -0.035599
+        aim_hud_offset_pos_16x9          = -0.050614, 0.022848, -0.035599
+		
+        hands_orientation                = 0.0458, 1.698263, -4.130005
+        hands_orientation_16x9           = 0.0458, 1.698263, -4.130005
+        hands_position                   = 0.013156, -0.029178, -0.062701
+        hands_position_16x9              = 0.013156, -0.029178, -0.062701
+;------------------------------------------------------------------------------------------------
+[wpn_9a91_1p59]:wpn_9a91
+1icon_layer                              = 1p59
+1icon_layer_x                            = 85
+1icon_layer_y                            = 6
+
+hud                                      = wpn_9a91_1p59_hud
+visual                                   = dynamics\weapons\wpn_9a91\wpn_9a91_1p29.ogf
+inv_weight                               = 3.1
+scope_status                             = 1
+scope_dynamic_zoom                       = off
+scope_texture			= wpn_crosshair_1p59
+scope_zoom_factor                        = 11
+
+
+[wpn_9a91_1p59_hud]:wpn_9a91_hud
+item_visual                              = anomaly_weapons\wpn_9a91\wpn_9a91_1p59_hud.ogf
+
+        aim_hud_offset_pos               = -0.043469, 0.017945, -0.083171
+        aim_hud_offset_pos_16x9          = -0.043469, 0.017945, -0.083171
+		
+        hands_orientation                = -0.01, 1.580663, -4.130005
+        hands_orientation_16x9           = -0.01, 1.580663, -4.130005
+        hands_position                   = 0.010067, -0.017814, -0.07323
+        hands_position_16x9              = 0.010067, -0.017814, -0.07323
+;------------------------------------------------------------------------------------------------
+[wpn_9a91_ps01]:wpn_9a91
+1icon_layer                              = ps01
+1icon_layer_x                            = 55
+1icon_layer_y                            = 6
+
+hud                                      = wpn_9a91_ps01_hud
+inv_weight                               = 2.42
+scope_status                             = 1
+scope_dynamic_zoom                       = off
+scope_texture			= wpn_crosshair_pso1
+scope_zoom_factor                        = 25
+
+
+[wpn_9a91_ps01_hud]:wpn_9a91_hud
+item_visual                              = anomaly_weapons\wpn_9a91\wpn_9a91_ps01_hud.ogf
+
+        aim_hud_offset_pos               = -0.056968, 0.033726, -0.020457
+        aim_hud_offset_pos_16x9          = -0.056968, 0.033726, -0.020457
+		
+        hands_orientation                = 0.4948, 1.81, -4.130005
+        hands_orientation_16x9           = 0.4948, 1.81, -4.130005
+        hands_position                   = 0.019217, -0.032445, -0.034493
+        hands_position_16x9              = 0.019217, -0.032445, -0.034493

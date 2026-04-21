@@ -1,0 +1,1977 @@
+siski = siski or {}
+
+local type = _G.type
+local pcall = _G.pcall
+local require = _G.require
+local setmetatable = _G.setmetatable
+local tonumber = _G.tonumber
+local tostring = _G.tostring
+local pairs = _G.pairs
+local string_lower = _G.string and _G.string.lower or nil
+local string_gsub = _G.string and _G.string.gsub or nil
+local string_find = _G.string and _G.string.find or nil
+local string_match = _G.string and _G.string.match or nil
+local string_sub = _G.string and _G.string.sub or nil
+local table_sort = _G.table and _G.table.sort or nil
+local table_concat = _G.table and _G.table.concat or nil
+local time_global = _G.time_global
+local level = _G.level
+local db = _G.db
+local game = _G.game
+local game_relations = _G.game_relations
+local game_graph = _G.game_graph
+local alife = _G.alife
+local ini_sys = _G.ini_sys
+
+local function ensure_class()
+    local type = type
+    if type(siski.class) == "function" then
+        local ok, probe = pcall(siski.class, "_probe")
+        if ok and type(probe) == "table" then
+            return
+        end
+    end
+
+    if require then
+        pcall(require, "siski_oop")
+    end
+
+    local function define()
+        function siski.class(name)
+            local cls = {}
+            cls.__index = cls
+            cls.__name = name or "class"
+            function cls.new(...)
+                local self = setmetatable({}, cls)
+                if self.__init then
+                    self:__init(...)
+                end
+                return self
+            end
+            return cls
+        end
+    end
+
+    if type(siski.class) ~= "function" then
+        define()
+        return
+    end
+
+    local ok2, probe2 = pcall(siski.class, "_probe")
+    if not (ok2 and type(probe2) == "table") then
+        define()
+    end
+end
+
+ensure_class()
+
+local ServiceFiller = siski.class("ServiceFiller")
+ServiceFiller.__index = ServiceFiller
+
+local STATE_VERSION = "1.0.1"
+local DEFAULT_RESPAWN_GAME_HOURS = 6
+local DEFAULT_SKIP_RETRY_MS = 15000
+local DEFAULT_PENDING_SPAWN_MS = 15000
+local SERVICE_TOKEN = "_sim_squad_service_"
+local JOB_ROLE_NONE = false
+
+local function is_valid_server_id(id)
+    id = tonumber(id) or 0
+    return id > 0 and id ~= 65535
+end
+
+local JOB_ROLE_CACHE = {}
+
+local FACTIONS = {
+    "stalker",
+    "bandit",
+    "duty",
+    "freedom",
+    "merc",
+    "army",
+    "ecolog",
+    "monolith",
+    "csky",
+    "renegade",
+    "greh",
+    "isg",
+}
+
+local ROLES = {
+    "trader",
+    "barman",
+    "tech",
+    "guide",
+    "medic",
+    "leader",
+}
+
+local DISABLED_SERVICE_ROLES = {
+    guide = true,
+    leader = true,
+}
+
+local ENGINE_BY_ALIAS = {
+    stalker = "stalker",
+    bandit = "bandit",
+    duty = "dolg",
+    freedom = "freedom",
+    merc = "killer",
+    army = "army",
+    ecolog = "ecolog",
+    monolith = "monolith",
+    csky = "csky",
+    renegade = "renegade",
+    greh = "greh",
+    isg = "isg",
+}
+
+local ALIAS_BY_ENGINE = {
+    stalker = "stalker",
+    bandit = "bandit",
+    dolg = "duty",
+    duty = "duty",
+    freedom = "freedom",
+    killer = "merc",
+    merc = "merc",
+    army = "army",
+    military = "army",
+    ecolog = "ecolog",
+    monolith = "monolith",
+    csky = "csky",
+    renegade = "renegade",
+    greh = "greh",
+    isg = "isg",
+}
+
+local GUIDE_PROFILE_BY_FACTION = {
+    stalker = "sim_default_stalker_2",
+    bandit = "sim_default_bandit_2",
+    duty = "sim_default_duty_2",
+    freedom = "sim_default_freedom_2",
+    merc = "sim_default_killer_2",
+    army = "sim_default_military_2",
+    ecolog = "sim_default_ecolog_2",
+    monolith = "sim_default_monolith_2",
+    csky = "sim_default_csky_2",
+    renegade = "sim_default_renegade_2",
+    greh = "sim_default_greh_2",
+    isg = "sim_default_isg_2",
+}
+
+local LEADER_PROFILE_BY_FACTION = {
+    stalker = "sim_default_stalker_3",
+    bandit = "sim_default_bandit_3",
+    duty = "sim_default_duty_3",
+    freedom = "sim_default_freedom_3",
+    merc = "sim_default_killer_3",
+    army = "sim_default_military_3",
+    ecolog = "sim_default_ecolog_3",
+    monolith = "sim_default_monolith_3",
+    csky = "sim_default_csky_3",
+    renegade = "sim_default_renegade_2",
+    greh = "sim_default_greh_3",
+    isg = "sim_default_isg_3",
+}
+
+local LEVEL_SPOT_TO_ROLE = {
+    trader = "trader",
+    mechanic = "tech",
+    medic = "medic",
+    barman = "barman",
+    guider = "guide",
+    guide = "guide",
+}
+
+local function tg()
+    return (time_global and time_global()) or 0
+end
+
+local function get_board()
+    if SIMBOARD then
+        return SIMBOARD
+    end
+    if sim_board and sim_board.get_sim_board then
+        local ok, board = pcall(function() return sim_board.get_sim_board() end)
+        if ok then
+            return board
+        end
+    end
+    return nil
+end
+
+local function count_keys(src)
+    local total = 0
+    if type(src) ~= "table" then
+        return total
+    end
+    for _ in pairs(src) do
+        total = total + 1
+    end
+    return total
+end
+
+local function object_name(obj)
+    if type(obj) ~= "table" then
+        return nil
+    end
+    local raw_name = obj.name
+    if type(raw_name) == "string" and raw_name ~= "" then
+        return raw_name
+    end
+    local ok_name, res_name = pcall(function()
+        return obj:name()
+    end)
+    if ok_name and type(res_name) == "string" and res_name ~= "" then
+        return res_name
+    end
+    return nil
+end
+
+local function normalize_alias(name)
+    if type(name) ~= "string" then
+        return nil
+    end
+    local key = name
+    if string_gsub then
+        key = string_gsub(key, "^%s*(.-)%s*$", "%1")
+    end
+    if string_lower then
+        key = string_lower(key)
+    end
+    if key == "" then
+        return nil
+    end
+    if siski.config and siski.config.get_faction_alias then
+        local alias = siski.config.get_faction_alias(key)
+        if type(alias) == "string" and alias ~= "" then
+            key = string_lower and string_lower(alias) or alias
+        end
+    end
+    return ALIAS_BY_ENGINE[key] or key
+end
+
+local function alias_to_engine(alias)
+    alias = normalize_alias(alias)
+    return alias and ENGINE_BY_ALIAS[alias] or nil
+end
+
+local function has_game_time()
+    return game and game.get_game_time and game.CTime
+end
+
+local function ctime_to_table(ct)
+    if not (ct and ct.get) then
+        return nil
+    end
+    local ok, Y, M, D, h, m, s, ms = pcall(function()
+        return ct:get(0, 0, 0, 0, 0, 0, 0)
+    end)
+    if not ok then
+        return nil
+    end
+    return { Y = Y, M = M, D = D, h = h, m = m, s = s, ms = ms }
+end
+
+local function ctime_from_table(t)
+    if not (has_game_time() and type(t) == "table") then
+        return nil
+    end
+    local ok_new, ct = pcall(function() return game.CTime() end)
+    if not (ok_new and ct and ct.set) then
+        return nil
+    end
+    local ok_set = pcall(function()
+        ct:set(t.Y, t.M, t.D, t.h, t.m, t.s, t.ms)
+    end)
+    if not ok_set then
+        return nil
+    end
+    return ct
+end
+
+local function game_time_now()
+    if not has_game_time() then
+        return nil
+    end
+    local ok, ct = pcall(function() return game.get_game_time() end)
+    return ok and ct or nil
+end
+
+local function game_time_diff_sec(start_ct)
+    local now = game_time_now()
+    if not (now and now.diffSec and start_ct) then
+        return nil
+    end
+    local ok, sec = pcall(function() return now:diffSec(start_ct) end)
+    return ok and tonumber(sec) or nil
+end
+
+local function clone_ctime_table(src)
+    if type(src) ~= "table" then
+        return nil
+    end
+    local out = {
+        Y = tonumber(src.Y),
+        M = tonumber(src.M),
+        D = tonumber(src.D),
+        h = tonumber(src.h),
+        m = tonumber(src.m),
+        s = tonumber(src.s),
+        ms = tonumber(src.ms),
+    }
+    if out.Y == nil or out.M == nil or out.D == nil or out.h == nil or out.m == nil or out.s == nil or out.ms == nil then
+        return nil
+    end
+    return out
+end
+
+local function safe_section(obj)
+    if not obj then
+        return nil
+    end
+    if siski.safe and siski.safe.safe_section then
+        return siski.safe.safe_section(obj)
+    end
+    local ok, section = pcall(function() return obj:section_name() end)
+    if ok and type(section) == "string" then
+        return section
+    end
+    return nil
+end
+
+local function is_base_smart(smart)
+    if not smart then
+        return false
+    end
+    local props = type(smart.props) == "table" and smart.props or nil
+    return (props and tonumber(props.base) or 0) > 0
+end
+
+local function is_service_section(section)
+    return type(section) == "string" and string_find and string_find(section, SERVICE_TOKEN, 1, true) ~= nil
+end
+
+local function section_role(section)
+    if not is_service_section(section) or not string_find or not string_sub then
+        return nil
+    end
+    local pos = string_find(section, SERVICE_TOKEN, 1, true)
+    if not pos then
+        return nil
+    end
+    local role = string_sub(section, pos + #SERVICE_TOKEN)
+    if role == "trader" or role == "barman" or role == "tech" or role == "guide" or role == "medic" or role == "leader" then
+        if DISABLED_SERVICE_ROLES[role] == true then
+            return nil
+        end
+        return role
+    end
+    return nil
+end
+
+local function section_owner_alias(section)
+    if not is_service_section(section) or not string_find or not string_sub then
+        return nil
+    end
+    local pos = string_find(section, SERVICE_TOKEN, 1, true)
+    if not pos or pos <= 1 then
+        return nil
+    end
+    return normalize_alias(string_sub(section, 1, pos - 1))
+end
+
+local function read_ini_string_from(ini, section, key)
+    if not (ini and type(section) == "string" and section ~= "" and type(key) == "string" and key ~= "") then
+        return nil
+    end
+    local ok_exist, has_line = pcall(function()
+        return ini:section_exist(section) and ini:line_exist(section, key)
+    end)
+    if not (ok_exist and has_line) then
+        return nil
+    end
+    local ok_value, value = pcall(function()
+        return ini:r_string(section, key)
+    end)
+    if ok_value and type(value) == "string" and value ~= "" then
+        return value
+    end
+    return nil
+end
+
+local function read_ini_string(job_or_section, key, smart)
+    local section = type(job_or_section) == "table" and job_or_section.section or job_or_section
+    local ini = type(job_or_section) == "table" and job_or_section.ltx or nil
+    local value = read_ini_string_from(ini, section, key)
+    if value ~= nil then
+        return value
+    end
+    if smart then
+        value = read_ini_string_from(smart.ltx, section, key)
+        if value ~= nil then
+            return value
+        end
+        value = read_ini_string_from(smart.ini, section, key)
+        if value ~= nil then
+            return value
+        end
+    end
+    return read_ini_string_from(ini_sys, section, key)
+end
+
+local function contains_token(haystack, needle)
+    if not (string_find and type(haystack) == "string" and type(needle) == "string") then
+        return false
+    end
+    return string_find(haystack, needle, 1, true) ~= nil
+end
+
+local function extract_check_npc_name_token(expr)
+    if not (string_match and type(expr) == "string" and expr ~= "") then
+        return nil
+    end
+    local token = string_match(expr, "check_npc_name%(([^)]+)%)")
+    if type(token) ~= "string" or token == "" then
+        return nil
+    end
+    if string_gsub then
+        token = string_gsub(token, "^%s*(.-)%s*$", "%1")
+    end
+    if token == "" then
+        return nil
+    end
+    return token
+end
+
+local function role_from_level_spot(level_spot)
+    if type(level_spot) ~= "string" then
+        return nil
+    end
+    local spot = string_lower and string_lower(level_spot) or level_spot
+    return LEVEL_SPOT_TO_ROLE[spot]
+end
+
+local function classify_provider_job_role(job_or_section, smart)
+    local section = type(job_or_section) == "table" and job_or_section.section or job_or_section
+    if type(section) ~= "string" or section == "" then
+        return nil
+    end
+
+    local cache_key = section
+    local cached = JOB_ROLE_CACHE[cache_key]
+    if cached ~= nil then
+        return cached ~= JOB_ROLE_NONE and cached or nil
+    end
+
+    local s = string_lower and string_lower(section) or section
+    local suitable = read_ini_string(job_or_section, "suitable", smart)
+    local suitable_l = string_lower and type(suitable) == "string" and string_lower(suitable) or suitable
+    local level_spot = read_ini_string(job_or_section, "level_spot", smart)
+    local trade_ltx = read_ini_string(job_or_section, "trade", smart)
+    local role = nil
+
+    if contains_token(s, "beh_trade_job") or contains_token(s, "beh_tech_job") or contains_token(s, "beh_medic_job") then
+        JOB_ROLE_CACHE[cache_key] = JOB_ROLE_NONE
+        return nil
+    end
+
+    if contains_token(s, "trade_slot") or contains_token(s, "tech_slot") then
+        JOB_ROLE_CACHE[cache_key] = JOB_ROLE_NONE
+        return nil
+    end
+
+    if contains_token(suitable_l, "npc_has_items_to_sell") or contains_token(suitable_l, "npc_has_tech_items") then
+        JOB_ROLE_CACHE[cache_key] = JOB_ROLE_NONE
+        return nil
+    end
+
+    if contains_token(suitable_l, "check_npc_trader") then
+        role = "trader"
+    elseif contains_token(suitable_l, "check_npc_mechanic") then
+        role = "tech"
+    elseif contains_token(suitable_l, "check_npc_medic") then
+        role = "medic"
+    elseif contains_token(suitable_l, "check_npc_barman") then
+        role = "barman"
+    end
+
+    if not role and not suitable_l then
+        role = role_from_level_spot(level_spot)
+    end
+
+    if not role and contains_token(s, "guide") then
+        role = "guide"
+    end
+
+    if not role and (
+        contains_token(s, "leader")
+        or contains_token(s, "commander")
+        or contains_token(s, "boss")
+        or contains_token(s, "chief")
+    ) then
+        role = "leader"
+    end
+
+    if not role and type(level_spot) == "string" then
+        local spot = string_lower and string_lower(level_spot) or level_spot
+        if spot == "quest_npc" then
+            if contains_token(s, "guide") then
+                role = "guide"
+            else
+                role = "leader"
+            end
+        end
+    end
+
+    if not role and type(trade_ltx) == "string" and trade_ltx ~= "" then
+        if contains_token(s, "mechanic") then
+            role = "tech"
+        elseif contains_token(s, "trader") then
+            role = "trader"
+        elseif contains_token(s, "medic") then
+            role = "medic"
+        elseif contains_token(s, "barman") or contains_token(s, "cook") or contains_token(s, "povar") then
+            role = "barman"
+        end
+    end
+
+    JOB_ROLE_CACHE[cache_key] = role or JOB_ROLE_NONE
+    return role
+end
+
+local function classify_job_role(job_or_section, smart)
+    return classify_provider_job_role(job_or_section, smart)
+end
+
+local function role_profile(alias, role)
+    if DISABLED_SERVICE_ROLES[role] == true then
+        return nil
+    end
+    if role == "guide" then
+        return GUIDE_PROFILE_BY_FACTION[alias]
+    end
+    if role == "leader" then
+        return LEADER_PROFILE_BY_FACTION[alias]
+    end
+    local engine = alias_to_engine(alias)
+    if not engine then
+        return nil
+    end
+    if role == "tech" then
+        role = "mechanic"
+    end
+    return "sim_default_" .. engine .. "_" .. role
+end
+
+local function safe_community_alias(se_obj)
+    if not se_obj then
+        return nil
+    end
+    local raw = nil
+    if siski.safe and siski.safe.safe_community then
+        raw = siski.safe.safe_community(se_obj)
+    else
+        local ok_raw, value = pcall(function() return se_obj:community() end)
+        raw = ok_raw and value or nil
+    end
+    return normalize_alias(raw)
+end
+
+local function factions_signature(src)
+    if type(src) ~= "table" or not table_concat then
+        return "-"
+    end
+    local out = {}
+    for alias in pairs(src) do
+        if type(alias) == "string" and alias ~= "" then
+            out[#out + 1] = alias
+        end
+    end
+    if #out <= 0 then
+        return "-"
+    end
+    if table_sort then
+        table_sort(out)
+    end
+    return table_concat(out, ",")
+end
+
+local function collect_live_stalker_factions(smart, is_stalker_info_fn)
+    local factions_present = {}
+    local stalker_count = 0
+    local last_alias = nil
+    if not (smart and type(smart.npc_info) == "table") then
+        return factions_present, stalker_count, false, last_alias
+    end
+    for _, info in pairs(smart.npc_info) do
+        if is_stalker_info_fn(info) then
+            stalker_count = stalker_count + 1
+            local alias = safe_community_alias(type(info) == "table" and info.se_obj or nil)
+            if alias and ENGINE_BY_ALIAS[alias] then
+                factions_present[alias] = true
+                last_alias = alias
+            end
+        end
+    end
+
+    local faction_war = false
+    if game_relations and game_relations.is_factions_enemies then
+        for a in pairs(factions_present) do
+            local engine_a = alias_to_engine(a)
+            if engine_a then
+                for b in pairs(factions_present) do
+                    if a ~= b then
+                        local engine_b = alias_to_engine(b)
+                        if engine_b then
+                            local ok_enemy, hostile = pcall(function()
+                                return game_relations.is_factions_enemies(engine_a, engine_b)
+                            end)
+                            if ok_enemy and hostile == true then
+                                faction_war = true
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+            if faction_war then
+                break
+            end
+        end
+    end
+
+    return factions_present, stalker_count, faction_war, last_alias
+end
+
+local function extract_member_candidate_id(k, v)
+    if type(v) == "table" then
+        local idv = tonumber(v.id) or tonumber(v.object_id) or tonumber(v.squad_id)
+        if idv and idv > 0 then
+            return idv
+        end
+    end
+    local id = tonumber(v)
+    if id and id > 0 then
+        return id
+    end
+    id = tonumber(k)
+    if id and id > 0 then
+        return id
+    end
+    return nil
+end
+
+local function now_level_name_by_gvid(gvid)
+    if not (gvid and alife and game_graph) then
+        return nil
+    end
+    local ok, level_name = pcall(function()
+        local gv = game_graph():vertex(gvid)
+        if not gv then
+            return nil
+        end
+        return alife():level_name(gv:level_id())
+    end)
+    return ok and level_name or nil
+end
+
+function ServiceFiller:__init()
+    self.STATE = {
+        version = STATE_VERSION,
+        last_fill_gt_by_smart = {},
+    }
+    self.RUNTIME = {
+        targets = {},
+        target_set = {},
+        dirty_targets = {},
+        skip_retry_tg_by_smart = {},
+        pending_spawn_by_smart_role = {},
+        warfare_ignore_installed = false,
+        active_enabled = false,
+        disabled_logged = false,
+        stats = {
+            ticks = 0,
+            reconcile_runs = 0,
+            targets = 0,
+            processed = 0,
+            spawn_attempts = 0,
+            spawn_success = 0,
+            spawn_failed = 0,
+            spawn_no_owner = 0,
+            spawn_empty_base = 0,
+            spawn_no_section = 0,
+            spawn_policy_reject = 0,
+            pin_runs = 0,
+            pin_assign = 0,
+            pin_reset = 0,
+        },
+    }
+end
+
+function ServiceFiller:_is_enabled()
+    if not (siski.config and siski.config.get) then
+        return false
+    end
+    if siski.config.get("enabled", true) ~= true then
+        return false
+    end
+    return siski.config.get("service_filler_enabled", false) == true
+end
+
+function ServiceFiller:_num_cfg(key, default, min_v)
+    local value = default
+    if siski.config and siski.config.get then
+        local read = siski.config.get(key, default)
+        if tonumber(read) then
+            value = tonumber(read)
+        end
+    end
+    if min_v ~= nil and value < min_v then
+        value = min_v
+    end
+    return value
+end
+
+function ServiceFiller:_log_info(fmt, ...)
+    if siski.log and siski.log.info then
+        siski.log.info("SERVICE_FILLER", fmt, ...)
+    end
+end
+
+function ServiceFiller:_log_warn(fmt, ...)
+    if siski.log and siski.log.warn then
+        siski.log.warn("SERVICE_FILLER", fmt, ...)
+    end
+end
+
+function ServiceFiller:_section_exists(section)
+    if type(section) ~= "string" or section == "" then
+        return false
+    end
+    if ini_sys and ini_sys.section_exist then
+        local ok, exists = pcall(function() return ini_sys:section_exist(section) end)
+        if ok then
+            return exists == true
+        end
+    end
+    return true
+end
+
+function ServiceFiller:_service_section(alias, role)
+    if type(alias) ~= "string" or type(role) ~= "string" then
+        return nil
+    end
+    if DISABLED_SERVICE_ROLES[role] == true then
+        return nil
+    end
+    local section = alias .. SERVICE_TOKEN .. role
+    if self:_section_exists(section) then
+        return section
+    end
+    return nil
+end
+
+function ServiceFiller:_iter_squad_members(se_squad)
+    local out = {}
+    if not se_squad then
+        return out
+    end
+
+    local seen = {}
+    local function push(id)
+        id = tonumber(id)
+        if not id or id <= 0 or seen[id] then
+            return
+        end
+        seen[id] = true
+        out[#out + 1] = id
+    end
+
+    local ok_members, a, b, c = pcall(function() return se_squad:squad_members() end)
+    if ok_members and a ~= nil then
+        local ok_iter = pcall(function()
+            for member in a, b, c do
+                push(extract_member_candidate_id(nil, member))
+            end
+        end)
+        if (not ok_iter) and type(a) == "table" then
+            for k, v in pairs(a) do
+                push(extract_member_candidate_id(k, v))
+            end
+        end
+    end
+
+    if #out <= 0 then
+        local ok_cid, cid = pcall(function() return tonumber(se_squad:commander_id()) end)
+        if ok_cid and cid then
+            push(cid)
+        end
+    end
+
+    return out
+end
+
+function ServiceFiller:_get_npc_info(smart, npc_id)
+    if not (smart and type(smart.npc_info) == "table") then
+        return nil
+    end
+    local id = tonumber(npc_id)
+    if id then
+        return smart.npc_info[id] or smart.npc_info[tostring(id)]
+    end
+    return smart.npc_info[npc_id]
+end
+
+function ServiceFiller:_is_stalker_info(info)
+    local se_obj = type(info) == "table" and info.se_obj or nil
+    if not (se_obj and IsStalker) then
+        return false
+    end
+    local ok, clsid = pcall(function() return se_obj:clsid() end)
+    return ok and IsStalker(nil, clsid) or false
+end
+
+function ServiceFiller:_resolve_owner_alias(smart)
+    if not smart then
+        return nil, "no_smart", 0, "-", nil
+    end
+    if siski.config and siski.config.get and siski.config.get("dynamic_bases_enabled", false) == true then
+        if siski.dynamic_bases and siski.dynamic_bases.get_effective_owner then
+            return siski.dynamic_bases.get_effective_owner(smart)
+        end
+    end
+
+    local raw_faction = smart.faction
+    local alias = normalize_alias(raw_faction)
+    local factions_present, stalker_count, faction_war, live_alias =
+        collect_live_stalker_factions(smart, function(info) return self:_is_stalker_info(info) end)
+    if stalker_count <= 0 then
+        return nil, "no_stalker_presence", stalker_count, factions_signature(factions_present), raw_faction
+    end
+    if alias and ENGINE_BY_ALIAS[alias] and factions_present[alias] == true then
+        return alias, "smart.faction", stalker_count, factions_signature(factions_present), raw_faction
+    end
+    if not faction_war and live_alias and ENGINE_BY_ALIAS[live_alias] then
+        return live_alias, "live_presence", stalker_count, factions_signature(factions_present), raw_faction
+    end
+    if faction_war then
+        return nil, "faction_war", stalker_count, factions_signature(factions_present), raw_faction
+    end
+    return nil, "unsupported_or_nil_faction", stalker_count, factions_signature(factions_present), raw_faction
+end
+
+function ServiceFiller:_scan_live_population_roles(smart)
+    local out = {
+        occupied = false,
+        live_roles = {},
+    }
+    if not (smart and type(smart.npc_info) == "table") then
+        return out
+    end
+    local sim = alife and alife() or nil
+    for _, info in pairs(smart.npc_info) do
+        if self:_is_stalker_info(info) then
+            local se_obj = type(info) == "table" and info.se_obj or nil
+            local group_id = se_obj and tonumber(se_obj.group_id) or nil
+            if group_id and group_id > 0 and group_id ~= 65535 and sim then
+                local ok_squad, se_squad = pcall(function() return sim:object(group_id) end)
+                if ok_squad and se_squad then
+                    if not is_service_section(safe_section(se_squad)) then
+                        out.occupied = true
+                    end
+                else
+                    out.occupied = true
+                end
+            else
+                if not is_service_section(safe_section(se_obj)) then
+                    out.occupied = true
+                end
+            end
+            local job = type(info.job) == "table" and info.job or nil
+            local role = job and classify_job_role(job, smart) or nil
+            if role then
+                out.live_roles[role] = true
+            else
+                out.occupied = true
+            end
+        end
+    end
+    return out
+end
+
+function ServiceFiller:_smart_has_non_service_population(smart, live_scan)
+    if type(live_scan) == "table" then
+        return live_scan.occupied == true
+    end
+    return self:_scan_live_population_roles(smart).occupied == true
+end
+
+function ServiceFiller:_skip_retry_ready(smart_name)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return true
+    end
+    local next_tg = self.RUNTIME and self.RUNTIME.skip_retry_tg_by_smart and self.RUNTIME.skip_retry_tg_by_smart[smart_name] or nil
+    if next_tg == nil then
+        return true
+    end
+    if tg() >= tonumber(next_tg) then
+        self.RUNTIME.skip_retry_tg_by_smart[smart_name] = nil
+        return true
+    end
+    return false
+end
+
+function ServiceFiller:_clear_skip_retry(smart_name)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return
+    end
+    if self.RUNTIME and self.RUNTIME.skip_retry_tg_by_smart then
+        self.RUNTIME.skip_retry_tg_by_smart[smart_name] = nil
+    end
+end
+
+function ServiceFiller:_set_skip_retry(smart_name)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return nil
+    end
+    local next_tg = tg() + DEFAULT_SKIP_RETRY_MS
+    self.RUNTIME.skip_retry_tg_by_smart[smart_name] = next_tg
+    return next_tg
+end
+
+function ServiceFiller:_ensure_warfare_ignore()
+    local ignore_tbl = type(ignore) == "table" and ignore or nil
+    local warfare_tbl = type(warfare) == "table" and warfare or nil
+    local warfare_ignore = warfare_tbl and type(warfare_tbl.ignore) == "table" and warfare_tbl.ignore or nil
+    if not ignore_tbl and not warfare_ignore then
+        self.RUNTIME.warfare_ignore_installed = false
+        return false
+    end
+
+    for i = 1, #FACTIONS do
+        local alias = FACTIONS[i]
+        for j = 1, #ROLES do
+            local section = alias .. SERVICE_TOKEN .. ROLES[j]
+            if self:_section_exists(section) then
+                if ignore_tbl then
+                    ignore_tbl[section] = true
+                end
+                if warfare_ignore then
+                    warfare_ignore[section] = true
+                end
+            end
+        end
+    end
+
+    self.RUNTIME.warfare_ignore_installed = true
+    return true
+end
+
+function ServiceFiller:_pending_bucket(smart_name, create)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return nil
+    end
+    local all = self.RUNTIME and self.RUNTIME.pending_spawn_by_smart_role or nil
+    if type(all) ~= "table" then
+        return nil
+    end
+    local bucket = all[smart_name]
+    if bucket == nil and create == true then
+        bucket = {}
+        all[smart_name] = bucket
+    end
+    return type(bucket) == "table" and bucket or nil
+end
+
+function ServiceFiller:_get_pending_spawn(smart_name, role)
+    local bucket = self:_pending_bucket(smart_name, false)
+    if not (bucket and type(role) == "string" and role ~= "") then
+        return nil
+    end
+    local pending = bucket[role]
+    if type(pending) ~= "table" then
+        return nil
+    end
+    if tg() >= (tonumber(pending.expires_tg) or 0) then
+        self:_clear_pending_spawn(smart_name, role)
+        return nil
+    end
+    return pending
+end
+
+function ServiceFiller:_set_pending_spawn(smart_name, role, sid, owner_alias)
+    if type(role) ~= "string" or role == "" then
+        return nil
+    end
+    local bucket = self:_pending_bucket(smart_name, true)
+    if not bucket then
+        return nil
+    end
+    local now = tg()
+    local pending = {
+        sid = tonumber(sid) or nil,
+        owner = normalize_alias(owner_alias),
+        spawn_tg = now,
+        expires_tg = now + DEFAULT_PENDING_SPAWN_MS,
+    }
+    bucket[role] = pending
+    return pending
+end
+
+function ServiceFiller:_clear_pending_spawn(smart_name, role)
+    local bucket = self:_pending_bucket(smart_name, false)
+    if not (bucket and type(role) == "string" and role ~= "") then
+        return
+    end
+    bucket[role] = nil
+    if next(bucket) == nil then
+        self.RUNTIME.pending_spawn_by_smart_role[smart_name] = nil
+    end
+end
+
+function ServiceFiller:_resolve_holder_squad(holder)
+    if type(holder) ~= "table" then
+        return nil
+    end
+    if holder.squad then
+        return holder.squad
+    end
+    local sid = tonumber(holder.sid)
+    if not (is_valid_server_id(sid) and alife) then
+        return nil
+    end
+    local sim = alife()
+    if not sim then
+        return nil
+    end
+    local ok, se_squad = pcall(function() return sim:object(sid) end)
+    if ok and se_squad then
+        return se_squad
+    end
+    return nil
+end
+
+function ServiceFiller:_pin_service_squad(board, smart_name, smart, owner_alias, role, se_squad)
+    if not (board and smart and se_squad and type(smart_name) == "string" and smart_name ~= "") then
+        return false
+    end
+    local section = safe_section(se_squad)
+    if not section or section_role(section) ~= role then
+        return false
+    end
+    if section_owner_alias(section) ~= owner_alias then
+        return false
+    end
+
+    local smart_id = tonumber(smart.id) or nil
+    if not smart_id then
+        return false
+    end
+
+    self.RUNTIME.stats.pin_runs = (tonumber(self.RUNTIME.stats.pin_runs) or 0) + 1
+
+    local changed = false
+    if se_squad.scripted_target ~= smart_name then
+        se_squad.scripted_target = smart_name
+        changed = true
+    end
+    if tonumber(se_squad.assigned_target_id) ~= smart_id then
+        se_squad.assigned_target_id = smart_id
+        changed = true
+    end
+    if se_squad.current_target_id ~= nil then
+        se_squad.current_target_id = nil
+        changed = true
+    end
+    if se_squad.current_action ~= 0 then
+        se_squad.current_action = 0
+        changed = true
+    end
+    if se_squad.task_target_id ~= nil then
+        se_squad.task_target_id = nil
+        changed = true
+    end
+    if se_squad.stay_time ~= nil then
+        se_squad.stay_time = nil
+        changed = true
+    end
+    if se_squad.arrive_time ~= nil then
+        se_squad.arrive_time = nil
+        changed = true
+    end
+    if se_squad.__lock ~= nil then
+        se_squad.__lock = nil
+        changed = true
+    end
+    if se_squad.registered_with_warfare ~= false then
+        se_squad.registered_with_warfare = false
+        changed = true
+    end
+    if se_squad.checked_with_warfare ~= nil then
+        se_squad.checked_with_warfare = nil
+        changed = true
+    end
+    if se_squad.rush_to_target ~= false then
+        se_squad.rush_to_target = false
+        changed = true
+    end
+
+    if tonumber(se_squad.smart_id) ~= smart_id and board.assign_squad_to_smart then
+        local ok_assign = pcall(function() board:assign_squad_to_smart(se_squad, smart_id) end)
+        if ok_assign then
+            self.RUNTIME.stats.pin_assign = (tonumber(self.RUNTIME.stats.pin_assign) or 0) + 1
+            changed = true
+        end
+    end
+
+    if changed then
+        self.RUNTIME.stats.pin_reset = (tonumber(self.RUNTIME.stats.pin_reset) or 0) + 1
+    end
+    return changed
+end
+
+function ServiceFiller:_sync_pending_for_role(board, smart_name, smart, role, owner_alias, holder, filled)
+    local pending = self:_get_pending_spawn(smart_name, role)
+    if not pending then
+        return false
+    end
+
+    if type(owner_alias) ~= "string" or owner_alias == "" or pending.owner ~= owner_alias then
+        self:_clear_pending_spawn(smart_name, role)
+        return false
+    end
+    if filled == true then
+        self:_clear_pending_spawn(smart_name, role)
+        return false
+    end
+    if holder and holder.owner == owner_alias then
+        self:_clear_pending_spawn(smart_name, role)
+        return false
+    end
+    if tg() >= (tonumber(pending.expires_tg) or 0) then
+        self:_clear_pending_spawn(smart_name, role)
+        return false
+    end
+
+    local se_squad = nil
+    local sid = tonumber(pending.sid)
+    if is_valid_server_id(sid) and alife then
+        local sim = alife()
+        if sim then
+            local ok, value = pcall(function() return sim:object(sid) end)
+            if ok and value then
+                se_squad = value
+            end
+        end
+    end
+    if not se_squad then
+        self:_clear_pending_spawn(smart_name, role)
+        return false
+    end
+
+    local section = safe_section(se_squad)
+    if not section or section_role(section) ~= role or section_owner_alias(section) ~= owner_alias then
+        self:_clear_pending_spawn(smart_name, role)
+        return false
+    end
+
+    self:_pin_service_squad(board, smart_name, smart, owner_alias, role, se_squad)
+    return true
+end
+
+function ServiceFiller:_collect_allowed_roles(smart)
+    local out = {}
+    local jobs = smart and smart.stalker_jobs or nil
+    if type(jobs) ~= "table" then
+        return out
+    end
+    for i = 1, #jobs do
+        local job = jobs[i]
+        local role = classify_job_role(job, smart)
+        if role and DISABLED_SERVICE_ROLES[role] ~= true then
+            out[role] = true
+        end
+    end
+    return out
+end
+
+function ServiceFiller:_get_task_proxy_seed(npc)
+    if not (npc and npc.id and db and db.storage and alife) then
+        return nil
+    end
+
+    local ok_id, id = pcall(function() return tonumber(npc:id()) end)
+    if not (ok_id and is_valid_server_id(id)) then
+        return nil
+    end
+
+    local st = db.storage[id]
+    if type(st) ~= "table" then
+        return nil
+    end
+
+    local sim = alife()
+    if not sim then
+        return nil
+    end
+
+    local ok_se, se_obj = pcall(function() return sim:object(id) end)
+    if not (ok_se and se_obj) then
+        return nil
+    end
+
+    local role = self:_service_member_descriptor(se_obj)
+    if role ~= "medic" and role ~= "barman" and role ~= "leader" then
+        return nil
+    end
+
+    local section_logic = type(st.section_logic) == "string" and st.section_logic or nil
+    local ini = st.ini
+    local seed = section_logic and read_ini_string_from(ini, section_logic, "task_section") or nil
+    if not seed then
+        local suitable = section_logic and read_ini_string_from(ini, section_logic, "suitable") or nil
+        seed = extract_check_npc_name_token(suitable)
+    end
+
+    if type(seed) ~= "string" or seed == "" then
+        return nil
+    end
+
+    return seed, role, section_logic
+end
+
+function ServiceFiller:_collect_existing_service_squads(board, smart)
+    local out = {}
+    local smart_id = smart and tonumber(smart.id) or nil
+    local node = smart_id and board and board.smarts and board.smarts[smart_id] or nil
+    local sim = alife and alife() or nil
+    if not (node and type(node.squads) == "table" and sim) then
+        return out
+    end
+    for sid in pairs(node.squads) do
+        local id = tonumber(sid) or sid
+        if is_valid_server_id(id) then
+            local ok_obj, se_squad = pcall(function() return sim:object(id) end)
+            if ok_obj and se_squad then
+                local section = safe_section(se_squad)
+                local role = section_role(section)
+                if role and out[role] == nil then
+                    out[role] = {
+                        squad = se_squad,
+                        sid = tonumber(se_squad.id) or tonumber(id),
+                        section = section,
+                        owner = section_owner_alias(section),
+                    }
+                end
+            end
+        end
+    end
+    return out
+end
+
+function ServiceFiller:_collect_existing_service_members(smart)
+    local out = {}
+    if not (smart and type(smart.npc_info) == "table") then
+        return out
+    end
+
+    for _, info in pairs(smart.npc_info) do
+        local se_obj = type(info) == "table" and info.se_obj or nil
+        if self:_is_stalker_info(info) and se_obj then
+            local role, owner, squad_section = self:_service_member_descriptor(se_obj)
+            if role and out[role] == nil then
+                out[role] = {
+                    sid = tonumber(se_obj.group_id) or nil,
+                    section = squad_section,
+                    owner = owner,
+                    member_id = tonumber(se_obj.id) or nil,
+                }
+            end
+        end
+    end
+
+    return out
+end
+
+function ServiceFiller:_collect_existing_service_roles(board, smart)
+    local out = self:_collect_existing_service_squads(board, smart)
+    local by_member = self:_collect_existing_service_members(smart)
+    for role, holder in pairs(by_member) do
+        if out[role] == nil then
+            out[role] = holder
+        end
+    end
+    return out
+end
+
+function ServiceFiller:_service_member_descriptor(se_obj)
+    if not se_obj then
+        return nil, nil, nil
+    end
+
+    local squad_section = nil
+    local group_id = tonumber(se_obj.group_id) or nil
+    local sim = alife and alife() or nil
+    if group_id and group_id > 0 and group_id ~= 65535 and sim then
+        local ok_squad, se_squad = pcall(function() return sim:object(group_id) end)
+        if ok_squad and se_squad then
+            squad_section = safe_section(se_squad)
+        end
+    end
+
+    if not squad_section then
+        squad_section = safe_section(se_obj)
+    end
+
+    if not squad_section then
+        return nil, nil, nil
+    end
+
+    return section_role(squad_section), section_owner_alias(squad_section), squad_section
+end
+
+function ServiceFiller:_role_has_live_job_owner(smart, role, live_scan)
+    if DISABLED_SERVICE_ROLES[role] == true then
+        return false
+    end
+    if type(live_scan) == "table" then
+        return type(live_scan.live_roles) == "table" and live_scan.live_roles[role] == true or false
+    end
+    if not (smart and type(smart.npc_info) == "table") then
+        return false
+    end
+    for _, info in pairs(smart.npc_info) do
+        if self:_is_stalker_info(info) then
+            local job = type(info.job) == "table" and info.job or nil
+            if job and classify_job_role(job, smart) == role then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+function ServiceFiller:_is_spawn_target_allowed(smart_name, smart, faction, section)
+    if not (siski.tasks and siski.tasks.is_smart_spawn_allowed) then
+        return true, "ok"
+    end
+
+    local level_name = nil
+    local gvid = smart and tonumber(smart.m_game_vertex_id) or nil
+    if gvid then
+        level_name = now_level_name_by_gvid(gvid)
+    end
+    local ok, allowed, reason = pcall(
+        siski.tasks.is_smart_spawn_allowed,
+        smart_name,
+        faction,
+        level_name,
+        section
+    )
+    if not ok then
+        return true, "policy_error"
+    end
+    if allowed == true then
+        return true, tostring(reason or "ok")
+    end
+    return false, tostring(reason or "policy_reject")
+end
+
+function ServiceFiller:_spawn_via_board(board, smart_name, section)
+    if not (board and board.create_squad and board.smarts_by_names) then
+        return nil
+    end
+    local smart = board.smarts_by_names[smart_name]
+    if not smart then
+        return nil
+    end
+    local ok, squad = pcall(function() return board:create_squad(smart, section) end)
+    if ok and squad then
+        return squad
+    end
+    return nil
+end
+
+function ServiceFiller:_spawn_service_squad(board, smart_name, smart, owner_alias, role)
+    local section = self:_service_section(owner_alias, role)
+    if not section then
+        self.RUNTIME.stats.spawn_no_section = (tonumber(self.RUNTIME.stats.spawn_no_section) or 0) + 1
+        self:_log_warn(
+            "spawn_no_section smart=%s owner=%s role=%s",
+            tostring(smart_name),
+            tostring(owner_alias or "-"),
+            tostring(role or "-")
+        )
+        return nil, "no_section"
+    end
+
+    local allowed, reason = self:_is_spawn_target_allowed(smart_name, smart, owner_alias, section)
+    if not allowed then
+        self.RUNTIME.stats.spawn_policy_reject = (tonumber(self.RUNTIME.stats.spawn_policy_reject) or 0) + 1
+        self:_log_warn(
+            "spawn_policy_reject smart=%s owner=%s role=%s section=%s reason=%s",
+            tostring(smart_name),
+            tostring(owner_alias or "-"),
+            tostring(role or "-"),
+            tostring(section or "-"),
+            tostring(reason or "-")
+        )
+        return nil, reason
+    end
+
+    self.RUNTIME.stats.spawn_attempts = (tonumber(self.RUNTIME.stats.spawn_attempts) or 0) + 1
+
+    local squad = self:_spawn_via_board(board, smart_name, section)
+    if not squad then
+        self.RUNTIME.stats.spawn_failed = (tonumber(self.RUNTIME.stats.spawn_failed) or 0) + 1
+        self:_log_warn(
+            "spawn_failed smart=%s owner=%s role=%s section=%s",
+            tostring(smart_name),
+            tostring(owner_alias or "-"),
+            tostring(role or "-"),
+            tostring(section or "-")
+        )
+        return nil, "spawn_failed"
+    end
+
+    self.RUNTIME.stats.spawn_success = (tonumber(self.RUNTIME.stats.spawn_success) or 0) + 1
+    self:_log_info(
+        "spawn_success sid=%s smart=%s owner=%s role=%s section=%s",
+        tostring(squad and squad.id or "-"),
+        tostring(smart_name),
+        tostring(owner_alias),
+        tostring(role),
+        tostring(section)
+    )
+    return squad, nil
+end
+
+function ServiceFiller:_get_fill_mark(smart_name)
+    return self.STATE and self.STATE.last_fill_gt_by_smart and self.STATE.last_fill_gt_by_smart[smart_name] or nil
+end
+
+function ServiceFiller:_is_due(smart_name)
+    local hours = self:_num_cfg("service_filler_respawn_game_hours", DEFAULT_RESPAWN_GAME_HOURS, 0.1)
+    local last = self:_get_fill_mark(smart_name)
+    if type(last) ~= "table" then
+        return true
+    end
+    local last_ct = ctime_from_table(last)
+    if not last_ct then
+        return true
+    end
+    local elapsed = game_time_diff_sec(last_ct)
+    if not elapsed then
+        return false
+    end
+    return elapsed >= (hours * 3600)
+end
+
+function ServiceFiller:_mark_now(smart_name)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return nil
+    end
+    local now_gt = game_time_now()
+    local stamp = now_gt and ctime_to_table(now_gt) or nil
+    self.STATE.last_fill_gt_by_smart[smart_name] = stamp
+    return stamp
+end
+
+function ServiceFiller:_refresh_target_stats()
+    self.RUNTIME.stats.targets = #(self.RUNTIME.targets or {})
+end
+
+function ServiceFiller:_sync_targets_from_index()
+    local board_index = siski.board_index
+    local levels = board_index and board_index.get_known_smart_levels and board_index.get_known_smart_levels() or {}
+    local prev_targets = self.RUNTIME.targets or {}
+    local targets = {}
+    local target_set = {}
+
+    for i = 1, #levels do
+        local level_name = levels[i]
+        local list = board_index and board_index.get_base_smarts and board_index.get_base_smarts(level_name) or {}
+        for j = 1, #list do
+            local smart_name = list[j]
+            if type(smart_name) == "string" and smart_name ~= "" and target_set[smart_name] ~= true then
+                target_set[smart_name] = true
+                targets[#targets + 1] = smart_name
+            end
+        end
+    end
+
+    if table_sort then
+        table_sort(targets)
+    end
+
+    for i = 1, #prev_targets do
+        local smart_name = prev_targets[i]
+        if target_set[smart_name] ~= true then
+            self.RUNTIME.dirty_targets[smart_name] = nil
+            self.RUNTIME.skip_retry_tg_by_smart[smart_name] = nil
+            self.RUNTIME.pending_spawn_by_smart_role[smart_name] = nil
+        end
+    end
+
+    self.RUNTIME.targets = targets
+    self.RUNTIME.target_set = target_set
+    self:_refresh_target_stats()
+end
+
+function ServiceFiller:_remove_target(smart_name)
+    if not self:_is_target_smart(smart_name) then
+        return false
+    end
+    self.RUNTIME.target_set[smart_name] = nil
+    local next_targets = {}
+    local src = self.RUNTIME.targets or {}
+    for i = 1, #src do
+        if src[i] ~= smart_name then
+            next_targets[#next_targets + 1] = src[i]
+        end
+    end
+    self.RUNTIME.targets = next_targets
+    if type(self.RUNTIME.dirty_targets) == "table" then
+        self.RUNTIME.dirty_targets[smart_name] = nil
+    end
+    self.RUNTIME.skip_retry_tg_by_smart[smart_name] = nil
+    self.RUNTIME.pending_spawn_by_smart_role[smart_name] = nil
+    self:_refresh_target_stats()
+    return true
+end
+
+function ServiceFiller:_should_target_smart(smart_name, smart)
+    if type(smart_name) ~= "string" or smart_name == "" or not is_base_smart(smart) then
+        return false
+    end
+    local level_name = siski.board_index and siski.board_index.get_smart_level and siski.board_index.get_smart_level(smart_name) or nil
+    if type(level_name) ~= "string" or level_name == "" then
+        local gvid = smart and tonumber(smart.m_game_vertex_id) or nil
+        level_name = gvid and now_level_name_by_gvid(gvid) or nil
+    end
+    if type(level_name) ~= "string" or level_name == "" then
+        return false
+    end
+    local allowed = siski.board_index and siski.board_index.get_base_smarts and siski.board_index.get_base_smarts(level_name) or {}
+    for i = 1, #allowed do
+        if allowed[i] == smart_name then
+            return true
+        end
+    end
+    return false
+end
+
+function ServiceFiller:_upsert_target_from_smart(smart)
+    local smart_name = object_name(smart)
+    if type(smart_name) ~= "string" or smart_name == "" then
+        return nil, false
+    end
+    if self:_should_target_smart(smart_name, smart) ~= true then
+        self:_remove_target(smart_name)
+        return smart_name, false
+    end
+    if self.RUNTIME.target_set[smart_name] ~= true then
+        self.RUNTIME.target_set[smart_name] = true
+        self.RUNTIME.targets[#self.RUNTIME.targets + 1] = smart_name
+        if table_sort then
+            table_sort(self.RUNTIME.targets)
+        end
+        self:_refresh_target_stats()
+    end
+    return smart_name, true
+end
+
+function ServiceFiller:_is_target_smart(smart_name)
+    return type(smart_name) == "string"
+        and smart_name ~= ""
+        and type(self.RUNTIME.target_set) == "table"
+        and self.RUNTIME.target_set[smart_name] == true
+end
+
+function ServiceFiller:_resolve_target_smart_name_from_squad(se_squad)
+    if not se_squad then
+        return nil
+    end
+
+    local scripted = type(se_squad.scripted_target) == "string" and se_squad.scripted_target or nil
+    if self:_is_target_smart(scripted) then
+        return scripted
+    end
+
+    local smart_id = tonumber(se_squad.smart_id) or nil
+    if smart_id and siski.board_index and siski.board_index.get_smart_name_by_id then
+        local smart_name = siski.board_index.get_smart_name_by_id(smart_id)
+        if self:_is_target_smart(smart_name) then
+            return smart_name
+        end
+    end
+
+    return nil
+end
+
+function ServiceFiller:_consume_dirty_targets()
+    local out = {}
+    local dirty = type(self.RUNTIME.dirty_targets) == "table" and self.RUNTIME.dirty_targets or {}
+    for smart_name in pairs(dirty) do
+        if self:_is_target_smart(smart_name) then
+            out[#out + 1] = smart_name
+        end
+        dirty[smart_name] = nil
+    end
+    if table_sort then
+        table_sort(out)
+    end
+    self.RUNTIME.dirty_targets = dirty
+    return out
+end
+
+function ServiceFiller:_mark_target_dirty(smart_name, reason)
+    if not self:_is_target_smart(smart_name) then
+        return false
+    end
+    self.RUNTIME.dirty_targets = type(self.RUNTIME.dirty_targets) == "table" and self.RUNTIME.dirty_targets or {}
+    self.RUNTIME.dirty_targets[smart_name] = true
+    return self:_run_dirty_reconcile(reason or "dirty")
+end
+
+function ServiceFiller:_mark_all_index_targets_dirty(reason)
+    self.RUNTIME.dirty_targets = {}
+    for i = 1, #(self.RUNTIME.targets or {}) do
+        self.RUNTIME.dirty_targets[self.RUNTIME.targets[i]] = true
+    end
+    return true
+end
+
+function ServiceFiller:_process_smart(board, smart_name)
+    local smart = board and board.smarts_by_names and board.smarts_by_names[smart_name] or nil
+    if self:_should_target_smart(smart_name, smart) ~= true then
+        self:_remove_target(smart_name)
+        return
+    end
+
+    local allowed_roles = self:_collect_allowed_roles(smart)
+    local existing = self:_collect_existing_service_roles(board, smart)
+    local live_scan = self:_scan_live_population_roles(smart)
+    local owner_alias, owner_source, stalker_count, factions_sig, raw_faction = self:_resolve_owner_alias(smart)
+    local occupied = self:_smart_has_non_service_population(smart, live_scan)
+    local allowed_roles_count = count_keys(allowed_roles)
+    local existing_count = count_keys(existing)
+
+    if owner_alias then
+        for role, holder in pairs(existing) do
+            if allowed_roles[role] == true and holder and holder.owner == owner_alias then
+                local se_squad = self:_resolve_holder_squad(holder)
+                if se_squad then
+                    self:_pin_service_squad(board, smart_name, smart, owner_alias, role, se_squad)
+                end
+                self:_clear_pending_spawn(smart_name, role)
+            end
+        end
+    end
+
+    if not self:_is_due(smart_name) then
+        return
+    end
+
+    if not self:_skip_retry_ready(smart_name) then
+        return
+    end
+
+    if not owner_alias then
+        self.RUNTIME.stats.spawn_no_owner = (tonumber(self.RUNTIME.stats.spawn_no_owner) or 0) + 1
+        self:_log_info(
+            "skip_no_owner smart=%s occupied=%s roles=%s existing=%s source=%s stalkers=%s factions=%s raw=%s",
+            tostring(smart_name),
+            tostring(occupied),
+            tostring(allowed_roles_count),
+            tostring(existing_count),
+            tostring(owner_source or "-"),
+            tostring(stalker_count or 0),
+            tostring(factions_sig or "-"),
+            tostring(raw_faction or "-")
+        )
+        self:_set_skip_retry(smart_name)
+        return
+    end
+
+    if not occupied then
+        self.RUNTIME.stats.spawn_empty_base = (tonumber(self.RUNTIME.stats.spawn_empty_base) or 0) + 1
+        self:_log_info(
+            "skip_empty_base smart=%s owner=%s roles=%s existing=%s source=%s stalkers=%s factions=%s raw=%s",
+            tostring(smart_name),
+            tostring(owner_alias),
+            tostring(allowed_roles_count),
+            tostring(existing_count),
+            tostring(owner_source or "-"),
+            tostring(stalker_count or 0),
+            tostring(factions_sig or "-"),
+            tostring(raw_faction or "-")
+        )
+        self:_set_skip_retry(smart_name)
+        return
+    end
+
+    for i = 1, #ROLES do
+        local role = ROLES[i]
+        if allowed_roles[role] == true then
+            local holder = existing[role]
+            local filled = self:_role_has_live_job_owner(smart, role, live_scan)
+            if self:_sync_pending_for_role(board, smart_name, smart, role, owner_alias, holder, filled) then
+                filled = true
+            end
+            if not filled and (not holder or holder.owner ~= owner_alias) then
+                local squad = self:_spawn_service_squad(board, smart_name, smart, owner_alias, role)
+                if squad then
+                    local new_section = safe_section(squad)
+                    local new_holder = {
+                        squad = squad,
+                        sid = tonumber(squad.id),
+                        section = new_section,
+                        owner = section_owner_alias(new_section),
+                    }
+                    existing[role] = new_holder
+                    self:_pin_service_squad(board, smart_name, smart, owner_alias, role, squad)
+                    self:_set_pending_spawn(smart_name, role, squad and squad.id or nil, owner_alias)
+                end
+            end
+        end
+    end
+
+    self:_clear_skip_retry(smart_name)
+    self:_mark_now(smart_name)
+end
+
+function ServiceFiller:_on_first_update()
+    self:_reactivate_runtime("first_update")
+end
+
+function ServiceFiller:_run_dirty_reconcile(reason)
+    if self.RUNTIME.reconcile_running == true then
+        self.RUNTIME.reconcile_pending = true
+        return false
+    end
+
+    self.RUNTIME.reconcile_running = true
+    local ok, err = pcall(function()
+        repeat
+            self.RUNTIME.reconcile_pending = false
+
+            if not self:_is_enabled() then
+                self.RUNTIME.active_enabled = false
+                if not self.RUNTIME.disabled_logged then
+                    self:_log_info("disabled")
+                    self.RUNTIME.disabled_logged = true
+                end
+                return
+            end
+
+            self.RUNTIME.active_enabled = true
+            self.RUNTIME.disabled_logged = false
+            if not self.RUNTIME.warfare_ignore_installed then
+                self:_ensure_warfare_ignore()
+            end
+
+            self.RUNTIME.stats.ticks = (tonumber(self.RUNTIME.stats.ticks) or 0) + 1
+
+            local board = get_board()
+            local targets = self:_consume_dirty_targets()
+            if #targets > 0 then
+                for i = 1, #targets do
+                    self.RUNTIME.stats.processed = (tonumber(self.RUNTIME.stats.processed) or 0) + 1
+                    self:_process_smart(board, targets[i])
+                end
+                self.RUNTIME.stats.reconcile_runs = (tonumber(self.RUNTIME.stats.reconcile_runs) or 0) + 1
+            end
+        until self.RUNTIME.reconcile_pending ~= true
+    end)
+    self.RUNTIME.reconcile_running = false
+    if not ok then
+        error(err)
+    end
+    return true
+end
+
+function ServiceFiller:_mark_dirty_from_squad(se_squad, reason)
+    local smart_name = self:_resolve_target_smart_name_from_squad(se_squad)
+    if smart_name then
+        return self:_mark_target_dirty(smart_name, reason)
+    end
+    return false
+end
+
+function ServiceFiller:_mark_dirty_from_smart(smart, reason)
+    local smart_name, is_target = self:_upsert_target_from_smart(smart)
+    if is_target == true then
+        return self:_mark_target_dirty(smart_name, reason)
+    end
+    return false
+end
+
+function ServiceFiller:_reactivate_runtime(reason)
+    if not self:_is_enabled() then
+        self.RUNTIME.active_enabled = false
+        return
+    end
+    self.RUNTIME.active_enabled = true
+    self.RUNTIME.disabled_logged = false
+    self:_ensure_warfare_ignore()
+    self:_sync_targets_from_index()
+    self:_mark_all_index_targets_dirty(reason)
+    self:_run_dirty_reconcile(reason or "reactivate")
+end
+
+function ServiceFiller:_reset_runtime(reason)
+    self.RUNTIME.targets = {}
+    self.RUNTIME.target_set = {}
+    self.RUNTIME.dirty_targets = {}
+    self.RUNTIME.skip_retry_tg_by_smart = {}
+    self.RUNTIME.pending_spawn_by_smart_role = {}
+    self.RUNTIME.warfare_ignore_installed = false
+    self.RUNTIME.active_enabled = false
+    self.RUNTIME.disabled_logged = false
+    self.RUNTIME.reconcile_running = false
+    self.RUNTIME.reconcile_pending = false
+    if siski.log and siski.log.warn then
+        siski.log.warn("SERVICE_FILLER", "reset_runtime reason=%s", tostring(reason or "-"))
+    end
+end
+
+function ServiceFiller:_save_state(m_data)
+    if not m_data then
+        return
+    end
+    local out = {
+        version = STATE_VERSION,
+        last_fill_gt_by_smart = {},
+    }
+    for smart_name, mark in pairs(self.STATE and self.STATE.last_fill_gt_by_smart or {}) do
+        local key = type(smart_name) == "string" and smart_name or nil
+        local stamp = clone_ctime_table(mark)
+        if key and key ~= "" and stamp then
+            out.last_fill_gt_by_smart[key] = stamp
+        end
+    end
+    m_data.siski_service_filler_state = out
+end
+
+function ServiceFiller:_load_state(m_data)
+    local loaded = m_data and m_data.siski_service_filler_state or nil
+    self.STATE = {
+        version = STATE_VERSION,
+        last_fill_gt_by_smart = {},
+    }
+    if type(loaded) == "table" then
+        for smart_name, mark in pairs(type(loaded.last_fill_gt_by_smart) == "table" and loaded.last_fill_gt_by_smart or {}) do
+            local key = type(smart_name) == "string" and smart_name or nil
+            local stamp = clone_ctime_table(mark)
+            if key and key ~= "" and stamp then
+                self.STATE.last_fill_gt_by_smart[key] = stamp
+            end
+        end
+    end
+    self.RUNTIME.targets = {}
+    self.RUNTIME.target_set = {}
+    self.RUNTIME.dirty_targets = {}
+    self.RUNTIME.skip_retry_tg_by_smart = {}
+    self.RUNTIME.pending_spawn_by_smart_role = {}
+    self.RUNTIME.warfare_ignore_installed = false
+    self.RUNTIME.active_enabled = false
+    self.RUNTIME.disabled_logged = false
+    self.RUNTIME.reconcile_running = false
+    self.RUNTIME.reconcile_pending = false
+end
+
+function ServiceFiller:_get_runtime_stats()
+    local out = {}
+    for key, value in pairs(self.RUNTIME and self.RUNTIME.stats or {}) do
+        out[key] = value
+    end
+    out.targets = tonumber(self.RUNTIME and self.RUNTIME.stats and self.RUNTIME.stats.targets) or 0
+    out.fill_marks = count_keys(self.STATE and self.STATE.last_fill_gt_by_smart or nil)
+    local pending_total = 0
+    for _, bucket in pairs(self.RUNTIME and self.RUNTIME.pending_spawn_by_smart_role or {}) do
+        if type(bucket) == "table" then
+            for _ in pairs(bucket) do
+                pending_total = pending_total + 1
+            end
+        end
+    end
+    out.pending_spawns = pending_total
+    out.warfare_ignore_installed = self.RUNTIME and self.RUNTIME.warfare_ignore_installed or false
+    return out
+end
+
+local inst = ServiceFiller.new and ServiceFiller.new() or setmetatable({}, ServiceFiller)
+if not inst.RUNTIME then
+    ServiceFiller.__init(inst)
+end
+
+local function bus_args(payload)
+    if type(payload) ~= "table" then
+        return {}
+    end
+    return type(payload.args) == "table" and payload.args or {}
+end
+
+if siski and siski.bus and siski.bus.subscribe then
+    siski.bus.subscribe("load_state", "siski_service_filler", function()
+        inst:_reactivate_runtime("load_state")
+    end)
+    siski.bus.subscribe("on_option_change", "siski_service_filler", function()
+        inst:_reactivate_runtime("option_change")
+    end)
+    siski.bus.subscribe("smart_terrain_on_update", "siski_service_filler", function(payload)
+        local args = bus_args(payload)
+        inst:_mark_dirty_from_smart(args[1], "smart_update")
+    end)
+    siski.bus.subscribe("squad_on_enter_smart", "siski_service_filler", function(payload)
+        local args = bus_args(payload)
+        inst:_mark_dirty_from_squad(args[1], "enter_smart")
+    end)
+    siski.bus.subscribe("squad_on_leave_smart", "siski_service_filler", function(payload)
+        local args = bus_args(payload)
+        inst:_mark_dirty_from_squad(args[1], "leave_smart")
+    end)
+    siski.bus.subscribe("squad_on_after_level_change", "siski_service_filler", function(payload)
+        local args = bus_args(payload)
+        inst:_mark_dirty_from_squad(args[1], "after_level_change")
+    end)
+    siski.bus.subscribe("squad_on_npc_creation", "siski_service_filler", function(payload)
+        local args = bus_args(payload)
+        inst:_mark_dirty_from_squad(args[1], "npc_creation")
+    end)
+    siski.bus.subscribe("squad_on_npc_death", "siski_service_filler", function(payload)
+        local args = bus_args(payload)
+        inst:_mark_dirty_from_squad(args[1], "npc_death")
+    end)
+    siski.bus.subscribe("server_entity_on_unregister", "siski_service_filler", function(payload)
+        local args = bus_args(payload)
+        local se_obj = args[1]
+        local type_name = args[2]
+        local smart_name = object_name(se_obj)
+        if inst:_is_target_smart(smart_name) then
+            inst:_remove_target(smart_name)
+            return
+        end
+        if type(type_name) == "string" and type_name == "sim_squad_scripted" then
+            inst:_mark_dirty_from_squad(se_obj, "server_unregister")
+            return
+        end
+        local smart_id = tonumber(se_obj and se_obj.smart_id) or nil
+        smart_name = smart_id and siski.board_index and siski.board_index.get_smart_name_by_id and siski.board_index.get_smart_name_by_id(smart_id) or nil
+        if smart_name then
+            inst:_mark_target_dirty(smart_name, "server_unregister")
+        end
+    end)
+end
+
+inst.on_first_update = function() return inst:_on_first_update() end
+inst.reset_runtime = function(reason) return inst:_reset_runtime(reason) end
+inst.save_state = function(m_data) return inst:_save_state(m_data) end
+inst.load_state = function(m_data) return inst:_load_state(m_data) end
+inst.get_runtime_stats = function() return inst:_get_runtime_stats() end
+inst.is_service_section = function(section) return is_service_section(section) end
+inst.get_task_proxy_seed = function(npc) return inst:_get_task_proxy_seed(npc) end
+
+siski.service_filler = inst

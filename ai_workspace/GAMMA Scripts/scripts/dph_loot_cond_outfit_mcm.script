@@ -1,0 +1,49 @@
+function on_mcm_load()
+  return { id="outfit", sh=true, gr={   
+      { id="header", type="slide", link="ui_options_slider_economy_diff", text="ui_mcm_dph_loot_cond_outfit", size= {512,50}, spacing=20 },
+      -- zombied
+      { id="zombied_header", clr={200, 200, 255, 200}, type="desc", text="ui_mcm_dph_loot_cond_outfit_zombied_header", },
+      { id="zombied_min", type="track", val=2, min=1, max=100, step=1, def=5 },
+      { id="zombied_max", type="track", val=2, min=1, max=100, step=1, def=15 },
+      -- novice
+      { id="divider", type="line" },
+      { id="novice_header", clr={200, 200, 255, 200}, type="desc", text="ui_mcm_dph_loot_cond_outfit_novice_header", },
+      { id="novice_min", type="track", val=2, min=1, max=100, step=1, def=5 },
+      { id="novice_max", type="track", val=2, min=1, max=100, step=1, def=15 },
+      -- trainee
+      { id="divider", type="line" },
+      { id="trainee_header", clr={200, 200, 255, 200}, type="desc", text="ui_mcm_dph_loot_cond_outfit_trainee_header", },
+      { id="trainee_min", type="track", val=2, min=1, max=100, step=1, def=5 },
+      { id="trainee_max", type="track", val=2, min=1, max=100, step=1, def=20 },
+      -- experienced
+      { id="divider", type="line" },
+      { id="experienced_header", clr={200, 200, 255, 200}, type="desc", text="ui_mcm_dph_loot_cond_outfit_experienced_header", },
+      { id="experienced_min", type="track", val=2, min=1, max=100, step=1, def=5 },
+      { id="experienced_max", type="track", val=2, min=1, max=100, step=1, def=20 },
+      -- professional
+      { id="divider", type="line" },
+      { id="professional_header", clr={200, 200, 255, 200}, type="desc", text="ui_mcm_dph_loot_cond_outfit_professional_header", },
+      { id="professional_min", type="track", val=2, min=1, max=100, step=1, def=10 },
+      { id="professional_max", type="track", val=2, min=1, max=100, step=1, def=25 },
+      -- veteran
+      { id="divider", type="line" },
+      { id="veteran_header", clr={200, 200, 255, 200}, type="desc", text="ui_mcm_dph_loot_cond_outfit_veteran_header", },
+      { id="veteran_min", type="track", val=2, min=1, max=100, step=1, def=10 },
+      { id="veteran_max", type="track", val=2, min=1, max=100, step=1, def=25 },
+      -- expert
+      { id="divider", type="line" },
+      { id="expert_header", clr={200, 200, 255, 200}, type="desc", text="ui_mcm_dph_loot_cond_outfit_expert_header", },
+      { id="expert_min", type="track", val=2, min=1, max=100, step=1, def=10 },
+      { id="expert_max", type="track", val=2, min=1, max=100, step=1, def=30 },
+      -- master
+      { id="divider", type="line" },
+      { id="master_header", clr={200, 200, 255, 200}, type="desc", text="ui_mcm_dph_loot_cond_outfit_master_header", },
+      { id="master_min", type="track", val=2, min=1, max=100, step=1, def=15 },
+      { id="master_max", type="track", val=2, min=1, max=100, step=1, def=30 },
+      -- legend
+      { id="divider", type="line" },
+      { id="legend_header", clr={200, 200, 255, 200}, type="desc", text="ui_mcm_dph_loot_cond_outfit_legend_header", },
+      { id="legend_min", type="track", val=2, min=1, max=100, step=1, def=15 },
+      { id="legend_max", type="track", val=2, min=1, max=100, step=1, def=30 },
+  }}, "dph_loot_cond"
+end

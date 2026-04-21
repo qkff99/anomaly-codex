@@ -1,0 +1,48 @@
+
+-- demonized Mugging Squads
+-- Generated with AnomalyModCreator
+
+op = { id= "demonized_mugging_squads",sh=true ,gr={
+		{ id= "title", type= "slide", link= "ui_options_slider_player", text="ui_mcm_demonized_mugging_squads_title", size= {512,50}, spacing= 20 },
+		{id = "delayBetweenSpawns", type = "track", val = 2, min = 2, max = 144, step = 1, def = 24},
+		{id = "spawnDistance", type = "track", val = 2, min = 100, max = 400, step = 10, def = 200},
+		{id = "safeSmartDistance", type = "track", val = 2, min = 10, max = 100, step = 10, def = 40},
+		{id = "maxActiveSquads", type = "track", val = 2, min = 1, max = 10, step = 1, def = 2},
+		{id = "allowSameSquads", type = "check", val = 1, def = false},
+		{id = "allowFriendlySquads", type = "check", val = 1, def = false},
+		{id = "talkChance", type = "track", val = 2, min = 0, max = 1, step = 0.1, def = 1},
+
+
+		{id = "divider", type = "line"},
+
+		-- These factions can send mugging squads after you
+		{ id= "title", type= "slide", link= "ui_options_slider_player", text="ui_mcm_demonized_mugging_squads_factions", size= {512,50}, spacing= 20 },
+		{id = "muggingFactionsCanSpawn_army", hint = "demonized_replace_placeholder_army", type = "check", val = 1, def = false},
+		{id = "muggingFactionsCanSpawn_bandit", hint = "demonized_replace_placeholder_bandit", type = "check", val = 1, def = true},
+		{id = "muggingFactionsCanSpawn_csky", hint = "demonized_replace_placeholder_csky", type = "check", val = 1, def = false},
+		{id = "muggingFactionsCanSpawn_dolg", hint = "demonized_replace_placeholder_dolg", type = "check", val = 1, def = false},
+		{id = "muggingFactionsCanSpawn_ecolog", hint = "demonized_replace_placeholder_ecolog", type = "check", val = 1, def = false},
+		{id = "muggingFactionsCanSpawn_freedom", hint = "demonized_replace_placeholder_freedom", type = "check", val = 1, def = false},
+		{id = "muggingFactionsCanSpawn_greh", hint = "demonized_replace_placeholder_greh", type = "check", val = 1, def = true},
+		{id = "muggingFactionsCanSpawn_isg", hint = "demonized_replace_placeholder_isg", type = "check", val = 1, def = false},
+		{id = "muggingFactionsCanSpawn_killer", hint = "demonized_replace_placeholder_killer", type = "check", val = 1, def = true},
+		{id = "muggingFactionsCanSpawn_monolith", hint = "demonized_replace_placeholder_monolith", type = "check", val = 1, def = true},
+		{id = "muggingFactionsCanSpawn_renegade", hint = "demonized_replace_placeholder_renegade", type = "check", val = 1, def = true},
+		{id = "muggingFactionsCanSpawn_stalker", hint = "demonized_replace_placeholder_stalker", type = "check", val = 1, def = false},
+	}
+}
+
+function on_mcm_load()
+	return op
+end
+
+ui_mcm_UIMCM_Register_Cap = ui_mcm.UIMCM.Register_Cap
+ui_mcm.UIMCM.Register_Cap = function(self, xml, handler, id, hint)
+	local res = ui_mcm_UIMCM_Register_Cap(self, xml, handler, id, hint)
+	id = id:gsub("/", "_")
+	if hint and hint:find("demonized_replace_placeholder_") then
+		hint = hint:gsub("demonized_replace_placeholder_", "")
+		self._Cap[id]:TextControl():SetText(game.translate_string(hint))
+	end
+	return res
+end

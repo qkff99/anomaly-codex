@@ -1,0 +1,101 @@
+local configs = house_of_horrors_configs
+local outpost_smart_terrain = "mar_smart_terrain_5_12"
+
+local state = {
+    zombie_id = nil,
+    hanged_man_id = nil,
+    board_id = nil
+}
+function save_state(mdata)
+	mdata.house_of_horrors_task_data = state
+end
+
+function load_state(mdata)
+	if mdata.house_of_horrors_task_data then
+		state = mdata.house_of_horrors_task_data
+	end
+end
+
+task_status_functor.house_of_horrors_task_status_functor = function(tsk,task_id)
+	if not (db.actor and tsk) then return end
+	local stage = tsk.stage
+
+	if stage == 0 then
+        if
+            nta_utils.actor_on_level(nta_utils.levels.swamp)
+            and db.actor:position():distance_to(configs.house_location.vector) < 25
+            and nta_utils.is_dark_night()
+        then
+            play_whispers()
+            state.hanged_man_id = nta_utils.spawn_helper(configs.hanged_man_location)
+            tsk.stage = 1
+        end
+    end
+
+    if stage == 1 then
+        -- Revert to prev stage if the night is over or player left swamps
+        if not nta_utils.actor_on_level(nta_utils.levels.swamp) or not nta_utils.is_dark_night() then
+            safe_release_manager.release({ id = state.hanged_man_id })
+            tsk.stage = 0
+            return
+        end
+        if db.actor:position():distance_to(configs.hanged_man_location.vector) < 3 then
+            explode_hanged_man()
+            play_screams()
+            state.board_id = nta_utils.spawn_helper(configs.board_location)
+            state.zombie_id = nta_utils.spawn_helper(configs.zombie_location)
+            nta_utils.spawn_helper(configs.dog_location)
+            tsk.stage = 2
+        end
+    end
+
+    if stage == 2 then
+        if not alife_object(state.zombie_id) then
+            nta_utils.destroy_with_poltergeist_effect(level.object_by_id(state.board_id), true)
+            tsk.stage = 3
+        end
+    end
+end
+
+function explode_hanged_man()
+    local pos = alife_object(state.hanged_man_id).position
+    nta_utils.spawn_particles_at_position("anomaly2\\body_tear_00", pos)
+    nta_utils.spawn_sound_at_position("anomaly\\anomaly_body_tear_1", pos)
+    safe_release_manager.release({ id = state.hanged_man_id })
+end
+
+function play_whispers()
+    nta_utils.spawn_attached_sound([[new_tasks_addon\controller_presence_l_1]])
+end
+
+function play_screams()
+    nta_utils.spawn_attached_sound([[new_tasks_addon\voc_harold_scream_2d]])
+end
+
+task_functor.house_of_horrors_task_target_functor = function(task_id,field,p,tsk)
+	if not (db.actor and tsk) then return nil end
+	local stage = tsk.stage
+
+    if stage == 0 or stage == 1 then
+        return SIMBOARD:get_smart_by_name(outpost_smart_terrain).id
+    end
+    if stage == 2 then
+        return state.zombie_id
+    end
+    if stage == 3 then
+        return tsk.task_giver_id
+    end
+end
+
+xr_effects.house_of_horrors_cleanup = function()
+    state = {
+        zombie_id = nil,
+        hanged_man_id = nil,
+        board_id = nil
+    }
+end
+
+function on_game_start()
+	RegisterScriptCallback("save_state",save_state)
+	RegisterScriptCallback("load_state",load_state)
+end

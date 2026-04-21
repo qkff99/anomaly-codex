@@ -1,0 +1,18 @@
+function keep_item_hook(npc, item) 
+	if not (item) then
+		return 
+	end 
+	
+	local item_id = item:id()
+	local active_item = npc:active_item()
+	
+	old_keep_item(npc, item)
+
+	if active_item ~= nil and active_item:id() == item_id then
+		npc:transfer_item(item, npc)
+	end
+
+end
+
+old_keep_item = death_manager.keep_item
+death_manager.keep_item = keep_item_hook

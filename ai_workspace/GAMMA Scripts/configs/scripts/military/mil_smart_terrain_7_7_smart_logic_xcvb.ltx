@@ -1,0 +1,377 @@
+[beh@general]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+gather_items_enabled = true
+help_wounded_enabled = true
+corpse_detection_enabled = true
+meet = meet@general
+wounded = wounded@ignore
+use_camp = false
+path_end = loop
+
+
+[beh@combat]:beh@general
+walk_dist = 25
+jog_dist = 220
+wait_anim = patrol
+walk_anim = patrol
+jog_anim = patrol
+run_anim = patrol
+sound_idle = state
+
+
+[beh@campfire]:beh@general
+turn_on_campfire = true
+sound_idle = state
+
+[beh@sleep]:beh@general
+gather_items_enabled = false
+corpse_detection_enabled = false
+meet = no_meet
+
+
+[meet@general]
+close_anim 		= nil
+close_victim 	= nil
+far_anim 		= nil
+far_victim 		= nil
+close_distance  = 0
+far_distance 	= 0
+use = {=actor_enemy} false, {=dist_to_actor_le(3)} true, false
+snd_on_use = {!dist_to_actor_le(3)} nil
+meet_on_talking = false
+
+[wounded@ignore]
+hp_state        = 0|wounded_heavy@help_heavy
+hp_state_see    = 0|wounded_heavy@help_heavy
+hp_victim       = 0|nil
+hp_fight        = 0|false
+hp_cover        = 0|false
+
+
+; =======================
+; ------------- DAY ---------------
+; =======================
+; ------------- 59
+; (guard 2 center near building entrance)
+[logic@mil_7_7_xcvb_day_1]
+active = beh@day_1
+suitable = {!surge_started !is_night} true
+prior = 59
+
+[beh@day_1]:beh@combat
+pt1 = 20000, guard | 		pos: -13.3, -7.4097, -25.2 	 	 look: -10.8081, -8.6259, -25.1873 
+
+
+; (guard 3 in building)
+[logic@mil_7_7_xcvb_day_2]
+active = beh@day_2
+suitable = {!surge_started !is_night} true
+prior = 59
+
+[beh@day_2]:beh@combat
+pt1 = 20000, guard | 		pos: -18.2, -3.1049, -23.8 	 	 look: -21.5051, -4.1143, -23.8754 
+pt2 = 20000, guard | 		pos: -21.7, -2.9892, -32.2 	 	 look: -21.6533, -4.1134, -28.3412 
+
+
+; ------------- 58
+; (guard 4 in building)
+[logic@mil_7_7_xcvb_day_3]
+active = beh@day_3
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[beh@day_3]:beh@combat
+pt1 = 20000, guard | 		pos: -21, -3.1049, -16.1 	 	 look: -20.9217, -4.1134, -21.3365 
+
+
+; (guard 1 center near building)
+[logic@mil_7_7_xcvb_day_4]
+active = beh@day_4
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[beh@day_4]:beh@combat
+pt1 = 60000, guard | 		pos: -18.2, -6.9041, -11.9 	 	 look: -17.3416, -8.393, -8.2788 
+pt2 = 20000, smoking_stand | 		pos: -18.2, -6.9041, -11.9 	 	 look: -17.3416, -8.393, -8.2788 
+
+
+; (patrol 2 behind building)
+[logic@mil_7_7_xcvb_day_5]
+active = beh@day_5
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[beh@day_5]:beh@combat
+walk_anim = walk
+pt1 = 60000, fold_arms | 		pos: -30.1, -5.9165, -11.9 	 	 look: -26.8714, -7.2131, -11.7256 
+pt2 = 20000, wait | 		pos: -37.1, -5.8442, -30.8 	 	 look: -33.938, -6.7462, -32.8513 
+
+
+; (campfire 1)
+[logic@mil_7_7_xcvb_day_6]
+active = animpoint@day_6
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[animpoint@day_6]
+cover_name = mil_smart_terrain_7_7_animpoint_kamp3
+use_camp = true
+turn_on_campfire = true
+
+
+; (campfire 2)
+[logic@mil_7_7_xcvb_day_7]
+active = animpoint@day_7
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[animpoint@day_7]
+cover_name = mil_smart_terrain_7_7_animpoint_kamp4
+use_camp = true
+turn_on_campfire = true
+
+
+; ------------- 57
+; (campfire 3)
+[logic@mil_7_7_xcvb_day_8]
+active = animpoint@day_8
+suitable = {!surge_started !is_night} true
+prior = 57
+
+[animpoint@day_8]
+cover_name = mil_smart_terrain_7_7_animpoint_kamp5
+use_camp = true
+turn_on_campfire = true
+
+
+; (tower)
+[logic@mil_7_7_xcvb_day_10]
+active = beh@day_10
+suitable = {!surge_started !is_night =guard_has_rifle} true
+prior = 57
+
+[beh@day_10]:beh@combat
+walk_anim = walk
+pt1 = 20000, ward | 		pos: -67.9, 1.4664, -27.3 	 	 look: -66.6249, 0.4295, -26.3863 
+
+
+; (patrol 1 center near building)
+[logic@mil_7_7_xcvb_day_11]
+active = beh@day_11
+suitable = {!surge_started !is_night} true
+prior = 57
+
+[beh@day_11]:beh@combat
+pt1 = 20000, guard | 		pos: -7.7, -7.8624, -26.6 	 	 look: -7.5073, -8.8724, -23.3589 
+pt2 = 20000, guard | 		pos: -7, -7.855, -3.5 	 	 look: -6.8059, -8.8717, -8.3505 
+
+
+; ------------- 56
+; (campfire 4)
+[logic@mil_7_7_xcvb_day_12]
+active = animpoint@day_12
+suitable = {!surge_started !is_night} true
+prior = 56
+
+[animpoint@day_12]
+cover_name = mil_smart_terrain_7_7_animpoint_kamp1
+use_camp = true
+turn_on_campfire = true
+
+
+; (campfire 5)
+[logic@mil_7_7_xcvb_day_13]
+active = animpoint@day_13
+suitable = {!surge_started !is_night} true
+prior = 56
+
+[animpoint@day_13]
+cover_name = mil_smart_terrain_7_7_animpoint_kamp2
+use_camp = true
+turn_on_campfire = true
+
+
+; (campfire 6)
+[logic@mil_7_7_xcvb_day_14]
+active = animpoint@day_14
+suitable = {!surge_started !is_night} true
+prior = 56
+
+[animpoint@day_14]
+cover_name = mil_smart_terrain_7_7_animpoint_kamp21
+use_camp = true
+turn_on_campfire = true
+
+
+
+; =======================
+; ------------ NIGHT -------------
+; =======================
+; ------------- 59
+; (guard 2 center near building entrance)
+[logic@mil_7_7_xcvb_night_1]
+active = beh@night_1
+suitable = {!surge_started =is_night} true
+prior = 59
+
+[beh@night_1]:beh@combat
+pt1 = 20000, guard | 		pos: -13.3, -7.4097, -25.2 	 	 look: -10.8081, -8.6259, -25.1873 
+
+
+; (guard 3 in building)
+[logic@mil_7_7_xcvb_night_2]
+active = beh@night_2
+suitable = {!surge_started =is_night} true
+prior = 59
+
+[beh@night_2]:beh@combat
+pt1 = 20000, guard | 		pos: -18.2, -3.1049, -23.8 	 	 look: -21.5051, -4.1143, -23.8754 
+pt2 = 20000, guard | 		pos: -21.7, -2.9892, -32.2 	 	 look: -21.6533, -4.1134, -28.3412 
+
+
+; ------------- 58
+; (sleep 1)
+[logic@mil_7_7_xcvb_night_3]
+active = beh@night_3
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[beh@night_3]:beh@sleep
+pt1 = 20000, drunk_sit_ass | 		pos: 54.6, -7.0739, 15.4 	 	 look: 57.229, -8.045, 13.8701 
+
+
+; (sleep 2)
+[logic@mil_7_7_xcvb_night_4]
+active = beh@night_4
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[beh@night_4]:beh@sleep
+pt1 = 20000, sleep | 		pos: 55.3, -6.9944, 20.3 	 	 look: 53.1146, -8.0908, 20.3171 
+
+
+; (campfire 1)
+[logic@mil_7_7_xcvb_night_5]
+active = animpoint@night_5
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[animpoint@night_5]
+cover_name = mil_smart_terrain_7_7_animpoint_kamp3
+use_camp = true
+turn_on_campfire = true
+
+
+; (campfire 2)
+[logic@mil_7_7_xcvb_night_6]
+active = animpoint@night_6
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[animpoint@night_6]
+cover_name = mil_smart_terrain_7_7_animpoint_kamp13
+use_camp = true
+turn_on_campfire = true
+
+
+; ------------- 57
+; (campfire 3)
+[logic@mil_7_7_xcvb_night_7]
+active = animpoint@night_7
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[animpoint@night_7]
+cover_name = mil_smart_terrain_7_7_animpoint_kamp5
+use_camp = true
+turn_on_campfire = true
+
+
+; (patrol 1 center near building)
+[logic@mil_7_7_xcvb_night_8]
+active = beh@night_8
+suitable = {!surge_started =is_night =guard_has_rifle} true
+prior = 57
+
+[beh@night_8]:beh@combat
+pt1 = 20000, guard | 		pos: -7, -7.855, -48.3 	 	 look: -6.9577, -8.8717, -44.822 
+pt2 = 1, guard | 		pos: -83.3, -11.9584, -45.5 	 	 look: -87.0122, -12.9693, -40.6048 
+pt3 = 20000, guard | 		pos: -87.5, -11.9522, 0.7 	 	 look: -83.5177, -12.8066, 1.0883 
+pt4 = 1, guard | 		pos: -86.8, -11.9584, -43.4 	 	 look: -84.0581, -12.9696, -45.1008 
+
+
+; (guard 4 in building)
+[logic@mil_7_7_xcvb_night_9]
+active = beh@night_9
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[beh@night_9]:beh@combat
+pt1 = 20000, guard | 		pos: -21, -3.1049, -16.1 	 	 look: -20.9217, -4.1134, -21.3365 
+
+
+; (sleep 3)
+[logic@mil_7_7_xcvb_night_10]
+active = beh@night_10
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[beh@night_10]:beh@sleep
+pt1 = 20000, lay_on_bed | 		pos: 60.9, -7.0486, 20.3 	 	 look: 60.8854, -8.0504, 21.4921 
+
+
+; ------------- 56
+; (campfire 4)
+[logic@mil_7_7_xcvb_night_11]
+active = animpoint@night_11
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[animpoint@night_11]
+cover_name = mil_smart_terrain_7_7_animpoint_kamp1
+use_camp = true
+turn_on_campfire = true
+
+
+; (campfire 5)
+[logic@mil_7_7_xcvb_night_12]
+active = animpoint@night_12
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[animpoint@night_12]
+cover_name = mil_smart_terrain_7_7_animpoint_kamp2
+use_camp = true
+turn_on_campfire = true
+
+
+; (campfire 6)
+[logic@mil_7_7_xcvb_night_13]
+active = animpoint@night_13
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[animpoint@night_13]
+cover_name = mil_smart_terrain_7_7_animpoint_kamp21
+use_camp = true
+turn_on_campfire = true
+
+
+; (guard 1 center near building)
+[logic@mil_7_7_xcvb_night_14]
+active = beh@night_14
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[beh@night_14]:beh@combat
+pt1 = 60000, guard | 		pos: -18.2, -6.9041, -11.9 	 	 look: -17.3416, -8.393, -8.2788 
+pt2 = 20000, smoking_stand | 		pos: -18.2, -6.9041, -11.9 	 	 look: -17.3416, -8.393, -8.2788 

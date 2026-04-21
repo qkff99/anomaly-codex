@@ -1,0 +1,57 @@
+
+[squad_red_duty_outpost_trader]:online_offline_group
+npc				= red_duty_outpost_trader
+faction			= dolg
+story_id		= squad_red_duty_outpost_trader
+logic			= scripts\red_forest\squad_red_duty_outpost.ltx
+
+[squad_red_duty_outpost_medic]:online_offline_group
+npc				= red_duty_outpost_medic
+faction			= dolg
+story_id		= squad_red_duty_outpost_medic
+logic			= scripts\red_forest\squad_red_duty_outpost.ltx
+
+[squad_red_duty_outpost_guide]:online_offline_group
+npc				= red_duty_outpost_guide
+faction			= dolg
+story_id		= squad_red_duty_outpost_guide
+logic			= scripts\red_forest\squad_red_duty_outpost.ltx
+
+
+[squad_red_duty_outpost_guard_1]:online_offline_group
+npc_random		= sim_default_duty_4,sim_default_duty_3,sim_default_duty_3,sim_default_duty_2,sim_default_duty_2,sim_default_duty_1,sim_default_duty_1
+npc_in_squad	= 7
+faction			= dolg
+story_id		= squad_red_duty_outpost_guard_1
+target_smart	= red_smart_terrain_bridge
+
+[squad_red_duty_outpost_guard_2]:squad_red_duty_outpost_guard_1
+story_id		= squad_red_duty_outpost_guard_2
+
+[squad_red_duty_outpost_visitor_1]:online_offline_group
+npc_random		= sim_default_stalker_4,sim_default_stalker_3,sim_default_stalker_2,sim_default_stalker_1
+npc_in_squad	= 3
+faction			= stalker
+story_id		= squad_red_duty_outpost_visitor_1
+target_smart	= red_smart_terrain_bridge
+
+[squad_red_duty_outpost_visitor_2]:online_offline_group
+npc_random		= sim_default_stalker_4,sim_default_stalker_3,sim_default_stalker_2,sim_default_stalker_1
+npc_in_squad	= 3
+faction			= stalker
+story_id		= squad_red_duty_outpost_visitor_2
+target_smart	= red_smart_terrain_bridge
+
+[squad_red_duty_outpost_visitor_3]:online_offline_group
+npc_random		= sim_default_duty_4,sim_default_duty_3,sim_default_duty_2,sim_default_duty_1
+npc_in_squad	= 3
+faction			= dolg
+story_id		= squad_red_duty_outpost_visitor_3
+target_smart	= red_smart_terrain_bridge
+
+[squad_red_duty_outpost_visitor_4]:online_offline_group
+npc_random		= sim_default_csky_4,sim_default_csky_3,sim_default_csky_2,sim_default_csky_1
+npc_in_squad	= 3
+faction			= csky
+story_id		= squad_red_duty_outpost_visitor_4
+target_smart	= red_smart_terrain_bridge

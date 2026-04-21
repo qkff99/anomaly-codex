@@ -15,6 +15,7 @@ Indexed repos:
 - `ai_workspace/vanilla scripts` — local copy of vanilla scripts/configs
 - `ai_workspace/anomaly-modding-book-main` — local copy of the modding book
 - `ai_workspace/Anomaly-Mod-Configuration-Menu-main` — local Anomaly MCM reference repo; use it as the primary authority for `ui_mcm`, `on_mcm_load`, option-tree rules, keybind widgets, and MCM conflict surfaces
+- `ai_workspace/GAMMA Scripts` — flattened local GAMMA MO2 `configs/` and `scripts/` reference overlay; use it for pack-specific addon behavior, compatibility examples, and conflict surfaces
 - `ai_workspace/src` — engine source
 - `ai_workspace/lua_help.script.txt` — exported Lua API surface
 - `ai_workspace/user references` — user-managed local reference corpus; add any extra docs, code dumps, notes, or decompiled material here and the skill should search it automatically

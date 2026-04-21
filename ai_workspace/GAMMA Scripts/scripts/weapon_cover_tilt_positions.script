@@ -1,0 +1,278 @@
+-- Table of weapon positions where a weapon will be tilted upon approaching cover
+-- How it works
+--   1. If weapon position is specified, use that, check exact section, weapon will be tilted there. Use if the gun is completely miss the mark during calculations and to speed up the process. Takes top priority
+--   2. If not 1, and If weapon offset is specified, use that, check exact section. Calculated position will be offseted by amount in the fields, useful if you need very small adjustments
+--   Offsets work this way:
+--	    x = 0.1 - will move the gun right, -0.1 left
+--	    y = 0.1 - will move the gun up, -0.1 down
+--	    z = 0.1 - will move the gun front, -0.1 back
+-- You can extend those tables in separate scripts, look at how its done in patches for Blindsides and Firebreath weapons
+
+weapon_positions = {
+	-- Example positions, uncomment to make them work
+
+	-- ["wpn_vityaz"] = {
+	-- 	x = 0.10692,
+	-- 	y = -0.299683,
+	--  z = 0.330375,
+	-- },
+}
+
+weapon_offsets = {
+
+	["wpn_hk416"] = {
+		y = 0.2,
+	},
+	["wpn_hk417"] = {
+		y = 0.01,
+		z = 0.05,
+	},
+	["wpn_m60"] = {
+		y = 0.08,
+		z = 0.03,
+	},
+	["wpn_m24"] = {
+		z = 0.02,
+	},
+	["wpn_m82"] = {
+		z = -0.01,
+	},
+	["wpn_m82a2"] = {
+		z = -0.03,
+		y = 0.2,
+	},
+	["wpn_m98b"] = {
+		z = 0.02,
+	},
+	["wpn_m95"] = {
+		y = -0.05,
+		z = -0.03,
+	},
+
+	["wpn_ace21"] = {
+		y = 0.25,
+	},
+	["wpn_9a91"] = {
+		y = 0.03,
+		z = 0.06,
+	},
+	["wpn_vsk94"] = {
+		y = 0.03,
+	},
+
+	["wpn_vintorez_nimble"] = {
+		y = 0.12,
+		z = 0.07,
+	},
+
+	["wpn_svd"] = {
+		y = 0.15,
+	},
+	["wpn_svd_custom"] = {
+		y = 0.15,
+	},
+	["wpn_svd_nimble"] = {
+		y = 0.15,
+	},
+
+	["wpn_sv98"] = {
+		z = 0.02,
+	},
+	["wpn_sv98_custom"] = {
+		z = 0.02,
+	},
+
+	["wpn_svu"] = {
+		y = 0.15,
+		z = 0.07,
+	},
+	["wpn_svu_alt"] = {
+		y = 0.15,
+		z = 0.07,
+	},
+	["wpn_svu_nimble"] = {
+		y = 0.15,
+		z = 0.07,
+	},
+	["wpn_svu_sniper"] = {
+		y = 0.15,
+		z = 0.07,
+	},
+
+	["wpn_fnc"] = {
+		x = 0.02,
+		y = 0.075,
+		z = 0.055,
+	},
+
+	["wpn_k98"] = {
+		y = 0.075,
+		z = 0.03,
+	},
+
+	["wpn_g43"] = {
+		y = 0.175,
+		z = -0.03,
+	},
+
+	["wpn_mp5"] = {
+		y = 0.2,
+	},
+	["wpn_mp5_alt"] = {
+		y = 0.2,
+	},
+	["wpn_mp5_custom"] = {
+		y = 0.2,
+	},
+	["wpn_mp5_nimble"] = {
+		y = 0.2,
+	},
+
+	["wpn_mp5sd"] = {
+		y = 0.05,
+		z = 0.07,
+	},
+	["wpn_mp5sd_custom"] = {
+		y = 0.05,
+		z = 0.07,
+	},
+	["wpn_mp5sd_new"] = {
+		y = 0.05,
+		z = 0.07,
+	},
+
+	["wpn_mp7"] = {
+		y = 0.15,
+		z = 0.05,
+	},
+
+	["wpn_aug"] = {
+		z = 0.06,
+	},
+	["wpn_aug_custom"] = {
+		z = 0.06,
+	},
+	["wpn_aug_freedom"] = {
+		z = 0.06,
+	},
+	["wpn_aug_modern"] = {
+		z = 0.06,
+	},
+	["wpn_aug_merc"] = {
+		z = 0.06,
+	},
+
+	["wpn_l85"] = {
+		z = 0.06,
+	},
+	["wpn_l85_alt"] = {
+		z = 0.06,
+	},
+	["wpn_l85_custom"] = {
+		z = 0.06,
+	},
+	["wpn_l85_modern"] = {
+		z = 0.06,
+	},
+
+	["wpn_l85a2"] = {
+		z = 0.06,
+	},
+	["wpn_l85a2_alt"] = {
+		z = 0.06,
+	},
+	["wpn_l85a2_custom"] = {
+		z = 0.06,
+	},
+	["wpn_l85a2_modern"] = {
+		z = 0.06,
+	},
+
+	["wpn_remington870"] = {
+		y = 0.2,
+	},
+
+	["wpn_vssk"] = {
+		z = 0.125,
+		y = 0.125,
+	},
+	["wpn_ash12"] = {
+		z = 0.125,
+		y = 0.125,
+	},
+
+	["wpn_svt40"] = {
+		y = 0.15,
+	},
+	["wpn_svt40_modern"] = {
+		y = 0.15,
+	},	
+
+	["wpn_ak105"] = {
+		y = 0.25,
+	},
+
+	["wpn_p90"] = {
+		y = 0.15,
+		z = 0.02,
+	},
+	["wpn_sig552"] = {
+		z = 0.02,
+	},
+	["wpn_pp2000"] = {
+		x = -0.02,
+		y = 0.11,
+		z = 0.02,
+	},
+
+	["wpn_kriss"] = {
+		y = 0.15,
+		z = 0.07,
+	},
+	["wpn_kriss_custom"] = {
+		z = 0.12,
+	},
+	["wpn_grease"] = {
+		y = 0.2,
+	},
+	["wpn_cbj"] = {
+		y = 0.1,
+		z = -0.18,
+	},
+	["wpn_borz"] = {
+		y = 0.1,
+		z = 0.02,
+	},
+	["wpn_ksvk"] = {
+		y = 0.15,
+	},
+	["wpn_sig552_tactical"] = {
+		y = 0.25,
+		z = -0.03,
+	},
+	["wpn_aek919k"] = {
+		y = 0.14,
+		z = -0.03,
+	},
+	["wpn_mp9"] = {
+		y = 0.1,
+		z = -0.01,
+	},
+	["wpn_m4_kac"] = {
+		x = 0.07,
+		y = 0.025,
+		z = 0.07,
+	},
+
+	["wpn_m249"] = {
+		y = 0.05,
+		z = 0.03,
+	},
+	["wpn_mk48"] = {
+		z = 0.07,
+	},
+
+	["wpn_arisaka"] = {
+		y = 0.275,
+	},
+}

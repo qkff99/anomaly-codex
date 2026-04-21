@@ -1,0 +1,351 @@
+siski = siski or {}
+
+local OPTION_DEFS = {
+    enabled = { type = "check", val = 1, def = true },
+    debug_hud_enabled = { type = "check", val = 1, def = false },
+    explore_enabled = { type = "check", val = 1, def = true },
+    smart_tasks_enabled = { type = "check", val = 1, def = true },
+    smart_tasks_control_enabled = { type = "check", val = 1, def = true },
+    smart_tasks_control_max_squads_per_faction = { type = "track", val = 2, min = 1, max = 12, step = 1, def = 1 },
+    story_events_enabled = { type = "check", val = 1, def = true },
+    story_events_north_migration_enabled = { type = "check", val = 1, def = true },
+    story_events_north_migration_percent = { type = "track", val = 2, min = 0, max = 100, step = 1, def = 33 },
+    home_region_attachment_enabled = { type = "check", val = 1, def = true },
+    story_psy_watchdog_enabled = { type = "check", val = 1, def = true },
+    mutant_sim_enabled = { type = "check", val = 1, def = true },
+    mutant_explore_enabled = { type = "check", val = 1, def = true },
+    mutant_hunt_enabled = { type = "check", val = 1, def = true },
+    artefact_enabled = { type = "check", val = 1, def = true },
+    populate_enabled = { type = "check", val = 1, def = true },
+    base_camping_enabled = { type = "check", val = 1, def = true },
+    base_camping_duration_game_hours = { type = "track", val = 2, min = 0.25, max = 12, step = 0.25, def = 1 },
+    base_filler_enabled = { type = "check", val = 1, def = false },
+    base_filler_npc_min = { type = "track", val = 2, min = 1, max = 8, step = 1, def = 5 },
+    base_filler_npc_max = { type = "track", val = 2, min = 1, max = 8, step = 1, def = 8 },
+    base_filler_daily_respawn_game_hours = { type = "track", val = 2, min = 1, max = 168, step = 1, def = 24 },
+    dynamic_bases_enabled = { type = "check", val = 1, def = false },
+    service_filler_enabled = { type = "check", val = 1, def = false },
+    service_filler_respawn_game_hours = { type = "track", val = 2, min = 0.25, max = 168, step = 0.25, def = 6 },
+    task_arrive_dist_cap_m = { type = "track", val = 2, min = 1, max = 50, step = 1, def = 5 },
+    target_sync_enabled = { type = "check", val = 1, def = true },
+    online_intent_enforce_enabled = { type = "check", val = 1, def = true },
+    patrol_enabled = { type = "check", val = 1, def = true },
+    mutant_patrol_enabled = { type = "check", val = 1, def = true },
+    trade_enabled = { type = "check", val = 1, def = true },
+    npc_faction_override_enabled = { type = "check", val = 1, def = false },
+    loot_enabled = { type = "check", val = 1, def = true },
+    log_level = { type = "track", val = 2, min = 0, max = 5, step = 1, def = 0 },
+    log_filter_active_level_only = { type = "check", val = 1, def = true },
+    log_filter_active_level_drop_unknown = { type = "check", val = 1, def = false },
+    offlevel_squad_update_skip_count = { type = "track", val = 2, min = 0, max = 10, step = 1, def = 0 },
+    surge_check_cache_ms = { type = "track", val = 2, min = 0, max = 2000, step = 10, def = 250 },
+    smart_enemy_cache_ttl_ms = { type = "track", val = 2, min = 250, max = 120000, step = 250, def = 5000 },
+    loot_scan_radius_m = { type = "track", val = 2, min = 5, max = 150, step = 1, def = 35 },
+    loot_corpse_detect_dist_m = { type = "track", val = 2, min = 5, max = 150, step = 1, def = 35 },
+    loot_event_ttl_s = { type = "track", val = 2, min = 10, max = 600, step = 10, def = 180 },
+    loot_event_cap_total = { type = "track", val = 2, min = 100, max = 10000, step = 50, def = 1200 },
+    loot_event_cap_corpses = { type = "track", val = 2, min = 50, max = 10000, step = 50, def = 800 },
+    loot_event_cap_items = { type = "track", val = 2, min = 50, max = 10000, step = 50, def = 800 },
+    loot_collect_during_surge = { type = "check", val = 1, def = false },
+    loot_collect_after_surge_grace_ms = { type = "track", val = 2, min = 0, max = 600000, step = 1000, def = 120000 },
+    loot_patch_max_memory_size = { type = "track", val = 2, min = 8, max = 256, step = 1, def = 48 },
+    loot_disable_near_actor_limit = { type = "check", val = 1, def = true },
+    loot_unlock_corpses = { type = "check", val = 1, def = true },
+    loot_protect_quest_corpses_enabled = { type = "check", val = 1, def = true },
+    loot_items_enabled = { type = "check", val = 1, def = true },
+    loot_items_detect_dist_m = { type = "track", val = 2, min = 5, max = 150, step = 1, def = 35 },
+    loot_items_allow_unseen = { type = "check", val = 1, def = true },
+    rest_duration_game_hours = { type = "track", val = 2, min = 0.25, max = 6, step = 0.25, def = 0.25 },
+    mutant_rest_duration_game_hours = { type = "track", val = 2, min = 0.25, max = 6, step = 0.25, def = 0.25 },
+    mutant_patrol_duration_game_hours = { type = "track", val = 2, min = 0.25, max = 6, step = 0.25, def = 1.0 },
+    rest_fallback_stay_min_sec = { type = "track", val = 2, min = 0, max = 7200, step = 60, def = 900 },
+    rest_fallback_stay_max_sec = { type = "track", val = 2, min = 0, max = 7200, step = 60, def = 1800 },
+    night_rest_enabled = { type = "check", val = 1, def = true },
+    trade_max_squads_per_smart = { type = "track", val = 2, min = 1, max = 12, step = 1, def = 3 },
+    trade_travel_timeout_ms = { type = "track", val = 2, min = 60000, max = 3600000, step = 60000, def = 600000 },
+    trade_axr_buy_all_enabled = { type = "check", val = 1, def = true },
+    fast_trading_enabled = { type = "check", val = 1, def = true },
+    fast_trading_delay_ms = { type = "track", val = 2, min = 0, max = 5000, step = 100, def = 500 },
+    fast_trading_cooldown_ms = { type = "track", val = 2, min = 0, max = 300000, step = 5000, def = 60000 },
+}
+
+local PANELS = {
+    {
+        id = "general",
+        text = "ui_mcm_siski_panel_general",
+        groups = {
+            {
+                id = "core",
+                text = "ui_mcm_siski_group_general_core",
+                options = {
+                    "enabled",
+                },
+            },
+            {
+                id = "world",
+                text = "ui_mcm_siski_group_general_world",
+                options = {
+                    "home_region_attachment_enabled",
+                    "npc_faction_override_enabled",
+                    "story_psy_watchdog_enabled",
+                },
+            },
+        },
+    },
+    {
+        id = "tasks",
+        text = "ui_mcm_siski_panel_tasks",
+        groups = {
+            {
+                id = "roam",
+                text = "ui_mcm_siski_group_tasks_roam",
+                options = {
+                    "explore_enabled",
+                    "populate_enabled",
+                    "artefact_enabled",
+                    "patrol_enabled",
+                    "base_camping_enabled",
+                    "base_camping_duration_game_hours",
+                },
+            },
+            {
+                id = "rest",
+                text = "ui_mcm_siski_group_tasks_rest",
+                options = {
+                    "night_rest_enabled",
+                    "rest_duration_game_hours",
+                    "rest_fallback_stay_min_sec",
+                    "rest_fallback_stay_max_sec",
+                },
+            },
+            {
+                id = "smart",
+                text = "ui_mcm_siski_group_tasks_smart",
+                options = {
+                    "smart_tasks_enabled",
+                    "smart_tasks_control_enabled",
+                    "smart_tasks_control_max_squads_per_faction",
+                },
+            },
+            {
+                id = "story",
+                text = "ui_mcm_siski_group_tasks_story",
+                options = {
+                    "story_events_enabled",
+                    "story_events_north_migration_enabled",
+                    "story_events_north_migration_percent",
+                },
+            },
+            {
+                id = "targeting",
+                text = "ui_mcm_siski_group_tasks_targeting",
+                options = {
+                    "task_arrive_dist_cap_m",
+                    "target_sync_enabled",
+                    "online_intent_enforce_enabled",
+                },
+            },
+        },
+    },
+    {
+        id = "mutants",
+        text = "ui_mcm_siski_panel_mutants",
+        groups = {
+            {
+                id = "behavior",
+                text = "ui_mcm_siski_group_mutants_behavior",
+                options = {
+                    "mutant_sim_enabled",
+                    "mutant_explore_enabled",
+                    "mutant_hunt_enabled",
+                    "mutant_patrol_enabled",
+                },
+            },
+            {
+                id = "timing",
+                text = "ui_mcm_siski_group_mutants_timing",
+                options = {
+                    "mutant_rest_duration_game_hours",
+                    "mutant_patrol_duration_game_hours",
+                },
+            },
+        },
+    },
+    {
+        id = "trade",
+        text = "ui_mcm_siski_panel_trade",
+        groups = {
+            {
+                id = "general",
+                text = "ui_mcm_siski_group_trade_general",
+                options = {
+                    "trade_enabled",
+                    "trade_max_squads_per_smart",
+                    "trade_travel_timeout_ms",
+                    "trade_axr_buy_all_enabled",
+                },
+            },
+            {
+                id = "fast",
+                text = "ui_mcm_siski_group_trade_fast",
+                options = {
+                    "fast_trading_enabled",
+                    "fast_trading_delay_ms",
+                    "fast_trading_cooldown_ms",
+                },
+            },
+        },
+    },
+    {
+        id = "bases",
+        text = "ui_mcm_siski_panel_bases",
+        groups = {
+            {
+                id = "base_filler",
+                text = "ui_mcm_siski_group_bases_base_filler",
+                options = {
+                    "base_filler_enabled",
+                    "base_filler_npc_min",
+                    "base_filler_npc_max",
+                    "base_filler_daily_respawn_game_hours",
+                },
+            },
+            {
+                id = "dynamic",
+                text = "ui_mcm_siski_group_bases_dynamic",
+                options = {
+                    "dynamic_bases_enabled",
+                },
+            },
+            {
+                id = "service",
+                text = "ui_mcm_siski_group_bases_service",
+                options = {
+                    "service_filler_enabled",
+                    "service_filler_respawn_game_hours",
+                },
+            },
+        },
+    },
+    {
+        id = "loot",
+        text = "ui_mcm_siski_panel_loot",
+        groups = {
+            {
+                id = "general",
+                text = "ui_mcm_siski_group_loot_general",
+                options = {
+                    "loot_enabled",
+                    "loot_scan_radius_m",
+                    "loot_corpse_detect_dist_m",
+                    "loot_collect_during_surge",
+                    "loot_collect_after_surge_grace_ms",
+                    "loot_disable_near_actor_limit",
+                    "loot_unlock_corpses",
+                    "loot_protect_quest_corpses_enabled",
+                },
+            },
+            {
+                id = "limits",
+                text = "ui_mcm_siski_group_loot_limits",
+                options = {
+                    "loot_event_ttl_s",
+                    "loot_event_cap_total",
+                    "loot_event_cap_corpses",
+                    "loot_event_cap_items",
+                },
+            },
+            {
+                id = "items",
+                text = "ui_mcm_siski_group_loot_items",
+                options = {
+                    "loot_items_enabled",
+                    "loot_items_detect_dist_m",
+                    "loot_items_allow_unseen",
+                },
+            },
+            {
+                id = "patch",
+                text = "ui_mcm_siski_group_loot_patch",
+                options = {
+                    "loot_patch_max_memory_size",
+                },
+            },
+        },
+    },
+    {
+        id = "perf",
+        text = "ui_mcm_siski_panel_perf",
+        groups = {
+            {
+                id = "budgets",
+                text = "ui_mcm_siski_group_perf_budgets",
+                options = {
+                    "offlevel_squad_update_skip_count",
+                },
+            },
+            {
+                id = "caches",
+                text = "ui_mcm_siski_group_perf_caches",
+                options = {
+                    "surge_check_cache_ms",
+                    "smart_enemy_cache_ttl_ms",
+                },
+            },
+        },
+    },
+    {
+        id = "debug",
+        text = "ui_mcm_siski_panel_debug",
+        groups = {
+            {
+                id = "runtime",
+                text = "ui_mcm_siski_group_debug_runtime",
+                options = {
+                    "debug_hud_enabled",
+                },
+            },
+            {
+                id = "logging",
+                text = "ui_mcm_siski_group_debug_logging",
+                options = {
+                    "log_level",
+                    "log_filter_active_level_only",
+                    "log_filter_active_level_drop_unknown",
+                },
+            },
+        },
+    },
+}
+
+local PATH_BY_KEY = {}
+
+for i = 1, #PANELS do
+    local panel = PANELS[i]
+    for j = 1, #panel.groups do
+        local group = panel.groups[j]
+        for k = 1, #group.options do
+            local key = group.options[k]
+            PATH_BY_KEY[key] = "siski/" .. panel.id .. "/" .. key
+        end
+    end
+end
+
+local schema = {
+    options = OPTION_DEFS,
+    panels = PANELS,
+    path_by_key = PATH_BY_KEY,
+}
+
+function schema.get_path(key)
+    return PATH_BY_KEY[key]
+end
+
+function schema.get_option(key)
+    return OPTION_DEFS[key]
+end
+
+siski.mcm_schema = schema
+_G.siski_mcm_schema = schema
+
+return schema

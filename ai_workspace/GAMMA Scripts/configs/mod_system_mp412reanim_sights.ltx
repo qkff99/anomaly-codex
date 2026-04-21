@@ -1,0 +1,63 @@
+![wpn_mp412]
+parent_section                           = wpn_mp412
+scopes                                   = ac10632, c-more, integrated
+scope_status                             = 0 ; for attachable sights
+scopes_require_upgrade                   = up_second_mp412
+
+![wpn_mp412_hud]
+
+[wpn_mp412_c-more]:wpn_mp412
+1icon_layer                              = c-more
+1icon_layer_x                            = 16
+1icon_layer_y                            = -31
+
+hud                                      = wpn_mp412_c-more_hud
+scope_status                             = 1
+
+[wpn_mp412_c-more_hud]: wpn_mp412_hud
+item_visual                 = anomaly_weapons\wpn_mp412\wpn_mp412_c-more_hud.ogf
+
+[wpn_mp412_ac10632]:wpn_mp412
+1icon_layer                              = ac10632
+1icon_layer_x                            = 16
+1icon_layer_y                            = -34
+
+hud                                      = wpn_mp412_ac10632_hud
+scope_status                             = 1
+
+[wpn_mp412_ac10632_hud]: wpn_mp412_hud
+item_visual                 = anomaly_weapons\wpn_mp412\wpn_mp412_ac10632_hud.ogf
+
+[wpn_mp412_integrated]:wpn_mp412
+1icon_layer                              = docter
+1icon_layer_x                            = 16
+1icon_layer_y                            = -35
+
+hud                                      = wpn_mp412_integrated_hud
+scope_status                             = 1
+
+[wpn_mp412_integrated_hud]: wpn_mp412_hud
+item_visual                 = anomaly_weapons\wpn_mp412\wpn_mp412_docter_hud.ogf
+scope_name                               = wpn_addon_scope
+
+[docter]:addon
+inv_name			                                = st_integrated_docter
+inv_name_short			                            = st_integrated_docter
+description			                                = st_integrated_docter_descr
+
+icons_texture = ui\ui_aoldri_mp412_sights
+inv_grid_width     		                            = 1
+inv_grid_height    		                            = 1
+inv_grid_x         		                            = 1
+inv_grid_y         		                            = 0
+
+[compact]:addon
+inv_name			                                = st_integrated_compact
+inv_name_short			                            = st_integrated_compact
+description			                                = st_integrated_compact_descr
+
+icons_texture = ui\ui_aoldri_mp412_sights
+inv_grid_width     		                            = 1
+inv_grid_height    		                            = 1
+inv_grid_x         		                            = 0
+inv_grid_y         		                            = 0

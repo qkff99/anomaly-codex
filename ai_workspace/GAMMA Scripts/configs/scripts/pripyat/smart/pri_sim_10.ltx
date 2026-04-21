@@ -1,0 +1,27 @@
+;--------------------------------------------------------------------------------
+;-- Copyright: 2010-2012 SWM Team -----------------------------------------------
+;-- last edited: Jurok ----------------------------------------------------------
+;--------------------------------------------------------------------------------
+
+[smart_terrain]
+squad_id = 32
+max_population = 3
+respawn_only_smart = true
+respawn_params = respawn@pri_sim_10
+respawn_idle = 42000
+
+
+
+[respawn@pri_sim_10] ;-- Type: spawn_mutants_rare
+spawn_mutants_rare 
+spawn_greh
+
+
+
+[spawn_mutants_rare]
+spawn_squads = simulation_karlik, simulation_fracture, simulation_fracture_squad, simulation_lurker_blue, simulation_snork_2_5, simulation_bloodsucker, simulation_psysucker, simulation_chimera_2weak ;--spawn-mutants-rare
+spawn_num = {+living_legend_psy_helmet} 1, 0
+
+[spawn_greh]
+spawn_squads = greh_sim_squad_advanced
+spawn_num = {+living_legend_psy_helmet} 2, 0

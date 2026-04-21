@@ -1,0 +1,161 @@
+local uiio = zzzz_liz_fdda_redone_ui_inventory
+local mcm_allow_movement = liz_fdda_redone_mcm.get_config("outfit_anm/allow_movement")
+local mcm_enable_animation = liz_fdda_redone_mcm.get_config("outfit_anm/enable_backpack_equip")
+local actions = {
+    equip = 0,
+    unequip = 1,
+    drop = 2,
+    move_to_ruck = 4,
+    move_to_slot = 8
+}
+
+----------------------------------------
+-- init
+----------------------------------------
+
+function on_game_start()
+    RegisterScriptCallback("on_option_change", on_option_change)
+    uiio.Add_Handler("backpack", predicate, on_eqiup, on_unequip, on_drop, on_swap)
+end
+
+function on_option_change()
+    mcm_allow_movement = liz_fdda_redone_mcm.get_config("outfit_anm/allow_movement")
+    mcm_enable_animation = liz_fdda_redone_mcm.get_config("outfit_anm/enable_backpack_equip")
+end
+
+----------------------------------------
+-- main
+----------------------------------------
+
+function predicate(obj)
+    if IsItem("backpack", nil, obj) then
+        return true
+    end
+    return false
+end
+
+function on_eqiup(obj, bag)
+    if not mcm_enable_animation then
+        uiio.Equip(obj, bag)
+        return
+    end
+    uiio.Set_Item_in_Use(obj:id(), true)
+    lam2.add_action(ta_equip(obj, bag))
+end
+
+function on_unequip(obj, bag)
+    if not mcm_enable_animation then
+        uiio.Unequip(obj, bag)
+        return
+    end
+    uiio.Set_Item_in_Use(obj:id(), true)
+    lam2.add_action(ta_unequip(obj, bag, actions.unequip))
+end
+
+function on_drop(obj, bag)
+    if not mcm_enable_animation or bag ~= "actor_equ" then
+        uiio.Drop(obj, bag)
+        return
+    end
+    uiio.Set_Item_in_Use(obj:id(), true)
+    lam2.add_action(ta_unequip(obj, bag, actions.drop))
+end
+
+function on_swap(obj_prev, obj_next, bag)
+    if not mcm_enable_animation then
+        db.actor:move_to_ruck(obj_prev)
+        uiio.Equip(obj_next, bag)
+        return
+    end
+    uiio.Set_Item_in_Use(obj_next:id(), true)
+    lam2.add_action(ta_equip(obj_next, bag))
+end
+
+----------------------------------------
+-- action templates
+----------------------------------------
+
+function ta_equip(obj, bag)
+    local a = {}
+    a.obj_id = obj:id()
+    a.bag = bag
+    a.execute = function (self, time)
+        --then find item by id and equip
+        local item_obj_equip = level.object_by_id(self.obj_id)
+        if item_obj_equip then
+            lam2.add_action_first(ta_move_item(item_obj_equip, self.bag, actions.equip))
+            lam2.add_action_first(ta_animation("outfit_animation_backpack_equip_"))
+        end
+        --frist move backpack to ruck if we have any
+        local item_obj_uneqiup = db.actor:item_in_slot(13)
+        if item_obj_uneqiup then
+            lam2.add_action_first(ta_move_item(item_obj_uneqiup, nil, actions.move_to_ruck))
+            lam2.add_action_first(ta_animation("outfit_animation_backpack_unequip_"))
+        end
+        return lam2.states.success
+    end
+    return a
+end
+
+
+function ta_unequip(obj, bag, action)
+    local a = {}
+    a.obj_id = obj:id()
+    a.bag = bag
+    a.action = action
+    a.execute = function (self, time)
+        --get backpack requested to unequip from slot and remove it if it's still there
+        local item_obj = db.actor:item_in_slot(13)
+        if item_obj and item_obj:id() == self.obj_id then
+            lam2.add_action_first(ta_move_item(item_obj, self.bag, self.action))
+            lam2.add_action_first(ta_animation("outfit_animation_backpack_unequip_"))
+        --if no backpack then free item id from the blocklist
+        else
+            uiio.Set_Item_in_Use(self.obj_id, false)
+            return lam2.states.fail
+        end
+        return lam2.states.success
+    end
+    return a
+end
+
+
+function ta_animation(prefix)
+    local a = lam2.get_template_action_play_animation()
+    local section = prefix .. character_community(db.actor):sub(7) .. "_hud"
+    section = ini_sys:section_exist(section) and section or prefix .. "stalker_hud"
+    a.sec = section
+    a.only_allow_movekeys = mcm_allow_movement
+    a.disable_input = not mcm_allow_movement
+    return a
+end
+
+
+function ta_move_item(obj, bag, action, slot)
+    local a = {}
+    a.obj_id = obj:id()
+    a.bag = bag
+    a.action = action
+    a.slot = slot
+    a.execute = function (self, time)
+        local item_obj = level.object_by_id(self.obj_id)
+        if item_obj then
+            if self.action == actions.equip then
+                uiio.Set_Item_in_Use(self.obj_id, false)
+                uiio.Equip(item_obj, self.bag)
+            elseif self.action == actions.unequip then
+                uiio.Set_Item_in_Use(self.obj_id, false)
+                uiio.Unequip(item_obj, self.bag)
+            elseif self.action == actions.drop then
+                uiio.Set_Item_in_Use(self.obj_id, false)
+                uiio.Drop(item_obj, self.bag)
+            elseif self.action == actions.move_to_ruck then
+                db.actor:move_to_ruck(item_obj)
+            elseif self.action == actions.move_to_slot then
+                db.actor:move_to_slot(item_obj, self.slot)
+            end
+        end
+        return lam2.states.success
+    end
+    return a
+end

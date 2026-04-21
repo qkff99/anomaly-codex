@@ -1,0 +1,27 @@
+-- If you don't use MCM, change your defaults from here.
+local defaults = {
+	["trader_sleep"] = false,
+	["mechanic_sleep"] = false,
+	["medic_sleep"] = false,
+	["sleep_from"] = 21,
+	["sleep_to"] = 5,
+}
+
+function get_config(key)
+	if ui_mcm then return ui_mcm.get("rad_ai/"..key) else return defaults[key] end
+end
+
+function on_mcm_load()
+	op = { id= "rad_ai",sh=true ,gr={
+			{ id= "title",type= "slide",link= "ui_options_slider_player",text="ui_mcm_rad_ai_title",size= {512,50},spacing= 20 },
+
+			{id = "trader_sleep", type = "check", val = 1, def = false},
+			{id = "mechanic_sleep", type = "check", val = 1, def = false},
+			{id = "medic_sleep", type = "check", val = 1, def = false},
+			{id = "sleep_from", type = "track", val = 2, min=18,max=23,step=1, def = 21},
+			{id = "sleep_to", type = "track", val = 2, min=3,max=9,step=1, def = 5},
+		}
+	}
+
+	return op
+end

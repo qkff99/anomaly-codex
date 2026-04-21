@@ -1,0 +1,23 @@
+;; Ashot and Yar's Special Delivery
+
+;; Rewards table
+;- Each line is a condlist representing a reward tier
+;- Rewards scale by round-trips made
+;- i.e. One trip to Ashot and back = tier +1
+;- Current reward tier is cashed in upon turn-in
+;  (Or more accurately, upon cancellation :>)
+[rewards]
+; Booby prize
+1 = %=reward_exact_money(1742) =reward_item(underwear)%
+
+; Junk
+2 = %=reward_exact_money(1742) =reward_random_item(porn:porn2:freedom_patch)%
+
+; Drugs
+3 = %=reward_exact_money(1742) =reward_random_item(joint:cocaine)%
+
+; Guns & Outfits
+4 = %=reward_exact_money(1742) =reward_random_item(wpn_glock:wpn_glock_custom:wpn_glock_modern:wpn_cz75:wpn_cz75_auto:wpn_colt1911:wpn_colt1911_alt:wpn_colt1911_camo:wpn_colt1911_custom:wpn_colt1911_modern:wpn_colt1911_new, svoboda_light_outfit, svoboda_heavy_outfit_2, helm_respirator, helm_respirator_old)%
+
+; Artefacts
+5 = %=reward_exact_money(1742) =reward_random_item(af_ball:af_bat:af_black_angel:af_cell:af_chelust:af_cocoon:af_dragon_eye:af_ear:af_elektron:af_fire_loop:af_fonar:af_fountain:af_generator:af_grapes:af_kishlushka:af_kogot:af_lighthouse:af_medal:af_moh:af_peas:af_repei:af_sandstone:af_serofim:af_signet:af_skull_miser:af_spaika:af_star_phantom:af_sun:af_tapeworm:af_zhelch:af_misery_bread)%

@@ -1,0 +1,57 @@
+--Tweaki_Breeki's
+---____-----------------------------_----_____-_------------_-----------------______-_--------
+--|--_-\---------------------------|-|--/-____|-|----------|-|---------------|--____(_)-------
+--|-|_)-|_---_--__-_--__-_--___--__|-|-|-(___-|-|_-__-_-___|-|__---___--___--|-|__---___--__--
+--|--_-<|-|-|-|/-_`-|/-_`-|/-_-\/-_`-|--\___-\|-__/-_`-/-__|-'_-\-/-_-\/-__|-|--__|-|-\-\/-/--
+--|-|_)-|-|_|-|-(_|-|-(_|-|--__/-(_|-|--____)-|-||-(_|-\__-\-|-|-|--__/\__-\-|-|----|-|>--<---
+--|____/-\__,_|\__,-|\__,-|\___|\__,_|-|_____/-\__\__,_|___/_|-|_|\___||___/-|_|----|_/_/\_\--
+----------------__/-|-__/-|-------------------------------------------------------------------
+---------------|___/-|___/--------------------------------------------------------------------
+--Version 1.4
+--17/07/2021
+--This file should be in gamedata\scripts\
+--Removes the nine bugged or inaccessible stashes, in 1.5.1, from the treasure manager's list of stashes.
+--This stops quest items or reward loot being placed into these stashes.
+--If there was any loot in these stashes, it is given to the player on starting a game!
+
+function on_game_load()
+	tb_release_bugged()
+end
+
+function tb_release_bugged()
+	
+	local m_data = alife_storage_manager.get_state()
+	if (m_data.tb_remove_bugged_stashes_only_once) then
+	printf("- TB_Remove_Bugged_Stashes script has already been run in this game.")
+	return
+	end
+	printf("\n")
+	printf("- Running TB_Remove_Bugged_Stashes script ...")
+	m_data.tb_remove_bugged_stashes_only_once = true
+	local releasethese = {"bar_arena_inventory_box_2", "kbo_actor_box_1", "red_forester_radio", "red_forest_box_4_5", "red_treasure_10", "red_treasure_9", "val_q7_n", "val_recover_item_2_spawn", "zat_b22_medic_inv_box"}
+	for id,v in pairs(treasure_manager.caches) do
+		local a_stash = alife_object(id)
+		if a_stash then
+			for j=1, #releasethese do
+				if a_stash:name() == releasethese[j] then
+					printf("- Bugged or inaccessible stash name is %s",a_stash:name())
+					if (type(v) == "string") then
+						for item in string.gmatch(v, '([^,]+)') do
+							printf("~ Giving player: %s",item)
+							alife_create_item(item, db.actor)
+						end
+						treasure_manager.release_stash_by_id(id)
+						safe_release_manager.release(a_stash)
+					else
+						printf("# This stash is empty")
+					end
+				end
+			end
+		end
+	end
+	printf("\n")
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_game_load",on_game_load)
+end

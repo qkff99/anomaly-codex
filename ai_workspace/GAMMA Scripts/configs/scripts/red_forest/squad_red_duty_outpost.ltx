@@ -1,0 +1,86 @@
+[section@squad]
+target@base = red_smart_terrain_bridge
+
+[section@logic]
+logic@trader
+logic@medic
+logic@guide
+
+
+[logic@base]
+post_combat_time	= 0,0
+combat_type			= camper
+net_spawn			= pt1
+dont_keep_items 	= true
+
+[logic@trader]:logic@base
+suitable	= {=check_npc_name(red_duty_outpost_trader)} true
+level_spot	= trader
+trade		= items\trade\trade_duty.ltx
+active		= beh@trader
+
+[logic@medic]:logic@base
+suitable	= {=check_npc_name(red_duty_outpost_medic)} true
+level_spot	= medic
+trade		= items\trade\trade_generic_medic.ltx
+active		= beh@medic
+
+[logic@guide]:logic@base
+suitable	= {=check_npc_name(red_duty_outpost_guide)} true
+level_spot	= quest_npc
+active		= beh@guide
+
+;==================================================
+[beh@base]
+dont_keep_items						= true
+gather_items_enabled				= false
+target								= waypoint
+path_end							= loop
+walk_dist							= 0
+jog_dist							= 0
+run_anim							= patrol
+meet								= no_meet
+before_hit							= invulnerable
+
+combat_ignore_cond	= {!is_enemy_actor !fighting_dist_le(40)} true
+enemy_ignore_cond	= {!is_enemy_actor !fighting_dist_le(40)} true
+
+[beh@animpoint]:beh@base
+target = %=animpoint()% nil
+
+
+[beh@trader]:beh@animpoint
+pt1 = 10000,fold_arms				| pos:-117.6,0.47,-255.5 dir:180 animpoint:pos
+meet = meet@base
+
+[beh@medic]:beh@animpoint
+pt1 = 10000,animpoint_sit_normal	| pos:-103.6,-0.82,-183.4 dir:90 animpoint:pos
+meet = meet@base
+
+[beh@guide]:beh@animpoint
+pt1 = 10000,binocular				| pos:-119.7,4.72,-257.6 dir:90 animpoint:pos
+meet = meet@guide
+
+
+[meet@base]
+close_snd_hello = meet_hello
+close_snd_bye   = nil
+close_anim 		= nil
+close_victim 	= nil
+close_distance  = 0
+far_anim 		= nil
+far_victim 		= nil
+far_distance 	= 0
+meet_on_talking	= false
+use				= true
+
+
+[meet@no_sound]:meet@base
+close_snd_hello = nil
+
+
+[meet@guide]:meet@base
+close_anim		= talk_default
+close_distance	= 3
+close_victim	= actor
+

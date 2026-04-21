@@ -1,0 +1,269 @@
+[beh@general]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+gather_items_enabled = true
+help_wounded_enabled = true
+corpse_detection_enabled = true
+meet = meet@general
+wounded = wounded@ignore
+use_camp = false
+path_end = loop
+
+
+[beh@combat]:beh@general
+walk_dist = 25
+jog_dist = 220
+wait_anim = patrol
+walk_anim = patrol
+jog_anim = patrol
+run_anim = patrol
+sound_idle = state
+
+
+[beh@campfire]:beh@general
+turn_on_campfire = true
+sound_idle = state
+
+[beh@sleep]:beh@general
+gather_items_enabled = false
+corpse_detection_enabled = false
+meet = no_meet
+
+
+[meet@general]
+close_anim 		= nil
+close_victim 	= nil
+far_anim 		= nil
+far_victim 		= nil
+close_distance  = 0
+far_distance 	= 0
+use = {=actor_enemy} false, {=dist_to_actor_le(3)} true, false
+snd_on_use = {!dist_to_actor_le(3)} nil
+meet_on_talking = false
+
+[wounded@ignore]
+hp_state        = 0|wounded_heavy@help_heavy
+hp_state_see    = 0|wounded_heavy@help_heavy
+hp_victim       = 0|nil
+hp_fight        = 0|false
+hp_cover        = 0|false
+
+
+; =======================
+; ------------- DAY ---------------
+; =======================
+; camp 2
+[logic@bar_dolg_general_animpoint_kamp2]
+active = animpoint@bar_dolg_general_animpoint_kamp2
+suitable = {=npc_community(dolg) !surge_started !is_night} true
+prior = 45
+
+[animpoint@bar_dolg_general_animpoint_kamp2]
+cover_name = bar_dolg_general_animpoint_kamp2
+use_camp = true
+on_info = {=surge_started} walker@hide_2
+on_info2 = {=is_heavy_rain} animpoint@bar_dolg_general_animpoint_kamp6
+turn_on_campfire = true 
+meet = meet@bar_dolg_general_animpoint
+on_game_timer = 10800 | {!is_rain} animpoint@bar_smart_cover_otzhiman_2
+
+[walker@hide_2]
+path_walk = surge_12_walk
+;path_look =
+on_info = {=surge_complete} animpoint@bar_dolg_general_animpoint_kamp2
+
+[logic@bar_dolg_general_animpoint_kamp6]
+active = animpoint@bar_dolg_general_animpoint_kamp6
+suitable = {=npc_community(dolg) !surge_started !is_night} true
+prior = 45
+
+[animpoint@bar_dolg_general_animpoint_kamp6]
+cover_name = bar_dolg_general_animpoint_kamp6
+use_camp = true
+on_info = {!is_heavy_rain} animpoint@bar_dolg_general_animpoint_kamp2
+
+[animpoint@bar_smart_cover_otzhiman_2]
+cover_name = bar_smart_cover_otzhiman_2
+use_camp = false
+on_info = {=surge_started} walker@hide_2
+turn_on_campfire = false
+meet = no_meet
+avail_animations = otzhiman
+on_game_timer = 3600 | animpoint@bar_dolg_general_animpoint_kamp2
+
+
+; camp 3
+[logic@bar_dolg_general_animpoint_kamp3]
+active = animpoint@bar_dolg_general_animpoint_kamp3
+suitable = {=npc_community(dolg) !surge_started !is_night} true
+prior = 45
+
+[animpoint@bar_dolg_general_animpoint_kamp3]
+cover_name = bar_dolg_general_animpoint_kamp3
+use_camp = true
+on_info = {=surge_started} walker@hide_3
+on_info2 = {=is_heavy_rain} animpoint@bar_dolg_general_animpoint_kamp7
+turn_on_campfire = true 
+meet = meet@bar_dolg_general_animpoint
+on_game_timer = 10800 | {!is_rain} animpoint@bar_smart_cover_otzhiman_3
+
+[walker@hide_3]
+path_walk = surge_13_walk
+;path_look =
+on_info = {=surge_complete} animpoint@bar_dolg_general_animpoint_kamp3
+
+[logic@bar_dolg_general_animpoint_kamp7]
+active = animpoint@bar_dolg_general_animpoint_kamp7
+suitable = {=npc_community(dolg) !surge_started !is_night} true
+prior = 45
+
+[animpoint@bar_dolg_general_animpoint_kamp7]
+cover_name = bar_dolg_general_animpoint_kamp7
+use_camp = true
+on_info = {!is_heavy_rain} animpoint@bar_dolg_general_animpoint_kamp3
+meet = meet_random
+
+[animpoint@bar_smart_cover_otzhiman_3]
+cover_name = bar_smart_cover_otzhiman_3
+use_camp = false
+on_info = {=surge_started} walker@hide_3
+turn_on_campfire = false
+meet = no_meet
+avail_animations = otzhiman
+on_game_timer = 3600 | animpoint@bar_dolg_general_animpoint_kamp3
+
+
+; camp 4
+[logic@bar_dolg_general_animpoint_kamp4]
+active = animpoint@bar_dolg_general_animpoint_kamp4
+suitable = {=npc_community(dolg) !surge_started !is_night} true
+prior = 45
+
+[animpoint@bar_dolg_general_animpoint_kamp4]
+cover_name = bar_dolg_general_animpoint_kamp4
+use_camp = true
+on_info = {=surge_started} walker@hide_4
+on_info2 = {=is_heavy_rain} animpoint@bar_dolg_general_animpoint_kamp8
+turn_on_campfire = true 
+on_game_timer = 10800 | {!is_rain} animpoint@bar_smart_cover_otzhiman_4
+
+[walker@hide_4]
+path_walk = surge_14_walk
+;path_look =
+on_info = {=surge_complete} animpoint@bar_dolg_general_animpoint_kamp4
+
+[logic@bar_dolg_general_animpoint_kamp8]
+active = animpoint@bar_dolg_general_animpoint_kamp8
+suitable = {=npc_community(dolg) !surge_started !is_night} true
+prior = 45
+
+[animpoint@bar_dolg_general_animpoint_kamp8]
+cover_name = bar_dolg_general_animpoint_kamp8
+use_camp = true
+on_info = {!is_heavy_rain} animpoint@bar_dolg_general_animpoint_kamp4
+meet = meet_random
+
+[animpoint@bar_smart_cover_otzhiman_4]
+cover_name = bar_smart_cover_otzhiman_4
+use_camp = false
+on_info = {=surge_started} walker@hide_4
+turn_on_campfire = false
+meet = no_meet
+avail_animations = otzhiman
+on_game_timer = 3600 | animpoint@bar_dolg_general_animpoint_kamp4
+
+
+; (duty guard 1)
+[logic@bar_dolg_general_xcvb_day_1]
+active = beh@day_1
+suitable = {!surge_started !is_night} true
+prior = 46
+
+[beh@day_1]:beh@combat
+pt1 = 20000, guard | 		pos: 186.9, 1.1686, 108.5 	 	 look: 183.2018, -0.0011, 104.7151 
+
+
+; (duty guard 2)
+[logic@bar_dolg_general_xcvb_day_2]
+active = beh@day_2
+suitable = {!surge_started !is_night} true
+prior = 45
+
+[beh@day_2]:beh@combat
+pt1 = 20000, guard | 		pos: 192.5, 0.9867, 105.7 	 	 look: 188.828, -0.0009, 105.0209 
+
+
+; (duty patrol outside)
+[logic@bar_dolg_general_xcvb_day_3]
+active = beh@day_3
+suitable = {!surge_started !is_night} true
+prior = 45
+
+[beh@day_3]:beh@combat
+pt1 = 15000, guard | 		pos: 172.9, 0.9867, 121.8 	 	 look: 168.2897, -0.0002, 122.0376 
+pt2 = 15000, guard | 		pos: 172.2, 0.9953, 70.7 	 	 look: 169.1839, -0.0001, 66.6458 
+
+
+; (duty patrol inside)
+[logic@bar_dolg_general_xcvb_day_4]
+active = beh@day_4
+suitable = {!surge_started !is_night} true
+prior = 45
+
+[beh@day_4]:beh@combat
+pt1 = 15000, guard | 		pos: 202.3, 0.9867, 117.6 	 	 look: 199.3036, -0.0038, 117.5437 
+pt2 = 15000, guard | 		pos: 208.6, 0.9922, 91 	 	 look: 206.1592, -0.0011, 91.0599 
+
+
+
+; =======================
+; ------------ NIGHT -------------
+; =======================
+; (duty guard 1)
+[logic@bar_dolg_general_xcvb_night_1]
+active = beh@night_1
+suitable = {!surge_started =is_night} true
+prior = 46
+
+[beh@night_1]:beh@combat
+pt1 = 20000, guard | 		pos: 186.9, 1.1686, 108.5 	 	 look: 183.2018, -0.0011, 104.7151 
+
+
+; (duty guard 2)
+[logic@bar_dolg_general_xcvb_night_2]
+active = beh@night_2
+suitable = {!surge_started =is_night} true
+prior = 46
+
+[beh@night_2]:beh@combat
+pt1 = 20000, guard | 		pos: 192.5, 0.9867, 105.7 	 	 look: 188.828, -0.0009, 105.0209 
+
+
+; (duty patrol outside)
+[logic@bar_dolg_general_xcvb_night_3]
+active = beh@night_3
+suitable = {!surge_started =is_night} true
+prior = 46
+
+[beh@night_3]:beh@combat
+pt1 = 15000, guard | 		pos: 172.9, 0.9867, 121.8 	 	 look: 168.2897, -0.0002, 122.0376 
+pt2 = 15000, guard | 		pos: 172.2, 0.9953, 70.7 	 	 look: 169.1839, -0.0001, 66.6458 
+
+
+; (duty patrol inside)
+[logic@bar_dolg_general_xcvb_night_4]
+active = beh@night_4
+suitable = {!surge_started =is_night} true
+prior = 46
+
+[beh@night_4]:beh@combat
+pt1 = 15000, guard | 		pos: 202.3, 0.9867, 117.6 	 	 look: 199.3036, -0.0038, 117.5437 
+pt2 = 15000, guard | 		pos: 208.6, 0.9922, 91 	 	 look: 206.1592, -0.0011, 91.0599 

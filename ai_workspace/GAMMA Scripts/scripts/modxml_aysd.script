@@ -1,0 +1,44 @@
+local file_path_pattern = "character_desc_jupiter"
+local id_ashot = "jup_a6_freedom_trader_ashot"
+local id_yar = "jup_b19_freedom_yar"
+
+function on_xml_read()
+   RegisterScriptCallback("on_xml_read", function(xml_file_name, xml_obj)
+      -- If this isn't a character_desc file, skip it
+      if not xml_file_name:find(file_path_pattern) then
+         return
+      end
+
+      -- Fetch all specific_character nodes
+      local res = xml_obj:query("specific_character")
+
+      -- Iterate nodes
+      for _,el in ipairs(res) do
+         -- Fetch attributes
+         local attr = xml_obj:getElementAttr(el)
+
+         -- If this is Ashot or Yar, restore their quest dialog
+         if attr.id == id_ashot
+         or attr.id == id_yar then
+            xml_obj:insertFromXMLString(
+               [[<actor_dialog>dm_ashot_and_yar_dialog</actor_dialog>]],
+               el,
+               #el.kids
+            )
+         end
+
+         -- If this is Yar, give him quest start / finish / cancel dialogs
+         if attr.id == id_yar then
+            xml_obj:insertFromXMLString(
+               [[
+                  <actor_dialog>dm_ordered_task_dialog</actor_dialog>
+                  <actor_dialog>dm_ordered_task_completed_dialog</actor_dialog>
+                  <actor_dialog>dm_ordered_task_cancel_dialog</actor_dialog>	
+               ]],
+               el,
+               #el.kids
+            )
+         end
+      end
+   end)
+end

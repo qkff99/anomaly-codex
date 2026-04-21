@@ -1,0 +1,56 @@
+local Dart  = dart_core
+local MCM   = dart_mcm
+local Utils = dart_utils
+
+
+local config = {
+  anchor = {"CENTER", "CENTER"},
+  offset = {0, 0},
+  scale  = 1,
+}
+
+Dart.config.companionWheel = config
+Dart.state.companionWheel  = {}
+
+
+function mcmOnConfig(mcmConfig)
+  local offsetX = ui_mcm.get("dart/dart_companionWheel/offsetX")
+  local offsetY = ui_mcm.get("dart/dart_companionWheel/offsetY")
+  local scale   = ui_mcm.get("dart/dart_companionWheel/scale")
+
+  if scale then
+    mcmConfig.companionWheel.scale = scale
+  end
+
+  mcmConfig.companionWheel.offset = {
+    offsetX or config.offset[1],
+    offsetY or config.offset[2],
+  }
+end
+
+
+function mcmOnLoad(options)
+  options[8.2] = {
+    id = "dart_companionWheel",
+    sh = true,
+    gr = {
+      MCM.getTitle(),
+      MCM.getSubtitle({text = "ui_mcm_dart_companionWheel_title"}),
+      MCM.getScaleField({def = config.scale}),
+      MCM.getNote({text = "ui_mcm_dart_scale_note"}),
+      MCM.getLine(),
+      MCM.getOffsetXField({def = config.offset[1]}),
+      MCM.getOffsetYField({def = config.offset[2]}),
+    }
+  }
+end
+
+
+function onPreRefresh()
+  axr_companions.GUI = nil
+end
+
+
+RegisterScriptCallback("on_dart_mcm_load", mcmOnLoad)
+RegisterScriptCallback("on_dart_mcm_config", mcmOnConfig)
+RegisterScriptCallback("on_dart_pre_refresh", onPreRefresh)

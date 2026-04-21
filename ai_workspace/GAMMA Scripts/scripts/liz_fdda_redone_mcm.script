@@ -1,0 +1,209 @@
+local defaults = {
+    ["consumables/enable"] = true,
+    ["consumables/recepie_anim_enable"] = true,
+    ["consumables/allow_skip_abuse"] = false,
+    ["consumables/strict_sprinting"] = false,
+    ["consumables/unequip_helmet"] = false,
+    ["consumables/auto_cancel"] = false,
+    ["consumables/ac_wound"] = true,
+    ["consumables/ac_fire_wound"] = true,
+    ["consumables/ac_fire_explosion"] = true,
+
+    ["backpack/enable"] = true,
+    ["backpack/type"] = 1,
+    ["backpack/max_speed"] = 1.5,
+    ["backpack/min_weight_multiplier"] = 50,
+
+    ["skinning/enable"] = true,
+    ["skinning/auto_loot_all"] = false,
+    ["skinning/every_part_pickup"] = false,
+
+    ["pickup/enable"] = true,
+    ["pickup/multipickup"] = false,
+    ["pickup/speed"] = 1.2,
+    ["pickup/use_attachments"] = false,
+
+    ["nvg/enable"] = true,
+
+    ["headgear_anm/enable"] = true,
+    ["headgear_anm/keybind"] = bind_to_dik(key_bindings.kCAM_ZOOM_IN),
+    ["headgear_anm/modifier"] = 0,
+    ["headgear_anm/mode"] = 2,
+    ["headgear_anm/speed"] = 1,
+    ["headgear_anm/strict_helmets"] = false,
+    ["headgear_anm/icon_state"] = 0,
+    ["headgear_anm/icon_type"] = "anomaly",
+
+    ["outfit_anm/keybind"] = bind_to_dik(key_bindings.kCAM_ZOOM_IN),
+    ["outfit_anm/mode"] = 0,
+    ["outfit_anm/modifier"] = 3,
+    ["outfit_anm/memory"] = true,
+    ["outfit_anm/memory_size"] = 3,
+    ["outfit_anm/allow_movement"] = true,
+    ["outfit_anm/always_short"] = false,
+    ["outfit_anm/enable_outfit_equip"] = true,
+    ["outfit_anm/enable_backpack_equip"] = true,
+    ["outfit_anm/enable_plate_equip"] = true,
+    ["outfit_anm/enable_patches"] = true,
+    ["outfit_anm/enable_patches_inventory"] = true,
+
+    ["body_search/enable"] = true,
+    ["body_search/ui_open_delay"] = 0.42,
+    ["body_search/wpn_lower_mode"] = 1,
+    ["body_search/enable_anm_for_containers"] = false,
+    ["body_search/enable_crouch"] = true,
+    ["body_search/disable_walk"] = false,
+    ["body_search/enable_random_search_time"] = false,
+    ["body_search/random_search_time_max"] = 2,
+}
+
+local table_backpack_anim_speed_types = {
+    {0, "ui_mcm_fddar_backpack_speed_type_mcm"},
+    {1, "ui_mcm_fddar_backpack_speed_type_load"},
+    {2, "ui_mcm_fddar_backpack_speed_type_config"},
+}
+
+local table_wpn_lower_modes = {
+    { 0, "ui_mcm_liz_body_search_wpn_lower_type_none" },
+    { 1, "ui_mcm_liz_body_search_wpn_lower_type_pistols" },
+    { 2, "ui_mcm_liz_body_search_wpn_lower_type_all" },
+}
+
+local table_icon_state = {
+    { 0, "ui_mcm_liz_qht_icon_state_none" },
+    { 1, "ui_mcm_liz_qht_icon_state_enabled" },
+    { 2, "ui_mcm_liz_qht_icon_state_inverted" }
+}
+
+local table_icon_type = {
+    { "anomaly", "ui_mcm_qht_icon_type_anomaly" },
+    { "gamma", "ui_mcm_qht_icon_type_gamma" },
+}
+
+function get_config(key)
+    if ui_mcm then return ui_mcm.get("fddar/" .. key) else return defaults[key] end
+end
+
+function on_mcm_load()
+    local op = {
+        id = "fddar",
+        gr = {
+            {
+                id = "consumables",
+                sh = true,
+                gr = {
+                    { id = "slide", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_menu_consumables", size = { 512, 50 }, spacing = 20 },
+                    { id = "enable", type = "check", val = 1, def = true },
+                    { id = "recepie_anim_enable", type = "check", val = 1, def = true },
+                    { id = "allow_skip_abuse", type = "check", val = 1, def = false },
+                    { id = "strict_sprinting", type = "check", val = 1, def = false },
+                    { id = "unequip_helmet", type = "check", val = 1, def = false, precondition = { function () return get_config("headgear_anm/strict_helmets") end } },
+                    { id = "divider", type = "line"},
+                    { id = "auto_cancel", type = "check", val = 1, def = false },
+                    { id = "ac_wound", type = "check", val = 1, def = true },
+                    { id = "ac_fire_wound", type = "check", val = 1, def = true },
+                    { id = "ac_explosion", type = "check", val = 1, def = true },
+                }
+            },
+            {
+                id = "backpack",
+                sh = true,
+                gr = {
+                    { id = "slide", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_menu_backpack", size = { 512, 50 }, spacing = 20 },
+                    { id = "enable", type = "check", val = 1, def = true, },
+                    { id = "type", type = "list", val = 2, def = 1, content = table_backpack_anim_speed_types, no_str = true },
+                    { id = "max_speed", type = "track", val = 2, def = 1.5, min = 1, max = 2, step = 0.05 },
+                    { id = "min_weight_multiplier", type = "track", val = 2, def = 50, min = 0, max = 100, step = 1 },
+                }
+            },
+            {
+                id = "skinning",
+                sh = true,
+                gr = {
+                    { id = "slide", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_menu_skinning", size = { 512, 50 }, spacing = 20 },
+                    { id = "enable", type = "check", val = 1, def = true },
+                    { id = "auto_loot_all", type = "check", val = 1, def = false },
+                    { id = "every_part_pickup", type = "check", val = 1, def = false },
+                }
+            },
+            {
+                id = "pickup",
+                sh = true,
+                gr = {
+                    { id = "slide", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_menu_pickup", size = { 512, 50 }, spacing = 20 },
+                    { id = "enable", type = "check", val = 1, def = true },
+                    { id = "multipickup", type = "check", val = 1, def = false },
+                    { id = "speed", type = "track", val = 2, def = 1.2, min = 1, max = 2, step = 0.05 },
+                    { id = "use_attachments", type = "check", val = 1, def = false },
+                }
+            },
+            {
+                id = "nvg",
+                sh = true,
+                gr = {
+                    { id = "slide", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_menu_nvg", size = { 512, 50 }, spacing = 20 },
+                    { id = "enable", type = "check", val = 1, def = "true" },
+                }
+            },
+            {
+                id = "headgear_anm",
+                sh = true,
+                gr = {
+                    { id = "slide", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_menu_headgear_anm", size = { 512, 50 }, spacing = 20 },
+                    { id = "enable", type = "check", val = 1, def = true },
+                    { id = "divider", type = "line"},
+                    { id = "keybind", type = "key_bind", val = 2, def = defaults["headgear_anm/keybind"] },
+                    { id = "modifier", type = ui_mcm.kb_mod_radio, val = 2, def = 0, hint = "mcm_kb_modifier", content = { { 0, "mcm_kb_mod_none" }, { 1, "mcm_kb_mod_shift" }, { 3, "mcm_kb_mod_alt" } } },
+                    { id = "mode", type = ui_mcm.kb_mod_radio, val = 2, def = 2, hint = "mcm_kb_mode", content = { { 0, "mcm_kb_mode_press" }, { 1, "mcm_kb_mode_dtap" }, { 2, "mcm_kb_mode_hold" } } },
+                    { id = "desc_mcm", type = "desc", text = "ui_mcm_fddar_update_mcm", clr = { 255, 175, 0, 0 }, precondition = { function() return not (ui_mcm and ui_mcm.key_hold) end } },
+                    { id = "divider", type = "line"},
+                    { id = "speed", type = "track", val = 2, def = 1, min = 1, max = 1.5, step = 0.01 },
+                    { id = "divider", type = "line"},
+                    { id = "strict_helmets", type = "check", val = 1, def = false},
+                    { id = "divider", type = "line", precondition = { function() return actor_status_gasmask end } },
+                    { id = "icon_state", type = "list", val = 2, def = 0, content = table_icon_state, no_str = true, precondition = { function() return actor_status_gasmask end } },
+                    { id = "icon_type", type = "list", val = 0, def = "anomaly", content = table_icon_type, no_str = true, precondition = { function() return actor_status_gasmask end } }
+                }
+            },
+            {
+                id = "outfit_anm",
+                sh = true,
+                gr = {
+                    { id = "slide", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_menu_outfit_anm", size = { 512, 50 }, spacing = 20 },
+                    { id = "enable_outfit_equip", type = "check", val = 1, def = true },
+                    { id = "always_short", type = "check", val = 1, def = false },
+                    { id = "enable_backpack_equip", type = "check", val = 1, def = true },
+                    { id = "enable_plate_equip", type = "check", val = 1, def = true },
+                    { id = "enable_patches", type = "check", val = 1, def = true },
+                    { id = "enable_patches_inventory", type = "check", val = 1, def = true },
+                    { id = "divider", type = "line" },
+                    { id = "keybind", type = "key_bind", val = 2, def = defaults["outfit_anm/keybind"], },
+                    { id = "mode", type = ui_mcm.kb_mod_radio, val = 2, def = 0, hint = "mcm_kb_mode", content = { { 0, "mcm_kb_mode_press" }, { 1, "mcm_kb_mode_dtap" }, { 2, "mcm_kb_mode_hold" } } },
+                    { id = "modifier", type = ui_mcm.kb_mod_radio, val = 2, def = 3, hint = "mcm_kb_modifier", content = { { 0, "mcm_kb_mod_none" }, { 1, "mcm_kb_mod_shift" }, { 3, "mcm_kb_mod_alt" } } },
+                    { id = "desc_mcm", type = "desc", text = "ui_mcm_fddar_update_mcm", clr = { 255, 175, 0, 0 }, precondition = { function() return not (ui_mcm and ui_mcm.key_hold) end } },
+                    { id = "divider", type = "line" },
+                    { id = "memory", type = "check", val = 1, def = true },
+                    { id = "memory_size", type = "track", val = 2, step = 1, def = 3, max = 10, min = -1 },
+                    { id = "divider", type = "line" },
+                    { id = "allow_movement", type = "check", val = 1, def = true },
+                }
+            },
+            {
+                id = "body_search",
+                sh = true,
+                gr = {
+                    { id = "slide", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_menu_body_search", size = {512, 50}, spacing = 20 },
+                    { id = "enable", type = "check", val = 1, def = true },
+                    { id = "ui_open_delay", type = "track", val = 2, def = 0.4, min = 0, max = 1, step = 0.01 },
+                    { id = "wpn_lower_mode", type = "list", val = 2, def = 1, content = table_wpn_lower_modes, no_str = true },
+                    { id = "enable_anm_for_containers", type = "check", val = 1, def = false },
+                    { id = "enable_crouch", type = "check", val = 1, def = true },
+                    { id = "disable_walk", type = "check", val = 1, def = false },
+                    { id = "enable_random_search_time", type = "check", val = 1, def = false },
+                    { id = "random_search_time_max", type = "track", val = 2, def = 2, min = 0.42, max = 20, step = 1, precondition = { function() return get_config("body_search/enable_random_search_time") end } }
+                }
+            },
+        }
+    }
+    return op
+end

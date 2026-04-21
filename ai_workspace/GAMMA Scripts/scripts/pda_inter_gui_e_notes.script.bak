@@ -1,0 +1,370 @@
+pmain = pda_inter_gui
+local gt = game.translate_string
+local CustomPDAX = pda_inter_gui.CustomPDAX
+local pr = pda_inter_gui.pr
+
+function CustomPDAX:BuildNotesUpperMenu()
+	local xml = self.xml
+
+	self.selected_edit_note = nil
+
+	-- switch tab
+	self.notes_tab = self.notes_tab or 1		-- 1 - notes; 2 - active tasks
+
+	-- switch task button
+	self.notes_switch_btn = xml:Init3tButton("mid_container_5:notes_switch_btn", self.pda_t[5].mid_cont)
+	self:Register(self.notes_switch_btn, "notes_switch_btn")
+	self.notes_switch_btn:TextControl():SetText(gt("pda_notes_switch_to_" .. self.notes_tab))
+
+	-- Notes tab
+	-- load if array exist and insert all elements as one big string
+	local big_str = ""
+	if #pmain.pda_notes_t > 0 then
+		for i = 1, #pmain.pda_notes_t do
+			local white_clr_str = strformat("%c[%s,%s,%s,%s]", 255, 255, 255, 255)
+			local yel_clr_str = strformat("%c[%s,%s,%s,%s]", 255, 255, 255, 0)
+			local def_clr_str = strformat("%c[%s,%s,%s,%s]", 255, 190, 190, 190)
+
+			big_str = big_str .. yel_clr_str .. pmain.pda_notes_t[i][1] .. white_clr_str .. pmain.pda_notes_t[i][2] .. def_clr_str .. pmain.pda_notes_t[i][3]
+		end
+	end
+
+	-- text and scroll
+	self.notes_scroll = xml:InitScrollView("mid_container_5:notes_scrollbar", self.pda_t[5].mid_cont)
+
+	self.notes_text_wnd = xml:InitTextWnd("mid_container_5:notes_text_wnd", self.notes_scroll)
+	self.notes_text_wnd:SetText(big_str)
+
+	self.notes_text_wnd:AdjustHeightToText()
+
+	self.notes_text_wnd:SetAutoDelete(false)
+
+	-- note picker
+	self.notes_picker_hint = xml:InitTextWnd("mid_container_5:notes_picker_hint", self.pda_t[5].mid_cont)
+
+	self.notes_picker_input = xml:InitEditBox("mid_container_5:notes_picker_input", self.pda_t[5].mid_cont)
+	self:Register(self.notes_picker_input, "notes_picker_input")
+
+	self.notes_edit_btn = xml:Init3tButton("mid_container_5:notes_edit_btn", self.pda_t[5].mid_cont)
+	self:Register(self.notes_edit_btn, "notes_edit_btn")
+
+	self.notes_delete_btn = xml:Init3tButton("mid_container_5:notes_delete_btn", self.pda_t[5].mid_cont)
+	self:Register(self.notes_delete_btn, "notes_delete_btn")
+	
+	self.notes_lock_btn = xml:Init3tButton("notes_lock_btn", self.background)
+	self:Register(self.notes_lock_btn, "notes_lock_btn")
+	self.notes_lock_btn:Show(get_console_cmd(1,"g_3d_pda"))
+	-- input
+	self.notes_input_box = xml:InitEditBox("mid_container_5:notes_input_box", self.pda_t[5].mid_cont)
+	self:Register(self.notes_input_box, "notes_input_box")
+	self:AddCallback("notes_input_box", ui_events.EDIT_TEXT_COMMIT, self.OnClickNotesConfirm, self)
+
+	-- input confirm btn
+	self.notes_input_confirm_btn = xml:Init3tButton("mid_container_5:notes_confirm_btn", self.pda_t[5].mid_cont)
+	self:Register(self.notes_input_confirm_btn, "notes_confirm_btn")
+
+	-- for loading and other scripts
+	self:UpdNotesMenu()
+
+
+	-- Active tasks tab
+	-- load if array exist and insert each element
+	self.notes_tasks = self.notes_tasks or {}
+	self.task_script_t = pda_inter_x_tasks.Active_pda_tasks
+
+	for i = 1, pmain.pda_max_tasks do
+		local white_clr_str = strformat("%c[%s,%s,%s,%s]", 255, 255, 255, 255)
+		local yel_clr_str = strformat("%c[%s,%s,%s,%s]", 255, 255, 255, 0)
+		local def_clr_str = strformat("%c[%s,%s,%s,%s]", 255, 190, 190, 190)
+
+		local tasks_str = ""
+		if self.task_script_t and self.task_script_t[i] and self.task_script_t[i].notes then
+			local pre_str = gt("pda_task_note") .. " " .. i .. ") "
+			tasks_str = yel_clr_str .. pre_str .. def_clr_str .. self.task_script_t[i].notes
+		end
+
+		-- text windows
+		self.notes_tasks[i] = self.notes_tasks[i] or {}
+		self.notes_tasks[i].notes_task_text = xml:InitTextWnd("mid_container_5:notes_task_text_wnd", self.pda_t[5].mid_cont)
+		self.notes_tasks[i].notes_task_text:SetWndPos(vector2():set(0, (i - 1) * 25))
+		self.notes_tasks[i].notes_task_text:SetText(tasks_str)
+		self.notes_tasks[i].notes_task_text:Show(false)
+
+		-- cancel buttons
+		self.notes_tasks[i].cancel_task_btn = xml:Init3tButton("mid_container_5:notes_task_cancel_btn", self.pda_t[5].mid_cont)
+		self:Register(self.notes_tasks[i].cancel_task_btn, "cancel_task_btn_" .. i)
+		self.notes_tasks[i].cancel_task_btn:SetWndPos(vector2():set(500, (i - 1) * 25))
+		self.notes_tasks[i].cancel_task_btn:Show(false)
+
+	end
+
+end
+
+function CustomPDAX:InitNotesCallbacks()
+	self:AddCallback("notes_confirm_btn", ui_events.BUTTON_CLICKED, self.OnClickNotesConfirm, self)
+
+	self:AddCallback("notes_edit_btn", ui_events.BUTTON_CLICKED, self.OnClickNotesEdit, self)
+
+	self:AddCallback("notes_delete_btn", ui_events.BUTTON_CLICKED, self.OnClickNotesDelete, self)
+	
+	self:AddCallback("notes_lock_btn", ui_events.BUTTON_CLICKED, self.OnClickNotesLock, self)
+
+	self:AddCallback("notes_switch_btn", ui_events.BUTTON_CLICKED, self.OnClickNotesSwitch, self)
+	
+
+	for i = 1, pmain.pda_max_tasks do
+		CustomPDAX["OnClickNotesTaskCancel_".. i] = function(self)
+			self:OnClickNotesTaskCancel(i)
+		end
+		self:AddCallback("cancel_task_btn_" .. i, ui_events.BUTTON_CLICKED, self["OnClickNotesTaskCancel_".. i], self)
+	end
+end
+
+function CustomPDAX:OnClickNotesConfirm()
+	local str_to_add = self.notes_input_box:GetText()
+	-- asdasd\nasdasd\nasdasd\nasdasd\n
+
+	local cur_time = game.get_game_time()
+	local cur_d = cur_time:dateToString(game.CTime.DateToDay)
+	local cur_min = cur_time:timeToString(game.CTime.TimeToMinutes)
+
+	-- if we editing note
+	if self.selected_edit_note then
+
+		-- update idx
+		local i = self.selected_edit_note
+		pmain.pda_notes_t[i][1] = "#" .. i
+
+		-- update time
+		pmain.pda_notes_t[i][2] = " " .. cur_d .. " | " .. cur_min .. " \\n"
+
+		-- change string
+		pmain.pda_notes_t[i][3] = str_to_add .. "\\n \\n"
+
+		-- update text window
+		self:UpdNotesMenu()
+
+		-- reset input note picker text
+		self.notes_picker_input:SetText("")
+
+		-- reset selected edit input
+		self.selected_edit_note = nil
+
+		-- change button text back to "Add"
+		self.notes_input_confirm_btn:TextControl():SetText(gt("pda_notes_add_btn"))
+
+	-- if we adding new note
+	elseif str_to_add ~= "" then
+
+		-- add text to the table
+		table.insert(pmain.pda_notes_t, {})		-- new array for each new note
+
+		-- index
+		pmain.pda_notes_t[#pmain.pda_notes_t][1] = "#" .. #pmain.pda_notes_t
+
+		-- date, time
+		pmain.pda_notes_t[#pmain.pda_notes_t][2] = " " .. cur_d .. " | " .. cur_min .. " \\n"
+
+		-- string
+		pmain.pda_notes_t[#pmain.pda_notes_t][3] = str_to_add .. "\\n \\n"
+
+		-- update text window
+		self:UpdNotesMenu()
+
+	end
+
+end
+
+function CustomPDAX:OnClickNotesEdit()
+	local picked_idx = self.notes_picker_input:GetText()
+
+	if picked_idx ~= "" then
+		picked_idx = tonumber(picked_idx)
+		if type(picked_idx) == "number" and picked_idx > 0 then
+
+			-- get element by picked note index and put it into note input box
+			local picked_note = pmain.pda_notes_t[picked_idx]		-- text
+
+			if picked_note then
+
+				-- set editing note index
+				self.selected_edit_note = picked_idx
+				
+				-- change button text from "Add" to "Edit"
+				self.notes_input_confirm_btn:TextControl():SetText(gt("pda_notes_editedit_btn"))
+
+				-- remove \n and index from the string
+				picked_note[3] = string.gsub(picked_note[3], "\\n \\n", "")
+
+				-- put string into input box
+				self.notes_input_box:SetText(picked_note[3])
+
+			end
+
+		end
+	end
+
+end
+
+function CustomPDAX:OnClickNotesDelete()
+	local picked_idx = self.notes_picker_input:GetText()
+
+	if picked_idx ~= "" then
+		picked_idx = tonumber(picked_idx)		-- turn tonumber
+		if type(picked_idx) == "number" and picked_idx > 0 then
+
+			-- check if exist 
+			local picked_note = pmain.pda_notes_t[picked_idx]
+			if picked_note then
+
+			-- delete element from text array
+			table.remove(pmain.pda_notes_t, picked_idx)
+
+			-- reset input note picker text
+			self.notes_picker_input:SetText("")
+
+			-- in case we pressed edit
+			self.selected_edit_note = nil
+
+			-- change button text back to "Add"
+			self.notes_input_confirm_btn:TextControl():SetText(gt("pda_notes_add_btn"))
+
+			-- update text window
+			self:UpdNotesMenu()
+
+			end
+
+		end
+	end
+
+end
+
+function CustomPDAX:OnClickNotesLock()
+	pmain.M_locked = not pmain.M_locked
+	if pmain.M_locked then
+		pmain.block_input()
+		local m_data = alife_storage_manager.get_state()
+		for m, n in pairs(pmain.dik_to_num) do
+			if bind_to_dik(39) and bind_to_dik(39) == DIK_keys[n] then
+				m_data.dropbind = m
+			end
+		end
+		exec_console_cmd("unbind drop")
+		self.notes_lock_btn:TextControl():SetText(gt("pda_notes_unlock_btn"))
+	else
+		local m_data = alife_storage_manager.get_state()
+		if m_data.dropbind then
+			exec_console_cmd("bind drop "..m_data.dropbind)
+			m_data.dropbind = nil
+		end
+		self.notes_lock_btn:TextControl():SetText(gt("pda_notes_lock_btn"))
+	end
+end
+
+function CustomPDAX:OnClickNotesSwitch()
+
+	self.notes_tab = (self.notes_tab == 1 and 2) or (self.notes_tab == 2 and 1)
+
+	local show_notes = self.notes_tab == 1
+
+	-- change button text
+	self.notes_switch_btn:TextControl():SetText(gt("pda_notes_switch_to_" .. self.notes_tab))
+
+	-- hide/show Notes elements
+	self.notes_scroll:Show(show_notes)
+	self.notes_text_wnd:Show(show_notes)
+	self.notes_picker_hint:Show(show_notes)
+	self.notes_picker_input:Show(show_notes)
+	self.notes_edit_btn:Show(show_notes)
+	self.notes_delete_btn:Show(show_notes)
+	self.notes_input_box:Show(show_notes)
+	self.notes_input_confirm_btn:Show(show_notes)
+
+	-- hide/show Active tasks elements
+	for i = 1, #self.notes_tasks do
+		self.notes_tasks[i].notes_task_text:Show(false)
+		self.notes_tasks[i].cancel_task_btn:Show(false)
+
+		-- and show only if task is active
+		if self.task_script_t and self.task_script_t[i] then
+			self.notes_tasks[i].notes_task_text:Show((not show_notes))
+			self.notes_tasks[i].cancel_task_btn:Show((not show_notes))
+		end
+	end
+
+end
+
+function CustomPDAX:OnClickNotesTaskCancel(num)
+
+	-- cancel pressed task, remove from pda_tasks_str_t
+	pr("Removing task index from pda_tasks_str_t, button: %s", num)
+	pda_inter_x_tasks.cancel_task(num)
+
+	-- update gui based on new pda_tasks_str_t
+	self:UpdNotesTasks()
+
+end
+
+function CustomPDAX:UpdNotesMenu()
+	-- reset scroll and rebuild/adjust all the text based on pda_msg_states table
+	local big_str = ""
+	for i = 1, #pmain.pda_notes_t do
+		local white_clr_str = strformat("%c[%s,%s,%s,%s]", 255, 255, 255, 255)
+		local yel_clr_str = strformat("%c[%s,%s,%s,%s]", 255, 255, 255, 0)
+		local def_clr_str = strformat("%c[%s,%s,%s,%s]", 255, 190, 190, 190)
+
+		-- add new index string
+		pmain.pda_notes_t[i][1] = "#" .. i
+
+		big_str = big_str .. yel_clr_str .. pmain.pda_notes_t[i][1] .. white_clr_str .. pmain.pda_notes_t[i][2] .. def_clr_str .. pmain.pda_notes_t[i][3]
+	end
+
+	self.notes_text_wnd:SetText(big_str)
+
+	self.notes_text_wnd:AdjustHeightToText()
+
+	self.notes_scroll:Clear()
+	self.notes_scroll:AddWindow(self.notes_text_wnd, true)
+	self.notes_text_wnd:SetAutoDelete(false)
+
+	self.notes_scroll:ScrollToEnd()
+
+	-- reset input box
+	self.notes_input_box:SetText("")
+
+end
+
+function CustomPDAX:UpdNotesTasks()
+
+	-- reset gui text and hide
+	for i = 1, #self.notes_tasks do
+		self.notes_tasks[i].notes_task_text:SetText("")
+		self.notes_tasks[i].notes_task_text:Show(false)
+		self.notes_tasks[i].cancel_task_btn:Show(false)
+	end
+
+	-- add again from self.task_script_t
+	for i = 1, #self.task_script_t do
+		pr("Adding new strings to self.notes_tasks from self.task_script_t")
+
+		local white_clr_str = strformat("%c[%s,%s,%s,%s]", 255, 255, 255, 255)
+		local yel_clr_str = strformat("%c[%s,%s,%s,%s]", 255, 255, 255, 0)
+		local def_clr_str = strformat("%c[%s,%s,%s,%s]", 255, 190, 190, 190)
+
+		local tasks_str = ""
+		if self.task_script_t[i].notes then
+			local pre_str = gt("pda_task_note") .. " " .. i .. ") "
+			tasks_str = yel_clr_str .. pre_str .. def_clr_str .. self.task_script_t[i].notes
+		end
+
+		self.notes_tasks[i].notes_task_text:SetText(tasks_str)
+
+		-- show if active tasks tab opened
+		if self.notes_tab == 2 then
+			self.notes_tasks[i].notes_task_text:Show(true)
+			self.notes_tasks[i].cancel_task_btn:Show(true)
+		end
+
+	end
+
+end

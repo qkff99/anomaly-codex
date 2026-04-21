@@ -1,0 +1,472 @@
+---@diagnostic disable: param-type-mismatch
+--[[
+	Jabbers
+	11FEB2022
+	Jabbers Ironman Roguelite
+
+    FEATURES
+        - 100% Customizable Roguelite experience through MCM (or config parameters in the code if you prefer)
+        - 100% (as far as I know) conflict free from other mods.  Jabbers' Ironman Roguelite does not overwrite 
+        any scripts or ltx files and because of this it should not interfere with any other mods.   If it does
+        please let me know so I can resolve.
+        - Restore player created stashes and items within between Ironman playthroughs
+            - Player stashes are be marked on your PDA map just stash locations from missions
+            - Item condition degredation applied to each applicable item between Ironman playthroughs
+        - Restore trader rep with optional penalty loss between Ironman playthroughs
+            - Trader rep will never go below the value a trader receives at the start of a new game
+        - Restore character rep with optional penalty loss between Ironman playthroughs
+            - Character rep will never go below the value the character receives at the start of a new game
+        - All Stashes/Items/Rep are saved based on faction so that seperate Ironman playthroughs of each faction
+        do not interfere with each other.  IE: Stashes created on a Loner playthrough will not be seen on a 
+        Military playthrough and vice versa.
+        - Ability for other mods to save data to be used in concurent playthroughs via scripting callbacks
+            - RegisterScriptCallback("on_roguelite_load_state", on_roguelite_load_state)
+                -- on_roguelite_load_state(data) --<table> access to all prior Ironman session saved data
+            - RegisterScriptCallback("on_roguelite_save_state", on_roguelite_save_state)
+                -- on_roguelite_load_state(data) --<table> store data that you want to read at the start of Ironman session
+            - RegisterScriptCallback("on_roguelite_mcm_load", on_roguelite_mcm_load)
+                -- on_roguelite_mcm_load(gr) --<table> "gr" table for the mcm menu.  Insert ui elements into gr direct via table.insert
+--]]
+
+local config = {
+    version = "0.85.0",
+}
+
+--------------------------------
+-- Debug Helpers
+--------------------------------
+
+local function print_table (tbl, indent)
+    local string_rep = string.rep
+    local g_type = type
+    if not indent then
+        indent = 0
+    end
+
+    local toprint = string_rep(" ", indent) .. "{\n"
+    indent = indent + 2
+
+    if (g_type(tbl) == "userdata") then
+        toprint = toprint .. "<userdata>,\n"
+    else
+        for k, v in pairs(tbl) do
+            toprint = toprint .. string_rep(" ", indent)
+
+            if (g_type(k) == "number") then
+                toprint = toprint .. "[" .. k .. "] = "
+            elseif (g_type(k) == "string") then
+                toprint = toprint  .. k ..  "= "
+            end
+
+            if (g_type(v) == "number") then
+                toprint = toprint .. v .. ",\n"
+            elseif (g_type(v) == "string") then
+                toprint = toprint .. "\"" .. v .. "\",\n"
+            elseif (g_type(v) == "table") then
+                toprint = toprint .. print_table(v, indent + 2) .. ",\n"
+            else
+                toprint = toprint .. "\"" .. tostring(v) .. "\",\n"
+            end
+        end
+    end
+
+    toprint = toprint .. string_rep(" ", indent-2) .. "}"
+
+    return toprint
+end
+
+function debug_write(output)
+    if (type(output) == "table") then
+        if true then -- For debugging purposes
+            return
+        end
+        utils_data.debug_write("Roguelite Manager: "..print_table(output))
+    else
+        utils_data.debug_write("Roguelite Manager: "..output)
+    end
+end
+
+--------------------------------
+-- Private stuff and things
+--------------------------------
+
+local function load_prior_state()
+    local faction = character_community(db.actor):sub(7)
+
+    if not faction then
+        debug_write("Error finding player faction")
+    end
+
+    debug_write("Loading prior state for faction: "..faction)
+
+    local file_path = "appdata\\roguelite_"..faction..".state"
+    local file = io.open(file_path, "rb")
+
+    if not file then
+        return
+    end
+
+    debug_write("Loading prior state from: "..file_path)
+    
+    local data = file:read("*all")
+
+    file:close()
+
+    if not (data and data ~= "") then
+        debug_write("Error unable to write to " .. file_path)
+        return
+    end
+
+    local data = marshal.decode(data)
+    debug_write(data)
+    local modules = get_modules()
+
+    for name, module in pairs(modules) do
+        if module.roguelite_load_state then 
+            debug_write("Loading data "..name)
+            module.roguelite_load_state(data)
+        end
+    end
+end
+
+local function persist(save_data)
+    debug_write(save_data)
+
+    local faction = character_community(db.actor):sub(7)
+
+    if not faction then
+        debug_write("Error finding player faction")
+    end
+
+    debug_write("Saving state for faction: "..faction)
+
+    local data = marshal.encode(save_data)
+
+    if not (data) then
+        debug_write("No data to save.")
+        return
+    end
+
+    local file_path = "appdata\\roguelite_"..faction..".state"
+    local file = io.open(file_path, "wb")
+
+    debug_write("Saving prior state to: "..file_path)
+
+    if not (io.type(file) == "file") then
+        debug_write("Error unable to write to " .. file_path)
+        return
+    end
+
+    file:write(data)
+    file:close()
+
+    debug_write("Saved")
+end
+
+--------------------------------
+-- Shared Module Logic
+--------------------------------
+function serialize_se_obj(se_obj) 
+    local pos = se_obj.position
+    local rot = se_obj.angle
+    return  {
+        id = se_obj.id,
+        section = se_obj:section_name(),
+        position = {
+            x = pos.x,
+            y = pos.y,
+            z = pos.z
+        },
+        angle = {
+            x = rot.x,
+            y = rot.y,
+            z = rot.z
+        },
+        level_vertex_id = se_obj.m_level_vertex_id,
+        game_vertex_id = se_obj.m_game_vertex_id
+    }
+end
+
+function serialize_item(se_obj)
+    local section = se_obj:section_name()
+    local stash_item_data = {
+        id = se_obj.id,
+        name = se_obj:name(),
+        clsid = get_clsid(se_obj),
+        section = section
+    }
+
+    if IsWeapon(se_obj) then
+        debug_write("Gathering weapon data for " .. se_obj:name() .. " " ..se_obj.id .. ".")
+        local data = utils_stpk.get_weapon_data(se_obj)
+
+        stash_item_data.ammo_current = data.ammo_current
+        stash_item_data.ammo_elapsed = data.ammo_elapsed
+        stash_item_data.weapon_state = data.weapon_state
+        stash_item_data.addon_flags = data.addon_flags
+        stash_item_data.ammo_type = data.ammo_type
+
+        stash_item_data.condition = data.condition
+        stash_item_data.upgrades = data.upgrades
+
+        stash_item_data.visual_name = data.visual_name
+        stash_item_data.visual_flags = data.visual_flags
+
+        stash_item_data.object_flags = data.object_flags
+        stash_item_data.custom_data = data.custom_data
+    elseif IsAmmo(se_obj) then
+        debug_write("Gathering ammo data for " .. se_obj:name() .. " " ..se_obj.id .. ".")
+        local data = utils_stpk.get_ammo_data(se_obj)
+
+        stash_item_data.condition = data.condition
+        stash_item_data.upgrades = data.upgrades
+
+        stash_item_data.visual_name = data.visual_name
+        stash_item_data.visual_flags = data.visual_flags
+
+        stash_item_data.object_flags = data.object_flags
+        stash_item_data.custom_data = data.custom_data
+
+        stash_item_data.ammo_left = data.ammo_left
+    else
+        debug_write("Gathering item data " .. se_obj:name() .. " " ..se_obj.id .. ".")
+        local data = utils_stpk.get_item_data(se_obj)
+
+        stash_item_data.condition = data.condition
+        stash_item_data.upgrades = data.upgrades
+
+        stash_item_data.visual_name = data.visual_name
+        stash_item_data.visual_flags = data.visual_flags
+
+        stash_item_data.object_flags = data.object_flags
+        stash_item_data.custom_data = data.custom_data
+    end
+
+    return stash_item_data;
+end
+
+function restore_item(section, position, level_vertex_id, game_vertex_id, item_data, parent_item_id, state)
+    local string_find = string.find
+    -- Some modes add quest items that are not marked as quest_item == true...
+    if string_find(section, "strelok") 
+        or string_find(section, "docuuments") 
+        or string_find(section, "intel") 
+        or string_find(section, "quest") 
+        or string_find(section, "notes") 
+        or string_find(section, "instruction")
+        or string_find(section, "good_psy_helmet")
+        or string_find(section, "bad_psy_helmet")
+        or string_find(section, "wpn_binoc_inv") -- For whatever reason this crashes things sometimes.
+        or (string_find(section, "pda") and not string_find(section, "device_pda_1") and not string_find(section, "device_pda_2") and not string_find(section, "device_pda_3")) then
+        debug_write("Not restoring quest item " .. section)
+        return
+    end
+
+    debug_write("Creating item " .. section)
+
+    local se_obj = alife_create(section, position, level_vertex_id, game_vertex_id, parent_item_id, state)
+
+    if se_obj then      
+        --debug_write("Created item " .. se_obj:name())
+
+        if item_data then
+            local item_processor = itms_manager.get_item_processor()
+
+            if IsWeapon(se_obj) then
+                --debug_write("Creating weapon data for " .. se_obj:name() .. " " ..se_obj.id .. ".")
+
+                local data = utils_stpk.get_weapon_data(se_obj)
+
+                data.ammo_current = item_data.ammo_current
+                data.ammo_elapsed = item_data.ammo_elapsed
+                data.weapon_state = item_data.weapon_state
+                data.addon_flags = item_data.addon_flags
+                data.ammo_type = item_data.ammo_type
+                data.condition = item_data.condition
+                data.upgrades = item_data.upgrades
+                data.visual_name = item_data.visual_name
+                data.visual_flags = item_data.visual_flags
+                data.object_flags = item_data.object_flags
+                data.custom_data = item_data.custom_data
+
+                utils_stpk.set_weapon_data(data, se_obj)
+            elseif IsAmmo(se_obj) then
+                --debug_write("Creating ammo data for " .. se_obj:name() .. " " .. se_obj.id .. ".")
+
+                local data = utils_stpk.get_ammo_data(se_obj)
+
+                data.condition = item_data.condition
+                data.upgrades = item_data.upgrades
+                data.visual_name = item_data.visual_name
+                data.visual_flags = item_data.visual_flags
+                data.object_flags = item_data.object_flags
+                data.custom_data = item_data.custom_data
+                data.ammo_left = item_data.ammo_left
+
+                utils_stpk.set_ammo_data(data, se_obj)
+            else
+                --roguelite_manager.debug_write("Creating item data " .. se_obj:name() .. " " .. se_obj.id ..".")
+
+                local data = utils_stpk.get_item_data(se_obj)
+
+                data.condition = item_data.condition
+                data.upgrades = item_data.upgrades
+                data.visual_name = item_data.visual_name
+                data.visual_flags = item_data.visual_flags
+                data.object_flags = item_data.object_flags
+                data.custom_data = item_data.custom_data
+
+                utils_stpk.set_item_data(data, se_obj)
+            end
+
+            alife():register(se_obj)
+
+            if item_data.uses and item_data.uses ~= 0 then
+                --roguelite_manager.debug_write("Updating item uses " .. se_obj:name() .. " " .. item_data.uses ..".")
+
+                item_processor:Process_Item(nil, se_obj.id, {
+                    uses = item_data.uses
+                })
+            end
+        else 
+            alife():register(se_obj)
+        end
+    end
+
+    return se_obj
+end
+
+--------------------------------
+-- Game Callbacks
+--------------------------------
+
+local function actor_on_before_death(whoID, flags)
+    if not roguelite_manager_mcm.get_config("is_roguelite_enabled", true) then
+        debug_write("actor_on_before_death roguelite disabled.")
+        return
+    end
+
+    if not IsHardcoreMode() then
+        debug_write("actor_on_before_death not an ironman game mode.")
+        return
+    end
+
+    debug_write("Actor died")
+
+    local save_data = {}
+
+    -- Reference for future modules
+	-- save_data.actor_artefacts = game_statistics.actor_artefacts
+	-- save_data.actor_anomaly_maps = game_statistics.actor_anomaly_maps
+	-- save_data.actor_miscellaneous = game_statistics.actor_miscellaneous
+	-- save_data.actor_visited_levels = game_statistics.actor_visited_levels
+	-- save_data.actor_visited_smarts = game_statistics.actor_visited_smarts
+    local modules = get_modules()
+    debug_write("Module count "..tostring(#modules))
+    for name, module in pairs(modules) do
+        if module.roguelite_save_state then 
+            debug_write("Saving data "..name)
+            module.roguelite_save_state(save_data)
+        end
+    end
+
+    persist(save_data)
+end
+
+local function actor_on_first_update()
+    if not roguelite_manager_mcm.get_config("is_roguelite_enabled", true) then
+        debug_write("actor_on_first_update roguelite disabled.")
+        return
+    end
+
+    if IsHardcoreMode() then
+        local data = alife_storage_manager.get_state()
+        if not data.roguelite_restore_complete then
+            debug_write("Initializing from prior Ironman games.")
+            load_prior_state()
+            data.roguelite_restore_complete = true
+        end
+    end
+end
+
+function get_modules()
+    local f	= getFS()
+    local flist = f:file_list_open_ex("$game_scripts$",bit_or(FS.FS_ListFiles,FS.FS_RootOnly),"roguelite_module_*.script")
+    local f_cnt = flist:Size()
+    local modules = {}
+
+    for	it=0, f_cnt-1 do
+        local file = flist:GetAt(it)
+        local file_name = file:NameShort()
+        if (file:Size() > 0) then
+            file_name = file_name:sub(0,file_name:len()-7)
+            if (_G[file_name]) then
+                debug_write("Found module "..file_name)
+                modules[file_name] = _G[file_name]
+            end
+        end
+    end
+
+    return modules
+end
+
+function is_enabled()
+    return roguelite_manager_mcm.get_config("is_roguelite_enabled", true)
+end
+
+function on_option_change()
+    local get_config = roguelite_manager_mcm.get_config
+
+    debug_write("is_roguelite_enabled = "..tostring(get_config("is_roguelite_enabled", true)))
+    debug_write("debug = "..tostring(get_config("debug", false)))
+end
+
+function on_game_load()
+    if ui_mcm then
+	    on_option_change()
+    end
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_game_load",on_game_load)
+    RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+    RegisterScriptCallback("actor_on_before_death", actor_on_before_death)
+end
+
+local function main_menu_on_init()
+    debug_write("Version "..config.version)
+    debug_write("Core Registered")
+    debug_write("Initializing modules.")
+
+    if ui_mcm then
+        --Reload to apply module options
+        ui_mcm.reload()
+    end
+end
+
+RegisterScriptCallback("main_menu_on_init", main_menu_on_init)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

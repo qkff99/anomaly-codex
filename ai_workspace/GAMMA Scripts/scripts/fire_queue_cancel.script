@@ -1,0 +1,46 @@
+-- Made by Utjan
+local time_last_fire = 0
+
+local queue_time_ms = 100 -- This is the new timeslot for queuing shots. 50 = a shot will queue if attempting to fire within x miliseconds of when the gun can shoot again
+
+local valid_class = {
+	WP_SVU = true, -- SVU Snipers
+	WP_PM = true,  -- Pistols
+	WP_AK74 = true
+}
+
+local valid_sections = {
+	wpn_svu = true,
+    wpn_svu_alt = true,
+    wpn_svu_nimble = true
+}
+
+local function on_before_key_press(key, bind, bool, flags)
+	if bind == key_bindings.kWPN_FIRE then
+		--printf("Attempt to fire")
+		local wpn = db.actor:active_item()
+		local class = wpn and wpn:section() and SYS_GetParam(0, wpn:section(), "class")
+		local parent_section = wpn and SYS_GetParam(0, wpn:section(), "parent_section", wpn:section())
+		if wpn and wpn:cast_Weapon() and (class and valid_class[class] or parent_section and valid_sections[parent_section]) then
+			--printf("Is correct weapon")
+			local secs_per_round = wpn:cast_Weapon():RPM() -- RPM constant is actually the time between shots in seconds
+			local ms_per_round = secs_per_round * 1000
+			if time_last_fire ~= 0 and time_global() < time_last_fire + ms_per_round - queue_time_ms then
+				flags.ret_value = false
+				--printf("SHOT CANCELED")
+			end
+		end
+	end
+end
+
+function actor_on_weapon_fired(obj, wpn, ammo_elapsed, grenade_elapsed, ammo_type, grenade_type)
+	local class = SYS_GetParam(0, wpn:section(), "class")
+	if class and valid_class[class] then
+		time_last_fire = time_global()
+	end
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_before_key_press", on_before_key_press)
+	RegisterScriptCallback("actor_on_weapon_fired", actor_on_weapon_fired)
+end

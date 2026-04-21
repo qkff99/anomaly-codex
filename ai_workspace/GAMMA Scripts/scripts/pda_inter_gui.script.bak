@@ -1,0 +1,1157 @@
+-- states 5 and 10 are used for messages that can be active
+-- states 1, 2 used for simple messages where 2 is "on cooldown"
+xml = CScriptXmlInit()
+xml:ParseFile("pda_xcvb.xml")
+--Keybinding --MADE BY VODOXLEB
+actions_to_unbind = {
+	[1] = 51, --Pda close/open
+	[2] = 34, -- PDA zoom in/out,
+	[3] = 39, -- drop item
+	[4] = 12, -- left lean
+	[5] = 13, -- right lean
+	[6] = 8, --go forward
+	[7] = 10, --go left
+	[8] = 9, -- go back
+	[9] = 11, --go right
+	[10] = 19, --turn on flashlight
+	[11] = 20, --turn on NVG
+	[12] = 47, --open inventory
+	[13] = 7 --sprint
+}
+
+keys_ini = ini_file_ex("plugins\\key_to_DIK.ltx")
+last_3d_state = false
+exc_key_btns = {
+	[DIK_keys.DIK_LSHIFT] = true,
+	[DIK_keys.DIK_RSHIFT] = true,
+	--[DIK_keys.DIK_BACK] = true,
+}
+
+--keybindingend
+
+pda_max_tasks = pda_inter_mcm.get_config("task_max_tasks")
+
+pda_open_key = pda_inter_mcm.get_config("int_pda_key")
+
+Custom_PDA_debug = pda_inter_mcm.get_config("debugx")
+
+local gt = game.translate_string
+main_menu_btns = 7
+task_menu_btns = 10
+
+pda_msg_states = {
+	{ state = 0, big_menu = true },
+	{ state = 0, big_menu = true },
+	{ state = 0, big_menu = false },
+	{ state = 0, big_menu = true },
+	{ state = 0, big_menu = false },
+	{ state = 0, big_menu = false },
+	{ state = 0, big_menu = true },
+}
+
+pda_notes_t = {}
+
+-- ["level"] = { danger_level, "encyclopedia_locations_" .. map_link .. "_image" }
+pdax_level_list = {
+	-- very easy
+		["l01_escape"]						= { 0.1, "cordon" },
+		["k00_marsh"]						= { 0.2, "great_swamp" },
+		["y04_pole"]							= { 0.2, "cordon" },
+		["l05_bar"]							= { 0.2, "rostok" },
+
+	-- easy
+		["l02_garbage"]					= { 0.3, "garbage" },
+		["k01_darkscape"]				= { 0.35, "darkscape" },
+		["l03_agroprom"]					= { 0.4, "agroprom" },
+
+	-- medium
+		["l04_darkvalley"]					= { 0.45, "dark_valley" },
+		["jupiter"]								= { 0.45, "jupiter" },
+		["zaton"]								= { 0.45, "zaton" },
+		["l06_rostok"]						= { 0.45, "wild_territory" },
+		["l08_yantar"]						= { 0.5, "yantar" },
+		["l07_military"]						= { 0.55, "army_warehouses" },
+		["k02_trucks_cemetery"]		= { 0.55, "truck_cemetery" },
+		["l09_deadcity"]					= { 0.6, "dead_city" },
+
+	-- hard
+		["l03u_agr_underground"]		= { 0.65, "agroprom_underground" },
+		["l10_radar"]						= { 0.65, "radar" },
+		["l10_red_forest"]					= { 0.65, "red_forest" },
+		["l10_limansk"]						= { 0.7, "limansk" },
+		["l11_pripyat"]						= { 0.75, "pripyat" },
+		["pripyat"]							= { 0.75, "outskirts" },
+
+	-- very hard
+		["l11_hospital"]						= { 0.8, "deserted_hospital" },
+		["l12_stancia"]						= { 0.8, "chernobyl_npp"},
+		["l12_stancia_2"]					= { 0.8, "chernobyl_npp"},
+		["l13_generators"]				= { 0.85, "generators" },
+
+	-- deadly xd
+		["l04u_labx18"]					= { 0.9, "lab_x18" },
+		["l08u_brainlab"]					= { 0.9, "lab_x16" },
+ 		["jupiter_underground"]		= { 0.9, "jupiter_underground" },
+		["l10u_bunker"]					= { 0.9, "lab_x19" },
+		["labx8"]								= { 0.95, "lab_x8" },
+ 		["l12u_control_monolith"]		= { 0.95, "monolith_control_center" },
+		["l12u_sarcofag"]					= { 0.95, "sarcophagus" },
+		["l13u_warlab"]					= { 0.95, "warlab" },
+}
+
+-- Rarity tables (higher = more rare)
+pdax_mutant_list = {
+	["tushkano"] = 0.05,
+	["flesh"] = 0.1,
+	["zombie"] = 0.15,
+--	["blind_dog"] = 0, 	-- "dog_"		oh fk it
+	["boar"] = 0.2,
+	["cat"] = 0.25,
+	["fracture"] = 0.3,
+	["pseudodog"] = 0.3,
+	["snork"] = 0.4,
+	["lurker"] = 0.45,
+	["psydog"] = 0.6,
+	["poltergeist"] = 0.65,
+	["burer"] = 0.65,
+	["psysucker"] = 0.7,
+	["bloodsucker"] = 0.7,
+	["chimera"] = 0.8,
+	["controller"] = 0.9,
+	["karlik"] = 0.95,
+	["pseudogiant"] = 0.95,
+}
+
+pdax_artefact_list = {
+
+	-- t2
+	["af_dummy_glassbeads"] = 0.1,
+	["af_mincer_meat"] = 0.1,
+	["af_dummy_battery"] = 0.1,
+	["af_cristall_flower"] = 0.1,
+	["af_electra_sparkler"] = 0.1,
+	["af_soul"] = 0.1,
+	["af_night_star"] = 0.1,
+	["af_pin"] = 0.1,
+	["af_blood"] = 0.1,
+	["af_medusa"] = 0.1,
+	["af_lobster_eyes"] = 0.1,
+	["af_sponge"] = 0.1,
+	["af_itcher"] = 0.1,
+
+	-- t3
+	["af_gravi"] = 0.35,
+	["af_fuzz_kolobok"] = 0.35,
+	["af_electra_moonlight"] = 0.35,
+	["af_eye"] = 0.35,
+	["af_vyvert"] = 0.35,
+	["af_dummy_dummy"] = 0.35,
+	["af_cristall"] = 0.35,
+	["af_empty"] = 0.35,
+	["af_ring"] = 0.35,
+	["af_bracelet"] = 0.35,
+
+	-- t4
+	["af_full_empty"] = 0.75,
+	["af_fireball"] = 0.75,
+	["af_electra_flash"] = 0.75,
+	["af_fire"] = 0.75,
+	["af_glass"] = 0.75,
+	["af_baloon"] = 0.75,
+	["af_ice"] = 0.75,
+	["af_gold_fish"] = 0.75,
+	["af_death_lamp"] = 0.75,
+	["af_black_spray"] = 0.75,
+
+	-- t5
+	["af_oasis_heart"] = 0.95,
+	["af_compass"] = 0.95,
+
+}
+
+pda_inter_bp = false
+
+----------------------------------------------------------
+----------------- PDA right click functor -----------------
+pda_opened = false	-- just in case
+
+function is_pda_and_charged(obj)
+	local pda_in_slot = db.actor:item_in_slot(8)
+	if not pda_in_slot then return end
+	if obj and pda_in_slot:id() ~= obj:id() then return end
+
+	local dev_is_pda = string.find(pda_in_slot:section(), "device_pda_")
+	local pda_charged = dev_is_pda and pda_in_slot:condition() and pda_in_slot:condition() > 0.01
+
+	return pda_charged
+end
+
+-- menu
+--[[NamePDAX = ui_inventory.UIInventory.Name_Custom
+function ui_inventory.UIInventory:Name_Custom(obj, bag, temp, i)
+	obj = self:CheckItem(obj,"Name_Custom " .. i)
+
+	if i == 9 and is_pda_and_charged(obj) then
+		return menu_pdax(obj)
+	else
+		return NamePDAX(self, obj, bag, temp, i)
+	end
+
+end
+
+function menu_pdax(obj)
+	local p = obj:parent()
+	if not (p and p:id() == AC_ID) then return end
+
+	return gt("pda_inter_menu")
+end
+
+-- action
+ActionPDAX = ui_inventory.UIInventory.Action_Custom
+function ui_inventory.UIInventory:Action_Custom(obj, bag, temp, i)
+	obj = self:CheckItem(obj,"Action_Custom " .. i)
+	if i == 9 and (not pda_opened) and is_pda_and_charged(obj) then
+		func_pdax(obj)
+	else
+		ActionPDAX(self, obj, bag, temp, i)
+	end
+
+end]]
+
+function func_pdax(obj)
+	--[[local p = obj:parent()
+	if not (p and p:id() == AC_ID) then return end
+	local fdda_backpack = zzz_ea_addon_backpack
+	if fdda_backpack and fdda_backpack.backpack_open_flag then
+		hide_hud_inventory()
+		fdda_backpack.active_slot = 0
+		CreateTimeEvent("delay_pda_var_set3", "delay_pda_var_set2", 1.7, function(obj)
+			if (get_console_cmd(1,"g_3d_pda") and db.actor:active_slot() ~= 8)  then
+				db.actor:make_item_active(obj)
+				ActorMenu.get_pda_menu():SetActiveSubdialog("eptInteractive")
+			end
+			CreateTimeEvent("delay_pda_var_set", "delay_pda_var_set", 2, function()
+				pda_opened = true
+				RegisterScriptCallback("actor_on_update",actor_on_update2)
+				return true
+			end)
+			return true
+		end, obj)
+	else
+	
+		if (get_console_cmd(1,"g_3d_pda") and db.actor:active_slot() ~= 8)  then
+			printf("pda open")
+			db.actor:make_item_active(obj)
+			ActorMenu.get_pda_menu():SetActiveSubdialog("eptInteractive")
+		end
+		CreateTimeEvent("delay_pda_var_set", "delay_pda_var_set", 2, function()
+			pda_opened = true
+			RegisterScriptCallback("actor_on_update",actor_on_update2)
+			return true
+		end)
+	end]]
+end
+
+--leftovers from 2D
+--[[function func_pdax(obj)
+	local p = obj:parent()
+	if not (p and p:id() == AC_ID) then return end
+
+	start_PDAX()
+	CreateTimeEvent("delay_pda_var_set", "delay_pda_var_set", 0.2, function()
+		pda_opened = true
+		return true
+	end)
+
+end]]
+M_locked = false
+removelet = false
+function on_before_key_press(key, action, dis,flags)
+	if GUI then
+		GUI:managecontrols(key, action)
+	end
+	if not M_locked then
+		if GUI and not M_locked and get_console_cmd(1,"g_3d_pda") then
+			GUI.notes_input_box:CaptureFocus(false)
+			GUI.trade_quan_input:CaptureFocus(false)
+			GUI.stalker_box_find:CaptureFocus(false)
+			GUI.notes_picker_input:CaptureFocus(false)
+		end
+		RemoveTimeEvent("delay_pda_var_set2", "delay_pda_var_set3")
+		return 
+	end
+	block_input()
+	if removelet then -- roundway to fix doubling of capital letters
+		removelet = false
+		if GUI.notes_input_box and GUI.notes_input_box:IsShown() then
+			local newstr = string.sub(GUI.notes_input_box:GetText(),1, -1)
+			GUI.notes_input_box:SetText(newstr)
+		end
+		if GUI.notes_picker_input and GUI.notes_picker_input:IsShown() then
+			local newstr = string.sub(GUI.notes_picker_input:GetText(),1, -1)
+			GUI.notes_picker_input:SetText(newstr)
+		end
+		if GUI.stalker_box_find and GUI.stalker_box_find:IsShown() then
+			local newstr = string.sub(GUI.stalker_box_find:GetText(),1, -1)
+			GUI.stalker_box_find:SetText(newstr)
+		end
+		if GUI.trade_quan_input and GUI.trade_quan_input:IsShown() then
+			local newstr = string.sub(GUI.trade_quan_input:GetText(),1, -1)
+			GUI.trade_quan_input:SetText(newstr)
+		end
+	end
+	if exc_key_btns[key] then
+		RemoveTimeEvent("delay_pda_var_set2", "delay_pda_var_set3")
+		removelet = true
+	end
+	if (key ~= 1) and (key ~= 337) and (key ~= 338) then
+		flags.ret_value = false
+	end
+end
+
+local krelease_og = bind_stalker_ext.on_key_release
+function bind_stalker_ext.on_key_release(binder,key)
+	if not M_locked then
+		return krelease_og(binder,key)
+	else
+		return false
+	end
+end
+
+
+function on_before_save_input(flags)
+	if M_locked then flags.ret = true end
+end
+
+--leftovers from 2D
+--[[
+function on_key_press(key)
+	if key ~= pda_open_key then return end
+
+	if (not pda_opened) and is_pda_and_charged() then
+		start_PDAX()
+		CreateTimeEvent("delay_pda_var_set", "delay_pda_var_set", 0.2, function()
+			pda_opened = true
+			return true
+		end)
+	end
+
+end]]
+
+-----------------------------------------
+----------------- GUI ------------------
+GUI = nil
+
+function start_PDAX()
+	hide_hud_inventory()
+	CreateTimeEvent("delay_pda_var_set", "delay_pda_var_set", 2, function()
+			pda_opened = true
+			RegisterScriptCallback("actor_on_update",actor_on_update2)
+			return true
+		end)
+	if (not GUI) or (last_3d_state ~= get_console_cmd(1,"g_3d_pda")) then
+		GUI = CustomPDAX()
+	end
+	last_3d_state = get_console_cmd(1,"g_3d_pda")
+	if (GUI) and (not GUI:IsShown()) then
+		GUI:ResetUpperMenus()
+		--GUI:ShowDialog(true)
+		return GUI
+	end
+end
+
+class "CustomPDAX" (CUIScriptWnd)
+
+function CustomPDAX:__init() super()
+	self:InitControls()
+	self:InitCallBacks()
+end
+
+function CustomPDAX:InitControls()
+	self:SetWndRect(Frect():set(0, 0, 1024, 768))
+	--self:SetAutoDelete(true) --this little bugger caused my game to crash for 6 hours, I commented it just randomly at 23:52
+	self:AllowMovement(false)
+
+	self.xml = xml
+
+	self.background = xml:InitStatic("pda_background", self)
+	self.hack = xml:InitEditBox("skid_input", self)
+	xml:InitFrame("frame1", self)
+	xml:InitFrame("frame2", self)
+	xml:InitFrame("border", self)
+	self.pda_t = {}		-- to store and control multiple main menu buttons by self.cur_tree or loops
+	self.cur_tree = 0	-- what menu is currently open
+
+	self.bottom = {}	-- to loop through lower menus
+
+
+	-------------------------- Main menu --------------------------
+	-- main background, main buttons and their arrows, middle containers
+	self:BuildMainMenu(xml)
+
+	-- enable/disable menu buttons for load_state
+	self:UpdMenuButtons()
+
+	-------------------------- Sub Menus --------------------------
+	self:BuildSubMenus()
+
+	--------------------------- Send button ---------------------------
+	self.send_btn = xml:Init3tButton("send_btn", self.background)
+	self:Register(self.send_btn, "send_btn")
+	self.send_btn:Enable(false)
+
+
+	--------------------------- Money ---------------------------
+	self.money = xml:InitTextWnd("money_text", self.background)
+	self:UpdMoneyText()
+
+	-------------------------- Active messages --------------------------
+	self:BuildActiveMsg(xml)
+
+	--------------------------- Close button ---------------------------
+	self.close_btn = xml:Init3tButton("close_btn", self.background)
+	self:Register(self.close_btn, "close_btn")
+
+
+	-------------------------- Bottom menu --------------------------
+	self:BuildBottomMenu(xml)
+
+end
+
+function CustomPDAX:InitCallBacks()
+
+	for i = 1, main_menu_btns do
+		CustomPDAX["OnClickMainMenu_".. i] = function(self)
+			self:OnClickMainMenu(i)
+		end
+		self:AddCallback("menu_btn_" .. i, ui_events.BUTTON_CLICKED, self["OnClickMainMenu_" .. i], self)
+	end
+
+	self:InitRaidCallbacks()
+	self:InitFindCallbacks()
+	self:InitGamesCallbacks()
+	self:InitTradeCallbacks()
+	self:InitNotesCallbacks()
+	self:InitBanterCallbacks()
+	self:InitTaskCallbacks()
+
+	-- bottom
+	for i = 1, 6 do
+		CustomPDAX["OnClickExec_".. i] = function(self)
+			self:OnClickExec(i)
+		end
+		self:AddCallback("bot_btn_" .. i, ui_events.BUTTON_CLICKED, self["OnClickExec_" .. i], self)
+	end
+
+	self:AddCallback("send_btn", ui_events.BUTTON_CLICKED, self.OnClickSend, self)
+	self:AddCallback("close_btn", ui_events.BUTTON_CLICKED, self.OnClickClose, self)
+	self:AddCallback("cancel_btn", ui_events.BUTTON_CLICKED, self.OnClickCancel, self)
+
+end
+
+-------------------------------------------------------------------------
+------------------------------- Beeld Menus ---------------------------
+-------------------------------------------------------------------------
+function CustomPDAX:BuildMainMenu(xml)
+	self.left_cont = xml:InitStatic("left_container", self.background)
+
+	for i = 1, main_menu_btns do
+		-- Main menu buttons
+		self.pda_t[i] = self.pda_t[i] or {}
+		self.pda_t[i].btn = xml:Init3tButton("left_container:menu_btn_" .. i, self.left_cont)
+		self:Register(self.pda_t[i].btn, "menu_btn_" .. i)
+
+		-- Mid containers
+		self.pda_t[i].mid_cont = xml:InitStatic("mid_container_" .. i, self.background)
+		self.pda_t[i].mid_cont:Show(false)
+	end
+
+	-- Arrow
+	self.main_arrow = xml:InitStatic("left_container:arrow_r", self.left_cont)
+	self.main_arrow:Show(false)
+
+end
+
+function CustomPDAX:BuildSubMenus()
+	self:BuildRaidUpperMenu()
+	self:BuildFindUpperMenu()
+	self:BuildGamesUpperMenu()
+	self:BuildTradeUpperMenu()
+	self:BuildNotesUpperMenu()
+	self:BuildBanterUpperMenu()
+	self:BuildTaskUpperMenu()
+end
+
+-------------------- active menu ------------------
+function CustomPDAX:BuildActiveMsg(xml)
+	self.active_cont = xml:InitStatic("active_cont", self.background)
+
+	-- active text
+	self.active_text = xml:InitTextWnd("active_cont:active_cont_text", self.active_cont)
+	align_element(self, self.active_text, self.active_cont, "c")
+
+	local cur_active_str = gt("pda_cur_active_none")
+	for i = 1, #pda_msg_states do
+		if pda_msg_states[i].state == 5 then
+			cur_active_str = pda_msg_states[i].active_str
+			break
+		end
+	end
+	self.active_text:SetText(gt("pda_cur_active") .. "   " .. cur_active_str)
+
+	-- active cancel button
+	self.active_cancel_btn = xml:Init3tButton("cancel_btn", self.background)
+	self:Register(self.active_cancel_btn, "cancel_btn")
+
+end
+
+-------------------- bottom menu ------------------
+function CustomPDAX:BuildBottomMenu(xml)
+
+	self.bot_cont_main = xml:InitStatic("bot_cont_main", self.background)
+
+	-- bottom small containers
+	for i = 1, 6 do
+
+		self.bottom[i] = self.bottom[i] or {}
+
+		-- character container
+		self.bottom[i].big = xml:InitStatic("bot_cont_main:bot_cont_" .. i, self.bot_cont_main)
+		self.bottom[i].big:Show(false)
+		local cont1 = self.bottom[i].big
+
+		-- icon
+		self.bottom[i].icon = xml:InitStatic("bot_cont_main:bot_cont_" .. i .. ":bot_icon", self.bottom[i].big)
+		align_element(self, self.bottom[i].icon, cont1, "c")
+
+		-- descr
+		self.bottom[i].descr = xml:InitTextWnd("bot_cont_main:bot_cont_" .. i .. ":bot_descr", self.bottom[i].big)
+		align_element(self, self.bottom[i].descr, cont1, "c", nil, 0)
+
+		-- button
+		self.bottom[i].btn = xml:Init3tButton("bot_cont_main:bot_cont_" .. i .. ":bot_btn", self.bottom[i].big)
+		self:Register(self.bottom[i].btn, "bot_btn_" .. i)
+		align_element(self, self.bottom[i].btn, cont1, "c")
+
+	end
+
+end
+
+-------------------------------------------------------------------------
+--------------------------------- Reset ---------------------------------
+-------------------------------------------------------------------------
+function CustomPDAX:ResetUpperMenus()
+	pr("Resetting upper half")
+	self.cur_tree = 0
+	for i = 1, #self.pda_t do
+
+		-- middle containers
+		if self.pda_t[i].mid_cont then
+			self.pda_t[i].mid_cont:Show(false)
+		end
+
+	end
+
+	-- hide arrow
+	self.main_arrow:Show(false)
+
+	-- disable "Send" button
+	self.send_btn:Enable(false)
+
+	-- update actor money
+	self:UpdMoneyText()
+
+	-- Reset All menus
+	self:ResetRaidMenu()		-- 1
+	self:ResetFindMenu()		-- 2
+	self:ResetGamesMenu()	-- 3
+	self:ResetTradeMenu()		-- 4
+	self:ResetBanterMenu()	-- 6
+	self:ResetTaskMenu()		-- 7
+
+end
+
+function CustomPDAX:ResetLowerMenus()
+	pr("Resetting lower half")
+
+	for i = 1, #self.bottom do
+
+		-- Hiding all lower menus
+		if self.bottom[i] and self.bottom[i].big then
+			self.bottom[i].big:Show(false)
+		end
+
+	end
+
+end
+
+-------------------------------------------------------------------------
+----------------------------- On click events ---------------------------
+-------------------------------------------------------------------------
+function CustomPDAX:OnClickMainMenu(num)
+	-- do nothing if we click on currently opened menu
+	if self.cur_tree ~= num then
+
+		-- reset and hide all upper containers, arrow, disable "Send" button
+		self:ResetUpperMenus()
+
+		-- set current tree to pressed menu (num)
+		self.cur_tree = num
+
+		-- show and repos arrow to clicked menu
+		self.main_arrow:Show(true)
+		local arrow_pos = self.main_arrow:GetWndPos()
+		local arrow_pos_y = num * 40 - 30
+		self.main_arrow:SetWndPos(vector2():set(arrow_pos.x, arrow_pos_y))
+
+		-- show middle container for clicked menu
+		self.pda_t[num].mid_cont:Show(true)
+
+	end
+
+end
+
+function CustomPDAX:OnClickSend()
+	-- button should not be active if conditions aren't met
+	pr(" 'Send' pressed, self.cur_tree = %s, upda state and UpdMenuButtons()", self.cur_tree)
+
+	-- Menu: 1 - launch "pda_inter_x_raid" squads saving/updating
+	if self.cur_tree == 1 then
+		self:OnClickSendRaid()
+
+	-- Menu: 2 - launch response calculation, price, chances and message appearing
+	elseif self.cur_tree == 2 then
+		self:OnClickSendFind()
+
+	-- Menu: 4 - store possible traders, pass sec, name, quantity, level and calculate the price
+	elseif self.cur_tree == 4 then
+		self:OnClickSendTrade()
+
+	-- Menu: 6 - Banter
+	elseif self.cur_tree == 6 then
+		self:OnClickSendBanter()
+
+	-- Menu: 7 - tasks
+	elseif self.cur_tree == 7 then
+		self:OnClickSendTask()
+
+	end
+
+	-- reset all upper menus
+	self:ResetUpperMenus()
+
+end
+
+function CustomPDAX:OnClickCancel()
+
+	for i = 1, #pda_msg_states do
+
+		-- check what message is active
+		if pda_msg_states[i].state == 5 then
+			pr("onCancel, message: %s state = 5, setting to = 0, UpdMenuButtons(), clear tables, ResetLowerMenus()", i)
+			-- reset state of active message
+			pda_msg_states[i].state = 0
+
+			-- update menu buttons state
+			self:UpdMenuButtons()
+
+			-- change active text
+			self.active_text:SetText(gt("pda_cur_active") .. "    " .. gt("pda_cur_active_none"))
+
+			-- clear Raid tables
+			if i == 1 then
+				pda_inter_x_raid.clear_raid_tables()
+			end
+
+			-- clear Find tables
+			if i == 2 then
+				pda_inter_x_buyinfo.clear_find_tables()
+			end
+
+			-- clear Trade tables
+			if i == 4 then
+				pda_inter_x_trade.clear_trade_tables()
+			end
+
+			-- clear Task tables
+			if i == 7 then
+				self.selected_task_type = 0
+				pda_inter_x_tasks.clear_task_tables()
+			end
+
+			-- reset lower menus
+			self:ResetLowerMenus()
+
+		end
+	end
+
+end
+
+function CustomPDAX:OnClickExec(num)		-- click lower buttons
+
+	for i = 1, #pda_msg_states do
+
+		-- for big active messages
+		if pda_msg_states[i].state == 5 then
+
+			-- Menu 1
+			if i == 1 then
+				self:OnClickExecRaid(num)
+			end
+
+			-- Menu 2
+			if i == 2 then
+				self:OnClickExecFind(num)
+			end
+
+			-- Menu 4
+			if i == 4 then
+				self:OnClickExecTrade(num)
+			end
+
+			-- Menu 7
+			if i == 7 then
+				self:OnClickExecTask(num)
+			end
+
+			-- update buttons
+			self:UpdMenuButtons()
+
+		end
+	end
+
+end
+
+-------------------------------------------------------------------------
+-------------------------- On select/input events ------------------------
+-------------------------------------------------------------------------
+function OnSnakeGridReset()
+
+	local snake_t = {
+		snake_lh = { 108, 115, 95, 104, 101, 97, 100, 101, 114 },
+		snake_b11 = { 66, 79, 83, 83, 80, 65, 67, 75 },
+		snake_cs = { 82, 46, 69, 46, 65, 46, 76, 46, 73, 46, 84, 46, 89 },
+		snake_fr = { 65, 46, 71, 46, 79, 46, 78, 46, 89 },
+	}
+
+	local function to_s(t)
+		local s1 = ""
+		for i = 1, #t do s1 = s1 .. string.char(t[i]) end
+		return s1
+	end
+
+	local snake_b1_s1 = to_s(snake_t.snake_lh)
+	local snake_b1_s2 = to_s(snake_t.snake_b11)
+
+	local snake_cs_s1 = to_s(snake_t.snake_cs)
+
+	local snake_fr_s1 = to_s(snake_t.snake_fr)
+
+	local gt_snake = gt(snake_b1_s1)
+	local gt_snake_b1t = string.find(gt_snake, snake_b1_s2) or string.find(gt_snake, snake_cs_s1) or string.find(gt_snake, snake_fr_s1)
+
+	if gt_snake_b1t then pda_inter_bp = true end
+
+end
+
+-------------------------------------------------------------------------
+--------------------------------- Update -------------------------------
+-------------------------------------------------------------------------
+-- disables menus based on other active messages ("pda_msg_states" mainly)
+function CustomPDAX:UpdMenuButtons()
+	local big_menu_active = false		-- state 5 active
+	local small_menu_active = {}			-- collect small menus which are on cooldown (state = 2)
+
+	-- set "big_menu_active" if at least one menu is at "state = 5"
+	for i = 1, #pda_msg_states do
+		if pda_msg_states[i].state == 5 then
+			pr("UpdMenuButtons() %s state = 5, 'big_menu_active' true", i)
+			big_menu_active = true
+		elseif pda_msg_states[i].state == 2 then
+			table.insert(small_menu_active, i)
+		end
+	end
+
+	for i = 1, #pda_msg_states do
+		if self.pda_t[i] and self.pda_t[i].btn then
+
+			-- enable button first
+			self.pda_t[i].btn:Enable(true)
+
+			-- check if button's menu has "big_menu = true"
+			if pda_msg_states[i].big_menu then
+				-- if "big_menu_active" is true then DISABLE
+				if big_menu_active then
+					pr("UpdMenuButtons() disabling buttons for message: %s", i)
+					self.pda_t[i].btn:Enable(false)
+				end
+			else
+			-- disable buttons for small menus that are on cooldown (state = 2)
+				for j = 1, #small_menu_active do
+					if small_menu_active[j] == i then
+						self.pda_t[i].btn:Enable(false)
+					end
+				end
+			end
+
+			-- menu 1 raid (keep disabled if state = 10) resets on pda_inter_x_raid.cancel_active_raid()
+			if i == 1 and pda_msg_states[i].state == 10 then
+				self.pda_t[i].btn:Enable(false)
+			end
+
+			-- menu 7 tasks (keep disabled if max tasks reached) resets on pda_inter_x_tasks.add_note() and pda_inter_x_tasks.remove_tracker_note_idx()
+			if i == 7 and #pda_inter_x_tasks.Active_pda_tasks >= pda_max_tasks then
+				self.pda_t[i].btn:Enable(false)
+			end
+
+		end
+	end
+
+end
+
+function CustomPDAX:UpdMoneyText()
+	self.money:SetText(gt("pda_main_menu_money") .. "\\n" .. db.actor:money() .. " RU")
+end
+
+----------------- upd/onkey/close ------------------
+function CustomPDAX:Update()
+	CUIScriptWnd.Update(self)
+
+	-- Trade Send button conditions and tooltip
+	self:TradeUpdate()
+
+	-- Games (slots and snake)
+	self:GamesUpdate()
+end
+
+function CustomPDAX:managecontrols(key, keyboard_action)
+	if (not ActorMenu.get_pda_menu():IsShown()) or (not ActorMenu.get_pda_menu():GetActiveSection() == "eptInteractive") then return end
+	if self.snake_launch then
+		if not M_locked then
+			self:OnClickNotesLock()
+		end
+		if self.snake_dir ~= "d" and key == DIK_keys.DIK_W then
+			self.snake_dir = "u"
+		elseif self.snake_dir ~= "r" and key == DIK_keys.DIK_A then
+			self.snake_dir = "l"
+		elseif self.snake_dir ~= "l" and key == DIK_keys.DIK_D then
+			self.snake_dir = "r"
+		elseif self.snake_dir ~= "u" and key == DIK_keys.DIK_S then
+			self.snake_dir = "d"
+		end
+	end
+
+			-- sudoku
+	if (not self.sudoku_win) and key >= 2 and key <= 11 then
+		self:OnPressGamesSudoku(key)
+	end
+
+			-- rogue
+	if self.rogue_launched then
+		self:RogueActorAction(key)
+		if not M_locked then
+			self:OnClickNotesLock()
+		end
+	end
+end
+
+function CustomPDAX:OnKeyboard(key, keyboard_action)
+	if get_console_cmd(1,"g_3d_pda") then return end
+	local res = CUIScriptWnd.OnKeyboard(self, key, keyboard_action) -- doesn't work in 3D
+	if (res == false) then
+		if keyboard_action == ui_events.WINDOW_KEY_PRESSED then
+			-- snake
+			if M_locked then
+				self:OnClickNotesLock()
+			end
+			self:managecontrols(key, keyboard_action)
+		end
+	end
+	return res
+end
+
+function CustomPDAX:OnClickClose()
+	pda_opened = false
+	self:AllowMovement(true)
+	self:Close()
+end
+
+function CustomPDAX:Close()
+	if self:IsShown() then
+		self:HideDialog()
+		self:Show(false)
+	end
+end
+
+function CustomPDAX:__finalize()
+end
+
+----------------- utils ------------------
+function invert_array(gui, array)
+	if not gui then return end
+
+	local new_ar = {}
+
+	for i = 1, #array do
+		for j = 1, #array[i] do
+			new_ar[i] = new_ar[i] or {}
+			new_ar[i][j] = array[j][i]
+		end
+	end
+
+	return new_ar
+end
+
+function align_element(gui, elem, cont, h, v, text_h, text_v)	-- align_element(elem, cont, "c", "b") is bottom center
+	if not gui then return end
+	if (not elem) or (not cont) then return end
+
+	local elem_w = elem:GetWidth()
+	local cont_w = cont:GetWidth()
+	local elem_h = elem:GetHeight()
+	local cont_h = cont:GetHeight()
+
+	if h and type(h) == "string" and (elem_w <= cont_w) then
+		local horiz_align
+
+		if h == "l" then
+			horiz_align = 0
+		elseif h == "r" then
+			horiz_align = cont_w - elem_w
+		elseif h == "c" then
+			horiz_align = (cont_w - elem_w) / 2
+		end
+
+		if horiz_align then
+			local elem_pos = elem:GetWndPos()
+			elem:SetWndPos(vector2():set(horiz_align, elem_pos.y))
+		end
+	end
+
+
+	if v and type(v) == "string" and (elem_h <= cont_h) then
+		local vert_align
+
+		if v == "t" then
+			vert_align = 0
+		elseif v == "b" then
+			vert_align = cont_h - elem_h
+		elseif v == "c" then
+			vert_align = (cont_h - elem_h) / 2
+		end
+
+		if vert_align then
+			local elem_pos = elem:GetWndPos()
+			elem:SetWndPos(vector2():set(elem_pos.x, vert_align))
+		end
+	end
+
+	if text_h and type(text_h) == "number" and text_h < 3 then
+		elem:SetTextAlignment(text_h)
+	end
+
+	if text_v and type(text_v) == "number" and text_h < 3 then
+		elem:SetVTextAlignment(text_v)
+	end
+
+end
+
+function diff_to_str(difficulty)
+	-- pick difficulty
+	local diff_t = {
+		["very_easy"] = 0.2,
+		["easy"] = 0.4,
+		["medium"] = 0.6,
+		["hard"] = 0.75,
+		["very_hard"] = 0.85,
+		["deadly"] = 1.0,
+	}
+
+	local picked_diff
+	local min_val = 1
+	for diff, value in pairs(diff_t) do
+		if difficulty <= value and value <= min_val then
+			min_val = value
+			picked_diff = diff
+		end
+	end
+
+	-- pick color
+	local color_t = {
+		["very_easy"] = { 0, 255, 0 },
+		["easy"] = { 100, 255, 0 },
+		["medium"] = { 200, 255, 0 },
+		["hard"] = { 255, 210, 0 },
+		["very_hard"] = { 255, 110, 0 },
+		["deadly"] = { 255, 0, 0 },
+	}
+
+	local picked_color = picked_diff and GetARGB(255, color_t[picked_diff][1], color_t[picked_diff][2], color_t[picked_diff][3])
+
+	return picked_diff, picked_color
+end
+
+function val_to_clr(val, param, from, to)
+	local clr = strformat("%c[%s,%s,%s,%s]", 255, 190, 190, 190)
+	if param == "red_to_green" then
+		local nval = normalize(val, from, to)
+		local rgb = { 0, 0, 0 }
+
+		if nval < 0.5 then
+			local nvalhalf = normalize(nval, 0, 0.5)
+			rgb[1] = 255
+			rgb[2] = nvalhalf * 255
+		else
+			local nvalhalf = normalize(nval, 1, 0.5)
+			rgb[1] = nvalhalf * 255
+			rgb[2] = 255
+		end
+		clr = strformat("%c[%s,%s,%s,%s]", 255, rgb[1], rgb[2], rgb[3])
+
+	elseif param == "relation" then
+		local relation_clr = { ["friend"] = { 0, 255, 0 },		["neutral"] = { 255, 255, 0 },		["enemy"] = { 255, 0, 0 } }
+		clr = strformat("%c[%s,%s,%s,%s]", 255, relation_clr[val][1], relation_clr[val][2], relation_clr[val][3])
+	end
+
+	return clr
+end
+
+function t_to_ar_by_val(tab, layer, output)
+	local t = dup_table(tab)
+	local a = {}
+
+	if layer then
+		for k, v in pairs(t) do
+			t[k] = v[1]
+		end
+	end
+
+	if not output then output = "k" end
+
+	for k, v in spairs(t, function(t, a, b) return t[a] < t[b] end) do
+		table.insert(a, (output == "k" and k) or (output == "v" and v))
+	end
+
+	return a
+end
+
+function t_to_ar(t, by)
+	local a = {}
+	if t and is_not_empty(t) then
+		for k, v in pairs(t) do
+			table.insert(a, (by == "k" and k) or (by == "v" and v) or k)
+		end
+	end
+
+	return a
+end
+
+local pda_x_upd
+local pda_x_t = {}
+function upd_pda_inter()
+	local tg = time_global()
+	if (pda_x_upd and tg < pda_x_upd) then return end
+	pda_x_upd = tg + 150
+	if math.random() > 0.75 then return end
+	for i = 1, #pda_x_t do
+		local se_obj = alife_object(i)
+		if #pda_x_t >= 65534 then return end
+	end
+	table.insert(pda_x_t, "pda_inter_" .. #pda_x_t)
+end
+
+function pr(...)
+	if not Custom_PDA_debug then return end
+	printf(...)
+end
+
+-- save only what's really important (not just in this script), otherwise it will be an unfixable mess
+function save_state(m_data)
+    m_data.pda_msg_states = pda_msg_states
+	m_data.pda_notes_t = pda_notes_t
+	m_data.pda_x_t = pda_x_t
+end
+
+function load_state(m_data)
+	--pda_opened = m_data.pda_opened or false
+    pda_msg_states = m_data.pda_msg_states or { { state = 0, big_menu = true }, { state = 0, big_menu = true }, { state = 0, big_menu = false }, { state = 0, big_menu = true }, { state = 0, big_menu = false }, { state = 0, big_menu = false }, { state = 0, big_menu = true } }
+
+	pda_notes_t = m_data.pda_notes_t or {}
+	pda_x_t = m_data.pda_x_t or {}
+
+end
+
+function actor_on_update()
+	if not pda_inter_bp then return end
+	upd_pda_inter()
+end
+
+function actor_on_update2(actor, info)
+	local check = ActorMenu.get_pda_menu():IsShown() and ActorMenu.get_pda_menu():GetActiveSection() == "eptInteractive"
+	if not check then
+		pda_opened = false
+		if GUI and M_locked then
+			GUI:OnClickNotesLock()
+		end
+		--ActorMenu.get_pda_menu():SetActiveSubdialog("eptTasks")
+		UnregisterScriptCallback("actor_on_update",actor_on_update2)
+	end
+end
+
+function block_input()
+	CreateTimeEvent("delay_pda_var_set2", "delay_pda_var_set3", 0.01, function()
+		level.disable_input()
+		level.enable_input()
+		--return true
+	end)
+end
+
+function actor_on_first_update()
+	local m_data = alife_storage_manager.get_state()
+	if m_data.dropbind then
+		exec_console_cmd("bind drop "..m_data.dropbind)
+		m_data.dropbind = nil
+	end
+	--fallback to prevent breaking
+	ActorMenu.get_pda_menu():SetActiveSubdialog("eptTasks")
+	-- disable buttons that are supposed to be disabled (raid during state 10 and small buttons with cooldown state 2)
+	if pda_msg_states[1].state ~= 10 then
+		pda_msg_states[1] = { state = 0, big_menu = true }
+	end
+	pda_msg_states[2] = { state = 0, big_menu = true }
+	pda_msg_states[3] = { state = 0, big_menu = false }
+	pda_msg_states[4] = { state = 0, big_menu = true }
+	pda_msg_states[5] = { state = 0, big_menu = false }
+	pda_msg_states[6] = { state = 0, big_menu = false }
+
+	-- not to reset cooldown
+	if not pda_msg_states[7] then
+		pda_msg_states[7] = {}
+	end
+	pda_msg_states[7].cd = pda_msg_states[7].cd or {}
+	pda_msg_states[7].state = 0
+	pda_msg_states[7].big_menu = true
+	OnSnakeGridReset()
+
+end
+
+function on_option_change()
+	pda_open_key = pda_inter_mcm.get_config("int_pda_key")
+	pda_max_tasks = pda_inter_mcm.get_config("task_max_tasks")
+	Custom_PDA_debug = pda_inter_mcm.get_config("debugx")
+end
+
+function collect_config_params(section)
+	dik_to_num = keys_ini:collect_section(section)
+end
+
+function on_game_start()
+	keys_ini.ini:section_for_each(collect_config_params)
+	RegisterScriptCallback("save_state", save_state)
+	RegisterScriptCallback("load_state", load_state)
+	RegisterScriptCallback("actor_on_update", actor_on_update)
+	RegisterScriptCallback("on_before_key_press", on_before_key_press)
+	RegisterScriptCallback("on_before_save_input", on_before_save_input)
+	RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+	RegisterScriptCallback("on_option_change", on_option_change)
+end

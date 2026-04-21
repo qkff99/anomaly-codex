@@ -1,0 +1,334 @@
+--[[
+    Edited and extended Anomaly Radial Menu designed for working with custom classes
+    Author: HarukaSai
+    04/01/2024
+
+    Credits: 
+        Aoldri - original script
+    
+    Features:
+        - Uses custom classes for wheel options
+        - Custom wheel UI XML support
+        - Some changes to make it easier to hook into wheel instance
+        - Fixed some bugs
+]]
+
+function scale_ui(ele, adjust_x, anchor, anchor_point, parent_width)
+	p_width = parent_width or 1024
+	p_center = p_width/2
+	width = ele:GetWidth()
+	pos = ele:GetWndPos()
+	anchorpos = {}
+	anchorpos.left = pos.x
+	anchorpos.right = anchorpos.left + width
+	anchorpos.center = anchorpos.left + width/2
+	ratio = (device().height / device().width) / (768 / 1024)
+	xadjust = anchorpos.left
+	if adjust_x then
+		if anchor_point == "right" then
+			xadjust = p_width - (p_width - (anchor and anchorpos[anchor] or anchorpos.left))*ratio
+		elseif anchor_point == "center" then
+			xadjust = p_center - (p_center - (anchor and anchorpos[anchor] or anchorpos.left))*ratio
+		else
+			xadjust = ratio * (anchor and anchorpos[anchor] or anchorpos.left)
+		end
+	end
+	ele:SetWndSize(vector2():set(ele:GetWidth() * ratio, ele:GetHeight()))
+	ele:SetWndPos( vector2():set(xadjust , pos.y ) )
+end
+
+function move_and_center_element(element, x, y)
+    local pos = vector2()
+    pos.x = x - element:GetWidth()/2
+    pos.y = y - element:GetHeight()/2
+
+    element:SetWndPos(pos)
+end
+
+States = {
+    ENABLED = 1, -- Option is visible and accessible
+    DISABLED = 2, -- Option is visible, but not accessible
+    HIGHLIGHTED = 3, -- Option is 'selected' or 'active'
+    TOUCHED = 4, -- Mouse is hovering over option
+}
+
+State2Colour = {
+    [States.ENABLED] = GetARGB(70, 255, 255, 255),
+    [States.DISABLED] = GetARGB(70, 255, 255, 255),
+    [States.HIGHLIGHTED] = GetARGB(255, 255, 255, 255),
+    [States.TOUCHED] = GetARGB(255, 255, 255, 255),
+}
+
+------------------------------------------------------------------
+-- UI
+-------------------------------------------------------------------
+
+-- you derive from this
+class "WheelOption"
+
+function WheelOption:__init(xml, parent)
+    self.idx                    = 0
+
+    self.xml                    = xml
+
+    self.parent                 = parent
+    
+    self.state                  = States.ENABLED
+
+    self.x                      = tonumber(xml:ReadAttribute("container", 0, "x"))
+    self.y                      = tonumber(xml:ReadAttribute("container", 0, "y"))
+
+    self.angle                  = 0
+end
+
+-- draw ur elements
+function WheelOption:Draw(x, y)
+    -- center of the container, use CenterElement to center child elements
+    self.x                      = x
+    self.y                      = y
+    
+    self.container              = self.xml:InitStatic("container", self.parent)
+    move_and_center_element(self.container, x, y)
+    scale_ui(self.container, true, true, "center")
+
+    -- get new width and height after scaling
+    self.w                      = self.container:GetWidth()
+    self.h                      = self.container:GetHeight()
+end
+
+-- implement ur update, don't need it if ur element only changes on state change and clicks, CALLED EVERY FRAME
+function WheelOption:Update()
+end
+
+-- handle ur states, gets called only when state changes
+function WheelOption:OnState(prev_state, state)
+end
+
+-- kill kill destwoy I'm not bottom uwu quirky (kill the element to draw it again, also kill the events and callbacks if you use any)
+function WheelOption:Destroy()
+    if self.container then
+        self.parent:DetachChild(self.container)
+    end
+end
+
+-- ur onclick and shit, implement behaviour here
+function WheelOption:OnClick()
+end
+
+function WheelOption:Click()
+    if self.state == States.DISABLED then
+        return false -- whoopsy uwu, cwickywicky faiwed owo, wetuwn fawse
+    end
+
+    self:OnClick()
+    return true -- bro really clicked fr on god no cap
+end
+
+function WheelOption:CenterElement(element)
+    local w = element:GetWidth()
+    local h = element:GetHeight()
+
+    element:SetWndPos(vector2():set(((self.w * 0.5) - (w  * 0.5)), (self.h * 0.5) - (h  * 0.5)))
+end
+
+function WheelOption:SetState(state)
+    if state ~= self.state then
+        local prev_state = self.state
+        self.state = state
+        self:OnState(prev_state, state)
+    end
+end
+
+function WheelOption:GetState()
+    return self.state
+end
+
+function WheelOption:IsState(state)
+    return self.state == state
+end
+
+
+class "UIAdvancedRadialMenu" (CUIScriptWnd)
+
+function UIAdvancedRadialMenu:__init(xml) super()
+    self:SetWndRect(Frect():set(0,0,1024,768))
+    self:AllowMovement(true)
+    self:SetAutoDelete(true)
+
+    self.xml = CScriptXmlInit()
+	self.xml:ParseFile(xml)
+    
+    self.options = {}
+
+    self.center = vector2():set(self:GetWidth()/2, self:GetHeight()/2)
+    
+    self.bg = self.xml:InitStatic("bg", self)
+    move_and_center_element(self.bg, self.center.x, self.center.y)
+    scale_ui(self.bg, true, true, "center")
+
+    -- Cursor
+    self.cursor = self.xml:InitStatic("cursor", self)
+    self.cursor:EnableHeading(true)
+    move_and_center_element(self.cursor, self.center.x, self.center.y-self.cursor:GetHeight()/2)
+
+    self.hovered_idx = 0
+
+    self:DrawOptions()
+end
+
+function UIAdvancedRadialMenu:AddOption(option)
+    if (not option) then 
+        return false 
+    end
+
+    table.insert(self.options, option)
+    option.idx = #self.options
+    
+    return true
+end
+
+function UIAdvancedRadialMenu:DrawOptions()
+    -- Clean up options
+    self:ResetUI()
+
+    -- Create buttons
+    for i, option in ipairs(self.options) do
+        -- Calculate position (relative to centre)
+        local x = option.x
+        local y = option.y
+
+        local angle = (2*math.pi * ((i-1)/#self.options))
+        
+        local new_x = x*math.cos(angle) - y*math.sin(angle)
+        local new_y = y*math.cos(angle) + x*math.sin(angle)
+
+        -- Offset position so that it centers around the middle
+        new_x = new_x + self.center.x
+        new_y = new_y + self.center.y
+
+        -- printf("new_x: %s, new_y: %s", new_x, new_y)
+
+        -- Move to point and center on it
+        option:Draw(new_x, new_y)
+        option.angle = angle
+    end
+end
+
+function UIAdvancedRadialMenu:OnButtonClick(i)
+    if (not is_empty(self.options)) and (self.options[i]) then
+        self.options[i]:Click()
+    end
+end
+
+function UIAdvancedRadialMenu:OnButtonHover(i)
+    if self.hovered_idx == i then return end
+
+    if self.options[i]:IsState(States.ENABLED) then
+        self.options[i]:SetState(States.TOUCHED)
+    end
+    
+    if self.options[self.hovered_idx] and self.options[self.hovered_idx]:IsState(States.TOUCHED) then
+        self.options[self.hovered_idx]:SetState(States.ENABLED)
+    end
+
+    self.hovered_idx = i
+end
+
+function UIAdvancedRadialMenu:ResetUI()
+    for i = 1, #self.options do
+        self.options[i]:Destroy()
+    end
+end
+
+function UIAdvancedRadialMenu:Reset()
+    self:ResetUI()
+    self.options = {}
+    self.hovered_idx = 0
+end
+
+function UIAdvancedRadialMenu:Update()
+	CUIScriptWnd.Update(self)
+
+    -- Update Cursor pos and rot
+    local cur_pos = vector2():set(0, -self.cursor:GetHeight()/2)
+    local mouse_pos = GetCursorPosition()
+
+    local x_scale = (device().height / device().width) / (768 / 1024)
+
+    -- Get angle from center of screen to mouse cursor
+    -- Account for scaling from 1024x768 so that the cursor rotates towards cursor properly
+    local angle = math.atan2(-(mouse_pos.x-self.center.x)/x_scale, -(mouse_pos.y-self.center.y))
+    angle = (angle < 0) and 2*math.pi+angle or angle
+    angle = 2*math.pi - angle
+
+    local new_x = cur_pos.x*math.cos(angle) - cur_pos.y*math.sin(angle)
+    local new_y = cur_pos.y*math.cos(angle) + cur_pos.x*math.sin(angle)
+
+    -- Scale Correction
+    new_x = new_x*x_scale
+
+    -- Move to orbit around center of screen
+    new_x = new_x + self.center.x
+    new_y = new_y + self.center.y
+
+    move_and_center_element(self.cursor, new_x, new_y)
+
+    self.cursor:SetHeading(2*math.pi - angle)
+    
+    local best_i = nil
+    local best_similarity = nil
+
+    for i, option in ipairs(self.options) do
+        local similarity = math.pi - math.abs(math.fmod(math.abs(angle - option.angle), 2*math.pi) - math.pi)
+
+        if best_similarity == nil or similarity < best_similarity then
+            best_similarity = similarity
+            best_i = i
+        end
+    end
+    
+    if best_i then self:OnButtonHover(best_i) end
+    
+    -- Update option
+    for i, option in ipairs(self.options) do
+        option:Update()
+    end
+
+    self:UpdateCallback()
+end
+
+-- Can't patch engine functions of instance, so we add this to add stuff to update
+function UIAdvancedRadialMenu:UpdateCallback()
+end
+
+function UIAdvancedRadialMenu:OnKeyboard(dik, keyboard_action)
+	local res = CUIScriptWnd.OnKeyboard(self, dik, keyboard_action)
+
+	if (res ~= false) then
+        return res
+    end
+
+    if self:OnKeyboardCallback(dik, keyboard_action) then
+        return res
+    end
+
+    if keyboard_action == ui_events.WINDOW_KEY_PRESSED then
+        if dik == DIK_keys.DIK_ESCAPE then
+            self:Close()
+        elseif dik == DIK_keys.MOUSE_1 then
+            self:OnButtonClick(self.hovered_idx)
+        end
+    end
+    
+	return res
+end
+
+function UIAdvancedRadialMenu:OnKeyboardCallback(dik, keyboard_action)
+    return false -- return true to stop all other key actions
+end
+
+function UIAdvancedRadialMenu:Close()
+	self:HideDialog()
+    
+	Unregister_UI("UIAdvancedRadialMenu")
+end

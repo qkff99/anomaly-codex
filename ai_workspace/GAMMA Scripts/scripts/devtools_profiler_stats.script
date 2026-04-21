@@ -1,0 +1,336 @@
+--[[
+=======================================================================================
+    DevTools Profiler - Statistics Module
+    
+    Handles statistics collection, timing management, and data queries.
+    Depends on devtools_profiler_state for shared state.
+=======================================================================================
+--]]
+
+-- Reference to shared state (loaded first alphabetically)
+local S = devtools_profiler_state
+
+-- ============================================================================
+-- STATISTICS MANAGEMENT
+-- ============================================================================
+
+local function init_stats(name)
+	if not name then
+		return -- Ignore nil names
+	end
+	if not S.stats[name] then
+		S.stats[name] = {
+			call_count = 0,
+			total_ms = 0,
+			min_ms = math.huge,
+			max_ms = 0,
+			last_ms = 0,
+			samples = {},
+			self_total_ms = 0, -- Time spent in function itself (exclude children)
+			self_samples = {},
+			self_min_ms = math.huge, -- Minimum self time observed
+			self_max_ms = 0, -- Maximum self time observed
+			self_last_ms = 0, -- Last self time observed
+			-- Parent tracking
+			parent_counts = {}, -- { [parent_name] = call_count }
+			most_common_parent = nil, -- String: name of most frequent caller
+		}
+	end
+end
+
+local function compute_median(samples)
+	if not samples or #samples == 0 then
+		return 0
+	end
+	local sorted = {}
+	for i = 1, #samples do
+		sorted[i] = samples[i]
+	end
+	table.sort(sorted)
+	local count = #sorted
+	local mid = math.floor((count + 1) / 2)
+	if count % 2 == 1 then
+		return sorted[mid]
+	end
+	return (sorted[mid] + sorted[mid + 1]) / 2
+end
+
+-- ============================================================================
+-- PARENT TRACKING
+-- ============================================================================
+
+-- Track a parent function call relationship
+function track_parent_call(func_name, parent_name)
+	if not func_name or not parent_name then
+		return
+	end
+	if func_name == parent_name then
+		return -- Don't track self-calls as parent relationships
+	end
+
+	init_stats(func_name)
+	local s = S.stats[func_name]
+
+	-- Increment count for this parent
+	s.parent_counts[parent_name] = (s.parent_counts[parent_name] or 0) + 1
+
+	-- Update most common parent
+	local max_count = 0
+	for pname, count in pairs(s.parent_counts) do
+		if count > max_count then
+			max_count = count
+			s.most_common_parent = pname
+		end
+	end
+end
+
+-- ============================================================================
+-- MANUAL TIMING API
+-- ============================================================================
+
+-- Start timing a named operation
+function start_timer(name)
+	if not S.ENABLED then
+		return
+	end
+	if not S.PROFILE_TIMER_AVAILABLE then
+		return
+	end
+
+	-- Initialize stack for this function if needed
+	if not S.timer_stacks[name] then
+		S.timer_stacks[name] = {}
+	end
+
+	-- Create a new profile_timer for this specific call
+	local pt = profile_timer()
+	pt:start()
+
+	-- Push onto the stack
+	table.insert(S.timer_stacks[name], pt)
+
+	if S.DEBUG_TIMING and S.stats[name] and S.stats[name].call_count < 5 then
+		printf("[DEVTOOLS] start_timer(" .. tostring(name) .. "): stack_depth=" .. tostring(#S.timer_stacks[name]))
+	end
+end
+
+-- End timing and record the duration
+function end_timer(name, child_time_ms)
+	if not S.ENABLED then
+		return 0
+	end
+	if not S.PROFILE_TIMER_AVAILABLE then
+		return 0
+	end
+
+	-- Pop profile_timer from the stack
+	local stack = S.timer_stacks[name]
+	if not stack or #stack == 0 then
+		return 0
+	end
+
+	local pt = table.remove(stack) -- Pop from end of stack
+	pt:stop()
+	local duration_ms = pt:time() / 1000 -- Convert microseconds to ms
+
+	if S.DEBUG_TIMING and (not S.stats[name] or S.stats[name].call_count < 5) then
+		printf(
+			"[DEVTOOLS] end_timer("
+				.. tostring(name)
+				.. "): duration="
+				.. tostring(duration_ms)
+				.. " ms, stack_depth="
+				.. tostring(#stack)
+		)
+	end
+
+	-- Update statistics
+	init_stats(name)
+	local s = S.stats[name]
+	s.call_count = s.call_count + 1
+	s.total_ms = s.total_ms + duration_ms
+	s.last_ms = duration_ms
+
+	if duration_ms < s.min_ms then
+		s.min_ms = duration_ms
+	end
+	if duration_ms > s.max_ms then
+		s.max_ms = duration_ms
+	end
+
+	-- Rolling sample window
+	table.insert(s.samples, duration_ms)
+	if #s.samples > S.MAX_SAMPLES then
+		table.remove(s.samples, 1)
+	end
+
+	-- Self time calculation
+	local self_time = duration_ms
+	if child_time_ms and child_time_ms > 0 and child_time_ms < duration_ms then
+		self_time = duration_ms - child_time_ms
+	end
+	s.self_total_ms = (s.self_total_ms or 0) + self_time
+	s.self_last_ms = self_time
+	if self_time < s.self_min_ms then
+		s.self_min_ms = self_time
+	end
+	if self_time > s.self_max_ms then
+		s.self_max_ms = self_time
+	end
+	table.insert(s.self_samples, self_time)
+	if #s.self_samples > S.MAX_SAMPLES then
+		table.remove(s.self_samples, 1)
+	end
+
+	return duration_ms, self_time
+end
+
+-- ============================================================================
+-- STATISTICS API
+-- ============================================================================
+
+-- Get stats for a specific function, or summary of all stats if no name provided
+function get_stats(name)
+	-- If no name provided, print a summary of all tracked functions
+	if not name then
+		local count = 0
+		local total_calls = 0
+		for func_name, s in pairs(S.stats) do
+			count = count + 1
+			total_calls = total_calls + s.call_count
+		end
+		if DEVTOOLS_VERBOSE then
+			printf(
+				"[DEVTOOLS] Stats summary: "
+					.. tostring(count)
+					.. " functions tracked, "
+					.. tostring(total_calls)
+					.. " total calls"
+			)
+			printf("[DEVTOOLS] Use get_stats('function_name') to get specific stats")
+			printf("[DEVTOOLS] Use get_all_stats() to get full stats table")
+		end
+		return { functions_tracked = count, total_calls = total_calls }
+	end
+
+	init_stats(name)
+	local s = S.stats[name]
+
+	local avg_ms = 0
+	if s.call_count > 0 then
+		avg_ms = s.total_ms / s.call_count
+	end
+	local median_ms = compute_median(s.samples)
+
+	local self_avg_ms = 0
+	if s.call_count > 0 and s.self_total_ms then
+		self_avg_ms = s.self_total_ms / s.call_count
+	end
+	local self_median_ms = compute_median(s.self_samples)
+
+	return {
+		call_count = s.call_count,
+		total_ms = s.total_ms,
+		avg_ms = avg_ms,
+		median_ms = median_ms,
+		min_ms = s.min_ms == math.huge and 0 or s.min_ms,
+		max_ms = s.max_ms,
+		last_ms = s.last_ms,
+		samples = s.samples,
+		self_total_ms = s.self_total_ms or 0,
+		self_avg_ms = self_avg_ms,
+		self_median_ms = self_median_ms,
+		self_min_ms = s.self_min_ms == math.huge and 0 or s.self_min_ms,
+		self_max_ms = s.self_max_ms or 0,
+		self_last_ms = s.self_last_ms or 0,
+		self_samples = s.self_samples,
+		-- Parent tracking data
+		most_common_parent = s.most_common_parent or "",
+		parent_counts = s.parent_counts or {},
+	}
+end
+
+-- Get all tracked function statistics
+function get_all_stats()
+	local result = {}
+	for name, _ in pairs(S.stats) do
+		result[name] = get_stats(name)
+	end
+	return result
+end
+
+-- Get list of tracked function names
+function get_tracked_functions()
+	local names = {}
+	for name, _ in pairs(S.stats) do
+		table.insert(names, name)
+	end
+	table.sort(names)
+	return names
+end
+
+-- Reset statistics for a specific function
+function reset_stats(name)
+	S.stats[name] = nil
+end
+
+-- Reset all statistics
+function reset_all()
+	S.stats = {}
+	S.timer_stacks = {}
+	-- Also reset flamegraph via export module if available
+	if devtools_profiler_export and devtools_profiler_export.reset_flamegraph then
+		devtools_profiler_export.reset_flamegraph()
+	else
+		-- Direct reset if export module not loaded yet
+		S.flamegraph_samples = {}
+		S.flamegraph_total_samples = 0
+	end
+end
+
+-- Get safety statistics (for debugging/monitoring)
+function get_safety_stats()
+	-- Count tracked wrappers (for debugging wrapper inflation issues)
+	local wrapper_count = 0
+	for _ in pairs(S.wrapped_funcs) do
+		wrapper_count = wrapper_count + 1
+	end
+	
+	return {
+		skipped_depth = S.safety_stats.skipped_depth,
+		blacklist_violations = S.safety_stats.blacklist_violations,
+		current_call_depth = #S.active_call_stack,
+		tracked_wrappers = wrapper_count,
+	}
+end
+
+-- Reset safety statistics
+function reset_safety_stats()
+	S.safety_stats.skipped_depth = 0
+	S.safety_stats.blacklist_violations = 0
+end
+
+-- ============================================================================
+-- MODULE EXPORTS
+-- ============================================================================
+
+devtools_profiler_stats = devtools_profiler_stats or {}
+local M = devtools_profiler_stats
+
+-- Internal helpers (for other modules)
+M.init_stats = init_stats
+M.compute_median = compute_median
+
+-- Public API
+M.start_timer = start_timer
+M.end_timer = end_timer
+M.get_stats = get_stats
+M.get_all_stats = get_all_stats
+M.get_tracked_functions = get_tracked_functions
+M.reset_stats = reset_stats
+M.reset_all = reset_all
+M.get_safety_stats = get_safety_stats
+M.reset_safety_stats = reset_safety_stats
+
+-- Parent tracking API
+M.track_parent_call = track_parent_call

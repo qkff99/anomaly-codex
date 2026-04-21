@@ -1,0 +1,39 @@
+-- Extension script for weapon_cover_tilt_positions.script file
+-- Open weapon_cover_tilt_positions.script file for instructions
+
+if weapon_cover_tilt_positions then
+
+	if not weapon_cover_tilt_positions.weapon_offsets then
+		weapon_cover_tilt_positions.weapon_offsets = {}
+	end
+	
+	local o = weapon_cover_tilt_positions.weapon_offsets
+
+	o["wpn_m16"] = {
+		y = 0.3,
+	}
+	o["wpn_ddmv"] = {
+		y = 0.3,
+	}
+	o["wpn_m16a1"] = {
+		y = 0.3,
+	}
+	o["wpn_m16_m203"] = {
+		y = 0.3,
+	}
+	o["wpn_m4"] = {
+		y = 0.3,
+	}
+	o["wpn_m4_alt"] = {
+		y = 0.3,
+	}
+	-- o["wpn_m4a1"] = {
+	-- 	y = 0.2,
+	-- }
+	-- o["wpn_m4a1_freedom"] = {
+	-- 	y = 0.2,
+	-- }
+	-- o["wpn_m4a1"] = {
+	-- 	y = 0.2,
+	-- }
+end

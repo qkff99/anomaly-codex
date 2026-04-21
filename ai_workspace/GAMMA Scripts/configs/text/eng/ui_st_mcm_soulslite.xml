@@ -1,0 +1,454 @@
+<string_table>
+	<string id="ui_mcm_menu_soulslike">
+		<text>Soulslike</text>
+	</string>
+
+    <!--General-->
+    <string id="ui_mcm_soulslike_general">
+        <text>General</text>
+    </string>
+    <string id="ui_mcm_soulslike_general_title">
+        <text>Jabbers' Soulslike Settings</text>
+    </string>
+    <string id="ui_mcm_soulslike_general_description">
+        <text>The Soulslike mod brings elements souls style games to Stalker. Upon death your are saved by a random Stalker in the zone. They bring you back to the set last spawn location where you awake to find a message from them about how you were found and the lengths they may have gone to to get you to a safe place. The items that were on your character must be retrieved, some can be lost and condition degraded all depending on settings.</text>
+     </string>
+    <string id="ui_mcm_soulslike_general_disclaimer">
+        <text>DISCLAIMER: Stop crying, this mod is suppose to make the game harder. Because of this it's 100% possible to get yourself into a situation where you unexpectedly lose your gear. Random item loss on death means you could lose your weapons or armor, dying in the middle of an anomaly and not being able to get your gear back is possible and expected.  Always stock a backup kit, plan for the worst, hope for the best.</text>
+    </string>
+
+    <!--Character-->
+    <string id="ui_mcm_soulslike_character">
+        <text>Character</text>
+    </string>
+    <string id="ui_mcm_soulslike_character_title">
+        <text>Character Settings</text>
+    </string>
+    <string id="ui_mcm_soulslike_character_rank_loss_percent">
+        <text>Rank Loss %</text>
+    </string>
+    <string id="ui_mcm_soulslike_character_rank_loss_percent_desc">
+        <text>This amount of character rank you will lose on respawn.</text>
+    </string>
+    <string id="ui_mcm_soulslike_character_rep_loss_percent">
+        <text>Reputation Loss %</text>
+    </string>
+    <string id="ui_mcm_soulslike_character_rep_loss_percent_desc">
+        <text>This amount of character reputation you will lose on respawn.  This is personal repuation, not faction standing/rep.</text>
+    </string>
+    <string id="ui_mcm_soulslike_character_health_loss_on_respawn">
+        <text>Health loss % on respawn</text>
+    </string>
+    <string id="ui_mcm_soulslike_character_health_loss_on_respawn_desc">
+        <text>This add a bit more difficulty to your playthrough. This is the amount of health that will be removed when you respawn.  Example: 25% means you will have 75% health when you respawn.  The concept here is that you would still be slightly injured and requires you to keep some meds around to heal yourself before trying to continue and retrieve your items from where you died.</text>
+    </string>
+    <string id="ui_mcm_soulslike_character_allow_rep_loss">
+        <text>Enable Reputation Loss</text>
+    </string>
+    <string id="ui_mcm_soulslike_character_allow_rank_loss">
+        <text>Enable Rank Loss</text>
+    </string>
+    <!--Items-->
+    <string id="ui_mcm_soulslike_items">
+        <text>Items</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_title">
+        <text>Item Settings</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_keep_equipped_items_on_death">
+        <text>Keep Equipped Items On Death</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_allow_desc">
+        <text>The settings below apply to items dropped on death.  Each of the item types below have a chance to be permanenently lost unless you uncheck them.</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_allow_weapon_loss">
+        <text>Allow Weapon Loss</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_allow_outfit_loss">
+        <text>Allow Outfit Loss</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_allow_headgear_loss">
+        <text>Allow Headgear Loss</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_allow_artifact_loss">
+        <text>Allow Artifact Loss</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_allow_tool_loss">
+        <text>Allow Tools Loss</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_allow_money_loss">
+        <text>Allow Money Loss</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_scalar_description">
+        <text>Item and condition loss are based on your rank. When you die, the higher rank you are the more likely the chance to lose an item or have the condition reduced. This is to make it easier at the beginning of a new game but as you progress the conciquence of death becomes more and more severe.  See the tooltip on each setting for a more detailed explination.</text>
+     </string>
+    <string id="ui_mcm_soulslike_items_item_loss_scalar">
+        <text>Item loss scalar</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_item_loss_scalar_desc">
+        <text>At max rank, your character has a base 75% chance to lose each item on death. However, the Item Loss Scalar allows you to adjust this loss probability to better suit your preferences. By default, the scalar is set to 0.20 (20%), which reduces the maximum item loss chance to 15% per item.
+
+You can customize this scalar to align with your tolerance for item loss. For example:
+
+    Setting the scalar to 0.10 (10%) reduces the loss chance to 7.5% per item.
+    At 0.30 (30%), the loss chance increases to 22.5% per item.
+    With 0.40 (40%), it goes up to 30% per item.
+    Adjust the scalar to find the balance between risk and reward that works best for your playstyle!</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_ignore_rank_when_computing_item_loss_chance">
+        <text>Ignore Rank when computing item loss chance</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_ignore_rank_when_computing_item_loss_chance_desc">
+        <text>Maybe you like to drag your balls in glass and then dip them into rubbing alcohol... who am I to judge.  This will make item loss chance a bit more punishing by ignoring your rank when computing what is lost.</text>
+    </string>
+    
+    <string id="ui_mcm_soulslike_items_item_condition_loss_scalar">
+        <text>Item condition loss scalar</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_item_condition_loss_scalar_desc">
+        <text>At max rank, your character will lose 18 condition points on each item upon death. The Item Condition Loss Scalar lets you adjust this loss to better match your preferences. By default, the scalar is set to 0.05 (5%), which reduces the maximum condition loss per item to 3.7 points.
+
+You can tweak this scalar to reflect your desired level of item condition loss. For example:
+
+    A scalar of 0.05 (5%) results in a condition loss of 3.7 points per item.
+    At 0.10 (10%), the condition loss increases to 7.4 points per item.
+    With 0.15 (15%), the loss reaches 11 points per item.
+    Set this value to balance risk and durability in a way that fits your playstyle!</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_ignore_rank_when_computing_item_condition_loss">
+        <text>Ignore Rank when computing item condition loss</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_ignore_rank_when_computing_item_condition_loss_desc">
+        <text>I'm guessing you like to have someone step on your balls with high heels, what ever floats your boat.  This will make item condition loss a bit more punishing by ignoring your rank when computing condition loss.</text>
+    </string>
+    
+    <!--Scenarios-->
+    <string id="ui_mcm_soulslike_scenarios">
+        <text>Scenarios</text>
+     </string>
+    <string id="ui_mcm_soulslike_scenarios_title">
+        <text>Scenario Settings</text>
+    </string>
+    <string id="ui_mcm_soulslike_scenarios_description">
+        <text>Soulslike scenarios are dynamic by nature.  Respawn events occur based on who killed you, how you were killed, where, how close to your spawn you are when you died, whether you are inside or outside, just to name a few.  These settings exist to allow you to customize the ways you want to try and recover your gear.  The default scenario's that always exist are that you may end up having all of your items on you on respawn (again, based on events), or you may find that your items are in a backpack on the ground where your body was found.  The options below are in addition to those and weight can be changed to make them more or less frequent.</text>
+     </string>
+    <string id="ui_mcm_soulslike_scenarios_rf_detector_scenario_weight">
+        <text>RF Detector Scenario Weight.</text>
+     </string>
+    <string id="ui_mcm_soulslike_scenarios_rf_detector_scenario_weight_desc">
+        <text>As an extra layer of difficulty and to just mix things up a bit, when this scenario is used it your rescuer will move all your items to a hidden stash on the same map where you were found.  They will tell you the RF freqency to listen to to track down your gear, and also leave you a note in your inventory as a reminder.</text>
+     </string>
+    <string id="ui_mcm_soulslike_scenarios_hidden_stash_scenario_weight">
+        <text>Hidden Stash Scenario Weight.</text>
+     </string>
+    <string id="ui_mcm_soulslike_scenarios_rf_detector_scenario_weight_desc">
+        <text>As an extra layer of difficulty and to just mix things up a bit, when this scenario is used it your rescuer will move all your items to a hidden stash and mark it on your PDA.</text>
+     </string>
+    <string id="ui_mcm_soulslike_scenarios_looter_npcs_marked">
+        <text>Mark looting NPCs on the PDA</text>
+    </string>
+    <string id="ui_mcm_soulslike_scenarios_rf_detector_scenario_weight_desc">
+        <text>When your gear is looted by an NPC, this option will allow you to track them on your PDA.</text>
+     </string>
+
+    <!--Ambush-->
+    <string id="ui_mcm_soulslike_ambush">
+        <text>Ambush</text>
+    </string>
+    <string id="ui_mcm_soulslike_ambush_title">
+        <text>Ambush Settings</text>
+    </string>
+    <string id="ui_mcm_soulslike_ambush_description">
+        <text>Depending on what has occured in the scenario and what items are on your character, there is a chance for an ambush event to occur where your body was discovered.</text>
+    </string>
+    <string id="ui_mcm_soulslike_ambush_mutant_ambush_chance">
+        <text>Mutant Ambush Chance</text>
+    </string>
+    <string id="ui_mcm_soulslike_ambush_allow_boar_ambush">
+        <text>Allow Boar Ambush</text>
+    </string>
+    <string id="ui_mcm_soulslike_ambush_allow_flesh_ambush">
+        <text>Allow Flesh Ambush</text>
+    </string>
+    <string id="ui_mcm_soulslike_ambush_allow_dogs_ambush">
+        <text>Allow Dog Ambush</text>
+    </string>
+    <string id="ui_mcm_soulslike_ambush_allow_cats_ambush">
+        <text>Allow Cat Ambush</text>
+    </string>
+    <string id="ui_mcm_soulslike_ambush_allow_snorks_ambush">
+        <text>Allow Snork Ambush</text>
+    </string>
+    <string id="ui_mcm_soulslike_ambush_allow_bloodsucker_ambush">
+        <text>Allow Blood Sucker Ambush</text>
+    </string>
+    <string id="ui_mcm_soulslike_ambush_allow_burer_ambush">
+        <text>Allow Burer Ambush</text>
+    </string>
+    <string id="ui_mcm_soulslike_ambush_allow_chimera_ambush">
+        <text>Allow Chimera Ambush</text>
+    </string>
+    <string id="ui_mcm_soulslike_ambush_allow_controller_ambush">
+        <text>Allow Controller Ambush</text>
+    </string>
+    <string id="ui_mcm_soulslike_ambush_stalker_ambush_chance">
+        <text>Stalker Ambush Chance</text>
+    </string>
+    <string id="ui_mcm_soulslike_ambush_allow_stalker_novice_ambush">
+        <text>Allow Novice Stalker Ambush</text>
+    </string>
+    <string id="ui_mcm_soulslike_ambush_allow_stalker_advanced_ambush">
+        <text>Allow Experienced Stalker Ambush</text>
+    </string>
+    <string id="ui_mcm_soulslike_ambush_allow_stalker_veteran_ambush">
+        <text>Allow Master Stalker Ambush</text>
+    </string>
+    <string id="ui_mcm_soulslike_ambush_allow_stalker_sniper_ambush">
+        <text>Allow Sniper Stalker Ambush</text>
+    </string>
+
+    <!--Hardcore-->
+    <string id="ui_mcm_soulslike_hardcore">
+        <text>Hardcore</text>
+    </string>
+    <string id="ui_mcm_soulslike_hardcore_title">
+        <text>Hardcore Settings</text>
+    </string>
+    <string id="ui_mcm_soulslike_hardcore_save_description">
+        <text>Kind of like slamming your dick in a hard cover book, Hardcore Saves means manual, quick and campfire saves are all disabled and only one save file will ever exist.  Hardcore Saves only allows saving during sleeping and when respawning.  Keep in mind that because only 1 save file will ever exist, its possible to get stuck in a position where progression is tough if you lose all your gear and have no money to heal or eat.</text>
+     </string>
+    <string id="ui_mcm_soulslike_hardcore_is_enabled">
+        <text>Enable Hardcore Saves</text>
+    </string>    
+    <string id="ui_mcm_soulslike_hardcore_override_campfire_hardcore_saves">
+        <text>Allow Campfire Saves w/Hardcore Saves</text>
+    </string>
+    <string id="ui_mcm_soulslike_hardcore_override_campfire_hardcore_saves_desc">
+        <text>Sometimes you need that warm fuzzy feeling of comfort you get by saving often.  This allow saving at campfires, even though hardcore saves is enabled.  Keep in mind that when respawning or sleeping your campfire saves will still be deleted if Hardcore Saves is enabled.</text>
+    </string>
+    <string id="ui_mcm_soulslike_hardcore_lose_all_items_on_death">
+        <text>Lose all items on death</text>
+    </string>
+    <string id="ui_mcm_soulslike_hardcore_lose_all_items_on_death_desc">
+        <text>If enabled, you will lose ALL items on death. This setting overrides all other settings in the Items category.</text>
+    </string>
+
+    <!--Debug-->
+    <string id="ui_mcm_soulslike_debug">
+        <text>Developer</text>
+    </string> 
+    <string id="ui_mcm_soulslike_debug_title">
+        <text>Developer Settings</text>
+    </string>    
+    <string id="ui_mcm_soulslike_debug_is_enabled">
+        <text>Debug Mode</text>
+    </string>  
+    <string id="ui_mcm_soulslike_debug_enable_tips">
+        <text>Show PDA Messages</text>
+    </string>    
+    <string id="ui_mcm_soulslike_debug_debug_hidden_stashes">
+        <text>Debug Hidden Stashes</text>
+    </string>
+    <string id="ui_mcm_soulslike_debug_debug_item_loss">
+        <text>Debug Item Loss</text>
+    </string>
+    <string id="ui_mcm_soulslike_debug_debug_the_tarkov_looter">
+        <text>Debug Tarkov Looter</text>
+    </string>
+    <string id="ui_mcm_soulslike_debug_debug_the_noloss_scenario">
+        <text>Debug No Loss Scenario</text>
+    </string>
+    <string id="ui_mcm_soulslike_debug_debug_the_default_scenario">
+        <text>Debug Default Loss Scenario</text>
+    </string>
+    <string id="ui_mcm_soulslike_debug_debug_the_rf_scenario">
+        <text>Debug RF Detector Scenario</text>
+    </string>
+    <string id="ui_mcm_soulslike_debug_debug_the_hidden_stash_scenario">
+        <text>Debug Hidden Stash Scenario</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_outfit_loss_chance">
+        <text>Outfit Loss Chance</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_outfit_loss_chance_desc">
+        <text>Multiplier for the chance to lose an outfit on death. 0 disables loss, 1 uses the full calculated chance.</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_weapon_loss_chance">
+        <text>Weapon Loss Chance</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_weapon_loss_chance_desc">
+        <text>Multiplier for the chance to lose a weapon on death. 0 disables loss, 1 uses the full calculated chance.</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_artefact_loss_chance">
+        <text>Artefact Loss Chance</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_artefact_loss_chance_desc">
+        <text>Multiplier for the chance to lose an artefact on death. 0 disables loss, 1 uses the full calculated chance.</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_headgear_loss_chance">
+        <text>Headgear Loss Chance</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_headgear_loss_chance_desc">
+        <text>Multiplier for the chance to lose headgear on death. 0 disables loss, 1 uses the full calculated chance.</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_toolkit_loss_chance">
+        <text>Toolkit Loss Chance</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_toolkit_loss_chance_desc">
+        <text>Multiplier for the chance to lose a toolkit on death. 0 disables loss, 1 uses the full calculated chance.</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_other_loss_chance">
+        <text>Other Item Loss Chance</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_other_loss_chance_desc">
+        <text>Multiplier for the chance to lose other items on death. 0 disables loss, 1 uses the full calculated chance.</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_outfit_condition_loss_chance">
+        <text>Outfit Condition Loss Multiplier</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_outfit_condition_loss_chance_desc">
+        <text>Scales the condition loss chance for outfits on death. 0 disables, 1 uses the full calculated chance.</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_weapon_condition_loss_chance">
+        <text>Weapon Condition Loss Multiplier</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_weapon_condition_loss_chance_desc">
+        <text>Scales the condition loss chance for weapons on death. 0 disables, 1 uses the full calculated chance.</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_artefact_condition_loss_chance">
+        <text>Artefact Condition Loss Multiplier</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_artefact_condition_loss_chance_desc">
+        <text>Scales the condition loss chance for artefacts on death. 0 disables, 1 uses the full calculated chance.</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_headgear_condition_loss_chance">
+        <text>Headgear Condition Loss Multiplier</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_headgear_condition_loss_chance_desc">
+        <text>Scales the condition loss chance for headgear on death. 0 disables, 1 uses the full calculated chance.</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_loss_chance_per_type_desc">
+        <text>Each item type below can have its loss chance individually scaled. The final loss chance is the product of the base chance and this slider. Set to 0 to disable loss for that type, or 1 to use the full calculated chance.</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_condition_loss_per_type_desc">
+        <text>Each item type below can have its condition loss individually scaled. The final condition loss is the product of the base loss and this slider. Set to 0 to disable condition loss for that type, or 1 to use the full calculated loss.</text>
+    </string>
+
+    <!-- Ignored Items -->
+    <string id="ui_mcm_soulslike_ignored_items">
+        <text>Ignored Items</text>
+    </string>
+    <string id="ui_mcm_soulslike_ignored_items_title">
+        <text>Ignored Items Settings</text>
+    </string>
+    <string id="ui_mcm_soulslike_ignored_items_desc">
+        <text>Items checked below will always be ignored and never lost on death, regardless of other settings.</text>
+    </string>
+    <string id="ui_mcm_soulslike_ignored_items_bolt">
+        <text>Bolt</text>
+    </string>
+    <string id="ui_mcm_soulslike_ignored_items_itm_actor_backpack">
+        <text>Quick Release Backpack</text>
+    </string>
+    <string id="ui_mcm_soulslike_ignored_items_device_pda">
+        <text>PDA</text>
+    </string>
+    <string id="ui_mcm_soulslike_ignored_items_device_pda_1">
+        <text>PDA 1</text>
+    </string>
+    <string id="ui_mcm_soulslike_ignored_items_device_pda_2">
+        <text>PDA 2</text>
+    </string>
+    <string id="ui_mcm_soulslike_ignored_items_device_pda_3">
+        <text>PDA 3</text>
+    </string>
+    <string id="ui_mcm_soulslike_ignored_items_detector_radio">
+        <text>Radio Detector</text>
+    </string>
+    <string id="ui_mcm_soulslike_ignored_items_wpn_knife">
+        <text>Knife</text>
+    </string>
+    <string id="ui_mcm_soulslike_ignored_items_wpn_knife2">
+        <text>Knife 2</text>
+    </string>
+    <string id="ui_mcm_soulslike_ignored_items_wpn_knife3">
+        <text>Knife 3</text>
+    </string>
+    <string id="ui_mcm_soulslike_ignored_items_wpn_knife4">
+        <text>Knife 4</text>
+    </string>
+    <string id="ui_mcm_soulslike_ignored_items_wpn_knife5">
+        <text>Knife 5</text>
+    </string>
+    <string id="ui_mcm_soulslike_ignored_items_wpn_knife6">
+        <text>Knife 6</text>
+    </string>
+    <string id="ui_mcm_soulslike_ignored_items_wpn_knife7">
+        <text>Knife 7</text>
+    </string>
+    <string id="ui_mcm_soulslike_ignored_items_wpn_knife8">
+        <text>Knife 8</text>
+    </string>
+    <string id="ui_mcm_soulslike_ignored_items_wpn_knife9">
+        <text>Knife 9</text>
+    </string>
+    <string id="ui_mcm_soulslike_ignored_items_wpn_axe">
+        <text>Axe</text>
+    </string>
+    <string id="ui_mcm_soulslike_ignored_items_wpn_axe2">
+        <text>Axe 2</text>
+    </string>
+    <string id="ui_mcm_soulslike_ignored_items_wpn_axe3">
+        <text>Axe 3</text>
+    </string>
+    <string id="ui_mcm_soulslike_ignored_items_bandage">
+        <text>Bandage</text>
+    </string>
+    <string id="ui_mcm_soulslike_ignored_items_medkit">
+        <text>Medkit</text>
+    </string>
+    <string id="ui_mcm_soulslike_character_allow_nighttime_respawn">
+        <text>Allow nighttime respawn</text>
+    </string>
+    <string id="ui_mcm_soulslike_character_allow_nighttime_respawn_desc">
+        <text>If unchecked, respawn will always advance time to morning (7-9am) if you would respawn at night.</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_money_loss_max_percent">
+        <text>Max Money Loss %</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_money_loss_chance">
+        <text>Money Loss Chance</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_money_loss_max_percent_desc">
+        <text>Maximum percent of your money that can be lost on death. The actual loss will be a random percent up to this value.</text>
+    </string>
+    <string id="ui_mcm_soulslike_items_money_loss_chance_desc">
+        <text>Chance to lose money on death. 1.0 = always, 0.5 = 50% chance, etc.</text>
+    </string>
+    
+	<string id="ui_mcm_soulslike_items_outfit_keep_chance">
+		<text>Chance to keep outfit on death</text>
+	</string>
+	<string id="ui_mcm_soulslike_items_outfit_keep_chance_desc">
+		<text>When "Allow Outfit Loss" is enabled, this slider sets the chance that your outfit will stay with you when you respawn. 0 = always lose, 1 = always keep.</text>
+	</string>
+	<string id="ui_mcm_soulslike_items_headgear_keep_chance">
+		<text>Chance to keep headgear on death</text>
+	</string>
+	<string id="ui_mcm_soulslike_items_headgear_keep_chance_desc">
+		<text>When "Allow Headgear Loss" is enabled, this slider sets the chance that your headgear will stay with you when you respawn. 0 = always lose, 1 = always keep.</text>
+	</string>
+	<string id="ui_mcm_soulslike_items_weapon_keep_chance">
+		<text>Chance to keep weapon on death</text>
+	</string>
+	<string id="ui_mcm_soulslike_items_weapon_keep_chance_desc">
+		<text>When "Allow Weapon Loss" is enabled, this slider sets the chance that your weapon will stay with you when you respawn. 0 = always lose, 1 = always keep.</text>
+	</string>
+	<string id="ui_mcm_soulslike_items_artifact_keep_chance">
+		<text>Chance to keep artifact on death</text>
+	</string>
+	<string id="ui_mcm_soulslike_items_artifact_keep_chance_desc">
+		<text>When "Allow Artifact Loss" is enabled, this slider sets the chance that your artifact will stay with you when you respawn. 0 = always lose, 1 = always keep.</text>
+	</string>
+    
+</string_table>

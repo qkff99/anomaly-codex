@@ -1,0 +1,67 @@
+local Dart  = dart_core
+local MCM   = dart_mcm
+local Utils = dart_utils
+
+
+local config = {
+  anchor   = {"LEFT", "BOTTOM"},
+  offset   = {12, 0},
+  safezone = true,
+  scale    = 1.25,
+}
+
+Dart.config.patches = config
+Dart.state.patches  = {}
+
+
+function mcmOnConfig(mcmConfig)
+  local offsetX = ui_mcm.get("dart/dart_patches/offsetX")
+  local offsetY = ui_mcm.get("dart/dart_patches/offsetY")
+  local scale   = ui_mcm.get("dart/dart_patches/scale")
+
+  if scale then
+    mcmConfig.patches.scale = scale
+  end
+
+  mcmConfig.patches.offset = {
+    offsetX or config.offset[1],
+    offsetY or config.offset[2],
+  }
+end
+
+
+function mcmOnLoad(options)
+  options[3] = {
+    id = "dart_patches",
+    sh = true,
+    gr = {
+      MCM.getTitle(),
+      MCM.getSubtitle({text = "ui_mcm_dart_patches_title"}),
+      MCM.getScaleField({hint = "dart_patches_scale", def = config.scale}),
+      MCM.getLine(),
+      MCM.getOffsetXField({def = config.offset[1]}),
+      MCM.getOffsetYField({def = config.offset[2]}),
+    }
+  }
+end
+
+
+function onPreRefresh()
+  if factionid_hud_mcm then
+    factionid_hud_mcm.deactivate_hud()
+  end
+end
+
+
+function onPostRefresh()
+  if factionid_hud_mcm then
+    factionid_hud_mcm.loadsettings()
+    factionid_hud_mcm.activate_hud()
+  end
+end
+
+
+RegisterScriptCallback("on_dart_mcm_load", mcmOnLoad)
+RegisterScriptCallback("on_dart_mcm_config", mcmOnConfig)
+RegisterScriptCallback("on_dart_pre_refresh", onPreRefresh)
+RegisterScriptCallback("on_dart_post_refresh", onPostRefresh)

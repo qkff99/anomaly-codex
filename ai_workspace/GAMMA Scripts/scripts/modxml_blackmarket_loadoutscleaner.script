@@ -1,0 +1,19 @@
+--This script modifies npc's xml loadout to prevent them from selling certain weapons, Many thanks to Demonized, the legend who made DLTX/DXML possible.
+
+function on_game_start()
+    RegisterScriptCallback("on_specific_character_init", function(character_id, data)
+        if character_id == "bar_visitors_zhorik_stalker_guard2" then
+			data.supplies = ""
+        elseif character_id == "bar_visitors_garik_stalker_guard" then
+			data.supplies = ""
+        elseif character_id == "bar_arena_guard" then
+			data.supplies = ""
+        elseif character_id == "baraholka_trader" then
+			data.supplies = ""
+        elseif character_id == "baraholka_trader_night" then
+			data.supplies = ""
+        elseif character_id == "bar_dolg_general_zoneguard_stalker" then
+			data.supplies = ""
+        end
+    end)
+end

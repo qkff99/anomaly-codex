@@ -1,0 +1,654 @@
+--[[
+    Grenade Trajectory Mod
+    Standalone version based on GT Urban Tactics by GhenTuong
+    
+    Features:
+    - Trajectory prediction for grenades and launchers
+    - Show options: always, LMB only, RMB only
+    - Separate trajectory calculation for strong (LMB) and weak (RMB) throws
+    - Multiple particle colors, sizes, styles
+    - Impact marker at landing point
+--]]
+
+--[[----------
+    Utilities
+--------------]]
+local function get_grenade_ammo(section)
+    local str = ini_sys:r_string_ex(section, "grenade_class")
+    return str and str_explode(str, ",")
+end
+
+local function get_ammo_name(wpn)
+    local sec = wpn:section()
+    local ammo_type = wpn:get_ammo_type()
+    local ammo_list = (IsLauncher(wpn) and utils_item.get_ammo(sec, wpn:id())) or get_grenade_ammo(sec)
+    return ammo_type and ammo_list and ammo_list[ammo_type + 1]
+end
+
+--[[---------------------------------------
+    Settings (defaults, overridden by MCM)
+-------------------------------------------]]
+local settings = {
+    enable_grenade = true,
+    enable_launcher = true,
+    lmb_show_mode = "always",  -- "always", "lmb_only"
+    rmb_show = true,           -- true = show charging trajectory, false = don't show
+    particle_style = "glow",   -- "glow", "solid", "dim"
+    particle_size = "medium",  -- "small", "medium", "large"
+    particle_color = "green",
+    particle_brightness = "medium",  -- "dark", "medium", "bright"
+    trajectory_points = 30,
+    point_interval = 0.05,
+    show_trajectory = true,    -- show trajectory dots
+    show_impact = true,        -- show impact marker at landing point
+    impact_size = "1x",        -- impact marker size: "1x", "2x", "3x", "4x", "5x"
+}
+
+-- Debug flag
+local DEBUG = false
+
+local function dbg(fmt, ...)
+    if DEBUG then
+        -- printf("[GT] " .. fmt, ...)
+    end
+end
+
+-- Cached particle paths (rebuilt only when settings change)
+local cached_particle_path = nil
+local cached_impact_path = nil
+local cached_style = nil
+local cached_size = nil
+local cached_color = nil
+local cached_brightness = nil
+local cached_impact_size = nil
+
+local function get_particle_path()
+    local style = settings.particle_style or "glow"
+    local size = settings.particle_size or "medium"
+    local color = settings.particle_color or "green"
+    local brightness = settings.particle_brightness or "medium"
+    local impact_size = settings.impact_size or "1x"
+    
+    -- Return cached if settings unchanged
+    if cached_particle_path 
+        and style == cached_style 
+        and size == cached_size 
+        and color == cached_color 
+        and brightness == cached_brightness
+        and impact_size == cached_impact_size then
+        return cached_particle_path
+    end
+    
+    -- Rebuild and cache
+    cached_style = style
+    cached_size = size
+    cached_color = color
+    cached_brightness = brightness
+    cached_impact_size = impact_size
+    cached_particle_path = string.format([[_samples_particles_\gt_%s_%s_%s_%s]], style, size, brightness, color)
+    cached_impact_path = string.format([[_samples_particles_\gt_impact_%s_%s_%s]], impact_size, brightness, color)
+    
+    return cached_particle_path
+end
+
+local function get_impact_path()
+    -- Ensure cache is valid
+    get_particle_path()
+    return cached_impact_path
+end
+
+function get_settings()
+    return settings
+end
+
+function update_settings(new_settings)
+    if not new_settings then return end
+    for k, v in pairs(new_settings) do
+        settings[k] = v
+        dbg("Setting %s = %s", tostring(k), tostring(v))
+    end
+    -- Invalidate path cache when settings change
+    cached_particle_path = nil
+    cached_impact_path = nil
+end
+
+--[[----------------
+    Input Detection
+--------------------]]
+local lmb_held = false
+local rmb_held = false
+local rmb_press_time = 0  -- Time when RMB was first pressed
+
+--[[----
+    HUD
+---------]]
+local HUD = nil
+
+local function hud_active()
+    if HUD == nil then
+        HUD = CGrenadeTrajectory()
+        get_hud():AddDialogToRender(HUD)
+    end
+end
+
+local function hud_remove()
+    if HUD then
+        get_hud():RemoveDialogToRender(HUD)
+        HUD = nil
+    end
+end
+
+local function hud_update()
+    if HUD then
+        HUD:Update()
+    end
+end
+
+--[[-------------------------
+    CGrenadeTrajectory Class
+------------------------------]]
+class "CGrenadeTrajectory" (CUIScriptWnd)
+
+function CGrenadeTrajectory:__init() super()
+    self.dt = nil
+    self.last_wpn_id = nil
+    
+    self.grenade_point_const = vector():set(0.4, 0.3, 0.1)
+    self.grenade_classes = {
+        [clsid.wpn_grenade_f1_s]        = true,
+        [clsid.wpn_grenade_rgd5_s]      = true,
+        [clsid.wpn_grenade_launcher_s]  = true,
+        [clsid.wpn_grenade_fake]        = true,
+        [clsid.wpn_grenade_f1]          = true,
+        [clsid.wpn_grenade_launcher]    = true,
+        [clsid.wpn_grenade_rgd5]        = true,
+        [clsid.wpn_grenade_rpg7]        = true
+    }
+    self.launcher_classes = {
+        [clsid.wpn_rg6_s]   = true,
+        [clsid.wpn_rg6]     = true
+    }
+    
+    self.particles = {}
+    self.impact_particle = nil
+    self.current_style = nil
+    self.current_size = nil
+    self.current_color = nil
+    self.current_brightness = nil
+    self.current_impact_size = nil
+    
+    -- Pre-allocated reusable vectors for trajectory calculations
+    self.temp_fire_vec = vector()
+    self.temp_fire_pos = vector()
+    self.temp_velocity = vector()
+    
+    -- Cache for trajectory points (avoid recalculating)
+    self.trajectory_cache = {}
+    self.trajectory_cache_size = 0
+end
+
+function CGrenadeTrajectory:__finalize()
+end
+
+function CGrenadeTrajectory:Update()
+    local g_tostring = tostring
+    CUIScriptWnd.Update(self)
+    
+    -- Early exit if both displays disabled
+    if not settings.show_trajectory and not settings.show_impact then
+        return self:Close()
+    end
+    
+    -- Not in first-person view
+    if level.get_active_cam() ~= 0 then
+        return self:Close()
+    end
+    
+    local wpn = db.actor:active_item()
+    if not wpn then
+        self.last_wpn_id = nil
+        return self:Close()
+    end
+    
+    local wpn_id = wpn:id()
+    local wpn_sec = wpn:section()
+    
+    -- Detect weapon change and clear cache
+    if self.last_wpn_id and self.last_wpn_id ~= wpn_id then
+        dbg("Weapon changed from %s to %s (%s)", g_tostring(self.last_wpn_id), g_tostring(wpn_id), wpn_sec)
+        self:StopAllParticles()
+        self.dt = nil
+    end
+    self.last_wpn_id = wpn_id
+    
+    local is_grenade = self:IsGrenade(wpn)
+    local is_launcher = self:IsLauncher(wpn) or (wpn.weapon_in_grenade_mode and wpn:weapon_in_grenade_mode())
+    
+    -- Check enable settings
+    if is_grenade and not settings.enable_grenade then
+        return self:Close()
+    elseif is_launcher and not settings.enable_launcher then
+        return self:Close()
+    elseif not is_grenade and not is_launcher then
+        return self:Close()
+    end
+    
+    -- Check show mode using tracked held state
+    local should_show = false
+    local use_rmb_throw = false
+    
+    -- Launchers always show trajectory when enabled
+    if is_launcher then
+        should_show = true
+        use_rmb_throw = false
+    -- Grenades: RMB takes priority when held (charging throw)
+    elseif rmb_held and not lmb_held then
+        if settings.rmb_show then
+            should_show = true
+            use_rmb_throw = true
+        end
+    else
+        -- LMB or no button pressed - show constant throw trajectory
+        if settings.lmb_show_mode == "always" then
+            should_show = true
+        elseif settings.lmb_show_mode == "lmb_only" then
+            should_show = lmb_held
+        end
+        use_rmb_throw = false
+    end
+    
+    if not should_show then
+        return self:Close()
+    end
+    
+    -- Load weapon data if needed
+    if not (self.dt and (self.dt.oid == wpn_id)) then
+        dbg("Loading weapon data for %s (id=%s)", wpn_sec, g_tostring(wpn_id))
+        self:LoadWeaponData(wpn)
+        if not self.dt then
+            dbg("ERROR: Failed to load weapon data!")
+            return self:Close()
+        end
+    end
+    
+    -- Hide when zoomed (for launchers)
+    if (self.dt.is_grenade ~= true) and axr_main.weapon_is_zoomed then
+        return self:Close()
+    end
+    
+    local pos = self:GetFirePosition(wpn)
+    local vel = self:GetFireVelocity(wpn, use_rmb_throw)
+    
+    if not (pos and vel) then
+        return self:Close()
+    end
+    
+    self:DrawTrajectory(pos, vel)
+end
+
+function CGrenadeTrajectory:LoadWeaponData(wpn)
+    local sec = wpn:section()
+    
+    self.dt = {}
+    self.dt.oid = wpn:id()
+    self.dt.is_grenade = self:IsGrenade(wpn)
+    
+    -- Cache gravity value (doesn't change during gameplay)
+    self.dt.gravity = level.physics_world():gravity()
+    
+    if self.dt.is_grenade then
+        self.dt.point = vector():set(self.grenade_point_const)
+        self.dt.range = self.dt.point:magnitude()
+        -- LMB uses force_const
+        self.dt.speed_const = SYS_GetParam(2, sec, "force_const") or 20
+        -- RMB charging: starts at force_min, grows to force_max
+        self.dt.speed_min = SYS_GetParam(2, sec, "force_min") or (self.dt.speed_const * 0.4)
+        self.dt.speed_max = SYS_GetParam(2, sec, "force_max") or self.dt.speed_const
+        self.dt.speed_grow = SYS_GetParam(2, sec, "force_grow_speed") or 10
+        dbg("Grenade %s: const=%.1f, min=%.1f, max=%.1f, grow=%.1f", 
+            sec, self.dt.speed_const, self.dt.speed_min, self.dt.speed_max, self.dt.speed_grow)
+        return
+    end
+    
+    local hud_sec = SYS_GetParam(0, sec, "hud", "nil")
+    self.dt.fire_bone_1 = SYS_GetParam(0, hud_sec, "fire_bone", "")
+    self.dt.fire_bone_2 = SYS_GetParam(0, hud_sec, "fire_bone2", "")
+    
+    if self:IsLauncher(wpn) then
+        self.dt.speed_const = SYS_GetParam(2, sec, "launch_speed")
+        self.dt.speed_min = self.dt.speed_const
+        self.dt.speed_max = self.dt.speed_const
+        self.dt.speed_grow = 0
+        dbg("Launcher %s: speed=%.1f", sec, self.dt.speed_const or 0)
+    else
+        local ammo_name = get_ammo_name(wpn)
+        self.dt.speed_const = ammo_name and SYS_GetParam(2, ammo_name, "ammo_grenade_vel")
+        self.dt.speed_const = self.dt.speed_const or SYS_GetParam(2, sec, "grenade_vel")
+        self.dt.speed_min = self.dt.speed_const
+        self.dt.speed_max = self.dt.speed_const
+        self.dt.speed_grow = 0
+        dbg("GL %s (ammo=%s): speed=%.1f", sec, tostring(ammo_name), self.dt.speed_const or 0)
+    end
+end
+
+function CGrenadeTrajectory:GetWeaponBoneId(wpn)
+    local bid = wpn:bone_id(self.dt.fire_bone_2, true)
+    if bid ~= 65535 then
+        return bid
+    end
+    
+    bid = wpn:bone_id(self.dt.fire_bone_1, true)
+    if bid ~= 65535 then
+        return bid
+    end
+    
+    -- Fallback
+    bid = wpn:bone_id("wpn_body", true)
+    if bid ~= 65535 then
+        return bid
+    end
+end
+
+function CGrenadeTrajectory:GetFirePosition(wpn)
+    if self.dt.is_grenade then
+        local cam_dir = device().cam_dir
+        local h = self.dt.point:getH() + cam_dir:getH()
+        local p = self.dt.point:getP() + cam_dir:getP()
+        -- Reuse temp vectors
+        self.temp_fire_vec:setHP(h, p):normalize():mul(self.dt.range)
+        self.temp_fire_pos:set(device().cam_pos):add(self.temp_fire_vec)
+        return self.temp_fire_pos
+    end
+    local bid = self:GetWeaponBoneId(wpn)
+    return bid and wpn:bone_position(bid, true)
+end
+
+function CGrenadeTrajectory:GetFireVelocity(wpn, use_rmb_throw)
+    local speed
+    
+    if use_rmb_throw and self.dt.is_grenade then
+        -- RMB throw: calculate charge based on hold time
+        local hold_time = time_global() - rmb_press_time
+        local hold_seconds = hold_time / 1000  -- Convert ms to seconds
+        
+        -- Calculate current force: starts at min, grows over time, caps at max
+        speed = self.dt.speed_min + (hold_seconds * self.dt.speed_grow)
+        if speed > self.dt.speed_max then
+            speed = self.dt.speed_max
+        end
+    else
+        -- LMB throw or launcher: use constant force
+        speed = self.dt.speed_const
+    end
+    
+    if not speed then return nil end
+    
+    -- Reuse temp vector
+    self.temp_velocity:set(device().cam_dir):mul(speed)
+    return self.temp_velocity
+end
+
+-- optimized: cached gravity, vectors reuse, etc
+function CGrenadeTrajectory:PositionInTrajectory(pos, vel, duration, result_vec)
+    --[[
+        Projectile motion:
+        x = v.x * t
+        z = v.z * t
+        y = (v.y * t) - (g * t^2 / 2)
+    --]]
+    local gravity = self.dt.gravity
+    local t2_half = duration * duration * 0.5
+    
+    result_vec.x = pos.x + vel.x * duration
+    result_vec.y = pos.y + vel.y * duration - gravity * t2_half
+    result_vec.z = pos.z + vel.z * duration
+    
+    return result_vec
+end
+
+--[[----------
+    Rendering
+--------------]]
+-- Get ground level at a position using navigation mesh
+function CGrenadeTrajectory:GetGroundLevel(pos)
+    local vid = level.vertex_id(pos)
+    if vid and vid < 4294967295 then  -- valid vertex id
+        local ground_pos = level.vertex_position(vid)
+        if ground_pos then
+            return ground_pos.y
+        end
+    end
+    return nil
+end
+
+function CGrenadeTrajectory:DrawTrajectory(pos, vel)
+    local particle_path = get_particle_path()
+    local impact_path = get_impact_path()
+    
+    -- Check if style/size/color/brightness changed - if so, need to recreate particle objects
+    local style_changed = self.current_style ~= settings.particle_style 
+        or self.current_size ~= settings.particle_size 
+        or self.current_color ~= settings.particle_color
+        or self.current_brightness ~= settings.particle_brightness
+    
+    if style_changed then
+        self:StopAllParticles()
+        self.current_style = settings.particle_style
+        self.current_size = settings.particle_size
+        self.current_color = settings.particle_color
+        self.current_brightness = settings.particle_brightness
+        self.current_impact_size = settings.impact_size
+        dbg("Particle changed: style=%s, size=%s, color=%s, brightness=%s", 
+            settings.particle_style, settings.particle_size, settings.particle_color, settings.particle_brightness)
+    end
+    
+    -- Check if impact size changed separately (only recreate impact particle)
+    local impact_size_changed = self.current_impact_size ~= settings.impact_size
+    if impact_size_changed then
+        if self.impact_particle then
+            if self.impact_particle:playing() then
+                self.impact_particle:stop()
+            end
+            self.impact_particle = nil
+        end
+        self.current_impact_size = settings.impact_size
+        dbg("Impact size changed: %s", settings.impact_size)
+    end
+    
+    local num_points = settings.trajectory_points
+    local interval = settings.point_interval
+    local impact_point = nil
+    local impact_index = nil
+    
+    -- Ensure trajectory cache has enough vectors
+    for i = self.trajectory_cache_size + 1, num_points do
+        self.trajectory_cache[i] = vector()
+    end
+    if num_points > self.trajectory_cache_size then
+        self.trajectory_cache_size = num_points
+    end
+    
+    -- Single pass: calculate all positions and find impact point
+    for i = 1, num_points do
+        local t = interval * i
+        self:PositionInTrajectory(pos, vel, t, self.trajectory_cache[i])
+        
+        -- Check for ground impact (only if we haven't found one yet)
+        if not impact_index then
+            local point = self.trajectory_cache[i]
+            local ground_y = self:GetGroundLevel(point)
+            if ground_y and point.y <= ground_y + 0.3 then
+                impact_point = vector():set(point.x, ground_y + 0.05, point.z)
+                impact_index = i
+            end
+        end
+    end
+    
+    -- Draw trajectory points using cached positions
+    local stop_index = impact_index and (impact_index - 2) or num_points
+    
+    for i = 1, num_points do
+        local particle = self.particles[i]
+        
+        if settings.show_trajectory and i <= stop_index then
+            -- Create particle if needed
+            if particle == nil then
+                particle = particles_object(particle_path)
+                self.particles[i] = particle
+            end
+            
+            -- Update position from cache
+            particle:set_position(self.trajectory_cache[i])
+            if not particle:playing() then
+                particle:play()
+            end
+        else
+            -- Stop particles past the cutoff or if trajectory disabled
+            if particle and particle:playing() then
+                particle:stop()
+            end
+        end
+    end
+    
+    -- Draw impact marker
+    if settings.show_impact and impact_point then
+        if self.impact_particle == nil then
+            self.impact_particle = particles_object(impact_path)
+        end
+        self.impact_particle:set_position(impact_point)
+        if not self.impact_particle:playing() then
+            self.impact_particle:play()
+        end
+    elseif self.impact_particle and self.impact_particle:playing() then
+        self.impact_particle:stop()
+    end
+end
+
+-- Stop all particles and clear references
+function CGrenadeTrajectory:StopAllParticles()
+    for i = 1, self.trajectory_cache_size do
+        local p = self.particles[i]
+        if p and p:playing() then
+            p:stop()
+        end
+    end
+    self.particles = {}
+    
+    if self.impact_particle then
+        if self.impact_particle:playing() then
+            self.impact_particle:stop()
+        end
+        self.impact_particle = nil
+    end
+end
+
+function CGrenadeTrajectory:Close()
+    self:StopAllParticles()
+end
+
+--[[-------------
+    Type Checks
+-----------------]]
+function CGrenadeTrajectory:IsGrenade(wpn)
+    return self.grenade_classes[wpn:clsid()] or false
+end
+
+function CGrenadeTrajectory:IsLauncher(wpn)
+    return self.launcher_classes[wpn:clsid()] or false
+end
+
+--[[----------
+    Callbacks
+--------------]]
+local settings_loaded = false
+
+local function actor_on_first_update()
+    local g_tostring = tostring
+    -- Load MCM settings on first update
+    if not settings_loaded then
+        dbg("Loading MCM settings...")
+        if grenade_trajectory_mcm and grenade_trajectory_mcm.load_settings then
+            local mcm_settings = grenade_trajectory_mcm.load_settings()
+            if mcm_settings then
+                update_settings(mcm_settings)
+            else
+                dbg("WARNING: MCM returned nil settings")
+            end
+        else
+            dbg("WARNING: MCM module not available")
+        end
+        settings_loaded = true
+        dbg("Final settings: lmb_show_mode=%s, rmb_show=%s", 
+            g_tostring(settings.lmb_show_mode), g_tostring(settings.rmb_show))
+    end
+    
+    -- Reset held states on game load
+    lmb_held = false
+    rmb_held = false
+    hud_active()
+end
+
+local function on_show_hide()
+    -- Reset held states when UI changes
+    lmb_held = false
+    rmb_held = false
+    hud_update()
+end
+
+local function actor_on_net_destroy()
+    lmb_held = false
+    rmb_held = false
+    settings_loaded = false
+    hud_remove()
+end
+
+local function on_key_press(key)
+    local bind = dik_to_bind(key)
+    if bind == key_bindings.kWPN_FIRE then
+        lmb_held = true
+    elseif bind == key_bindings.kWPN_ZOOM then
+        rmb_held = true
+        rmb_press_time = time_global()
+    end
+end
+
+local function on_key_release(key)
+    local bind = dik_to_bind(key)
+    if bind == key_bindings.kWPN_FIRE then
+        lmb_held = false
+    elseif bind == key_bindings.kWPN_ZOOM then
+        rmb_held = false
+    end
+end
+
+-- on_key_hold is called every frame while key is held 
+local function on_key_hold(key)
+    local bind = dik_to_bind(key)
+    if bind == key_bindings.kWPN_FIRE then
+        lmb_held = true
+    elseif bind == key_bindings.kWPN_ZOOM then
+        if not rmb_held then
+            rmb_press_time = time_global()
+        end
+        rmb_held = true
+    end
+end
+
+-- Reset held states when switching weapons (prevents stuck states)
+local function actor_on_weapon_zoom_out()
+    rmb_held = false
+end
+
+--[[---------
+    Register
+-------------]]
+function on_game_start()
+    RegisterScriptCallback("GUI_on_show", on_show_hide)
+    RegisterScriptCallback("GUI_on_hide", on_show_hide)
+    RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+    RegisterScriptCallback("actor_on_net_destroy", actor_on_net_destroy)
+    RegisterScriptCallback("actor_on_weapon_zoom_out", actor_on_weapon_zoom_out)
+    RegisterScriptCallback("on_key_press", on_key_press)
+    RegisterScriptCallback("on_key_release", on_key_release)
+    RegisterScriptCallback("on_key_hold", on_key_hold)
+end

@@ -1,0 +1,18 @@
+-- Mod options for MCM
+function on_mcm_load()
+    op = {
+        id = "fmode_sound", sh = true, gr = {
+            {id = "banner", type = "slide", link = "AMCM_Banner.dds", text = "ui_mcm_fmode_sound_title", size= {512,50}, spacing = 20},
+            {id = "sound", type = "list", val = 0, def = "weapons\\generic\\switch_mode_gfmss0", content={ --sound list
+	            {"weapons\\generic\\switch_mode_gfmss0", "switch_mode_gfmss0"}, --first value is the path to sound, second is the name of sound defined in XML (configs/text/...)
+	            {"weapons\\generic\\switch_mode_gfmss1", "switch_mode_gfmss1"},
+	            {"weapons\\generic\\switch_mode_gfmss2", "switch_mode_gfmss2"},
+				{"weapons\\generic\\switch_mode_gfmss3", "switch_mode_gfmss3"},
+				{"weapons\\generic\\switch_mode_gfmss4", "switch_mode_gfmss4"},
+				{"weapons\\generic\\switch_mode_gfmss5", "switch_mode_gfmss5"},
+	        }},
+	        { id = "volume", type = "track", val = 2, min = 0, max = 1, step = 0.05, def = 1}, --volume slider
+        }
+    }
+    return op
+end

@@ -1,0 +1,99 @@
+-- Monkey Patch for sending callback when upgrading items via mechanics
+ui_inventory_UIInventory_RMode_UpgradeYes = ui_inventory.UIInventory.RMode_UpgradeYes
+ui_inventory.UIInventory.RMode_UpgradeYes = function(self)
+	-- Install new upgrade
+    ui_inventory_UIInventory_RMode_UpgradeYes(self)
+
+    local row = self.upgr_last_row
+	local col = self.upgr_last_col
+	local obj = self.upgr.id and level.object_by_id(self.upgr.id)
+	if (not obj) then
+		return
+	end
+
+    local upgr_section = self.upgr_tree[row][col].section
+	if (not upgr_section) then
+		return
+	end
+
+	SendScriptCallback("actor_on_item_upgrade", obj:id(), upgr_section)
+
+end
+
+
+-- Monkey Patch for sending callback when upgrading items in workshop
+ui_workshop_UIWorkshopUpgrade_Upgrade = ui_workshop.UIWorkshopUpgrade.Upgrade
+ui_workshop.UIWorkshopUpgrade.Upgrade = function(self)
+    local obj = self.CC:GetCell_Selected(true)
+    local obj = self.CC:GetCell_Selected(true)
+	if (not obj) then
+		return
+	end
+	
+	-- For weapons, unload mag and clear ammo cache in case of ammo type upgrades
+	if IsWeapon(obj) and (not IsItem("fake_ammo_wpn",obj:section())) then
+		obj:force_unload_magazine(true)
+		item_weapon.clear_cache(obj)
+	end
+	
+	-- Sort upgrades
+	k2t_table(self.inst_upgr)
+	local sort_tbl = {}
+	for i=1,#self.upgr_order do
+		for ii=1,#self.inst_upgr do
+			if string.find(self.inst_upgr[ii],self.upgr_order[i]) then
+				sort_tbl[#sort_tbl+1] = self.inst_upgr[ii]
+				break
+			end
+		end
+	end
+	
+	-- Install upgrades
+	inventory_upgrades.force_upgrade = true
+	for i=1,#sort_tbl do
+		-- printf("installing: %s - for [%s]", sort_tbl[i], obj:name())
+		obj:install_upgrade(sort_tbl[i])
+        SendScriptCallback("actor_on_item_upgrade", obj:id(), sort_tbl[i])
+	end
+	inventory_upgrades.force_upgrade = false
+
+	-- Discharge tools
+	for i=1,#self.upgr_tools_pick do
+		local t_obj = level.object_by_id(self.upgr_tools_pick[i])
+		if t_obj then
+			utils_item.discharge(t_obj)
+		end
+	end
+
+    if zz_ui_workshop_keep_crafting_window_open then
+        utils_obj.play_sound("interface\\inv_properties_2")
+            
+        hasCraftedItem = true
+        if (self.last_cont and self.last_idx) then
+            --Dirty hack to update ui after alife item removal
+            --Disable button and reenable later in update event
+            self.btn_upgrade:Enable(false)
+            CreateTimeEvent("totally_not_random_event" .. random_number(1, 1000000), "update_ui_delay" .. random_number(1, 1000000), 0.1, self.UpdateUi, self, self.last_cont, self.last_idx)
+        end
+    else
+        self:Close()
+    end
+end
+
+item_weapon_attach_scope = item_weapon.attach_scope
+function item_weapon.attach_scope(item, weapon)
+	-- printf("item_weapon.attach_scope(item, weapon)")
+	-- printf("utils_item.can_attach_scope(wpn)")
+	local upgrade_section = ini_sys:r_string_ex(weapon:section(),"scopes_require_upgrade")
+	if upgrade_section and not weapon:has_upgrade(upgrade_section) then
+		-- printf("RETURN FALSE")
+		return false
+	end
+
+	item_weapon_attach_scope(item, weapon)
+	-- printf("A?")
+end
+
+function on_game_start()
+    axr_main.callback_add("actor_on_item_upgrade")
+end 

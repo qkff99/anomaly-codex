@@ -1,0 +1,204 @@
+
+
+;;--;;;;;;;;;;;;;;;;;;;;;;;;;;;| СТВОЛЫ |;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;--
+;;-- 1.  Ствол ружейный (бокфлинт) 18.5мм
+;;-- 2.  Ствол ружейный ("тулка") 18.5мм
+;;-- 3.  Ствол для гладк. карабина 18.5мм
+;;-- 4.  Ствол для винтовок 7.62мм
+;;-- 5.  Ствол для винтовок 7.92мм
+;;-- 6.  Ствол для авт. винтовок 9мм
+;;-- 7.  Ствол для авт. винтовок 7.62мм
+;;-- 8.  Ствол для авт. винтовок 5.45мм
+;;-- 9.  Ствол для авт. винтовок 5.56мм
+;;-- 10. Ствол для пулемета 7.62мм
+;;-- 11. Ствол для спец. авт. винтовок 9мм
+;;-- 12. Ствол для ППШ 7.62мм
+;;--;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+[tch_enyo]:identity_immunities ;;-- (technical)
+GroupControlSection                                    = spawn_group 
+discovery_dependency                                   = 
+$spawn                                                 = "food and drugs\harmonica_a"
+cform                                                  = skeleton 
+class                                                  = II_ATTCH 
+kind			                                       = i_part
+visual				                                   = dynamics\equipments\trade\parts.ogf
+description			                                   = st_wpn_spareparts_descr
+inv_name			                                   = st_wpn_spareparts
+inv_name_short		                                   = st_wpn_spareparts
+inv_grid_width			                               = 1
+inv_grid_height			                               = 1
+inv_grid_x			                                   = -5
+inv_grid_y			                                   = 56
+cost				                                   = 0
+inv_weight			                                   = 1
+attach_angle_offset		                               = -0.287979, 1.560923, 1.544060
+attach_position_offset	                               = 0.096910, -0.013594, 0.107925
+attach_bone_name		                               = bip01_r_hand
+auto_attach				                               = false
+
+
+[tch_enyo_con]:tch_enyo
+script_binding                                         = bind_item.bind
+use_condition                            		       = true 
+allow_repair                             		       = false
+
+cond_part										       = true ;-- for ui_item.script
+
+;;------------------
+[prt_i_miscparts]:tch_enyo ;;-- Assorted Parts and Fasteners
+visual				                                   = dynamics\equipments\trade\parts.ogf
+description			                                   = st_prt_i_miscparts_descr
+inv_name			                                   = st_prt_i_miscparts
+inv_name_short			                               = st_prt_i_miscparts
+inv_grid_width			                               = 2
+inv_grid_height			                               = 1
+icons_texture							= enyo\EnyoParts
+inv_grid_x			                                   = 0
+inv_grid_y			                                   = 0
+cost				                                   = 560
+inv_weight			                                   = 0.8
+attach_angle_offset		                               = -0.287979, 1.560923, 1.544060
+attach_position_offset		                           = 0.096910, -0.013594, 0.107925
+attach_bone_name		                               = bip01_r_hand
+auto_attach				                               = false
+repair_part_bonus	 	                               = 0.05
+snd_on_take								 		       = part
+tier                                                   = 1
+
+;;------------------
+[prt_i_handtools]:tch_enyo ;;-- Hand Tools
+visual				                                   = dynamics\equipments\trade\parts.ogf
+description			                                   = st_prt_i_handtools_descr
+inv_name			                                   = st_prt_i_handtools
+inv_name_short			                               = st_prt_i_handtools
+inv_grid_width			                               = 1
+inv_grid_height			                               = 1
+icons_texture							= enyo\EnyoHandtools
+inv_grid_x			                                   = 0
+inv_grid_y			                                   = 0
+cost				                                   = 1240
+inv_weight			                                   = 0.8
+attach_angle_offset		                               = -0.287979, 1.560923, 1.544060
+attach_position_offset		                           = 0.096910, -0.013594, 0.107925
+attach_bone_name		                               = bip01_r_hand
+auto_attach				                               = false
+repair_part_bonus	 	                               = 0.07
+snd_on_take								 		       = part
+tier                                                   = 2
+
+;;------------------
+[prt_i_assortadhesive]:tch_enyo ;;-- Assorted Adhesives
+visual				                                   = dynamics\equipments\trade\parts.ogf
+description			                                   = st_prt_i_assortadhesive_descr
+inv_name			                                   = st_prt_i_assortadhesive
+inv_name_short			                               = st_prt_i_assortadhesive
+inv_grid_width			                               = 1
+inv_grid_height			                               = 1
+icons_texture							= enyo\EnyoAssortedAdhesives
+inv_grid_x			                                   = 0
+inv_grid_y			                                   = 0
+cost				                                   = 1240
+inv_weight			                                   = 0.5
+attach_angle_offset		                               = -0.287979, 1.560923, 1.544060
+attach_position_offset		                           = 0.096910, -0.013594, 0.107925
+attach_bone_name		                               = bip01_r_hand
+auto_attach				                               = false
+repair_part_bonus	 	                               = 0.07
+snd_on_take								 		       = part
+tier                                                   = 2
+
+;;------------------
+[prt_i_assortsolvents]:tch_enyo ;;-- Assorted Solvents
+visual				                                   = dynamics\equipments\trade\parts.ogf
+description			                                   = st_prt_i_assortsolvents_descr
+inv_name			                                   = st_prt_i_assortsolvents
+inv_name_short			                               = st_prt_i_assortsolvents
+inv_grid_width			                               = 1
+inv_grid_height			                               = 1
+icons_texture							= enyo\EnyoAssortSolvents
+inv_grid_x			                                   = 0
+inv_grid_y			                                   = 0
+cost				                                   = 1240
+inv_weight			                                   = 0.4
+attach_angle_offset		                               = -0.287979, 1.560923, 1.544060
+attach_position_offset		                           = 0.096910, -0.013594, 0.107925
+attach_bone_name		                               = bip01_r_hand
+auto_attach				                               = false
+repair_part_bonus	 	                               = 0.07
+snd_on_take								 		       = part
+tier                                                   = 2
+
+;;------------------
+[prt_i_mainttools]:tch_enyo ;;-- Maintenance Tools
+visual				                                   = dynamics\equipments\trade\parts.ogf
+description			                                   = st_prt_i_mainttools_descr
+inv_name			                                   = st_prt_i_mainttools
+inv_name_short			                               = st_prt_i_mainttools
+inv_grid_width			                               = 1
+inv_grid_height			                               = 1
+icons_texture							= enyo\EnyoMaintenanceTools
+inv_grid_x			                                   = 0
+inv_grid_y			                                   = 0
+cost				                                   = 1601
+inv_weight			                                   = 1.1
+attach_angle_offset		                               = -0.287979, 1.560923, 1.544060
+attach_position_offset		                           = 0.096910, -0.013594, 0.107925
+attach_bone_name		                               = bip01_r_hand
+auto_attach				                               = false
+repair_part_bonus	 	                               = 0.13
+snd_on_take								 		       = part
+tier                                                   = 2
+
+;;------------------
+[prt_i_maintcomp]:tch_enyo ;;-- Maintenance Components
+visual				                                   = dynamics\equipments\trade\parts.ogf
+description			                                   = st_prt_i_maintcomp_descr
+inv_name			                                   = st_prt_i_maintcomp
+inv_name_short			                               = st_prt_i_maintcomp
+inv_grid_width			                               = 2
+inv_grid_height			                               = 1
+icons_texture							= enyo\EnyoMaintenanceComponents
+inv_grid_x			                                   = 0
+inv_grid_y			                                   = 0
+cost				                                   = 1440
+inv_weight			                                   = 1.1
+attach_angle_offset		                               = -0.287979, 1.560923, 1.544060
+attach_position_offset		                           = 0.096910, -0.013594, 0.107925
+attach_bone_name		                               = bip01_r_hand
+auto_attach				                               = false
+repair_part_bonus	 	                               = 0.12
+snd_on_take								 		       = part
+tier                                                   = 2
+
+;--=====================================================================
+[salewa]:booster_multi
+$spawn 						                       = "food and drugs\sale"
+visual						                       = dynamics\devices\dev_aptechka\dev_aptechka_low.ogf
+kind			                              	   = i_medical
+description					                       = st_medkit_descr
+cost						                       = 5500
+inv_name					                       = st_salewa
+inv_name_short				                       = st_salewa
+inv_weight					                       = 1
+inv_grid_width				                       = 1
+inv_grid_height				                       = 2
+inv_grid_x					                       = 12
+inv_grid_y					                       = 61
+upgr_icon_path								 	   = ui\actor_items\ui_actor_items_2
+upgr_icon_x								 	 	   = 0
+upgr_icon_y								 	 	   = 50
+upgr_icon_width						 	 	 	   = 150
+upgr_icon_height						 	 	   = 100
+boost_time					                       = 44.4
+boost_health_restore		                       = 0.005
+boost_radiation_restore		                       = 0.00069
+eat_thirstiness				                       = 0.1
+use_sound					                       = interface\inv_medkit
+use_condition                                      = true
+script_binding                                     = bind_item.bind
+max_uses                                           = 2
+remove_after_use                                   = true
+empty_weight                                       = 0.1
+;hide_time_wpn                                     =5
+tier = 2

@@ -1,0 +1,58 @@
+; section name can be anything as long as it is unique
+[servalion_m1a1]
+loadout_sec = bandit_novice_primary
+; this is the section of weapons in wep_importer we want to add
+weapons_sec = m1a1
+; !!!! This will override vanilla loadouts in npc_loadouts.ltx. Use if you want to completely redefine what an NPC class can use. 
+; If ANY of these sections passes this as true, it will apply for this loadout section. 
+ignore_vanilla = false
+
+
+[servalion_m1a1_bandit]:servalion_m1a1
+loadout_sec = bandit_novice_primary, bandit_experienced_primary
+
+[servalion_1921_bandit]:servalion_m1a1
+loadout_sec = bandit_experienced_primary, bandit_master_primary
+weapons_sec = 1921
+
+;-----------------------------------------------------------------------
+
+[servalion_m1a1_csky]:servalion_m1a1_bandit
+loadout_sec = csky_novice_primary
+
+[servalion_1921_csky]:servalion_m1a1_bandit
+loadout_sec = csky_master_primary
+weapons_sec = 1921
+
+;-----------------------------------------------------------------------
+
+[servalion_m1a1_freedom]:servalion_m1a1_bandit
+loadout_sec = freedom_novice_primary, freedom_veteran_primary
+
+[servalion_1921_freedom]:servalion_m1a1_bandit
+loadout_sec = freedom_veteran_primary, freedom_master_primary
+weapons_sec = 1921
+;-----------------------------------------------------------------------
+
+[servalion_m1a1_renegade]:servalion_m1a1_bandit
+loadout_sec = renegade_veteran_primary
+
+;-----------------------------------------------------------------------
+
+[servalion_m1a1_stalker]:servalion_m1a1_bandit
+loadout_sec = novice_primary, stalker_professional_primary
+
+[servalion_1921_stalker]:servalion_m1a1_bandit
+loadout_sec = master_primary, stalker_expert_primary
+weapons_sec = 1921
+
+;-----------------------------------------------------------------------
+
+[servalion_1921_greh]:servalion_m1a1_bandit
+loadout_sec = greh_experienced_primary, greh_veteran_primary, greh_master_primary
+weapons_sec = 1921
+
+;-----------------------------------------------------------------------
+
+[servalion_m1a1_zombies]:servalion_m1a1_bandit
+loadout_sec = zombied_master_primary

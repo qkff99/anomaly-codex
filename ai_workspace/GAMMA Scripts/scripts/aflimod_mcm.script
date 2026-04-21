@@ -1,0 +1,24 @@
+function on_mcm_load()
+    op = { id= "aflimod",sh=true ,gr={
+            {id = "title",                          type= "slide", link= "ui_options_slider_player", text="ui_mcm_aflimod_title", size= {512,50}, spacing= 20},
+
+            {id = "enable_intel_request",       type = "check", val = 1, def=true, },
+			{id = "intel_expiration_time",                      type = "track", val = 2, min=100,     max=20000,    step=10,     def = 3600},
+            {id="divider", type="line" },
+            {id = "debug_mode",       type = "check", val = 1, def=false},
+        }
+    }
+    return op
+end 
+
+-- If you don't use MCM, change your defaults from here.
+local defaults = {
+    ["enable_intel_request"] = true,
+    ["intel_expiration_time"] = 3600,
+    ["debug_mode"] = false,
+
+}
+
+function get_config(key)
+    if ui_mcm then return ui_mcm.get("aflimod/"..key) else return defaults[key] end
+end

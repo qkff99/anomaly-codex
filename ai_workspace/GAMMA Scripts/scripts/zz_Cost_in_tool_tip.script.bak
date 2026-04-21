@@ -1,0 +1,84 @@
+--based on the script it modifies ui_item.script by Tronex and Searge
+--Raven Ascendant 22/11/2020
+
+
+function base_build_desc_header() end
+
+local gc = game.translate_string
+local clr_g
+local clr_2
+local string_find         = string.find
+
+
+
+
+
+
+function monkey_build_desc_header(obj, sec, str)
+	str = str or gc(ini_sys:r_string_ex(sec,"description"))
+	if (not str) then return "" end
+	
+	local _str = ""
+	print(sec)
+	local cost = ini_sys:r_float_ex(sec,"cost")
+	local artcost = nil
+	if cost and cost ~= 0 then
+		_str = clr_g .. " • " .. clr_2 .. gc("st_tt_base_cost") .. " " .. cost .. " RU \\n \\n"
+	end
+		
+	if string_find(sec,"af_") then
+		if (string_find(sec, "(lead.-_box)",3)) then
+			local break_con = "lead_box"
+			local break_arty = sec:gsub("_lead_box", "")
+			if ini_sys:section_exist(break_arty) then
+				artcost = ini_sys:r_float_ex(break_arty,"cost")
+			end
+		elseif (string_find(sec, "(af.-_iam)",3)) then
+			local break_con = "af_iam"
+			local break_arty = sec:gsub("_af_iam", "")
+			if ini_sys:section_exist(break_arty) then
+				artcost = ini_sys:r_float_ex(break_arty,"cost")
+			end
+		elseif (string_find(sec, "(af.-_aac)",3)) then
+			local break_con = "af_aac"
+			local break_arty = sec:gsub("_af_aac", "")
+			if ini_sys:section_exist(break_arty) then
+				artcost = ini_sys:r_float_ex(break_arty,"cost")
+			end
+		elseif (string_find(sec, "(af.-_aam)",3)) then
+			local break_con = "af_aam"
+			local break_arty = sec:gsub("_af_aam", "")
+			if ini_sys:section_exist(break_arty) then
+				artcost = ini_sys:r_float_ex(break_arty,"cost")
+			end
+		end
+		
+		if artcost then
+			_str = _str .. clr_g .. " • " .. clr_2 .. gc("st_tt_af_base_cost") .. " " .. artcost .. " RU \\n \\n"
+		end
+
+		
+	end 
+
+	str = _str  .. str
+	
+	return base_build_desc_header(obj, sec, str)
+end
+
+
+function on_game_start()
+	
+	
+	if  utils_xml then
+		clr_2  = utils_xml.get_color("ui_gray_1")
+		clr_g  = utils_xml.get_color("d_green")
+	else
+		clr_2 = txr_utils.get_clr("ui_gray_1")
+		clr_g = txr_utils.get_clr("d_green")
+	end
+	
+	base_build_desc_header = ui_item.build_desc_header
+	ui_item.build_desc_header = monkey_build_desc_header
+end
+	
+	

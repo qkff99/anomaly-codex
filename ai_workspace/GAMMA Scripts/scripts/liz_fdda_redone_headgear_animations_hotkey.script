@@ -1,0 +1,152 @@
+--[[   Script to take off/put on your helmet by holding hotkey.   ]] --
+
+local holdDelay = 0.5                                                --Delay in seconds while holding key before action for non MCM version
+local mcm_key = liz_fdda_redone_mcm.get_config("headgear_anm/keybind") --change this if you don't use MCM or havn't updated to the curent version
+local mcm_key_modifier = liz_fdda_redone_mcm.get_config("headgear_anm/modifier")
+local mcm_key_mode = liz_fdda_redone_mcm.get_config("headgear_anm/mode")
+local ini_blacklist = ini_file("items\\items\\headgear_blacklist.ltx")
+local mcm_keybinds = ui_mcm and ui_mcm.key_hold
+local lastHelmet
+local lastHelmetId = nil
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Callbacks
+-----------------------------------------------------------------------------------------------------------------------
+
+function on_game_start()
+	RegisterScriptCallback("on_option_change", on_option_change)
+
+	RegisterScriptCallback("on_key_hold", on_key_hold)
+	RegisterScriptCallback("on_key_press", on_key_press)
+	RegisterScriptCallback("on_key_release", on_key_release)
+
+	RegisterScriptCallback("load_state", on_load_state)
+	RegisterScriptCallback("save_state", on_save_state)
+	RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+end
+
+
+function on_option_change()
+	mcm_key = liz_fdda_redone_mcm.get_config("headgear_anm/keybind")
+	mcm_key_modifier = liz_fdda_redone_mcm.get_config("headgear_anm/modifier")
+	mcm_key_mode = liz_fdda_redone_mcm.get_config("headgear_anm/mode")
+end
+
+
+function on_key_hold(key)
+	if mcm_keybinds and (key == mcm_key) and (mcm_key_mode == 2) and ui_mcm.get_mod_key(mcm_key_modifier) and ui_mcm.key_hold("liz_qht", key) then --repeating after 5 seconds for demo pourposes.
+		toggle_helmet()
+	end
+end
+
+function on_key_press(key)
+	if key ~= mcm_key then return end
+
+	if (not mcm_keybinds) then --No MCM case
+		CreateTimeEvent("quick_actions", "toggleHelmet", holdDelay, toggle_helmet)
+		return
+	end
+
+	if (mcm_key_mode == 0) and ui_mcm.get_mod_key(mcm_key_modifier) then
+		ui_mcm.simple_press("liz_qht", key, toggle_helmet)
+	end
+
+	if (mcm_key_mode == 1) and ui_mcm.get_mod_key(mcm_key_modifier) and ui_mcm.double_tap("liz_qht", key) then
+		toggle_helmet()
+		return
+	end
+end
+
+function on_key_release(key)
+	if mcm_keybinds then return end
+
+	if key == mcm_key then --if the released key matches, remove our event to stop it from firing if released earlier than holdDelay
+		RemoveTimeEvent("quick_actions", "toggleHelmet")
+	end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Persistance
+-----------------------------------------------------------------------------------------------------------------------
+
+function on_save_state(m_data)
+	if lastHelmet then
+		m_data.lastHelmetId = lastHelmet:id()
+	end
+end
+
+function on_load_state(m_data)
+	lastHelmetId = m_data.lastHelmetId
+end
+
+function actor_on_first_update()
+	local function itr(actor, item)
+		if item:id() == lastHelmetId then
+			lastHelmet = item
+			return
+		end
+	end
+	if lastHelmetId ~= nil then
+		db.actor:iterate_ruck(itr, nil)
+	end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- main
+-----------------------------------------------------------------------------------------------------------------------
+
+function toggle_helmet()
+	if (not db.actor) and (not db.actor:alive()) then return end
+
+	--if playing something don't do anything
+	if lam2.is_running() then return end
+
+	local currentHelmet = db.actor:item_in_slot(12)
+
+	--if helmet in blacklist don't do anything
+	if currentHelmet and ini_blacklist:section_exist(currentHelmet:section()) then return end
+
+	if currentHelmet then
+		liz_fdda_redone_headgear_animations.on_toggle_unequip(currentHelmet)
+		lastHelmet = currentHelmet
+	elseif lastHelmet then
+		 --if helmet slot is empty and not blocked by armor
+		if not is_have_helmet() then
+			db.actor:iterate_ruck(function(actor, item)
+				if item:id() == lastHelmet:id() then
+					liz_fdda_redone_headgear_animations.on_toggle_equip(item)
+				end
+			end, nil)
+		end
+	end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- utils
+-----------------------------------------------------------------------------------------------------------------------
+
+function set_last_helmet(helmet)
+	lastHelmet = helmet
+end
+
+function is_have_helmet()
+	--check if we have helmet in helmet slot
+	local o_helm = db.actor:item_in_slot(12)
+	if o_helm then
+		local m_headgear_is_in_whitelist = ini_whitelist:section_exist(o_helm:section())
+		if not m_headgear_is_in_whitelist then
+			return true
+		else
+			return false
+		end
+	end
+
+	--if not check if we have outfit that have integrated helmet
+	local o_outfit = db.actor:item_in_slot(7)
+	if o_outfit then
+		local c_outfit = o_outfit:cast_CustomOutfit()
+		if not c_outfit.bIsHelmetAvaliable then return true end
+	end
+
+	return false
+end

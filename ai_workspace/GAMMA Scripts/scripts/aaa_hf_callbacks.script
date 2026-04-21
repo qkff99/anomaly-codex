@@ -1,0 +1,11 @@
+-- Custom Callbacks
+-- Called when furniture is placed by the player
+AddScriptCallback("hf_on_furniture_place") -- Params: (number: id of object)
+
+-- Called when furniture is spawned
+-- Occurs before `hf_on_furniture_place`
+AddScriptCallback("hf_on_furniture_spawn") -- Params: (number: id of object)
+
+-- Called when furniture is removed (right now, when it is picked up)
+-- Must be called when some other script is releasing the furniture object
+AddScriptCallback("hf_on_before_furniture_release") -- Params: (number: id of object)

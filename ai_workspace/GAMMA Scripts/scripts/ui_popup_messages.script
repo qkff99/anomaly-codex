@@ -1,0 +1,355 @@
+-- Linear inter/extrapolation
+local function lerp(a, b, f)
+    if a and b and f then
+        return a + f * (b - a)
+    else
+        return a or b or 0
+    end
+end
+
+local activeGUI = {}
+validGUI = {
+    ["Dialog"] = true,
+}
+
+function GUI_on_show(name)
+    if validGUI[name] then
+        activeGUI[name] = true
+    end
+end
+
+function GUI_on_hide(name)
+    if validGUI[name] then
+        activeGUI[name] = nil
+    end
+end
+
+demonized_randomizing_functions.BackEaseOutQuadratic = demonized_randomizing_functions.BackEaseOutQuadratic or function(p)
+    local f = (1 - p)
+    return 1 - (f * f - f * sin(f * M_PI))
+end
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_first_update", start)
+    RegisterScriptCallback("GUI_on_show", GUI_on_show)
+    RegisterScriptCallback("GUI_on_hide", GUI_on_hide)
+end
+
+GUI = nil
+
+function start()
+    GUI = UIPopupMessages()
+end
+
+class "UIPopupMessages" (CUIScriptWnd)
+
+function UIPopupMessages:__init() super()
+    self.xml = CScriptXmlInit()
+    self.xml:ParseFile("ui_apm.xml")
+    self.dialog = self.xml:InitStatic("apm_screen", self)
+
+    -- Callbacks
+    RegisterScriptCallback("actor_on_net_destroy", self)
+    RegisterScriptCallback("on_option_change", self)
+
+    -- OPTIONS
+    self.options = {}
+
+    -- MCM affects these options through all instances of this class
+    self:InitOptions()
+
+    -- MCM affects these options only of this particular instance
+    self.options.pos_x = ui_mcm and ui_mcm.get("ui_popup_messages/apm_main/pos_x") or 0
+    self.options.pos_y = ui_mcm and ui_mcm.get("ui_popup_messages/apm_main/pos_y") or 0
+    --
+
+    self.window_states = {
+        hidden = 0,
+        showing = 1,
+        active = 2,
+        hiding = 3
+    }
+
+    self.winds = {}
+
+    get_hud():AddDialogToRender(self)
+end
+
+function UIPopupMessages:__finalize()
+
+end
+
+function UIPopupMessages:actor_on_net_destroy()
+    self:DestroyAllWindows()
+    if (get_hud()) then
+        get_hud():RemoveDialogToRender(self)
+    end
+end
+
+function UIPopupMessages:on_option_change()
+    self:InitOptions()
+end
+
+function UIPopupMessages:InitOptions()
+    self.options.float_height = ui_mcm and ui_mcm.get("ui_popup_messages/apm_main/float_height") or 100 -- How far up the notification floats
+    self.options.window_amount = ui_mcm and ui_mcm.get("ui_popup_messages/apm_main/window_amount") or 5
+    self.options.display_time = ui_mcm and ui_mcm.get("ui_popup_messages/apm_main/display_time") or 3000
+    self.options.animation_time = ui_mcm and ui_mcm.get("ui_popup_messages/apm_main/animation_time") or 500
+    self.options.item_shadow = ui_mcm and ui_mcm.get("ui_popup_messages/apm_main/item_shadow") or true
+    self.options.text_background = ui_mcm and ui_mcm.get("ui_popup_messages/apm_main/text_background") or "ui_apm_background"
+    self.options.shadow_alpha = ui_mcm and ui_mcm.get("ui_popup_messages/apm_main/shadow_alpha") or 120
+    self.options.animate_style = ui_mcm and ui_mcm.get("ui_popup_messages/apm_main/animate_style") or "CircularEaseOut"
+    self.options.color_r = ui_mcm and ui_mcm.get("ui_popup_messages/apm_main/color_r") or 238
+    self.options.color_g = ui_mcm and ui_mcm.get("ui_popup_messages/apm_main/color_g") or 155
+    self.options.color_b = ui_mcm and ui_mcm.get("ui_popup_messages/apm_main/color_b") or 23
+    self.options.color_r_bg = ui_mcm and ui_mcm.get("ui_popup_messages/apm_main/color_r_bg") or 238
+    self.options.color_g_bg = ui_mcm and ui_mcm.get("ui_popup_messages/apm_main/color_g_bg") or 155
+    self.options.color_b_bg = ui_mcm and ui_mcm.get("ui_popup_messages/apm_main/color_b_bg") or 23
+    self.options.scaling = ui_mcm and ui_mcm.get("ui_popup_messages/apm_main/scaling") or 1
+end
+
+function UIPopupMessages:UpdateOption(k, v)
+    self.options[k] = v
+end
+
+ScalingPresets = {
+    [1] = {
+        fontFunc = GetFontLetterica16Russian,
+        height = 20,
+    },
+    [2] = {
+        fontFunc = GetFontGraffiti19Russian,
+        height = 24,
+    },
+    [3] = {
+        fontFunc = GetFontGraffiti22Russian,
+        height = 27,
+    },
+    [4] = {
+        fontFunc = GetFontGraffiti32Russian,
+        height = 37,
+    }
+}
+
+function UIPopupMessages:AddMessage(msg, icon)
+    msg = msg or ("Empty Message " .. math.random(10))
+
+    local wnd = {}
+    wnd.wnd = self.xml:InitStatic("apm_screen:apm_wind", self.dialog)
+    wnd.pos = vector2():set(wnd.wnd:GetWndPos())
+    wnd.wnd:SetWndPos(vector2():set(
+        wnd.pos.x + self.options.pos_x,
+        wnd.pos.y + self.options.pos_y
+        )
+    )
+    -- wnd.wnd:SetWndSize(vector2():set(
+    --     wnd.wnd:GetWidth(),
+    --     ScalingPresets[self.options.scaling].height
+    --     )
+    -- )
+
+    local initialIconSize
+
+    if not (icon and SYS_GetParam(2, icon, "inv_grid_height")) then
+        wnd.icon = self.xml:InitStatic("apm_screen:apm_icon", wnd.wnd)
+        initialIconSize = {wnd.icon:GetWidth(), wnd.icon:GetHeight()}
+        wnd.icon:InitTexture(icon or "ui_icon_news_trx_communication")
+        wnd.icon:SetWndSize(vector2():set(
+            wnd.icon:GetWidth() * (ScalingPresets[self.options.scaling].height / wnd.icon:GetHeight()),
+            ScalingPresets[self.options.scaling].height
+            )
+        )
+    else
+        if self.options.item_shadow then
+            wnd.icon_sh = self.xml:InitStatic("apm_screen:apm_icon", wnd.wnd)
+        end
+        wnd.icon = self.xml:InitStatic("apm_screen:apm_icon", wnd.wnd)
+        initialIconSize = {wnd.icon:GetWidth(), wnd.icon:GetHeight()}
+
+        local h = SYS_GetParam(2, icon, "inv_grid_height")
+        local w = SYS_GetParam(2, icon, "inv_grid_width")
+
+        local wnd_x = wnd.icon:GetWidth()
+        local wnd_y = wnd.icon:GetHeight()
+
+        if w > h * (wnd_x / wnd_y) then
+            local mult = wnd_x / w
+            w = wnd_x
+            h = h * mult * (4/3)
+        else
+            local mult = wnd_y / h
+            w = w * mult * (3/4)
+            h = wnd_y
+        end
+
+        local h_offset = (wnd_y - h) / 2
+        local w_offset = (wnd_x - w) / 2
+
+        local icon_pos = wnd.icon:GetWndPos()
+
+        -- Shadow
+        if self.options.item_shadow then
+            wnd.icon_sh:InitTexture( utils_xml.get_icons_texture(icon) )
+            wnd.icon_sh:SetTextureRect(Frect():set( utils_xml.get_item_axis(icon, nil, true) ))
+            wnd.icon_sh:SetStretchTexture(true)
+            wnd.icon_sh:SetWndSize(vector2():set(w, h))
+            wnd.icon_sh:SetWndSize(vector2():set(
+                wnd.icon_sh:GetWidth() * (ScalingPresets[self.options.scaling].height / wnd.icon_sh:GetHeight()),
+                ScalingPresets[self.options.scaling].height
+                )
+            )
+            wnd.icon_sh:SetWndPos(vector2():set(icon_pos.x + w_offset + 3, icon_pos.y + h_offset + 3))
+            wnd.icon_sh:SetTextureColor( GetARGB(self.options.shadow_alpha, 20, 20, 20) )
+        end
+
+        -- Icon
+        wnd.icon:InitTexture( utils_xml.get_icons_texture(icon) )
+        wnd.icon:SetTextureRect(Frect():set( utils_xml.get_item_axis(icon, nil, true) ))
+        wnd.icon:SetStretchTexture(true)
+        wnd.icon:SetWndSize(vector2():set(w, h))
+        wnd.icon:SetWndSize(vector2():set(
+            wnd.icon:GetWidth() * (ScalingPresets[self.options.scaling].height / wnd.icon:GetHeight()),
+            ScalingPresets[self.options.scaling].height
+            )
+        )
+        wnd.icon:SetWndPos(vector2():set(icon_pos.x + w_offset, icon_pos.y + h_offset))
+    end
+
+    wnd.bg = self.xml:InitStatic("apm_screen:apm_bg", wnd.wnd)
+    wnd.bg:InitTexture(self.options.text_background)
+    wnd.bg:SetTextureColor( GetARGB(255, self.options.color_r_bg, self.options.color_g_bg, self.options.color_b_bg) )
+    wnd.text = self.xml:InitTextWnd("apm_screen:apm_text",wnd.wnd)
+    wnd.text:SetText(msg)
+    wnd.text:SetFont(ScalingPresets[self.options.scaling].fontFunc())
+    wnd.text:SetTextColor( GetARGB(255, self.options.color_r, self.options.color_g, self.options.color_b) )
+    wnd.text:AdjustWidthToText()
+
+    local padding = 4
+
+    local bg_end = wnd.bg:GetWndPos().x + wnd.bg:GetWidth()
+    wnd.bg:SetWndPos(vector2():set(bg_end - wnd.text:GetWidth() - (padding * 2), wnd.bg:GetWndPos().y))
+    wnd.bg:SetWndSize(vector2():set(wnd.text:GetWidth() + (padding * 2), ScalingPresets[self.options.scaling].height))
+    wnd.text:SetWndPos(vector2():set(wnd.bg:GetWndPos().x + padding, wnd.text:GetWndPos().y))
+
+    -- Scale whole message window
+    wnd.wnd:SetWndSize(vector2():set(
+        wnd.wnd:GetWidth() + (initialIconSize[1] * (ScalingPresets[self.options.scaling].height / wnd.wnd:GetHeight()) - initialIconSize[1]),
+        ScalingPresets[self.options.scaling].height
+        )
+    )
+
+    wnd.wnd:Show(false)
+    wnd.time_start = time_global()
+    wnd.time_end = time_global() + self.options.display_time + self.options.animation_time
+    wnd.state = self.window_states.hidden
+    wnd.anim_state = 0
+    table.insert(self.winds, 1, wnd)
+
+    self:MoveOlderMessages()
+
+    return wnd
+end
+
+function UIPopupMessages:DestroyWindow(i)
+    if #self.winds == 0 then return end
+    local wnd = table.remove(self.winds, i and clamp(i, 1, #self.winds) or #self.winds)
+    wnd.wnd:Show(false)
+    self.dialog:DetachChild(wnd.wnd)
+    return self
+end
+
+function UIPopupMessages:DestroyAllWindows()
+    while #self.winds > 0 do
+        self:DestroyWindow()
+    end
+    return self
+end
+
+function UIPopupMessages:MoveOlderMessages()
+    if #self.winds <= 1 then return self end
+    while #self.winds > self.options.window_amount do
+        self:DestroyWindow()
+    end
+    local y_offset = self.winds[1].wnd:GetWndPos().y
+    for i = 2, #self.winds do
+        local wnd = self.winds[i]
+        local pos = wnd.wnd:GetWndPos()
+        y_offset = y_offset - wnd.wnd:GetHeight()
+        wnd.wnd:SetWndPos(vector2():set(pos.x, y_offset))
+    end
+    return self
+end
+
+function UIPopupMessages:AnimateWindow(wnd, anim_state)
+    wnd.anim_state = anim_state
+
+    local anim_offset = demonized_randomizing_functions[self.options.animate_style](wnd.anim_state)
+    local pos = wnd.wnd:GetWndPos()
+    wnd.wnd:SetWndPos(vector2():set(lerp(1024, 1024 - wnd.wnd:GetWidth(), anim_offset), pos.y))
+    return self
+end
+
+function UIPopupMessages:SwitchTestMode(enable)
+    local enable = not not enable
+    if self.test_mode == enable then return self end
+
+    self.test_mode = enable
+    if not self.test_mode then
+        self:DestroyAllWindows()
+    end
+    return self
+end
+
+function UIPopupMessages:Update()
+	CUIScriptWnd.Update(self)
+
+    if self.test_mode then
+        self:DestroyAllWindows()
+        for i = 1, self.options.window_amount do
+            local wnd = self:AddMessage("Message Text #" .. i)
+            wnd.wnd:Show(true)
+            self:AnimateWindow(wnd, 1)
+        end
+        return
+    end
+
+    if (ui_inventory.GUI and ui_inventory.GUI:IsShown()) or is_not_empty(activeGUI) then
+        if not device():is_paused() then
+            for i = #self.winds, 1, -1 do
+                local wnd = self.winds[i]
+                wnd.time_end = wnd.time_end + (device().time_delta / 2)
+            end
+        end
+    end
+
+    for i = #self.winds, 1, -1 do
+        local wnd = self.winds[i]
+
+        if time_global() > wnd.time_end then
+            if wnd.state == self.window_states.active then
+                wnd.state = self.window_states.hiding
+            elseif wnd.state == self.window_states.hiding then
+                local anim_state = clamp(1 - normalize(time_global(), wnd.time_end, wnd.time_end + self.options.animation_time), 0, 1)
+                self:AnimateWindow(wnd, anim_state)
+                if anim_state == 0 then
+                    wnd.state = self.window_states.hidden
+                end
+            else
+                self:DestroyWindow(i)
+            end
+        elseif time_global() > wnd.time_start then
+            if wnd.state == self.window_states.showing then
+                local anim_state = clamp(normalize(time_global(), wnd.time_start, wnd.time_start + self.options.animation_time), 0, 1)
+                self:AnimateWindow(wnd, anim_state)
+                if anim_state == 1 then
+                    wnd.state = self.window_states.active
+                end
+            elseif wnd.state == self.window_states.active then
+                -- Do nothing
+            else
+                wnd.state = self.window_states.showing
+                wnd.wnd:Show(true)
+            end
+        end
+    end
+end

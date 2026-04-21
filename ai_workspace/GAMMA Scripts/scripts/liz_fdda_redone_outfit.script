@@ -1,0 +1,222 @@
+-- enable_animations = true -- false
+local uiio = zzzz_liz_fdda_redone_ui_inventory
+local mcm_memory_enable
+local mcm_always_short
+local mcm_allow_movement
+local mcm_enable_animation
+
+------------------------------------------------------------------------------
+-- outfit memmory management.
+------------------------------------------------------------------------------
+local mcm_memory_max = 3
+local memory_first = 0
+local memory_last = -1
+local memory = {}
+
+function remember_outfit(sec)
+	local last = memory_last + 1
+	memory_last = last
+	memory[last] = sec
+	if mcm_memory_max > 0 and (memory_size() > mcm_memory_max) then
+		forget_outfit()
+	end
+end
+
+function forget_outfit()
+	local first = memory_first
+	memory[first] = nil
+	memory_first = first + 1
+end
+
+function memory_size()
+	local count = 0
+	for _, __ in pairs(memory) do
+		count = count + 1
+	end
+	return count
+end
+
+function memory_contain(sec)
+	for _, v in pairs(memory) do
+		if v == sec then return true end
+	end
+	return false
+end
+
+------------------------------------------------------------------------------
+-- monkey patches
+------------------------------------------------------------------------------
+
+local originalPIF = actor_effects.play_item_fx
+function actor_effects.play_item_fx(name)
+	if name == "outfit" then return end
+	originalPIF(name)
+end
+
+------------------------------------------------------------------------------
+-- callbacks
+------------------------------------------------------------------------------
+function on_game_start()
+	RegisterScriptCallback("on_option_change", initialize)
+	RegisterScriptCallback("actor_on_first_update", initialize)
+end
+
+function initialize()
+	mcm_memory_enable = liz_fdda_redone_mcm.get_config("outfit_anm/memory")
+	mcm_always_short = liz_fdda_redone_mcm.get_config("outfit_anm/always_short")
+	mcm_allow_movement = liz_fdda_redone_mcm.get_config("outfit_anm/allow_movement")
+	mcm_memory_max = liz_fdda_redone_mcm.get_config("outfit_anm/memory_size")
+	mcm_enable_animation = liz_fdda_redone_mcm.get_config("outfit_anm/enable_outfit_equip")
+	uiio.Add_Handler("outfit", predicate, on_eqiup, on_unequip, on_drop, on_swap)
+end
+
+------------------------------------------------------------------------------
+-- main
+------------------------------------------------------------------------------
+
+function select_animation(sec)
+	-- local m_section = mcm_always_short and "outfit_animation_fast_hud" or "outfit_animation_hud"
+	local m_section = "outfit_animation_hud"
+	--always play short version of the animation if set so in mcm
+	if mcm_always_short then
+		m_section = "outfit_animation_fast_hud"
+	end
+	--always play short animation if fighting on arena 
+	if has_alife_info("bar_arena_fight") then
+		m_section = "outfit_animation_fast_hud"
+	end
+	--play short animation if outfit was equipped recently
+	if mcm_memory_enable and sec then
+		if memory_contain(sec) then
+			m_section = "outfit_animation_fast_hud"
+		else
+			remember_outfit(sec)
+		end
+	end
+	return m_section
+end
+
+function predicate(obj)
+	if IsOutfit(obj) then
+		return true
+	end
+	return false
+end
+
+function on_eqiup(obj, bag)
+	if not mcm_enable_animation then
+		uiio.Equip(obj, bag)
+		return
+	end
+	uiio.Set_Item_in_Use(obj:id(), true)
+	lam2.add_action(ta_equip(obj, bag))
+end
+
+function on_unequip(obj, bag)
+	if not mcm_enable_animation then
+		uiio.Unequip(obj, bag)
+		return
+	end
+	uiio.Set_Item_in_Use(obj:id(), true)
+	lam2.add_action(ta_unequip(obj, bag, "unequip"))
+end
+
+function on_drop(obj, bag)
+	if not mcm_enable_animation or bag ~= "actor_equ" then
+		uiio.Drop(obj, bag)
+		return
+	end
+	uiio.Set_Item_in_Use(obj:id(), true)
+	lam2.add_action(ta_unequip(obj, bag, "drop"))
+end
+
+function on_swap(obj_prev, obj_next, bag)
+	if not mcm_enable_animation then
+		db.actor:move_to_ruck(obj_prev)
+		uiio.Equip(obj_next, bag)
+		return
+	end
+	uiio.Set_Item_in_Use(obj_next:id(), true)
+	lam2.add_action(ta_equip(obj_next, bag))
+end
+
+------------------------------------------------------------------------------
+-- action templates
+------------------------------------------------------------------------------
+
+function ta_equip(obj, bag)
+	local a = {}
+	a.obj_id = obj:id()
+	a.bag = bag
+	a.execute = function (self, time)
+		--equip
+		local item_obj_equip = level.object_by_id(self.obj_id)
+		if item_obj_equip then
+			lam2.add_action_first(ta_animation_equip(select_animation(item_obj_equip:section())))
+			lam2.add_action_first(ta_move_item(item_obj_equip, self.bag, "equip"))
+		end
+		--unequip
+		local item_obj_unequip = db.actor:item_in_slot(7)
+		if item_obj_unequip then
+			-- [unequip animaiton here?]
+			lam2.add_action_first(ta_move_item(item_obj_unequip, nil, "move_to_ruck"))
+		end
+		return lam2.states.success
+	end
+	return a
+end
+
+function ta_unequip(obj, bag, action)
+	local a = {}
+	a.obj_id = obj:id()
+	a.bag = bag
+	a.action = action
+	a.execute = function (self, time)
+		local item_obj = db.actor:item_in_slot(7)
+		if item_obj and item_obj:id() == self.obj_id then
+			lam2.add_action_first(ta_animation_equip("outfit_animation_fast_hud"))
+			lam2.add_action_first(ta_move_item(item_obj, self.bag, self.action))
+		else
+			uiio.Set_Item_in_Use(self.obj_id, false)
+			return lam2.states.fail
+		end
+		return lam2.states.success
+	end
+	return a
+end
+
+function ta_animation_equip(section)
+	local a = lam2.get_template_action_play_animation()
+	a.tag = "outfit_animation"
+	a.sec = section
+	a.anm = "anm_equip"
+	a.only_allow_movekeys = mcm_allow_movement
+	a.disable_input = not mcm_allow_movement
+	return a
+end
+
+function ta_move_item(obj, bag, action)
+	local a = {}
+	a.tag = "outfit_animation"
+	a.obj_id = obj:id()
+	a.bag = bag
+	a.action = action
+	a.enter = function (self)
+		local item_obj = level.object_by_id(self.obj_id)
+		if item_obj then
+			if self.action == "equip" then
+				uiio.Set_Item_in_Use(self.obj_id, false)
+				uiio.Equip(item_obj, self.bag)
+			elseif self.action == "unequip" then
+				uiio.Set_Item_in_Use(self.obj_id, false)
+				uiio.Unequip(item_obj, self.bag)
+			elseif self.action == "drop" then
+				uiio.Set_Item_in_Use(self.obj_id, false)
+				uiio.Drop(item_obj, self.bag)
+			elseif self.action == "move_to_ruck" then
+				db.actor:move_to_ruck(item_obj)
+			end
+		end
+	end
+	return a
+end

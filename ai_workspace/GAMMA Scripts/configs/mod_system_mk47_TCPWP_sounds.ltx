@@ -1,0 +1,180 @@
+![wpn_mk47]
+
+;------------------------------------------------------------------------SND BASE------------------------------------------------------------------------
+
+snd_draw                = weapons\mk47\handling\mk47_deploy_tcwp
+snd_holster             = weapons\mk47\handling\mk47_holster_tcwp
+snd_empty               = weapons\mk47\handling\mk47_trigger_hammer_tcwp
+snd_shoot               = wpn_mk47_tcwp_snd_shoot
+snd_shoot_actor			= wpn_mk47_tcwp_snd_shoot_actor
+snd_silncer_shot        = wpn_mk47_tcwp_snd_silenced
+snd_silncer_shot_actor  = wpn_mk47_tcwp_snd_silenced_actor
+snd_reload				= weapons\mk47\handling\mk47_reload_partial_tcwp1
+snd_reload1				= weapons\mk47\handling\mk47_reload_partial_tcwp2
+snd_reload2				= weapons\mk47\handling\mk47_reload_partial_tcwp3
+snd_reload_empty		= weapons\mk47\handling\mk47_reload_full_tcwp1
+snd_reload_empty1		= weapons\mk47\handling\mk47_reload_full_tcwp2
+snd_reload_empty2		= weapons\mk47\handling\mk47_reload_full_tcwp3
+snd_reload_empty3		= weapons\mk47\handling\mk47_reload_full_tcwp4
+snd_switch_mode			= weapons\mk47\handling\mk47_firemode_switch1
+snd_switch_mode1		= weapons\mk47\handling\mk47_firemode_switch2
+snd_switch_mode2		= weapons\mk47\handling\mk47_firemode_switch3
+
+scripted_snd_ammo_check			= weapons\mk47\handling\mk47_inspect_full_tcwp
+scripted_snd_ammo_check_empty	= weapons\mk47\handling\mk47_inspect_empty_quick_racks_tcwp
+
+;------------------------------------------------------------------BORE SCRIPTED SOUNDS-----------------------------------------------------------------
+
+snd_bore								= $no_sound
+
+scripted_snd_bore						= weapons\mk47\handling\mk47_inspect_full_tcwp
+scripted_snd_bore_empty 				= weapons\mk47\handling\mk47_inspect_empty_quick_racks_tcwp
+scripted_snd_bore_jammed                = weapons\mk47\handling\mk47_inspect_jammed_tcwp
+
+;-----------------------------------------------------------------UNJAM SCRIPTED SOUNDS-----------------------------------------------------------------
+
+snd_reload_misfire						= $no_sound
+
+scripted_snd_reload_misfire				= weapons\mk47\handling\mk47_unjam_tcwp_variant_shake_1
+scripted_snd_reload_misfire_variant5	= weapons\mk47\handling\mk47_unjam_tcwp_variant_shake_2
+scripted_snd_reload_misfire_variant6	= weapons\mk47\handling\mk47_unjam_tcwp_variant_shake_3
+
+scripted_snd_reload_misfire_variant1	= weapons\mk47\handling\mk47_unjam_pull_tcwp1
+scripted_snd_reload_misfire_variant2	= weapons\mk47\handling\mk47_unjam_pull_tcwp2
+scripted_snd_reload_misfire_variant3	= weapons\mk47\handling\mk47_unjam_pull_tcwp3
+scripted_snd_reload_misfire_variant4	= weapons\mk47\handling\mk47_unjam_pull_tcwp4
+
+;----------------------------------------------------------------END SPRINT SCRIPTED SOUNDS-------------------------------------------------------------
+
+scripted_snd_sprint_end               	= weapons\mk47\handling\mk47_end_sprint_tcwp1
+scripted_snd_sprint_end_variant1        = weapons\mk47\handling\mk47_end_sprint_tcwp2
+scripted_snd_sprint_end_variant2        = weapons\mk47\handling\mk47_end_sprint_tcwp3
+scripted_snd_sprint_end_empty         	= weapons\mk47\handling\mk47_end_sprint_tcwp1
+scripted_snd_sprint_end_empty_variant1  = weapons\mk47\handling\mk47_end_sprint_tcwp2
+scripted_snd_sprint_end_empty_variant2  = weapons\mk47\handling\mk47_end_sprint_tcwp3
+scripted_snd_sprint_end_jammed        	= weapons\mk47\handling\mk47_end_sprint_tcwp1
+scripted_snd_sprint_end_jammed_variant1 = weapons\mk47\handling\mk47_end_sprint_tcwp2
+scripted_snd_sprint_end_jammed_variant2 = weapons\mk47\handling\mk47_end_sprint_tcwp3
+
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+;======================================================================================================================================================;
+;																																					   ;
+;														     	  SHOOTING   LAYERS																	   ;
+;																																				       ;
+;======================================================================================================================================================;
+
+[wpn_mk47_tcwp_snd_shoot]
+snd_1_layer			                                          	  = weapons\_gunfire\mono\akm_jsrs\close_1
+snd_1_layer1			                                          = weapons\_gunfire\mono\akm_jsrs\close_2
+snd_1_layer2			                                       	  = weapons\_gunfire\mono\akm_jsrs\close_3
+snd_1_layer3			                                       	  = weapons\_gunfire\mono\akm_jsrs\close_4
+snd_2_layer			                                          	  = weapons\_gunfire\mono\akm_jsrs\Close_Distance
+snd_3_layer			                                          	  = weapons\_gunfire\mono\akm_jsrs\Medium_Distance
+snd_4_layer 			                                       	  = weapons\_shared\mono\Reflectors\762\Reflector_1, 0.5
+snd_4_layer1 			                                       	  = weapons\_shared\mono\Reflectors\762\Reflector_2, 0.5
+snd_4_layer2 			                                       	  = weapons\_shared\mono\Reflectors\762\Reflector_3, 0.5
+snd_4_layer3 			                                       	  = weapons\_shared\mono\Reflectors\762\Reflector_4, 0.5
+snd_5_layer			                                          	  = weapons\_cracks\mono\Crack_far\Crack_1
+snd_5_layer1			                                       	  = weapons\_cracks\mono\Crack_far\Crack_6
+snd_5_layer2			                                       	  = weapons\_cracks\mono\Crack_far\Crack_9
+snd_6_layer			                                        	  = weapons\_shared\mono\762w\Far_1
+snd_6_layer1			                                          = weapons\_shared\mono\762w\Far_3
+snd_7_layer			                                           	  = weapons\_shared\mono\762w\tail_1, 0.5
+snd_7_layer1			                                       	  = weapons\_shared\mono\762w\tail_2, 0.5
+snd_9_layer			                                        	  = weapons\_shared\mono\762w\mid_762w
+snd_10_layer													  = weapons\_shells\mono\556\556mm_shell_soil1
+snd_10_layer1													  = weapons\_shells\mono\556\556mm_shell_soil2
+snd_10_layer2													  = weapons\_shells\mono\556\556mm_shell_soil3
+snd_10_layer3													  = weapons\_shells\mono\556\556mm_shell_soil4
+snd_10_layer4													  = weapons\_shells\mono\556\556mm_shell_soil5
+snd_10_layer5													  = weapons\_shells\mono\556\556mm_shell_soil6
+snd_10_layer6													  = weapons\_shells\mono\556\556mm_shell_soil7
+snd_10_layer7													  = weapons\_shells\mono\556\556mm_shell_soil8
+snd_10_layer8													  = weapons\_shells\mono\556\556mm_shell_soil9
+snd_11_layer			                                          = weapons\mk47\mono\mk47_mono_close1
+snd_11_layer1			                                          = weapons\mk47\mono\mk47_mono_close2
+snd_11_layer2			                                       	  = weapons\mk47\mono\mk47_mono_close3
+snd_11_layer3			                                       	  = weapons\mk47\mono\mk47_mono_close4
+snd_11_layer4			                                       	  = weapons\mk47\mono\mk47_mono_close5
+snd_11_layer5			                                       	  = weapons\mk47\mono\mk47_mono_close6
+
+[wpn_mk47_tcwp_snd_shoot_actor]
+snd_1_layer			                                          	  = weapons\mk47\stereo\mk47_stereo_close1
+snd_1_layer1			                                          = weapons\mk47\stereo\mk47_stereo_close2
+snd_1_layer2			                                       	  = weapons\mk47\stereo\mk47_stereo_close3
+snd_1_layer3			                                       	  = weapons\mk47\stereo\mk47_stereo_close4
+snd_1_layer4			                                       	  = weapons\mk47\stereo\mk47_stereo_close5
+snd_1_layer5			                                       	  = weapons\mk47\stereo\mk47_stereo_close6
+snd_2_layer 			                                       	  = weapons\_shared\stereo\reflectors\762\Reflector_1, 0.5
+snd_2_layer1			                                       	  = weapons\_shared\stereo\reflectors\762\Reflector_2, 0.5
+snd_2_layer2 			                                       	  = weapons\_shared\stereo\reflectors\762\Reflector_3, 0.5
+snd_2_layer3			                                       	  = weapons\_shared\stereo\reflectors\762\Reflector_4, 0.5
+snd_3_layer			                                          	  = weapons\_shared\stereo\echo_1, 0.25
+snd_3_layer1			                                          = weapons\_shared\stereo\echo_2, 0.25
+snd_3_layer2			                                       	  = weapons\_shared\stereo\echo_3, 0.25
+snd_3_layer3			                                       	  = weapons\_shared\stereo\echo_4, 0.25
+snd_4_layer			                                       	 	  = weapons\_bass\bass_mid
+snd_5_layer														  = weapons\_shells\stereo\556\556mm_shell_soil1
+snd_5_layer1													  = weapons\_shells\stereo\556\556mm_shell_soil2
+snd_5_layer2													  = weapons\_shells\stereo\556\556mm_shell_soil3
+snd_5_layer3													  = weapons\_shells\stereo\556\556mm_shell_soil4
+snd_5_layer4													  = weapons\_shells\stereo\556\556mm_shell_soil5
+snd_5_layer5													  = weapons\_shells\stereo\556\556mm_shell_soil6
+snd_5_layer6													  = weapons\_shells\stereo\556\556mm_shell_soil7
+snd_5_layer7													  = weapons\_shells\stereo\556\556mm_shell_soil8
+snd_5_layer8													  = weapons\_shells\stereo\556\556mm_shell_soil9
+
+[wpn_mk47_tcwp_snd_silenced]
+snd_1_layer			                                          	  = weapons\_sd\mono\762_warsaw\sd_close_1
+snd_1_layer1			                                          = weapons\_sd\mono\762_warsaw\sd_close_2
+snd_1_layer2			                                       	  = weapons\_sd\mono\762_warsaw\sd_close_3
+snd_1_layer3			                                       	  = weapons\_sd\mono\762_warsaw\sd_close_4
+snd_2_layer			                                          	  = weapons\_sd\mono\762_warsaw\tail_sd_1, 0.5
+snd_2_layer1		                                              = weapons\_sd\mono\762_warsaw\tail_sd_2, 0.5
+snd_2_layer2			                                       	  = weapons\_sd\mono\762_warsaw\tail_sd_3, 0.5
+snd_2_layer3			                                       	  = weapons\_sd\mono\762_warsaw\tail_sd_4, 0.5
+snd_3_layer			                                       	 	  = weapons\_bass\bass_mid_sd
+snd_4_layer			                                       	 	  = weapons\_sd\mono\Distance\762mm_distance
+snd_5_layer			                                          	  = weapons\_cracks\mono\crack_far\crack_1
+snd_5_layer1			                                          = weapons\_cracks\mono\crack_far\crack_2
+snd_5_layer2			                                       	  = weapons\_cracks\mono\crack_far\crack_3
+snd_5_layer3			                                       	  = weapons\_cracks\mono\crack_far\crack_4
+snd_6_layer			                                          	  = weapons\mk47\mono\mk47_sil_mono_close1
+snd_6_layer1			                                          = weapons\mk47\mono\mk47_sil_mono_close2
+snd_6_layer2			                                       	  = weapons\mk47\mono\mk47_sil_mono_close3
+snd_6_layer3			                                       	  = weapons\mk47\mono\mk47_sil_mono_close4
+snd_7_layer													 	  = weapons\_shells\mono\556\556mm_shell_soil1
+snd_7_layer1													  = weapons\_shells\mono\556\556mm_shell_soil2
+snd_7_layer2													  = weapons\_shells\mono\556\556mm_shell_soil3
+snd_7_layer3													  = weapons\_shells\mono\556\556mm_shell_soil4
+snd_7_layer4													  = weapons\_shells\mono\556\556mm_shell_soil5
+snd_7_layer5													  = weapons\_shells\mono\556\556mm_shell_soil6
+snd_7_layer6													  = weapons\_shells\mono\556\556mm_shell_soil7
+snd_7_layer7													  = weapons\_shells\mono\556\556mm_shell_soil8
+snd_7_layer8													  = weapons\_shells\mono\556\556mm_shell_soil9
+
+[wpn_mk47_tcwp_snd_silenced_actor]
+snd_1_layer			                                          	  = weapons\mk47\stereo\mk47_sil_stereo_close1
+snd_1_layer1			                                          = weapons\mk47\stereo\mk47_sil_stereo_close2
+snd_1_layer2			                                       	  = weapons\mk47\stereo\mk47_sil_stereo_close3
+snd_1_layer3			                                       	  = weapons\mk47\stereo\mk47_sil_stereo_close4
+snd_2_layer			                                          	  = weapons\_sd\stereo\762_warsaw\tail_sd_1, 0.5
+snd_2_layer1		                                              = weapons\_sd\stereo\762_warsaw\tail_sd_2, 0.5
+snd_2_layer2			                                       	  = weapons\_sd\stereo\762_warsaw\tail_sd_3, 0.5
+snd_2_layer3			                                       	  = weapons\_sd\stereo\762_warsaw\tail_sd_4, 0.5
+snd_3_layer			                                          	  = weapons\_shared\stereo\echo_9, 0.25
+snd_3_layer1			                                          = weapons\_shared\stereo\echo_2, 0.25
+snd_3_layer2			                                       	  = weapons\_shared\stereo\echo_3, 0.25
+snd_3_layer3			                                       	  = weapons\_shared\stereo\echo_4, 0.25
+snd_4_layer			                                       	 	  = weapons\_bass\bass_mid_sd
+snd_5_layer														  = weapons\_shells\stereo\556\556mm_shell_soil1
+snd_5_layer1													  = weapons\_shells\stereo\556\556mm_shell_soil2
+snd_5_layer2													  = weapons\_shells\stereo\556\556mm_shell_soil3
+snd_5_layer3													  = weapons\_shells\stereo\556\556mm_shell_soil4
+snd_5_layer4													  = weapons\_shells\stereo\556\556mm_shell_soil5
+snd_5_layer5													  = weapons\_shells\stereo\556\556mm_shell_soil6
+snd_5_layer6													  = weapons\_shells\stereo\556\556mm_shell_soil7
+snd_5_layer7													  = weapons\_shells\stereo\556\556mm_shell_soil8
+snd_5_layer8													  = weapons\_shells\stereo\556\556mm_shell_soil9
+

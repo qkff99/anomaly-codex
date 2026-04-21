@@ -1,0 +1,246 @@
+--Patching ui_item.script
+
+local gc = game.translate_string
+local parse_keys = utils_data.parse_string_keys
+local math_floor          = math.floor
+
+settings = {}
+
+
+
+------------------------------------------------------- logging and notifications
+
+function printlog(msg,...)
+	msg = msg or " "
+	
+	if select('#', ...) ~= 0 then printf(string.format(msg,...))
+	else printf(msg)
+	end
+end
+
+function printdebug(msg,...) -- debug logging
+	if settings.debug then printlog(msg,...) end
+end
+
+local function add_zone_keeper_info(object, section, text)
+
+	local clr_txt = utils_xml.get_color("ui_gray_1")
+	printdebug("add_zone_keeper_info for %s", object:name())
+	text = text .. parse_keys(gc("st_zk_tooltip_section"), {["clr_txt"] = clr_txt})
+
+	local cnt = 0
+	local max_condition = 0
+	local function find_needed_items(npc, item)
+		if item:section() == section then
+			printdebug("item section %s", item:section())
+			if item:get_remaining_uses() > 1 then
+				cnt = cnt + item:get_remaining_uses()
+			else
+				cnt = cnt + 1
+			end
+			if max_condition < item:condition() then
+				max_condition = item:condition()
+			end
+		end
+	end
+
+	printdebug("-- search in player inventory")
+	db.actor:iterate_inventory(find_needed_items, nil)
+	printdebug("player inventory count %s", cnt)
+
+	clr_txt = utils_xml.get_color("pda_white")
+	local clr_number
+	if cnt == 0 then
+		clr_number = utils_xml.get_color("d_red")
+	else
+		clr_number = utils_xml.get_color("pda_green")
+	end
+
+	local message = nil
+	if max_condition > 0 then
+		message = "st_zk_fetch_count_have_cond"
+	else
+		message = "st_zk_fetch_count_have"
+	end
+
+	text = text .. "\\n" .. parse_keys(gc(message), {["count"] = cnt, ["max_condition"] = math_floor(max_condition * 100), ["clr_txt"] = clr_txt, ["clr_number"] = clr_number})
+
+	cnt = 0
+	local m_data = alife_storage_manager.get_state()
+
+	printdebug("-- search in workshop_stashes")
+	-- search in workshop_stashes
+	max_condition = 0
+	if m_data.zonekeeper_workshop_stashes then
+		for stash_id,items in pairs(m_data.zonekeeper_workshop_stashes) do
+			printdebug("stash_id %s", stash_id)
+			printdebug("items in stash %s", #(m_data.zonekeeper_workshop_stashes[stash_id]))
+			for i, item in ipairs(items) do
+				if item.section == section then
+					printdebug("item %s condition %s", item.section, item.condition)
+					if max_condition < item.condition then
+						max_condition = item.condition
+					end
+					cnt = cnt + 1
+				end
+			end
+		end
+	else
+		printdebug("no workshop_stashes were found")
+	end
+
+	printdebug("player_created_stashes + workshop_stashes count %s", cnt)
+
+	if cnt == 0 then
+		clr_number = utils_xml.get_color("d_red")
+	else
+		clr_number = utils_xml.get_color("pda_green")
+	end
+
+	if max_condition > 0 then
+		message = "st_zk_fetch_count_in_workshops_cond"
+	else
+		message = "st_zk_fetch_count_in_workshops"
+	end
+
+	text = text .. "\\n" .. parse_keys(gc(message), {["count"] = cnt, ["max_condition"] = math_floor(max_condition * 100), ["clr_txt"] = clr_txt, ["clr_number"] = clr_number})
+	
+	return text
+end
+
+original_build_desc_footer = ui_item.build_desc_footer
+function ui_item.build_desc_footer(obj, sec, str)
+	local _str = ""
+	local _str2 = original_build_desc_footer(obj, sec, str)
+
+	if not obj then return (_str .. _str2) end
+	
+	printf("build_desc_footer for object id %s", obj:id())
+	if SYS_GetParam(0, sec, "kind") == "i_part" then
+
+		_str = add_zone_keeper_info(obj, sec, _str2)
+	else
+		_str = _str .. _str2
+	end
+
+	return _str
+end
+
+function LogItems(stash_id, kind_list)
+
+	printdebug("stash id %s", stash_id)
+	local stash_obj = get_object_by_id(stash_id)
+	local m_data = alife_storage_manager.get_state()
+	
+	if stash_obj then
+		printdebug("stash name %s", stash_obj:name())
+		if not (m_data.zonekeeper_workshop_stashes) then
+			printdebug("initializing zonekeeper_workshop_stashes")
+			m_data.zonekeeper_workshop_stashes = {}
+		end
+		local zonekeeper_items = {}
+		for key, kind in pairs(kind_list) do
+			stash_obj:iterate_inventory_box( function(temp, item)
+				if SYS_GetParam(0, item:section(), "kind") == kind then
+					local zonekeeper_item = {}
+					zonekeeper_item.section = item:section()
+					zonekeeper_item.condition =  item:condition()
+					table.insert(zonekeeper_items, zonekeeper_item)
+				end
+			end, stash_obj)
+		end
+		printdebug("logged %s items", #zonekeeper_items)
+		m_data.zonekeeper_workshop_stashes[stash_id] = zonekeeper_items
+	else
+		printdebug("cannot find stash with id %s", stash_id)
+	end
+end
+
+inventory_close = ui_inventory.UIInventory.Close
+function ui_inventory.UIInventory:Close()
+	-- printf("mode %s", self.mode)
+	-- printf("npc_id %s", self.npc_id)
+	-- printf("npc_name %s", self.npc_name)
+	if self.npc_is_box then
+		local m_data = alife_storage_manager.get_state()
+		-- printf("inventory is a stash")
+		if (m_data.workshop_stashes) then
+			for workshop_id,v in pairs(m_data.workshop_stashes) do
+				-- printf("workshop id %s", workshop_id)
+				local stash_id = ui_furniture_workshop.GetStash(workshop_id)
+				if stash_id and stash_id == self.npc_id then
+					zone_keeper.LogItems(stash_id, {"i_part"})
+					break
+				end
+			end
+		end
+	else
+		-- printf("NPC is not a Box")
+		-- printf("npc_name %s", self.npc_name)
+	end
+	inventory_close(self)
+end
+
+base_return_items = nil
+if zzz_workshop_return_items then
+
+	base_return_items = zzz_workshop_return_items.return_items
+	zzz_workshop_return_items.return_items = function()
+		-- printf("transferring items from actor to workshop stash")
+		local stash_id = zzz_workshop_return_items.stash_id
+		local item_ids = zzz_workshop_return_items.item_ids
+		if stash_id == nil then return end
+		-- printf("stash id %s", stash_id)
+		local stash_obj = get_object_by_id(stash_id)
+		if stash_obj == nil then return end
+		-- printf("stash name %s", stash_obj:name())
+		for i, id in ipairs(item_ids) do
+			local item_obj = get_object_by_id(id)
+			if item_obj then
+				db.actor:transfer_item(item_obj, stash_obj)
+			end
+		end
+		-- printf("items transferred back to stash")
+		zone_keeper.LogItems(stash_id, {"i_part"})
+		item_ids = {}
+		stash_id = nil
+	end
+end
+
+-- function ui_inventory.UIInventory:Action_Move(obj, bag)
+-- end
+
+-- local function actor_on_item_before_move(flags, npc_id, obj, mode, bag_from)
+-- 	if not obj then return end
+--     if not npc_id then
+--         pr("no npc id?")
+--         return
+--     end
+
+-- end
+
+function load_settings()
+	-- body
+	settings.debug = zone_keeper_mcm.get_config('configuration/general/debug')
+end
+function zone_keeper_on_mcm_change()
+	load_settings()
+	if zone_keeper_mcm.get_config('configuration/general/delete_store') then
+		zone_keeper_mcm.set_config('configuration/general/delete_store', false)
+		delete_store()
+	end
+end
+function delete_store()
+	local m_data = alife_storage_manager.get_state()
+	m_data.zonekeeper_workshop_stashes = {}
+end
+
+function actor_on_first_update()
+    printdebug("[WPI] actor_on_first_update")
+
+end
+
+function on_game_start()
+	RegisterScriptCallback('actor_on_first_update', actor_on_first_update)
+	RegisterScriptCallback('on_option_change', zone_keeper_on_mcm_change)
+end

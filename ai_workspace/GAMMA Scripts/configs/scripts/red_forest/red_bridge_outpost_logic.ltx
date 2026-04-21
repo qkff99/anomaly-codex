@@ -1,0 +1,377 @@
+
+[logic@base]
+net_spawn	= pt1
+
+;==================================================
+[beh@base]
+target								= waypoint
+path_end							= loop
+walk_dist							= 0
+jog_dist							= 0
+run_anim							= patrol
+meet								= meet@base
+
+[meet@base]
+close_snd_hello = {=check_npc_name(monolith)} nil, {=is_wounded} nil, {!is_squad_commander} nil, {=actor_enemy} nil, {=actor_has_weapon} meet_hide_weapon, meet_hello
+close_snd_bye   = nil
+close_anim 		= nil
+close_victim 	= nil
+close_distance  = 0
+far_anim 		= nil
+far_victim 		= nil
+far_distance 	= 0
+meet_on_talking	= false
+use				= {=is_squad_commander !has_enemy !actor_enemy =dist_to_actor_le(3)} true
+
+[beh@animpoint]:beh@base
+target = %=animpoint()% nil
+
+
+
+
+[logic@guard]:logic@base
+suitable	= {=npc_squad_name(squad_red_duty_outpost_guard) !surge_started()} true
+prior		= 200
+
+[logic@guard_1]:logic@guard
+active = beh@guard_carrier
+[logic@guard_2]:logic@guard
+active = beh@guard_patrol
+[logic@guard_3]:logic@guard
+active = beh@guard_truck_1
+[logic@guard_4]:logic@guard
+active = beh@guard_truck_2
+[logic@guard_5]:logic@guard
+active = beh@guard_truck_3
+[logic@guard_6]:logic@guard
+active = beh@guard_truck_4
+[logic@guard_7]:logic@guard
+active = beh@guard_tower_1
+[logic@guard_8]:logic@guard
+active = beh@guard_tower_2
+[logic@guard_9]:logic@guard
+active = beh@guard_bridge_1
+[logic@guard_10]:logic@guard
+active = beh@guard_bridge_2
+[logic@guard_11]:logic@guard
+active = beh@guard_bridge_3
+[logic@guard_12]:logic@guard
+active = beh@guard_path_1
+[logic@guard_13]:logic@guard
+active = beh@guard_path_2
+[logic@guard_14]:logic@guard
+active = beh@guard_path_3
+
+
+[beh@guard]:beh@animpoint
+meet = no_meet
+
+[beh@guard_carrier]:beh@guard
+pt1 = 10000,dynamite	| pos:-104.3,0.00,-239.4 dir:-90
+pt2 = 10000,dynamite	| pos:-115.5,-0.15,-251.3 dir:180
+pt3 = 10000,dynamite	| pos:-115.5,0.47,-258.3 dir:180
+
+[beh@guard_patrol]:beh@guard
+pt1 = 10000,guard	| pos:-111.3,-0.22,-252.7 dir:0
+pt2 = 10000,guard	| pos:-94.5,0.28,-275.1 dir:-150
+
+[beh@guard_truck_1]:beh@guard
+pt1 = 999999,binocular	| pos:-101.5,1.75,-249.2 dir:-45
+[beh@guard_truck_2]:beh@guard
+pt1 = 999999,guard		| pos:-100.1,0.06,-246.4 dir:-60
+[beh@guard_truck_3]:beh@guard
+pt1 = 999999,guard		| pos:-116.9,-0.44,-246.4 dir:-90
+[beh@guard_truck_4]:beh@guard
+pt1 = 999999,animpoint_stay_wall	| pos:-101.5,0.02,-240.8 dir:45 animpoint:pos
+
+[beh@guard_tower_1]:beh@guard
+pt1 = 10000,guard		| pos:-122.5,4.72,-252.7 dir:90
+pt2 = 10000,guard		| pos:-114.8,4.72,-252.7 dir:-90
+[beh@guard_tower_2]:beh@guard
+pt1 = 999999,binocular	| pos:-122.5,4.72,-261.1 dir:90
+
+
+[beh@guard_bridge_1]:beh@guard
+pt1 = 999999,guard	| pos:-125.3,0.27,-272.3 dir:90
+[beh@guard_bridge_2]:beh@guard
+pt1 = 999999,guard	| pos:-120.4,0.18,-265.3 dir:90
+[beh@guard_bridge_3]:beh@guard
+pt1 = 999999,guard	| pos:-112.0,0.27,-273.0 dir:90
+
+
+[beh@guard_path_1]:beh@guard
+pt1 = 999999,guard	| pos:-93.1,0.38,-280.7 dir:-150
+[beh@guard_path_2]:beh@guard
+pt1 = 999999,guard	| pos:-102.9,0.12,-281.4 dir:-135
+[beh@guard_path_3]:beh@guard
+pt1 = 999999,guard	| pos:-109.9,-0.18,-287.7 dir:-135
+
+
+
+
+
+[logic@surge_tower]:logic@base
+suitable	= {=surge_started() =npc_squad_name(squad_red_duty_outpost_guard)} true
+prior		= 200
+
+[logic@surge_tower_1]:logic@surge_tower
+active = beh@surge_tower_1
+[logic@surge_tower_2]:logic@surge_tower
+active = beh@surge_tower_2
+[logic@surge_tower_3]:logic@surge_tower
+active = beh@surge_tower_3
+[logic@surge_tower_4]:logic@surge_tower
+active = beh@surge_tower_4
+[logic@surge_tower_5]:logic@surge_tower
+active = beh@surge_tower_5
+[logic@surge_tower_6]:logic@surge_tower
+active = beh@surge_tower_6
+[logic@surge_tower_7]:logic@surge_tower
+active = beh@surge_tower_7
+[logic@surge_tower_8]:logic@surge_tower
+active = beh@surge_tower_8
+[logic@surge_tower_9]:logic@surge_tower
+active = beh@surge_tower_9
+[logic@surge_tower_10]:logic@surge_tower
+active = beh@surge_tower_10
+[logic@surge_tower_11]:logic@surge_tower
+active = beh@surge_tower_11
+[logic@surge_tower_12]:logic@surge_tower
+active = beh@surge_tower_12
+[logic@surge_tower_13]:logic@surge_tower
+active = beh@surge_tower_13
+[logic@surge_tower_14]:logic@surge_tower
+active = beh@surge_tower_14
+
+
+[beh@surge_tower]:beh@animpoint
+run_anim = rush
+meet = no_meet
+
+[beh@surge_tower_1]:beh@surge_tower
+pt1 = 999999,animpoint_sit | pos:-116.2,4.72,-254.8 dir:180 animpoint:pos
+[beh@surge_tower_2]:beh@surge_tower
+pt1 = 999999,animpoint_sit | pos:-115.5,4.72,-256.2 dir:90 animpoint:pos
+[beh@surge_tower_3]:beh@surge_tower
+pt1 = 999999,animpoint_sit | pos:-116.9,4.72,-259.0 dir:0 animpoint:pos
+[beh@surge_tower_4]:beh@surge_tower
+pt1 = 999999,animpoint_sit | pos:-119.7,4.72,-256.2 dir:-90 animpoint:pos
+[beh@surge_tower_5]:beh@surge_tower
+pt1 = 999999,animpoint_sit | pos:-119.0,4.72,-254.8 dir:180 animpoint:pos
+[beh@surge_tower_6]:beh@surge_tower
+pt1 = 999999,animpoint_sit | pos:-119.7,4.72,-259.0 dir:-45 animpoint:pos
+[beh@surge_tower_7]:beh@surge_tower
+pt1 = 999999,animpoint_sit | pos:-116.2,0.47,-256.2 dir:180 animpoint:pos
+[beh@surge_tower_8]:beh@surge_tower
+pt1 = 999999,animpoint_sit | pos:-115.5,0.47,-257.6 dir:90 animpoint:pos
+[beh@surge_tower_9]:beh@surge_tower
+pt1 = 999999,animpoint_sit | pos:-119.0,0.47,-259.0 dir:-90 animpoint:pos
+[beh@surge_tower_10]:beh@surge_tower
+pt1 = 999999,animpoint_sit | pos:-119.0,0.47,-257.6 dir:-90 animpoint:pos
+[beh@surge_tower_11]:beh@surge_tower
+pt1 = 999999,guard | pos:-117.6,0.47,-257.6
+[beh@surge_tower_12]:beh@surge_tower
+pt1 = 999999,guard | pos:-116.9,0.47,-257.6
+[beh@surge_tower_13]:beh@surge_tower
+pt1 = 999999,guard | pos:-117.6,0.47,-258.3
+[beh@surge_tower_14]:beh@surge_tower
+pt1 = 999999,guard | pos:-116.9,0.47,-258.3
+
+
+
+
+[logic@visitor]:logic@base
+suitable	= {+red_bridge_outpost} true
+prior		= 100
+
+[beh@visitor]:beh@animpoint
+
+
+
+
+[logic@visitor_1]:logic@visitor
+active = beh@visitor_1
+[logic@visitor_2]:logic@visitor
+active = beh@visitor_2
+[logic@visitor_3]:logic@visitor
+active = beh@visitor_3
+[logic@visitor_4]:logic@visitor
+active = beh@visitor_4
+[logic@visitor_5]:logic@visitor
+active = beh@visitor_5
+[logic@visitor_6]:logic@visitor
+active = beh@visitor_6
+[logic@visitor_7]:logic@visitor
+active = beh@visitor_7
+[logic@visitor_8]:logic@visitor
+active = beh@visitor_8
+
+[beh@visitor_1]:beh@visitor
+pt1 = 999999,animpoint_sit_all@random,state		| pos:-103.6,-0.81,-203.0 dir:0 animpoint:pos
+[beh@visitor_2]:beh@visitor
+pt1 = 999999,animpoint_sit_normal@random,state	| pos:-102.2,-0.81,-201.6 dir:-90 animpoint:pos
+[beh@visitor_3]:beh@visitor
+pt1 = 999999,animpoint_sit_normal@random,state	| pos:-102.2,-0.81,-200.9 dir:-90 animpoint:pos
+[beh@visitor_4]:beh@visitor
+pt1 = 999999,animpoint_sit_normal@random,state	| pos:-102.2,-0.81,-200.2 dir:-90 animpoint:pos
+[beh@visitor_5]:beh@visitor
+pt1 = 999999,animpoint_sit_all@random,state		| pos:-102.2,-0.81,-198.8 dir:135 animpoint:pos
+[beh@visitor_6]:beh@visitor
+pt1 = 999999,animpoint_sit_all@random,state		| pos:-103.6,-0.81,-198.8 dir:180 animpoint:pos
+[beh@visitor_7]:beh@visitor
+pt1 = 999999,animpoint_sit_all@random,state		| pos:-105.0,-0.81,-198.8 dir:225 animpoint:pos
+[beh@visitor_8]:beh@visitor
+pt1 = 999999,fold_arms							| pos:-102.9,-0.81,-198.1 dir:180 animpoint:pos
+
+
+
+
+[logic@visitor_10]:logic@visitor
+active = beh@visitor_10
+[logic@visitor_11]:logic@visitor
+active = beh@visitor_11
+[logic@visitor_12]:logic@visitor
+active = beh@visitor_12
+[logic@visitor_13]:logic@visitor
+active = beh@visitor_13
+[logic@visitor_14]:logic@visitor
+active = beh@visitor_14
+
+[beh@campfire]:beh@visitor
+turn_on_campfire = true
+
+[beh@visitor_10]:beh@campfire
+pt1 = 999999,animpoint_sit_ass@random@roast,state	| pos:-92.4,-0.81,-193.9 look:-93.8,-0.81,-192.5 animpoint:pos
+[beh@visitor_11]:beh@campfire
+pt1 = 999999,animpoint_sit_ass@random@roast,state	| pos:-91.7,-0.81,-191.8 look:-93.8,-0.81,-192.5 animpoint:pos
+[beh@visitor_12]:beh@campfire
+pt1 = 999999,animpoint_sit_ass@random@roast,state	| pos:-93.1,-0.81,-190.4 look:-93.8,-0.81,-192.5 animpoint:pos
+[beh@visitor_13]:beh@campfire
+pt1 = 999999,animpoint_sit_ass@random@roast,state	| pos:-95.2,-0.81,-190.4 look:-93.8,-0.81,-192.5 animpoint:pos
+[beh@visitor_14]:beh@campfire
+pt1 = 999999,animpoint_stay_wall@random,state		| pos:-96.6,-0.81,-193.9 dir:180 animpoint:pos
+
+
+
+
+[logic@customer_1]:logic@visitor
+active = beh@customer_1
+[logic@customer_2]:logic@visitor
+active = beh@customer_2
+
+[beh@customer_1]:beh@visitor
+pt1 = 999999,animpoint_sit_normal_weapon,state	| pos:-119.0,0.47,-256.2 dir:90 animpoint:pos
+[beh@customer_2]:beh@visitor
+pt1 = 999999,animpoint_sit_normal_weapon,state	| pos:-119.0,0.47,-255.5 dir:90 animpoint:pos
+
+
+
+
+[logic@wounded_1]:logic@visitor
+active = beh@wounded_1
+[logic@wounded_2]:logic@visitor
+active = beh@wounded_2
+[logic@wounded_3]:logic@visitor
+active = beh@wounded_3
+
+[beh@wounded]:beh@visitor
+meet = no_meet
+
+[beh@wounded_1]:beh@wounded
+pt1 = 999999,wounded_heavy	| pos:-102.9,-0.70,-182.7 dir:90 animpoint:pos
+[beh@wounded_2]:beh@wounded
+pt1 = 999999,wounded_heavy	| pos:-101.5,-0.70,-182.7 dir:90 animpoint:pos
+[beh@wounded_3]:beh@wounded
+pt1 = 999999,wounded_heavy	| pos:-100.1,-0.70,-182.7 dir:90 animpoint:pos
+
+
+
+
+[logic@research]:logic@base
+suitable	= {-red_bridge_outpost} false, {=is_night()} false, {=npc_community(csky)} true, {=npc_community(ecolog)} true
+prior		= 110
+
+[logic@research_1]:logic@research
+active = beh@research_1
+[logic@research_2]:logic@research
+active = beh@research_2
+
+[beh@research_1]:beh@visitor
+pt1 = 999999,scaner_stand	| pos:-128.1,-6.13,-273.0 dir:30
+on_info = {=surge_started()} beh@surge_1
+[beh@research_2]:beh@visitor
+pt1 = 999999,scaner_crouch	| pos:-126.7,-5.52,-271.6 dir:60
+on_info = {=surge_started()} beh@surge_2
+
+
+
+
+[logic@drunk]:logic@visitor
+suitable	= {+red_bridge_outpost =is_night()} true
+prior		= 110
+active = beh@drunk
+
+[beh@drunk]:beh@visitor
+pt1 = 999999,drunk_behindwall				| pos:-102.2,0.04,-236.7 dir:210 animpoint:pos
+on_info = {=surge_started()} beh@surge_3
+
+
+
+
+[logic@outside_1]:logic@visitor
+active = beh@outside_1
+[logic@outside_2]:logic@visitor
+active = beh@outside_2
+[logic@outside_3]:logic@visitor
+active = beh@outside_3
+
+[beh@outside_1]:beh@visitor
+pt1 = 999999,animpoint_stay_wall@random,state	| pos:-104.2,-0.12,-246.4 dir:-90 animpoint:pos
+on_info = {=surge_started()} beh@surge_4
+[beh@outside_2]:beh@visitor
+pt1 = 999999,animpoint_sit_high@random,state	| pos:-104.2,-0.10,-245.0 dir:-90 animpoint:pos
+on_info = {=surge_started()} beh@surge_5
+[beh@outside_3]:beh@visitor
+pt1 = 999999,animpoint_sit_normal@random,state	| pos:-105.1,-0.15,-245.0 dir:90 animpoint:pos
+on_info = {=surge_started()} beh@surge_6
+
+
+
+
+
+
+[beh@surge]:beh@visitor
+run_anim = rush
+
+[beh@surge_1]:beh@surge
+pt1 = 999999,animpoint_sit | pos:-116.2,-0.64,-225.4 dir:0 animpoint:pos
+on_info = {!surge_started()} beh@research_1
+[beh@surge_2]:beh@surge
+pt1 = 999999,animpoint_sit | pos:-114.8,-0.64,-224.7 dir:90 animpoint:pos
+on_info = {!surge_started()} beh@research_2
+[beh@surge_3]:beh@surge
+pt1 = 999999,animpoint_sit | pos:-114.8,-0.64,-223.3 dir:90 animpoint:pos
+on_info = {!surge_started()} beh@drunk
+[beh@surge_4]:beh@surge
+pt1 = 999999,animpoint_sit | pos:-113.4,-0.64,-219.8 dir:60 animpoint:pos
+on_info = {!surge_started()} beh@outside_1
+[beh@surge_5]:beh@surge
+pt1 = 999999,animpoint_sit | pos:-120.4,-0.64,-223.3 dir:-90 animpoint:pos
+on_info = {!surge_started()} beh@outside_2
+[beh@surge_6]:beh@surge
+pt1 = 999999,animpoint_sit | pos:-120.4,-0.64,-221.9 dir:-90 animpoint:pos
+on_info = {!surge_started()} beh@outside_3
+[beh@surge_7]:beh@surge
+pt1 = 999999,animpoint_sit | pos:-119.7,-0.64,-219.8 dir:-90 animpoint:pos
+[beh@surge_8]:beh@surge
+pt1 = 999999,animpoint_sit | pos:-119.0,-0.64,-217.7 dir:-90 animpoint:pos
+[beh@surge_9]:beh@surge
+pt1 = 999999,animpoint_sit | pos:-117.6,-0.64,-216.3 dir:-90 animpoint:pos
+
+
+
+
+
+
+
+

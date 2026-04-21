@@ -1,0 +1,260 @@
+; ===================
+; ----------- DAY -----------
+; ===================
+; патруль фронт
+[logic@esc_smart_terrain_7_11_xcvb_day_1]
+active = walker@day_1
+suitable = {!surge_started !is_night} true
+prior = 60
+
+[walker@day_1]
+path_walk = guard_1_walk
+
+
+; патруль на крыше
+[logic@esc_smart_terrain_7_11_xcvb_day_2]
+active = walker@day_2
+suitable = {!surge_started !is_night =guard_has_rifle} true
+prior = 59
+
+[walker@day_2]
+path_walk = story_military_3_walk
+
+
+; camp 1
+[logic@esc_smart_terrain_7_11_xcvb_day_3]
+active = animpoint@day_3
+suitable = {!surge_started !is_night} true
+prior = 59
+
+[animpoint@day_3]
+cover_name = esc_smart_terrain_7_11_animpoint_kamp1
+use_camp = true
+turn_on_campfire = true
+
+
+; camp 2
+[logic@esc_smart_terrain_7_11_xcvb_day_4]
+active = animpoint@day_4
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[animpoint@day_4]
+cover_name = esc_smart_terrain_7_11_animpoint_kamp3
+use_camp = true
+turn_on_campfire = true
+
+
+; патруль гаражи
+[logic@esc_smart_terrain_7_11_xcvb_day_5]
+active = walker@day_5
+suitable = {!surge_started !is_night} true
+prior = 57
+
+[walker@day_5]
+path_walk = guard_3_walk
+
+
+; патруль центр
+[logic@esc_smart_terrain_7_11_xcvb_day_6]
+active = walker@day_6
+suitable = {!surge_started !is_night} true
+prior = 56
+
+[walker@day_6]
+path_walk = guard_4_walk
+
+
+; будка справа
+[logic@esc_smart_terrain_7_11_xcvb_day_7]
+active = walker@day_7
+suitable = {!surge_started !is_night} true
+prior = 56
+
+[walker@day_7]
+path_walk = story_military_2_walk
+path_look = story_military_2_look
+
+
+; будка слева
+[logic@esc_smart_terrain_7_11_xcvb_day_8]
+active = walker@day_8
+suitable = {!surge_started !is_night} true
+prior = 56
+
+[walker@day_8]
+path_walk = story_military_1_walk
+path_look = story_military_1_look
+
+
+; camp 3
+[logic@esc_smart_terrain_7_11_xcvb_day_9]
+active = animpoint@day_9
+suitable = {!surge_started !is_night} true
+prior = 55
+
+[animpoint@day_9]
+cover_name = esc_smart_terrain_7_11_animpoint_kamp5
+use_camp = true
+turn_on_campfire = true
+
+
+; снайпер в доме
+[logic@esc_smart_terrain_7_11_xcvb_day_10]
+active = walker@day_10
+suitable = {!surge_started !is_night =guard_has_rifle} true
+prior = 55
+
+[walker@day_10]
+path_walk = story_military_6_walk
+path_look = guard_1_look
+
+
+; часовой у грузовика
+[logic@esc_smart_terrain_7_11_xcvb_day_11]
+active = walker@day_11
+suitable = {!surge_started !is_night} true
+prior = 55
+
+[walker@day_11]
+path_walk = guard_1_look
+path_look = teleport_look
+
+
+; часовой у бокового входа
+[logic@esc_smart_terrain_7_11_xcvb_day_12]
+active = walker@day_12
+suitable = {!surge_started !is_night} true
+prior = 55
+
+[walker@day_12]
+path_walk = story_military_10_walk
+path_look = story_military_10_look
+
+
+
+
+; ====================
+; ----------- NIGHT ----------
+; ====================
+[resting]
+gather_items_enabled = false
+help_wounded_enabled = false
+corpse_detection_enabled = false
+
+; патруль на крыше
+[logic@esc_smart_terrain_7_11_xcvb_night_1]
+active = walker@night_1
+suitable = {!surge_started =is_night =guard_has_rifle} true
+prior = 60
+
+[walker@night_1]
+path_walk = story_military_3_walk
+
+
+; у костра на 2м этаже
+[logic@esc_smart_terrain_7_11_xcvb_night_2]
+active = walker@night_2
+suitable = {!surge_started =is_night} true
+prior = 59
+
+[walker@night_2]:resting
+path_walk = story_military_5_walk
+path_look = kamp_2
+def_state_standing = sleep
+turn_on_campfire = true
+
+
+; патруль фронт
+[logic@esc_smart_terrain_7_11_xcvb_night_3]
+active = walker@night_3
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[walker@night_3]
+path_walk = guard_1_walk
+
+
+; у костра на 2м этаже
+[logic@esc_smart_terrain_7_11_xcvb_night_4]
+active = walker@night_4
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[walker@night_4]:resting
+path_walk = story_military_6_walk
+path_look = kamp_2
+def_state_standing = sit_ass_drink_vodka
+turn_on_campfire = true
+help_wounded_enabled = true
+
+
+; camp 1
+[logic@esc_smart_terrain_7_11_xcvb_night_5]
+active = animpoint@night_5
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[animpoint@night_5]:resting
+cover_name = esc_smart_terrain_7_11_animpoint_kamp1
+use_camp = true
+turn_on_campfire = true
+help_wounded_enabled = true
+
+
+; camp 2
+[logic@esc_smart_terrain_7_11_xcvb_night_6]
+active = animpoint@night_6
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[animpoint@night_6]:resting
+cover_name = esc_smart_terrain_7_11_animpoint_kamp3
+use_camp = true
+turn_on_campfire = true
+help_wounded_enabled = true
+
+
+; camp 3
+[logic@esc_smart_terrain_7_11_xcvb_night_7]
+active = animpoint@night_7
+suitable = {!surge_started =is_night} true
+prior = 55
+
+[animpoint@night_7]:resting
+cover_name = esc_smart_terrain_7_11_animpoint_kamp5
+use_camp = true
+turn_on_campfire = true
+help_wounded_enabled = true
+
+
+; будка слева
+[logic@esc_smart_terrain_7_11_xcvb_night_8]
+active = walker@night_8
+suitable = {!surge_started =is_night} true
+prior = 55
+
+[walker@night_8]
+path_walk = story_military_1_walk
+path_look = story_military_1_look
+
+
+; будка справа
+[logic@esc_smart_terrain_7_11_xcvb_night_9]
+active = walker@night_9
+suitable = {!surge_started =is_night} true
+prior = 54
+
+[walker@night_9]
+path_walk = story_military_2_walk
+path_look = story_military_2_look
+
+
+; патруль гараж
+[logic@esc_smart_terrain_7_11_xcvb_night_10]
+active = walker@night_10
+suitable = {!surge_started =is_night} true
+prior = 54
+
+[walker@night_10]
+path_walk = guard_3_walk

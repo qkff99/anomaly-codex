@@ -1,0 +1,600 @@
+<?xml version="1.0" encoding="windows-1252"?>
+
+<string_table>
+
+<!--
+F.R.I.T.E.S | Thundard
+Dernière révision : 24 novembre 2025
+-->
+
+<!-- menu -->
+
+<string id="ui_mcm_menu_idiots">
+    <text>Idiots Utiles</text>
+</string>
+<string id="ui_mcm_menu_idiots_options">
+    <text>Options</text>
+</string>
+<string id="ui_mcm_menu_idiots_ui">
+    <text>Interface</text>
+</string>
+<string id="ui_mcm_menu_idiots_keybinds">
+    <text>Raccourcis</text>
+</string>
+<string id="ui_mcm_menu_idiots_point">
+    <text>Points</text>
+</string>
+<string id="ui_mcm_menu_idiots_movement">
+    <text>Mouvement</text>
+</string>
+<string id="ui_mcm_menu_idiots_light">
+    <text>Lumière</text>
+</string>
+<string id="ui_mcm_menu_idiots_speed">
+    <text>Vitesse</text>
+</string>
+<string id="ui_mcm_menu_idiots_stance">
+    <text>Posture</text>
+</string>
+<string id="ui_mcm_menu_idiots_distance">
+    <text>Distance</text>
+</string>
+<string id="ui_mcm_menu_idiots_combat">
+    <text>Combat</text>
+</string>
+<string id="ui_mcm_menu_idiots_readiness">
+    <text>Prise d'alerte</text>
+</string>
+<string id="ui_mcm_menu_idiots_jobs">
+    <text>Tâches</text>
+</string>
+<string id="ui_mcm_menu_idiots_formation">
+    <text>Formation</text>
+</string>
+<string id="ui_mcm_menu_idiots_weapon">
+    <text>Arme</text>
+</string>
+
+<!-- General Options -->
+<string id="ui_mcm_idiots_title_options">
+    <text>Options pour Idiots Utiles</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_options_general">
+    <text>Options générales</text>
+</string>
+<string id="ui_mcm_idiots_options_splitSquads">
+    <text>Séparer chaque compagnon dans son propre groupe</text>
+</string>
+<string id="ui_mcm_idiots_options_splitSquads_desc">
+    <text>Permet aux compagnons de se déplacer individuellement entre les cartes. Sinon, ils peuvent ne pas rester/te suivre comme prévu ou se téléporter dans des positions éloignées lors des transitions entre cartes. Impossible de réunir les groupes une fois séparés.</text>
+</string>
+<string id="ui_mcm_idiots_options_autoSneak">
+    <text>Activer discrétion auto</text>
+</string>
+<string id="ui_mcm_idiots_options_autoSneak_desc">
+    <text>Désactive pour empêcher les compagnons de se mettre automatiquement en discrétion quand tu te mets en discrétion.</text>
+</string>
+<string id="ui_mcm_idiots_options_autoProne">
+    <text>Activer au sol auto</text>
+</string>
+<string id="ui_mcm_idiots_options_autoProne_desc">
+    <text>Désactive pour empêcher les compagnons de se coucher automatiquement lorsque tu le fais.</text>
+</string>
+<string id="ui_mcm_idiots_options_autoSprint">
+    <text>Activer sprint auto</text>
+</string>
+<string id="ui_mcm_idiots_options_autoSprint_desc">
+    <text>Désactive pour empêcher les compagnons de sprinter automatiquement quand tu sprints.</text>
+</string>
+<string id="ui_mcm_idiots_options_autoLight">
+    <text>Activer lampes frontales auto</text>
+</string>
+<string id="ui_mcm_idiots_options_autoLight_desc">
+    <text>Désactive pour empêcher les compagnons d'allumer/éteindre leur lampe frontale quand tu le fais.</text>
+</string>
+<string id="ui_mcm_idiots_options_autoWait">
+    <text>Basculer sur "Attendre" après "Aller au point"</text>
+</string>
+<string id="ui_mcm_idiots_options_autoWait_desc">
+    <text>Lorsque tu utilises la commande "Aller au point", les compagnons passent automatiquement en mode "Attendre" et y restent jusqu'à nouvel ordre. Si cette option est désactivée, ils respectent toujours la commande, mais reprendront leur comportement précédent à l'arrivée.</text>
+</string>
+<string id="ui_mcm_idiots_options_autoGuard">
+    <text>Basculer sur combat "Garde" après "Aller au point"</text>
+</string>
+<string id="ui_mcm_idiots_options_autoGuard_desc">
+    <text>Lorsque tu utilises la commande "Aller au point", les compagnons passent automatiquement en mode "Combat de garde" et y restent jusqu'à nouvel ordre. Si cette option est désactivée, ils respectent toujours la commande, mais reprendront leur style de combat assigné à l'arrivée.</text>
+</string>
+<string id="ui_mcm_idiots_options_autoDeselect">
+    <text>Désélectionner après "Aller au point" ou "Regarder le point"</text>
+</string>
+<string id="ui_mcm_idiots_options_autoDeselect_desc">
+    <text>Désélectionne automatiquement tous les compagnons sélectionnés après avoir utilisé "Aller au point" ou "Regarder le point".</text>
+</string>
+<string id="ui_mcm_idiots_options_autoReloadAll">
+    <text>Recharger toutes les armes au repos</text>
+</string>
+<string id="ui_mcm_idiots_options_autoReloadAll_desc">
+    <text>Si activé, les compagnons rechargeront toutes les armes de leur inventaire après le chargement d'une sauvegarde, après t'avoir rejoint ou après un combat. Sinon, ils ne rechargeront que l'arme active.</text>
+</string>
+<string id="ui_mcm_idiots_options_manualReloadAll">
+    <text>Recharger toutes les armes via bouton/raccourci</text>
+</string>
+<string id="ui_mcm_idiots_options_manualReloadAll_desc">
+    <text>Si activé, les compagnons rechargeront toutes les armes de leur inventaire lorsque tu utiliseras le bouton ou le raccourci de rechargement. Sinon, ils ne rechargeront que l'arme active.</text>
+</string>
+
+<!-- Combat Options -->
+<string id="ui_mcm_idiots_subtitle_options_combat">
+    <text>Options de combat</text>
+</string>
+<string id="ui_mcm_idiots_options_defendMode">
+    <text>Basculer en "Défendre seulement" quand l'ennemi attaque</text>
+</string>
+<string id="ui_mcm_idiots_options_defendMode_desc">
+    <text>En mode "Défendre seulement", les compagnons réagissent toujours quand tu es attaqué, mais ils peuvent aussi réagir si un ennemi les attaque ou attaque un autre compagnon.</text>
+</string>
+<string id="ui_mcm_idiots_options_camperCombat">
+    <text>Activer la commande de combat "Campeur" héritée</text>
+</string>
+<string id="ui_mcm_idiots_options_camperCombat_desc">
+    <text>Ajoute une commande pour basculer les compagnons en mode de combat "Campeur". Ce schéma vient d'Anomaly mais est désactivé pour les compagnons. À noter, il peut être instable et n'est donc pas supporté. Tu peux associer un raccourci à cette commande, mais elle ne peut pas être utilisée via la touche "Cycle combat".</text>
+</string>
+<string id="ui_mcm_idiots_options_monolithCombat">
+    <text>Activer la commande de combat "Monolithe" héritée</text>
+</string>
+<string id="ui_mcm_idiots_options_monolithCombat_desc">
+    <text>Ajoute une commande pour basculer les compagnons en mode de combat "Monolithe". Ce schéma vient d'Anomaly mais est désactivé pour les compagnons. À noter, il peut être instable et n'est donc pas supporté. Tu peux associer un raccourci à cette commande, mais elle ne peut pas être utilisée via la touche "Cycle combat".</text>
+</string>
+<string id="ui_mcm_idiots_options_zombiedCombat">
+    <text>Activer la commande de combat "Zombifié"</text>
+</string>
+<string id="ui_mcm_idiots_options_zombiedCombat_desc">
+    <text>Ajoute une commande pour basculer les compagnons en mode de combat "Zombifié". Ce schéma vient d'Anomaly mais n'est pas prévu pour les compagnons ou les PNJ humains. À noter, il peut être instable et n'est donc pas supporté. Tu peux associer un raccourci à cette commande, mais elle ne peut pas être utilisée via la touche "Cycle combat".</text>
+</string>
+
+<!-- Options de la Vague -->
+<string id="ui_mcm_idiots_subtitle_options_surge">
+    <text>Options de Vague</text>
+</string>
+<string id="ui_mcm_idiots_options_dynamicSurgeCover">
+    <text>Activer abri dynamique lors des vagues</text>
+</string>
+<string id="ui_mcm_idiots_options_dynamicSurgeCover_desc">
+    <text>Active une fonctionnalité similaire au mod "Dynamic Emissions Cover", mais donne aussi aux compagnons plus d'options pour se mettre à l'abri pendant la vague. Tu peux l'activer pour le joueur et les compagnons (recommandé), uniquement pour les compagnons si tu préfères garder "Dynamic Emission Cover" pour toi, ou désactiver pour tous.</text>
+</string>
+<string id="ui_mcm_idiots_options_surgesKillCompanions">
+    <text>Les vagues peuvent tuer les compagnons</text>
+</string>
+<string id="ui_mcm_idiots_options_surgesKillCompanions_desc">
+    <text>Dans Anomaly, les vagues tuent les compagnons, mais pas dans GAMMA. Cette option sera configurée selon ta version. Activer est recommandé, mais garde à l'esprit que c'est une fonctionnalité récente et il y a des risques pour tes compagnons.</text>
+</string>
+<string id="ui_mcm_idiots_options_surge_note">
+    <text>REMARQUE : "NPCs Die in Emissions for Real" est compatible, car Idiots Utiles ne remplacera son schéma de vague que pour les compagnons. "TB Coordinate Based Safe Zones" est compatible, mais les compagnons n'utiliseront pas ses abris supplémentaires. "Dynamic Emission Cover" est compatible, car il n'affecte pas les compagnons et les deux mods affecteront le joueur si activé.</text>
+</string>
+
+<!-- Options de fouille et collecte -->
+<string id="ui_mcm_idiots_subtitle_options_jobs">
+    <text>Options de fouille et collecte</text>
+</string>
+<string id="ui_mcm_idiots_options_noNpcLooting">
+    <text>Seuls les compagnons peuvent fouiller ou ramasser des objets</text>
+</string>
+<string id="ui_mcm_idiots_options_noNpcLooting_desc">
+    <text>Active/désactive la capacité des PNJ qui ne sont pas des compagnons à fouiller et ramasser des objets. Pour conserver le comportement actuel, cette option est cochée sur GAMMA et décochée sur Anomaly.</text>
+</string>
+<string id="ui_mcm_idiots_options_jobs_note">
+    <text>REMARQUE : Pour que la fouille et la collecte fonctionnent correctement dans GAMMA, "311 NPC Stop Looting Dead Bodies" doit être désactivé.</text>
+</string>
+
+<!-- Triche -->
+<string id="ui_mcm_idiots_subtitle_options_cheats">
+    <text>Possiblement de la triche</text>
+</string>
+<string id="ui_mcm_idiots_options_cheats_note">
+    <text>REMARQUE : Ces options peuvent déséquilibrer le jeu. Lis bien les descriptions avant d'activer.</text>
+</string>
+<string id="ui_mcm_idiots_options_artifacts">
+    <text>Activer la commande de collecte d'artefacts</text>
+</string>
+<string id="ui_mcm_idiots_options_artifacts_desc">
+    <text>Active/désactive une commande dans l'interface pour ordonner aux compagnons de ramasser des artefacts. REMARQUE : activer cette option, c'est quasiment tricher sauf si tu utilises un mod permettant aux PNJ de prendre des dégâts ou de mourir dans les anomalies.</text>
+</string>
+<string id="ui_mcm_idiots_options_showAllItems">
+    <text>Tout afficher dans les inventaires compagnons</text>
+</string>
+<string id="ui_mcm_idiots_options_showAllItems_desc">
+    <text>Affiche tout le contenu des inventaires compagnons au lieu des seuls objets ramassés ou collectés pour toi. REMARQUE : activer cela est limite de la triche, car cela te permet d'exploiter tes compagnons pour leur équipement. Utilise-le uniquement pour vider l'inventaire ou si un bug t'empêche d'accéder à un butin ou un objet collecté.</text>
+</string>
+
+<!-- Options d'interface -->
+<string id="ui_mcm_idiots_title_ui">
+    <text>Options d'interface</text>
+</string>
+<string id="ui_mcm_idiots_ui_indexers">
+    <text>Afficher les indicateurs au-dessus des compagnons</text>
+</string>
+<string id="ui_mcm_idiots_ui_indexers_desc">
+    <text>Active/désactive l'affichage des numéros d'onglet au-dessus des compagnons quand l'interface est ouverte.</text>
+</string>
+<string id="ui_mcm_idiots_ui_showReload">
+    <text>Afficher le bouton de rechargement</text>
+</string>
+<string id="ui_mcm_idiots_ui_showReload_desc">
+    <text>Ajoute un bouton dans l'interface pour ordonner manuellement aux compagnons de recharger toutes leurs armes.</text>
+</string>
+<string id="ui_mcm_idiots_ui_showRetreat">
+    <text>Afficher le bouton de retraite</text>
+</string>
+<string id="ui_mcm_idiots_ui_showRetreat_desc">
+    <text>Ajoute un bouton dans l'interface pour forcer manuellement la retraite (suivre, dépêcher, ignorer le combat et rester près) des compagnons.</text>
+</string>
+<string id="ui_mcm_idiots_ui_showUnstick">
+    <text>Afficher le bouton de déblocage</text>
+</string>
+<string id="ui_mcm_idiots_ui_showUnstick_desc">
+    <text>Ajoute un bouton dans l'interface pour téléporter manuellement un compagnon bloqué à sa position. Alternative au raccourci "Téléport compagnon" si les compagnons ne répondent plus ou refusent de bouger.</text>
+</string>
+<string id="ui_mcm_idiots_ui_showTooltips">
+    <text>Afficher les info-bulles</text>
+</string>
+<string id="ui_mcm_idiots_ui_showTooltips_desc">
+    <text>Affiche les info-bulles quand tu passes la souris sur un bouton composé uniquement d'une icône dans l'interface compagnons.</text>
+</string>
+
+<!-- Personnalisation interface -->
+<string id="ui_mcm_idiots_subtitle_ui_customization">
+    <text>Personnalisation interface</text>
+</string>
+<string id="ui_mcm_idiots_ui_scaleX">
+    <text>Échelle X</text>
+</string>
+<string id="ui_mcm_idiots_ui_scaleY">
+    <text>Échelle Y</text>
+</string>
+<string id="ui_mcm_idiots_ui_offsetX">
+    <text>Décalage X depuis le centre</text>
+</string>
+<string id="ui_mcm_idiots_ui_offsetY">
+    <text>Décalage Y depuis le bas</text>
+</string>
+<string id="ui_mcm_idiots_ui_alpha">
+    <text>Transparence de fond</text>
+</string>
+<string id="ui_mcm_idiots_scheme">
+    <text>Couleur d'accent</text>
+</string>
+<string id="ui_mcm_idiots_scheme_desc">
+    <text>Définit la couleur d'accent de l'interface compagnons.</text>
+</string>
+<string id="ui_mcm_idiots_ui_font">
+    <text>Taille de police</text>
+</string>
+
+<!-- Raccourcis clavier -->
+<string id="ui_mcm_idiots_title_keybinds">
+    <text>Raccourcis pour Idiots Utiles</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_point_move">
+    <text>Aller au point</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_point_away">
+    <text>Écarter du chemin</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_point_select">
+    <text>Sélectionner un compagnon</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_point_deselect">
+    <text>Désélectionner tous les compagnons</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_point_addWaypoint">
+    <text>Ajouter un point de passage</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_point_clearWaypoints">
+    <text>Effacer tous les points de passage</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_point_inventory">
+    <text>Ouvrir l'inventaire</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_point_inventory_note">
+    <text>REMARQUE : Le modificateur SHIFT ne fonctionne pas pour ce raccourci dans GAMMA (sauf si tu as désactivé l'interface GAMMA).</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_point_reset">
+    <text>Resynchroniser l'état</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_point_look">
+    <text>Regarder le point</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_point_reload">
+    <text>Recharger l'arme</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_point_retreat">
+    <text>Retraite</text>
+</string>
+<string id="ui_mcm_idiots_keybinds_key">
+    <text>Touche</text>
+</string>
+<string id="ui_mcm_idiots_keybinds_mod">
+    <text>Touche modificateur</text>
+</string>
+<string id="ui_mcm_idiots_keybinds_mode">
+    <text>Type d'appui</text>
+</string>
+<string id="ui_mcm_idiots_keybinds_toggle">
+    <text>Activation à l'appui</text>
+</string>
+
+<!-- Touches de mouvement -->
+<string id="ui_mcm_idiots_subtitle_cycle_movement">
+    <text>Changer mouvement</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_follow">
+    <text>Suivre</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_wait">
+    <text>Attendre</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_cover">
+    <text>Se mettre à couvert</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_relax">
+    <text>Détente</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_patrol">
+    <text>Patrouiller</text>
+</string>
+
+<!-- Touches de lumière -->
+<string id="ui_mcm_idiots_subtitle_cycle_light">
+    <text>Changer lumière</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_auto">
+    <text>Lumière par défaut</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_off">
+    <text>Lumière éteinte</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_on">
+    <text>Lumière allumée</text>
+</string>
+
+<!-- Touches de vitesse -->
+<string id="ui_mcm_idiots_subtitle_hurry">
+    <text>Dépêche-toi</text>
+</string>
+
+<!-- Touches de posture -->
+<string id="ui_mcm_idiots_subtitle_cycle_stance">
+    <text>Changer posture</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_stand">
+    <text>Debout</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_sneak">
+    <text>Discret</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_prone">
+    <text>Ras du sol</text>
+</string>
+
+<!-- Touches de distance -->
+<string id="ui_mcm_idiots_subtitle_cycle_distance">
+    <text>Changer distance</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_near">
+    <text>Près</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_normal">
+    <text>Normale</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_far">
+    <text>Loin</text>
+</string>
+
+<!-- Touches de combat -->
+<string id="ui_mcm_idiots_subtitle_cycle_combat">
+    <text>Changer combat</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_default">
+    <text>Défaut</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_assault">
+    <text>Assaut</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_support">
+    <text>Soutien</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_guard">
+    <text>Garde</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_snipe">
+    <text>Sniper</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_monolith">
+    <text>Monolithe</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_camper">
+    <text>Campeur</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_zombied">
+    <text>Zombifié</text>
+</string>
+
+<!-- Touches d'armes -->
+<string id="ui_mcm_idiots_subtitle_cycle_weapon">
+    <text>Changer arme</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_best">
+    <text>Meilleure</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_pistol">
+    <text>Pistolet</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_shotgun">
+    <text>Fusil à pompe</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_smg">
+    <text>PM</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_rifle">
+    <text>Fusil</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_sniper">
+    <text>Sniper</text>
+</string>
+
+<!-- Touches d'alerte -->
+<string id="ui_mcm_idiots_subtitle_cycle_readiness">
+    <text>Changer alerte</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_attack">
+    <text>Attaquer</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_defend">
+    <text>Défendre</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_ignore">
+    <text>Ignorer</text>
+</string>
+
+<!-- Touches de tâches -->
+<string id="ui_mcm_idiots_subtitle_cycle_jobs">
+    <text>Changer tâche</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_loot_items">
+    <text>Ramasser objets</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_loot_artifacts">
+    <text>Ramasser artefacts</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_loot_corpses">
+    <text>Fouiller cadavres</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_help_wounded">
+    <text>Aider blessés</text>
+</string>
+
+<!-- Touches de formation -->
+<string id="ui_mcm_idiots_subtitle_cycle_formation">
+    <text>Changer formation</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_bunch">
+    <text>Serrée</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_spread">
+    <text>Dispersée</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_line">
+    <text>En ligne</text>
+</string>
+<string id="ui_mcm_idiots_subtitle_covered">
+    <text>Couverte</text>
+</string>
+
+<!-- Options de liste -->
+<string id="ui_mcm_lst_idiots_actor">
+    <text>Joueur seulement</text>
+</string>
+<string id="ui_mcm_lst_idiots_self">
+    <text>Joueur ou soi-même</text>
+</string>
+<string id="ui_mcm_lst_idiots_anyone">
+    <text>Joueur ou compagnons</text>
+</string>
+<string id="ui_mcm_lst_mod_none">
+    <text>Aucun</text>
+</string>
+<string id="ui_mcm_lst_mod_shift">
+    <text>SHIFT</text>
+</string>
+<string id="ui_mcm_lst_mod_ctrl">
+    <text>CTRL</text>
+</string>
+<string id="ui_mcm_lst_mod_alt">
+    <text>ALT</text>
+</string>
+<string id="ui_mcm_lst_mode_press">
+    <text>Appui unique</text>
+</string>
+<string id="ui_mcm_lst_mode_dtap">
+    <text>Double appui</text>
+</string>
+<string id="ui_mcm_lst_mode_hold">
+    <text>Maintenir</text>
+</string>
+<string id="ui_mcm_lst_font_small">
+    <text>Petit</text>
+</string>
+<string id="ui_mcm_lst_font_medium">
+    <text>Moyen</text>
+</string>
+<string id="ui_mcm_lst_font_large">
+    <text>Grand</text>
+</string>
+<string id="ui_mcm_lst_font_xlarge">
+    <text>Très grand</text>
+</string>
+<string id="ui_mcm_lst_top">
+    <text>Haut</text>
+</string>
+<string id="ui_mcm_lst_center">
+    <text>Centre</text>
+</string>
+<string id="ui_mcm_lst_bottom">
+    <text>Bas</text>
+</string>
+<string id="ui_mcm_lst_left">
+    <text>Gauche</text>
+</string>
+<string id="ui_mcm_lst_right">
+    <text>Droite</text>
+</string>
+<string id="ui_mcm_lst_idiots_faction">
+    <text>Ta faction</text>
+</string>
+<string id="ui_mcm_lst_idiots_army">
+    <text>Militaires</text>
+</string>
+<string id="ui_mcm_lst_idiots_bandit">
+    <text>Bandit</text>
+</string>
+<string id="ui_mcm_lst_idiots_csky">
+    <text>Firmament</text>
+</string>
+<string id="ui_mcm_lst_idiots_dolg">
+    <text>Devoir</text>
+</string>
+<string id="ui_mcm_lst_idiots_ecolog">
+    <text>Écologiste</text>
+</string>
+<string id="ui_mcm_lst_idiots_freedom">
+    <text>Liberté</text>
+</string>
+<string id="ui_mcm_lst_idiots_greh">
+    <text>Péché</text>
+</string>
+<string id="ui_mcm_lst_idiots_isg">
+    <text>UNISG</text>
+</string>
+<string id="ui_mcm_lst_idiots_killer">
+    <text>Mercenaire</text>
+</string>
+<string id="ui_mcm_lst_idiots_monolith">
+    <text>Monolithe</text>
+</string>
+<string id="ui_mcm_lst_idiots_renegade">
+    <text>Renégat</text>
+</string>
+<string id="ui_mcm_lst_idiots_stalker">
+    <text>Indépendant</text>
+</string>
+<string id="ui_mcm_lst_idiots_both">
+    <text>Pour joueur et compagnons</text>
+</string>
+<string id="ui_mcm_lst_idiots_companions">
+    <text>Pour compagnons seulement</text>
+</string>
+<string id="ui_mcm_lst_idiots_neither">
+    <text>Désactivé</text>
+</string>
+
+</string_table>

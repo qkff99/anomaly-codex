@@ -1,0 +1,346 @@
+siski = siski or {}
+
+local type = _G.type
+local pcall = _G.pcall
+local rawget = _G.rawget
+local tostring = _G.tostring
+local tonumber = _G.tonumber
+local string = _G.string
+local alife = _G.alife
+
+local SERVICE_TOKEN = "_sim_squad_service_"
+local CAMPER_TOKEN = "_sim_squad_camper_"
+
+local Patch = {
+    RUNTIME = {
+        originals = {},
+        last_signature = nil,
+    }
+}
+
+local function log_info(fmt, ...)
+    if siski.log and siski.log.info then
+        siski.log.info("XR_COND_PATCH", fmt, ...)
+    end
+end
+
+local function safe_call_string_method(obj, method_name)
+    if not obj then
+        return nil
+    end
+    local fn = obj[method_name]
+    if type(fn) ~= "function" then
+        return nil
+    end
+    local ok, value = pcall(fn, obj)
+    if not ok or type(value) ~= "string" or value == "" then
+        return nil
+    end
+    return value
+end
+
+local function safe_call_number_method(obj, method_name)
+    if not obj then
+        return nil
+    end
+    local fn = obj[method_name]
+    if type(fn) ~= "function" then
+        return nil
+    end
+    local ok, value = pcall(fn, obj)
+    if not ok or type(value) ~= "number" then
+        return nil
+    end
+    return value
+end
+
+local function safe_read_number_field(obj, field_name)
+    if not obj then
+        return nil
+    end
+    local ok, value = pcall(function()
+        return obj[field_name]
+    end)
+    if not ok or type(value) ~= "number" then
+        return nil
+    end
+    return value
+end
+
+local function is_siski_squad_section(section)
+    if type(section) ~= "string" or section == "" then
+        return false
+    end
+    if string.find(section, SERVICE_TOKEN, 1, true) then
+        return true
+    end
+    if string.find(section, CAMPER_TOKEN, 1, true) then
+        return true
+    end
+    return false
+end
+
+local function normalize_alife_id(value)
+    local id = tonumber(value)
+    if type(id) ~= "number" then
+        return nil
+    end
+    if id <= 0 or id == 65535 then
+        return nil
+    end
+    return id
+end
+
+local function safe_alife_object(id)
+    local valid_id = normalize_alife_id(id)
+    if not valid_id then
+        return nil
+    end
+    local sim = alife and alife()
+    if not sim then
+        return nil
+    end
+    local ok_obj, se_obj = pcall(function()
+        return sim:object(valid_id)
+    end)
+    if not ok_obj then
+        return nil
+    end
+    return se_obj
+end
+
+local function resolve_squad_section_by_group_id(group_id)
+    local se_squad = safe_alife_object(group_id)
+    if not se_squad then
+        return nil
+    end
+    return safe_call_string_method(se_squad, "section_name")
+end
+
+local function resolve_npc_squad_section(npc)
+    local get_object_squad = rawget(_G, "get_object_squad")
+    if type(get_object_squad) == "function" then
+        local ok_squad, se_squad = pcall(get_object_squad, npc, "siski_xr_conditions_patch")
+        if ok_squad and se_squad then
+            local section = safe_call_string_method(se_squad, "section_name")
+            if section then
+                return section
+            end
+        end
+    end
+
+    local group_id = normalize_alife_id(safe_read_number_field(npc, "group_id"))
+        or normalize_alife_id(safe_call_number_method(npc, "group_id"))
+    if not group_id then
+        local npc_id = safe_call_number_method(npc, "id")
+        if normalize_alife_id(npc_id) then
+            local se_obj = safe_alife_object(npc_id)
+            group_id = se_obj and normalize_alife_id(se_obj.group_id) or nil
+        end
+        if not group_id then
+            return nil
+        end
+    end
+    return resolve_squad_section_by_group_id(group_id)
+end
+
+local function is_siski_npc(npc)
+    return is_siski_squad_section(resolve_npc_squad_section(npc))
+end
+
+local function disable_npc_invulnerability(npc)
+    if not npc then
+        return
+    end
+    local fn = npc.invulnerable
+    if type(fn) ~= "function" then
+        return
+    end
+    pcall(fn, npc, false)
+end
+
+local function matches_role_seed(obj, role)
+    if type(role) ~= "string" or role == "" then
+        return false
+    end
+    local pattern = "sim_default_%a+_" .. role
+    local name = safe_call_string_method(obj, "name")
+    if name and string.find(name, pattern) then
+        return true
+    end
+    local profile = safe_call_string_method(obj, "profile_name")
+    if profile and string.find(profile, pattern) then
+        return true
+    end
+    return false
+end
+
+local function wrap_role_check(fn_name, role)
+    local original = rawget(_G, fn_name)
+    if type(original) ~= "function" then
+        return false
+    end
+    if Patch.RUNTIME.originals[fn_name] then
+        return true
+    end
+
+    Patch.RUNTIME.originals[fn_name] = original
+    _G[fn_name] = function(actor, npc, p)
+        local ok, result = pcall(original, actor, npc, p)
+        if ok and result == true then
+            return true
+        end
+        return matches_role_seed(npc, role)
+    end
+    return true
+end
+
+local function wrap_stalker_invulnerability()
+    local original = rawget(_G, "is_need_invulnerability")
+    if type(original) ~= "function" then
+        return false
+    end
+    if Patch.RUNTIME.originals.is_need_invulnerability then
+        return true
+    end
+
+    Patch.RUNTIME.originals.is_need_invulnerability = original
+    _G.is_need_invulnerability = function(npc)
+        if is_siski_npc(npc) then
+            return false
+        end
+        return original(npc)
+    end
+    return true
+end
+
+local function wrap_stalker_generic_module()
+    local mod = rawget(_G, "stalker_generic")
+    if type(mod) ~= "table" then
+        return false
+    end
+
+    local wrapped = false
+
+    local original_is_need = rawget(mod, "is_need_invulnerability")
+    if type(original_is_need) == "function" and not Patch.RUNTIME.originals.stalker_generic_is_need_invulnerability then
+        Patch.RUNTIME.originals.stalker_generic_is_need_invulnerability = original_is_need
+        mod.is_need_invulnerability = function(npc)
+            if is_siski_npc(npc) then
+                return false
+            end
+            return original_is_need(npc)
+        end
+        wrapped = true
+    end
+
+    local original_reset = rawget(mod, "reset_invulnerability")
+    if type(original_reset) == "function" and not Patch.RUNTIME.originals.stalker_generic_reset_invulnerability then
+        Patch.RUNTIME.originals.stalker_generic_reset_invulnerability = original_reset
+        mod.reset_invulnerability = function(npc, ...)
+            if is_siski_npc(npc) then
+                disable_npc_invulnerability(npc)
+                return
+            end
+            return original_reset(npc, ...)
+        end
+        wrapped = true
+    end
+
+    local original_update = rawget(mod, "update_invulnerability")
+    if type(original_update) == "function" and not Patch.RUNTIME.originals.stalker_generic_update_invulnerability then
+        Patch.RUNTIME.originals.stalker_generic_update_invulnerability = original_update
+        mod.update_invulnerability = function(npc, ...)
+            if is_siski_npc(npc) then
+                disable_npc_invulnerability(npc)
+                return
+            end
+            return original_update(npc, ...)
+        end
+        wrapped = true
+    end
+
+    return wrapped
+end
+
+local function wrap_sim_squad_invulnerability()
+    local cls = rawget(_G, "sim_squad_scripted")
+    if type(cls) ~= "table" then
+        return false
+    end
+    local original = rawget(cls, "check_invulnerability")
+    if type(original) ~= "function" then
+        return false
+    end
+    if Patch.RUNTIME.originals.sim_squad_check_invulnerability then
+        return true
+    end
+
+    Patch.RUNTIME.originals.sim_squad_check_invulnerability = original
+    cls.check_invulnerability = function(self, ...)
+        local section = safe_call_string_method(self, "section_name")
+        if is_siski_squad_section(section) then
+            if self and type(self.squad_members) == "function" then
+                for k in self:squad_members() do
+                    local npc_st = db and db.storage and db.storage[k.id]
+                    local npc = npc_st and npc_st.object
+                    disable_npc_invulnerability(npc)
+                end
+            end
+            return
+        end
+        return original(self, ...)
+    end
+    return true
+end
+
+function Patch.apply()
+    wrap_role_check("check_npc_trader", "trader")
+    wrap_role_check("check_npc_mechanic", "mechanic")
+    wrap_role_check("check_npc_medic", "medic")
+    wrap_role_check("check_npc_barman", "barman")
+    wrap_stalker_invulnerability()
+    wrap_stalker_generic_module()
+    wrap_sim_squad_invulnerability()
+
+    local role_count = 0
+    if Patch.RUNTIME.originals.check_npc_trader then
+        role_count = role_count + 1
+    end
+    if Patch.RUNTIME.originals.check_npc_mechanic then
+        role_count = role_count + 1
+    end
+    if Patch.RUNTIME.originals.check_npc_medic then
+        role_count = role_count + 1
+    end
+    if Patch.RUNTIME.originals.check_npc_barman then
+        role_count = role_count + 1
+    end
+    local stalker_guard = Patch.RUNTIME.originals.is_need_invulnerability and 1 or 0
+    local stalker_module_guard = (
+        Patch.RUNTIME.originals.stalker_generic_is_need_invulnerability
+        or Patch.RUNTIME.originals.stalker_generic_reset_invulnerability
+        or Patch.RUNTIME.originals.stalker_generic_update_invulnerability
+    ) and 1 or 0
+    local squad_guard = Patch.RUNTIME.originals.sim_squad_check_invulnerability and 1 or 0
+    local signature = table.concat({
+        tostring(role_count),
+        tostring(stalker_guard),
+        tostring(stalker_module_guard),
+        tostring(squad_guard),
+    }, ":")
+    if Patch.RUNTIME.last_signature ~= signature then
+        Patch.RUNTIME.last_signature = signature
+        log_info(
+            "applied role_checks=%s stalker_invul=%s stalker_mod=%s squad_invul=%s",
+            tostring(role_count),
+            tostring(stalker_guard),
+            tostring(stalker_module_guard),
+            tostring(squad_guard)
+        )
+    end
+    return (stalker_guard == 1 or stalker_module_guard == 1) and squad_guard == 1
+end
+
+Patch.apply()
+siski.xr_conditions_patch = Patch

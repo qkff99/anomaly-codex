@@ -1,0 +1,189 @@
+local inv_changed = false
+
+function autostack_playerinv()
+	--local playerinv = {}
+	local secchecked = {}
+	local function doautostacking(actor, obj)
+		local sec = obj:section()
+		local id = obj:id()
+		local is_multiuse = IsItem("multiuse", sec)
+		if is_multiuse then
+			printf(sec.." "..id.." is multiuse, trying stacking")
+			if sec and secchecked and secchecked[sec] then
+				printf("type "..sec.." already processes, skipping")
+			else
+				printf("type "..sec.." not processed yet, adding")
+				stack_item(id, ui_inventory.GUI, sec)
+				secchecked[sec] = true
+			end
+		else
+			printf(sec.." is not multiuse, skipping")
+		end
+	end
+
+	printf("#Starting to try autostacking!")
+	db.actor:iterate_inventory(doautostacking, db.actor)
+	inv_changed = false
+	--tests for later
+	--[[
+	for i, todo in ipairs(playerinv) do
+		if sec and secchecked and secchecked[sec] then
+			printf("type "..todo:section().." already processed, no stacking")
+		else
+			printf("type "..todo:section().." not processed yet, stacking")
+			stack_item(t, ui_inventory.GUI, todo:section())
+		end
+	end
+	]]--
+	--printf("Ending autostacking!")
+end
+
+function stack_item(obj, bag, sentsec)
+	printf("Starting autostacking with "..sentsec.." ID "..obj)
+	--local actor = obj:parent()
+	local actor = db.actor
+	local sec = sentsec
+	local total_uses = 0
+	local item_table = {}
+
+	local function iterate(npc, item)
+		local current_sec = item:section()
+		if not (current_sec == sec) then return end
+		local uses = item:get_remaining_uses()
+		total_uses = total_uses + uses
+		if uses == item:get_max_uses() then return end
+
+		local id = item:id()
+		item_table[id] = {
+			item = item,
+			sec = current_sec,
+			id = id,
+			uses = item:get_remaining_uses(),
+			max_uses = item:get_max_uses()
+		}
+	end
+
+	if IsStalker(actor) then
+		actor:iterate_ruck(iterate, actor)
+	elseif IsInvbox(actor) then
+		actor:iterate_inventory_box(iterate, actor)
+	else
+		printf("item parent is undefined %s, %s", actor:name(), actor:section())
+		return
+	end
+
+	if is_empty(item_table) then
+		printf("Combiner, all items are filled")
+		return
+	end
+
+	local function use_iterator(t, a1, a2)
+		return t[a1].uses < t[a2].uses
+	end
+	
+	local function use_iterator_reverse(t, a1, a2)
+		return t[a1].uses > t[a2].uses
+	end
+
+	-- local i = 0
+	-- local i_inc = 0.05
+	local last_item
+	for k, v in spairs(item_table, use_iterator_reverse) do
+		if item_table[k] then
+			for k1, v1 in spairs(item_table, use_iterator) do
+				if v.uses == v.max_uses then break end
+
+				if k ~= k1 then
+					-- printf("Combiner: item id %s, uses %s, max %s, adding id %s, uses %s", k, v.uses, v.max_uses, k1, v1.uses)
+					local new_uses = math.min(v.max_uses, v.uses + v1.uses)
+					local added_uses = new_uses - v.uses
+					v.uses = new_uses
+					v1.uses = v1.uses - added_uses
+					v.item:set_remaining_uses(v.uses)
+					-- printf("Combiner: id %s new uses %s, removing from id %s, new_uses %s", k, v.uses, k1, v1.uses)
+					
+					if v1.uses <= 0 then
+						-- printf("Combiner: removing from id %s has %s uses, release", k1, v1.uses)
+						--printf("releasing "..v1.id)
+						alife_release(v1.item)
+						item_table[k1] = nil
+					else
+						v1.item:set_remaining_uses(v1.uses)
+					end
+				end
+			end
+			last_item = v.item
+		end
+	end
+	
+
+	-- Sanity check new uses
+	local function sanity_check()
+		local old_total_uses = total_uses
+		total_uses = 0
+		empty_table(item_table)
+		if IsStalker(actor) then
+			actor:iterate_ruck(iterate, actor)
+		elseif IsInvbox(actor) then
+			actor:iterate_inventory_box(iterate, actor)
+		else
+			printf("item parent is undefined %s, %s", actor:name(), actor:section())
+			return
+		end
+		printf("old uses %s, new uses %s, diff %s", old_total_uses, total_uses, total_uses - old_total_uses)
+		empty_table(item_table)
+	end
+	
+	--if last_item then itms_manager.play_item_sound(last_item) end -- play sound
+
+	CreateTimeEvent("zatura_combine_all_check", "zatura_combine_all_check", 0.2, function()
+		sanity_check()
+		if bag == ui_inventory.GUI then
+			ui_inventory.GUI:UpdateInfo(true)
+		end
+		return true
+	end)
+end
+
+local function GUI_on_show(name)
+    if (name ~= "UIInventory") then return end
+	--printf("!Player opening inventory")
+	if inv_changed then
+		autostack_playerinv()
+	end
+end
+
+function actor_on_item_take(itm)
+	printf("#actor took "..tostring(itm:section()))
+	inv_changed = true
+end
+
+function actor_on_item_take_from_box(box, itm)
+	printf("#actor took"..tostring(itm:section()).." from box "..tostring(box:section()))
+	inv_changed = true
+end
+
+function actor_on_item_put_in_box(box, itm)
+	printf("#actor put"..tostring(itm:section()).." in box "..tostring(box:section()))
+	inv_changed = true
+end
+
+function actor_on_item_use(itm)
+	printf("#actor used "..tostring(itm:section()))
+	inv_changed = true
+end
+
+function actor_on_item_drop(itm)
+	printf("#actor dropped "..tostring(itm:section()))
+	inv_changed = true
+end
+
+function on_game_start()
+	RegisterScriptCallback("GUI_on_show", GUI_on_show)
+	RegisterScriptCallback("actor_on_item_take", actor_on_item_take)
+	RegisterScriptCallback("actor_on_item_take_from_box", actor_on_item_take_from_box)
+	RegisterScriptCallback("actor_on_item_put_in_box", actor_on_item_put_in_box)
+	RegisterScriptCallback("actor_on_item_use", actor_on_item_use)
+	RegisterScriptCallback("actor_on_item_drop", actor_on_item_drop)
+	printf("# Zatura's Auto-Stacking items Enabled!")
+end

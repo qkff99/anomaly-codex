@@ -1,0 +1,303 @@
+
+local STEP_SIZE 			= 5
+local STEP_SIZE_OFFLINE 	= 1
+
+local _mej = {
+	['logic@bar_zastava_guard_1_walk'] = "logic@duty_guard1",
+	['logic@bar_zastava_guard_2_walk'] = "logic@duty_guard2",
+	['logic@bar_zastava_guard_3_walk'] = "logic@duty_guard3",	
+	['logic@bar_zastava_guard_4_walk'] = "logic@duty_guard4",	
+	['logic@bar_zastava_guard_5_walk'] = "logic@duty_guard5",
+	['logic@bar_zastava_guard_6_walk'] = "logic@duty_guard6",
+	['logic@bar_zastava_guard_7_walk'] = "logic@duty_guard7",
+	['logic@bar_zastava_guard_8_walk'] = "logic@duty_guard8",
+	['logic@bar_zastava_guard_9_walk'] = "logic@duty_guard9",
+	
+	['logic@follower_bar_zastava_guard_1_walk'] = "logic@duty_guard1",
+	['logic@follower_bar_zastava_guard_2_walk'] = "logic@duty_guard2",
+	['logic@follower_bar_zastava_guard_4_walk'] = "logic@duty_guard4",
+	['logic@follower_bar_zastava_guard_5_walk'] = "logic@duty_guard5",
+	['logic@follower_bar_zastava_guard_6_walk'] = "logic@duty_guard6",
+	['logic@follower_bar_zastava_guard_7_walk'] = "logic@duty_guard7",
+	['logic@follower_bar_zastava_guard_8_walk'] = "logic@duty_guard8",
+}
+local function allowed(a)
+	-- printf('allowed: %s',a.section)
+	if not _mej[a.section] then
+		return true
+	end
+	for k in pairs(db.storage) do
+		if tonumber(k) and db.storage[k] and db.storage[k].section_logic == _mej[a.section] then
+			-- printf('[%s] disallowed because [%s] (%s) taken', a.section, db.storage[k].section_logic, _mej[a.section])
+			return false
+		end
+	end
+	return true
+end
+
+local function job_avail_to_npc(npc_info, job, smart)
+	--[[
+	if (smart.dead_time[job.section]) then
+		return false
+	end
+	--]]
+
+	local precond = gulag_general.get_job_precondition(job)
+	if (precond) then
+		return allowed({ section = job.section}) and precond(npc_info.se_obj, smart, job, npc_info)
+	end
+
+	return true
+end
+
+function smart_terrain.se_smart_terrain:unregister_npc(obj)
+	--utils_data.debug_write(strformat("%s:%s:unregister_npc %s",self:name(),self.id,obj and obj:name()))
+	self.arriving_npc[obj.id] = nil
+	
+	if (obj.clear_smart_terrain) then
+		obj:clear_smart_terrain()
+	end
+	
+	self:clear_job(obj.id,true)
+	---[[GhenTuong: ----------------------------------------
+	if (xr_logic_ex and xr_logic_ex.ignore_smart_job and xr_logic_ex.ignore_smart_job(obj)) then
+		return
+	end
+	------------------------------------------------------]]
+	local st = db.storage[obj.id]
+	if (st and st.object) then
+		local cls = obj.clsid and obj:clsid()
+		
+		if not (cls) then 
+			return 
+		end
+		
+		local stype = IsStalker(nil,cls) and 0 or IsMonster(nil,cls) and 1 or IsHelicopter(nil,cls) and 3 or nil
+		if not (stype) then 
+			return 
+		end
+		
+		xr_logic.initialize_obj(st.object, st, false, db.actor, stype)
+	end
+
+	--printf("self.npc_info[obj.id] = nil !!! obj.id=%s  [%s]", obj.id,obj:name())
+end
+
+
+function smart_terrain.se_smart_terrain:select_npc_job(npc_info,now,surge_started)
+	if (self.disabled or not self.is_on_actor_level) then
+		return
+	end
+	
+	---[[GhenTuong: ----------------------------------------
+	if (xr_logic_ex and xr_logic_ex.ignore_smart_job and xr_logic_ex.ignore_smart_job(npc_info and npc_info.se_obj)) then
+		return
+	end
+	------------------------------------------------------]]
+	
+	--utils_data.debug_write(strformat("%s:select_npc_job %s",self:name()))
+	
+	if not (npc_info and npc_info.se_obj and npc_info.stype) then 
+		return printf("%s no npc_info!",self:name())
+	end
+	
+	-- reference job table according to race
+	local jobs = npc_info.stype == 0 and self.stalker_jobs or npc_info.stype == 1 and self.monster_jobs or npc_info.stype == 3 and self.heli_jobs
+	if not (jobs) then 
+		return printf("%s no job table for %s [stype = %s]",self:name(),npc_info.se_obj:name(),npc_info.stype)
+	end
+	
+	local new_job
+	local npc_by_job_section = self.npc_by_job_section
+	
+	-- If the NPC has an existing job link, validate it and iterate job table
+	-- for a higher priority job according to defined STEP_SIZE
+	if (npc_info.job) then
+
+		-- Make sure current job is still available
+		if (npc_by_job_section[npc_info.job.section] == npc_info.se_obj.id) then
+
+			-- Make sure current job is still available
+			if (job_avail_to_npc(npc_info,npc_info.job,self)) then
+
+				if (npc_info.current_index == nil or now) then
+					npc_info.current_index = 1
+				end
+
+				local get_job_prior = gulag_general.get_job_prior
+				local itr_job
+				local npc_id
+				local step = 1
+				while (new_job == nil and step <= (now and #jobs or st and STEP_SIZE or STEP_SIZE_OFFLINE)) do
+					step = step + 1
+
+					if (npc_info.current_index > #jobs) then
+						npc_info.current_index = 1
+						break
+					end
+
+					-- Step through job table one step at a time looking for a higher prior job
+					itr_job = jobs[npc_info.current_index]
+					npc_info.current_index = npc_info.current_index + 1
+
+					npc_id = npc_by_job_section[itr_job.section]
+					
+					-- Check empty job
+					--if (npc_id == nil or npc_id == npc_info.se_obj.id) then
+					if (npc_id == nil) then
+						-- Find only higher priority jobs if already linked to a job
+						if (get_job_prior(itr_job) > get_job_prior(npc_info.job)) then
+							if (job_avail_to_npc(npc_info, itr_job, self)) then
+								-- Only take this higher priority job if when there is either no surge or if job is not in surge cover during surge; takes exclusive no matter what
+								if (itr_job.exclusive or not xr_conditions.surge_started() or not surge_manager.job_in_surge_cover(npc_info.se_obj,npc_info.job)) then 
+									new_job = itr_job
+									npc_info.current_index = 1
+								end
+							end
+						end
+					end
+				end
+			else
+				-- Job is no longer available, unlink job info
+				for sec,npcid in pairs(npc_by_job_section) do 
+					if (npcid == npc_info.se_obj.id) then 
+						npc_by_job_section[sec] = nil
+					end
+				end
+				npc_info.job = nil
+				npc_info.current_index = 1
+			end
+		else
+			-- Job is not linked properly, npc_id doesn't match owner se_obj
+			for sec,npcid in pairs(npc_by_job_section) do 
+				if (npcid == npc_info.se_obj.id) then 
+					npc_by_job_section[sec] = nil
+				end
+			end
+		
+			npc_info.job = nil
+			npc_info.current_index = 1
+		end
+	end
+
+	if not (npc_info.job) then
+		if (npc_info.current_index == nil or now) then
+			npc_info.current_index = 1
+		end
+
+		local itr_job,npc_id
+		local step = 1
+		local st = db.storage[npc_info.se_obj.id]
+		local STEP_SIZE_NO_JOB = #jobs
+		while (new_job == nil and step <= (now and STEP_SIZE_NO_JOB or st and STEP_SIZE_NO_JOB or STEP_SIZE_OFFLINE)) do
+			step = step + 1
+
+			if (npc_info.current_index > STEP_SIZE_NO_JOB) then
+				npc_info.current_index = 1
+				break
+			end
+
+			-- Step through job table one step at a time looking for a high prior job
+			itr_job = jobs[npc_info.current_index]
+			npc_info.current_index = npc_info.current_index + 1
+
+			npc_id = npc_by_job_section[itr_job.section]
+			
+			-- validate existing job link 
+			if (npc_id and not self.npc_info[npc_id]) then 
+				npc_by_job_section[itr_job.section] = nil
+			end
+			
+			-- Check empty job or re-take current job
+			if (npc_id == nil or npc_id == npc_info.se_obj.id) and (job_avail_to_npc(npc_info, itr_job, self)) then
+				new_job = itr_job
+				npc_info.current_index = 1
+			end
+		end
+
+		if not (new_job) then
+			return
+		end
+	end
+
+	local id = npc_info.se_obj.id
+	-- newly selected job
+	if (new_job and new_job ~= npc_info.job) then
+		
+		-- Unassign npc_id from old job and unreference job section
+		for sec,npcid in pairs(npc_by_job_section) do 
+			if (npcid == id) then 
+				npc_by_job_section[sec] = nil
+			end
+		end
+			
+		-- setup table that references NPCs by their job section
+		npc_by_job_section[new_job.section] = id
+
+		-- link up NPC info and references
+		npc_info.job = new_job
+		npc_info.begin_job = false
+
+		-- grab storage and ensure object is online.
+		local st = self.online and db.storage[id]
+		
+		-- If NPC has storage, it is online, so switch logic
+		if (st and st.object) then
+			--xr_logic.switch_to_section(st.object, self.ltx, "nil")
+			npc_info.begin_job = true
+			empty_table(db.offline_objects[id])
+			self:setup_logic(st.object)
+			return true
+		end
+	end
+
+	if (npc_info.begin_job ~= true and npc_info.job) then
+		-- grab storage and ensure object is online.
+		local st = self.online and db.storage[id]
+		-- If NPC has storage it is online, so switch logic
+		if (st and st.object) then
+			npc_info.begin_job = true
+			empty_table(db.offline_objects[id])
+			self:setup_logic(st.object)
+			return true
+		end
+	end
+end
+
+function smart_terrain.setup_gulag_and_logic_on_spawn(obj, st, se_obj, stype, loaded)
+	--utils_data.debug_write(strformat("smart_terrain.setup_gulag_and_logic_on_spawn %s",obj and obj:name()))
+	local sim = alife()
+	
+	---[[GhenTuong: ----------------------------------------
+	if (xr_logic_ex and xr_logic_ex.ignore_smart_job and xr_logic_ex.ignore_smart_job(se_obj)) then
+		return
+	end
+	------------------------------------------------------]]
+	
+	-- Expedite arrival and job assignment
+	local smart = se_obj.m_smart_terrain_id and se_obj.m_smart_terrain_id ~= 65535 and sim:object(se_obj.m_smart_terrain_id)
+	if (smart and smart:clsid() == clsid.smart_terrain) then
+		local npc_info = smart.npc_info[se_obj.id]
+		if (npc_info) then 
+			if not (npc_info.job) then
+				smart:select_npc_job(npc_info,true)
+				local smart_task = smart.npc_info[se_obj.id].job and smart.npc_info[se_obj.id].job.alife_task
+				if (smart_task) then 
+					db.spawned_vertex_by_id[se_obj.id] = smart_task:level_vertex_id()
+				end
+			elseif (npc_info.job) then
+				-- if already job begin then don't spawn at job
+				local smart_task = npc_info.begin_job ~= true and npc_info.job and npc_info.job.alife_task or nil
+				if (smart_task) then 
+					db.spawned_vertex_by_id[se_obj.id] = smart_task:level_vertex_id()
+				end
+				npc_info.begin_job = true
+				empty_table(db.offline_objects[se_obj.id])
+				smart:setup_logic(obj)
+			end
+			return
+		end
+	end
+
+	xr_logic.initialize_obj(obj, st, loaded, db.actor, stype)
+end

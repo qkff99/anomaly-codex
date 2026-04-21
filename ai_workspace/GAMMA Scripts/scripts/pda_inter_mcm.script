@@ -1,0 +1,338 @@
+-- If you don't use MCM, change your defaults from here.
+local defaults = {
+	["int_pda_key"] = DIK_keys.DIK_M,
+
+	["raid_offer_mult"] = 0.1,
+	["raid_base_price"] = 25000,
+	["raid_price_power"] = 0.95,
+	["raid_max_time"] = 4,
+
+	["find_respond_mult"] = 0.1,
+	["find_see_distance"] = 120,
+	["find_can_lie"] = true,
+	["find_base_price"] = 5000,
+
+	["puzzle_reward"] = 100,
+	["slots_bet"] = 50,
+	["sudoku_reward"] = 200,
+	["sudoku_diff"] = 2,
+
+	["trade_respond_mult"] = 0.5,
+	["trade_delivery_price_mult"] = 1,
+	["trade_delivery_time_mult"] = 1,
+	["trade_stalker_pool"] = 2.5,
+
+	["banter_sos_distance"] = 200,
+	["banter_sos_duration"] = 90,
+	["banter_sos_cooldown"] = 300,
+	["banter_sos_limit"] = 4,
+
+	["task_respond_mult"] = 0.1,
+	["task_max_tasks"] = 6,
+	["task_base_reward"] = 10000,
+	["task_cooldown"] = 24,
+	["task_goodwill_mult"] = 0,
+	["task_giver_radius"] = 10000,
+	["task_mutant_reward"] = 1,
+	["task_mutant_distance"] = 1500,
+	["task_mutant_cd"] = 24,
+	["task_bounty_reward"] = 1,
+	["task_bounty_distance"] = 5000,
+	["task_bounty_cd"] = 24,
+	["task_guide_reward"] = 1,
+	["task_guide_time_mult"] = 1,
+	["task_guide_cd"] = 24,
+	["task_items_reward"] = 1,
+	["task_items_cd"] = 24,
+	["task_squad_reward"] = 1,
+	["task_squad_distance"] = 5000,
+	["task_squad_cd"] = 24,
+	["task_stealth_reward"] = 1,
+	["task_stealth_cd"] = 24,
+	["task_guard_reward"] = 1,
+	["task_guard_cd"] = 24,
+	["task_scout_reward"] = 1,
+	["task_scout_cd"] = 24,
+	["task_artefact_reward"] = 1,
+	["task_artefact_cd"] = 24,
+	["task_delivery_reward"] = 1,
+	["task_delivery_cd"] = 24,
+
+	["inc_sos_enable"] = true,
+	["inc_sos_chance"] = 0.5,
+	["inc_sos_money"] = 4000,
+	["inc_sos_stash"] = 0.25,
+
+	["debugx"] = false,
+}
+
+local def_map = {
+	["int_pda_key"] = "pda_keys",
+
+	["raid_offer_mult"] = "pda_raid",
+	["raid_base_price"] = "pda_raid",
+	["raid_price_power"] = "pda_raid",
+	["raid_max_time"] = "pda_raid",
+
+	["find_respond_mult"] = "pda_info",
+	["find_see_distance"] = "pda_info",
+	["find_can_lie"] = "pda_info",
+	["find_base_price"] = "pda_info",
+
+	["puzzle_reward"] = "pda_games",
+	["slots_bet"] = "pda_games",
+	["sudoku_reward"] = "pda_games",
+	["sudoku_diff"] = "pda_games",
+
+	["trade_respond_mult"] = "pda_trade",
+	["trade_delivery_price_mult"] = "pda_trade",
+	["trade_delivery_time_mult"] = "pda_trade",
+	["trade_stalker_pool"] = "pda_trade",
+
+	["banter_sos_distance"] = "pda_banter",
+	["banter_sos_duration"] = "pda_banter",
+	["banter_sos_cooldown"] = "pda_banter",
+	["banter_sos_limit"] = "pda_banter",
+
+	["task_respond_mult"] = "pda_tasks",
+	["task_max_tasks"] = "pda_tasks",
+	["task_base_reward"] = "pda_tasks",
+	["task_cooldown"] = "pda_tasks",
+	["task_goodwill_mult"] = "pda_tasks",
+	["task_giver_radius"] = "pda_tasks",
+	["task_mutant_reward"] = "pda_tasks",
+	["task_mutant_distance"] = "pda_tasks",
+	["task_mutant_cd"] = "pda_tasks",
+	["task_bounty_reward"] = "pda_tasks",
+	["task_bounty_distance"] = "pda_tasks",
+	["task_bounty_cd"] = "pda_tasks",
+	["task_guide_reward"] = "pda_tasks",
+	["task_guide_time_mult"] = "pda_tasks",
+	["task_guide_cd"] = "pda_tasks",
+	["task_items_reward"] = "pda_tasks",
+	["task_items_cd"] = "pda_tasks",
+	["task_squad_reward"] = "pda_tasks",
+	["task_squad_distance"] = "pda_tasks",
+	["task_squad_cd"] = "pda_tasks",
+	["task_stealth_reward"] = "pda_tasks",
+	["task_stealth_cd"] = "pda_tasks",
+	["task_guard_reward"] = "pda_tasks",
+	["task_guard_cd"] = "pda_tasks",
+	["task_scout_reward"] = "pda_tasks",
+	["task_scout_cd"] = "pda_tasks",
+	["task_artefact_reward"] = "pda_tasks",
+	["task_artefact_cd"] = "pda_tasks",
+	["task_delivery_reward"] = "pda_tasks",
+	["task_delivery_cd"] = "pda_tasks",
+
+	["inc_sos_enable"] = "pda_inc",
+	["inc_sos_chance"] = "pda_inc",
+	["inc_sos_money"] = "pda_inc",
+	["inc_sos_stash"] = "pda_inc",
+
+	["notes_export"] = "pda_debug",
+	["debugx"] = "pda_debug",
+
+}
+
+function get_config(key)
+	if ui_mcm then return ui_mcm.get("pda_inter/" .. def_map[key] .. "/" .. key) else return defaults[key] end
+end
+
+function on_mcm_load()
+	op = { id= "pda_inter" ,gr={
+
+			--[[{id = "pda_keys",sh=true,gr={
+				{ id= "keystitle",type= "slide",link= "ui_options_slider_player",text="ui_mcm_pda_inter_keystitle",size= {512,50},spacing= 20 },
+				{id = "int_pda_key", type = "key_bind", val = 2, def = DIK_keys.DIK_M},
+			}},]]
+
+			{id = "pda_raid",sh=true,gr={
+				{ id= "raidtitle",type= "slide",link= "ui_options_slider_player",text="ui_mcm_pda_inter_raidtitle",size= {512,50},spacing= 20 },
+				{id = "raid_offer_mult", type = "track", val = 2, min=0.05, max=1, step=0.05, def = 0.1},
+				{id = "raid_base_price", type = "track", val = 2, min=1000, max=100000, step=500, def = 25000},
+				{id = "raid_price_power", type = "track", val = 2, min=0.75, max=1.25, step=0.05, def = 0.95},
+				{id = "raid_max_time", type = "track", val = 2, min=1, max=7, step=1, def = 4},
+			}},
+
+			{id = "pda_info",sh=true,gr={
+				{ id= "infotitle",type= "slide",link= "ui_options_slider_player",text="ui_mcm_pda_inter_infotitle",size= {512,50},spacing= 20 },
+				{id = "find_respond_mult", type = "track", val = 2, min=0.05, max=1, step=0.05, def = 0.1},
+				{id = "find_see_distance", type = "track", val = 2, min=40, max=350, step=5, def = 120},
+				{id = "find_can_lie", type = "check", val = 1, def = true},
+				{id = "find_base_price", type = "track", val = 2, min=500, max=50000, step=500, def = 5000},
+			}},
+
+			{id = "pda_games",sh=true,gr={
+				{ id= "gamestitle",type= "slide",link= "ui_options_slider_player",text="ui_mcm_pda_inter_gamestitle",size= {512,50},spacing= 20 },
+				{id = "puzzle_reward", type = "track", val = 2, min=50, max=1500, step=50, def = 100},
+				{id = "slots_bet", type = "track", val = 2, min=10, max=500, step=10, def = 50},
+				{id = "sudoku_reward", type = "track", val = 2, min=100, max=3000, step=50, def = 200},
+				{id = "sudoku_diff", type = "track", val = 2, min=1, max=3, step=1, def = 2},
+			}},
+
+			{id = "pda_trade",sh=true,gr={
+				{ id= "tradetitle",type= "slide",link= "ui_options_slider_player",text="ui_mcm_pda_inter_tradetitle",size= {512,50},spacing= 20 },
+				{id = "trade_respond_mult", type = "track", val = 2, min=0.05, max=3, step=0.05, def = 0.5},
+				{id = "trade_delivery_price_mult", type = "track", val = 2, min=0.1, max=3, step=0.1, def = 1},
+				{id = "trade_delivery_time_mult", type = "track", val = 2, min=0.05, max=2, step=0.05, def = 1},
+				{id = "trade_stalker_pool", type = "track", val = 2, min=0, max=10, step=0.5, def = 2.5},
+			}},
+
+			{id = "pda_banter",sh=true,gr={
+				{ id= "bantertitle",type= "slide",link= "ui_options_slider_player",text="ui_mcm_pda_inter_bantertitle",size= {512,50},spacing= 20 },
+				{id = "banter_sos_distance", type = "track", val = 2, min=10, max=500, step=10, def = 200},
+				{id = "banter_sos_duration", type = "track", val = 2, min=10, max=300, step=10, def = 90},
+				{id = "banter_sos_cooldown", type = "track", val = 2, min=50, max=900, step=50, def = 300},
+				{id = "banter_sos_limit", type = "track", val = 2, min=1, max=20, step=1, def = 4},
+			}},
+
+			{id = "pda_tasks",sh=true,gr={
+				{ id= "taskstitle",type= "slide",link= "ui_options_slider_player",text="ui_mcm_pda_inter_taskstitle",size= {512,50},spacing= 20 },
+				{id = "task_respond_mult", type = "track", val = 2, min=0.05, max=1, step=0.05, def = 0.1},
+				{id = "task_max_tasks", type = "track", val = 2, min=3, max=10, step=1, def = 6},
+				{id = "task_base_reward", type = "track", val = 2, min=1000, max=30000, step=500, def = 10000},
+				{id = "task_cooldown", type = "track", val = 2, min=1, max=96, step=1, def = 24},
+				{id = "task_goodwill_mult", type = "track", val = 2, min=0, max=3, step=0.1, def = 0},
+				{id = "task_giver_radius", type = "track", val = 2, min=500, max=10000, step=250, def = 10000},
+
+				{id= "divider", type = "line" },
+				{ id= "title"				   ,type= "title"	 ,text= "ui_mcm_pda_inter_tasks_mutants_header" 			,align= "l"	,clr= {255,200,200,200}	},
+				{id = "task_mutant_reward", type = "track", val = 2, min=0.1, max=5, step=0.1, def = 1},
+				{id = "task_mutant_distance", type = "track", val = 2, min=500, max=10000, step=250, def = 1500},
+				{id = "task_mutant_cd", type = "track", val = 2, min=1, max=168, step=1, def = 24},
+
+				{id= "divider", type = "line" },
+				{ id= "title"				   ,type= "title"	 ,text= "ui_mcm_pda_inter_tasks_bounty_header" 			,align= "l"	,clr= {255,200,200,200}	},
+				{id = "task_bounty_reward", type = "track", val = 2, min=0.1, max=5, step=0.1, def = 1},
+				{id = "task_bounty_distance", type = "track", val = 2, min=500, max=10000, step=500, def = 5000},
+				{id = "task_bounty_cd", type = "track", val = 2, min=1, max=168, step=1, def = 24},
+
+				{id= "divider", type = "line" },
+				{ id= "title"				   ,type= "title"	 ,text= "ui_mcm_pda_inter_tasks_guide_header" 			,align= "l"	,clr= {255,200,200,200}	},
+				{id = "task_guide_reward", type = "track", val = 2, min=0.1, max=5, step=0.1, def = 1},
+				{id = "task_guide_time_mult", type = "track", val = 2, min=0.1, max=3, step=0.1, def = 1},
+				{id = "task_guide_cd", type = "track", val = 2, min=1, max=168, step=1, def = 24},
+
+				{id= "divider", type = "line" },
+				{ id= "title"				   ,type= "title"	 ,text= "ui_mcm_pda_inter_tasks_items_header" 			,align= "l"	,clr= {255,200,200,200}	},
+				{id = "task_items_reward", type = "track", val = 2, min=0.1, max=5, step=0.1, def = 1},
+				{id = "task_items_cd", type = "track", val = 2, min=1, max=168, step=1, def = 24},
+
+				{id= "divider", type = "line" },
+				{ id= "title"				   ,type= "title"	 ,text= "ui_mcm_pda_inter_tasks_squad_header" 			,align= "l"	,clr= {255,200,200,200}	},
+				{id = "task_squad_reward", type = "track", val = 2, min=0.1, max=5, step=0.1, def = 1},
+				{id = "task_squad_distance", type = "track", val = 2, min=500, max=10000, step=500, def = 5000},
+				{id = "task_squad_cd", type = "track", val = 2, min=1, max=168, step=1, def = 24},
+
+				{id= "divider", type = "line" },
+				{ id= "title"				   ,type= "title"	 ,text= "ui_mcm_pda_inter_tasks_stealth_header" 			,align= "l"	,clr= {255,200,200,200}	},
+				{id = "task_stealth_reward", type = "track", val = 2, min=0.1, max=5, step=0.1, def = 1},
+				{id = "task_stealth_cd", type = "track", val = 2, min=1, max=168, step=1, def = 24},
+
+				{id= "divider", type = "line" },
+				{ id= "title"				   ,type= "title"	 ,text= "ui_mcm_pda_inter_tasks_guard_header" 			,align= "l"	,clr= {255,200,200,200}	},
+				{id = "task_guard_reward", type = "track", val = 2, min=0.1, max=5, step=0.1, def = 1},
+				{id = "task_guard_cd", type = "track", val = 2, min=1, max=168, step=1, def = 24},
+
+				{id= "divider", type = "line" },
+				{ id= "title"				   ,type= "title"	 ,text= "ui_mcm_pda_inter_tasks_scout_header" 			,align= "l"	,clr= {255,200,200,200}	},
+				{id = "task_scout_reward", type = "track", val = 2, min=0.1, max=5, step=0.1, def = 1},
+				{id = "task_scout_cd", type = "track", val = 2, min=1, max=168, step=1, def = 24},
+
+				{id= "divider", type = "line" },
+				{ id= "title"				   ,type= "title"	 ,text= "ui_mcm_pda_inter_tasks_artefact_header" 			,align= "l"	,clr= {255,200,200,200}	},
+				{id = "task_artefact_reward", type = "track", val = 2, min=0.1, max=5, step=0.1, def = 1},
+				{id = "task_artefact_cd", type = "track", val = 2, min=1, max=168, step=1, def = 24},
+
+				{id= "divider", type = "line" },
+				{ id= "title"				   ,type= "title"	 ,text= "ui_mcm_pda_inter_tasks_delivery_header" 			,align= "l"	,clr= {255,200,200,200}	},
+				{id = "task_delivery_reward", type = "track", val = 2, min=0.1, max=5, step=0.1, def = 1},
+				{id = "task_delivery_cd", type = "track", val = 2, min=1, max=168, step=1, def = 24},
+
+			}},
+
+			{id = "pda_inc",sh=true,gr={
+				{ id= "inctitle",type= "slide",link= "ui_options_slider_player",text="ui_mcm_pda_inter_inctitle",size= {512,50},spacing= 20 },
+				{id = "inc_sos_enable", type = "check", val = 1, def = true},
+				{id = "inc_sos_chance", type = "track", val = 2, min=0.05, max=1, step=0.05, def = 0.5},
+				{id = "inc_sos_money", type = "track", val = 2, min=250, max=15000, step=250, def = 4000},
+				{id = "inc_sos_stash", type = "track", val = 2, min=0.05, max=1, step=0.05, def = 0.25},
+			}},
+
+			{id = "pda_debug",sh=true,gr={
+				{ id= "debugxtitle",type= "slide",link= "ui_options_slider_player",text="ui_mcm_pda_inter_debugxtitle",size= {512,50},spacing= 20 },
+				{ id= "notes_export", type = "button", functor_ui = {export_notes}  , precondition = {level_present} },
+				{id = "debugx", type = "check", val = 1, def = false},
+			}},
+
+		}
+	}
+
+	return op
+end
+
+
+-- notes export
+function level_present()	-- not to wait ui_options
+	return level.present()
+end
+
+function export_notes()
+	local pda_t = pda_inter_gui.pda_notes_t
+	if (not pda_t) or (#pda_t <= 0) then return end
+
+	local t = dup_table(pda_t)
+
+	local strings_to_sub = { "\\n", "%%c%[255,0,140,180%]", "%%c%[255,255,255,255]", "%%c%[255,190,190,190%]", "%%c%[255,255,255,0%]", "%%c%[255,190,190,190%]" }
+
+	local function change_str(s)
+		for i = 1, #strings_to_sub do
+			if string.find(s, strings_to_sub[i]) then
+				s = string.gsub(s, strings_to_sub[i], "")
+			end
+		end
+		return s
+	end
+
+	-- open and erase or create txt file first
+	create_and_erase()
+
+	-- remove/replace lua stuff and convert everything into a new big string
+	for i = 1, #t do
+		for j = 1, #t[i] do
+			local new_str = ""
+			t[i][j] = change_str(tostring(t[i][j]))
+			t[i][j] = t[i][j] .. (j == 3 and (" " .. "\n") or "")
+			new_str = new_str .. t[i][j] .. "\n"
+			open_and_add(new_str)
+		end
+	end
+
+end
+
+function create_and_erase()
+	local file_name = io.open("Interactive_PDA_notes.txt", "w")
+	file_name:close(file_name)
+end
+
+function open_and_add(text)
+	local file_name = io.open("Interactive_PDA_notes.txt", "a")
+	file_name:write(text)
+	file_name:close(file_name)
+end
+
+function delete_all_notes()
+	if pda_inter_gui and pda_inter_gui.pda_notes_t then
+		for i = #pda_inter_gui.pda_notes_t, 1, -1 do
+			if pda_inter_gui.pda_notes_t[i] then
+				table.remove(pda_inter_gui.pda_notes_t, i)
+			end
+		end
+
+		if pda_inter_gui.GUI then
+			pda_inter_gui.GUI:UpdNotesMenu()
+		end
+	end
+
+end

@@ -1,0 +1,19 @@
+;============================================================================
+; fdda fixes
+;============================================================================
+; fix backpack fov
+![item_ea_backpack_open_hud]
+hud_fov                     = 0.45
+
+![item_ea_backpack_close_hud]
+hud_fov                     = 0.45
+
+;move camera and sound links from script to config file
+![item_ea_harv_useknife_animset_hud]
+hud_fov                     = 0.45
+cam                         = itemuse_anm_effects\harvest_skin_use.anm
+snd                         = interface\item_usage\harvest_use
+
+![item_ea_harv_meat_animset_hud]
+cam                         = itemuse_anm_effects\harvest_loot.anm
+snd                         = interface\item_usage\harvest_use_success

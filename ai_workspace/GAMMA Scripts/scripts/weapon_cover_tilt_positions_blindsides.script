@@ -1,0 +1,286 @@
+-- Extension script for weapon_cover_tilt_positions.script file
+-- Open weapon_cover_tilt_positions.script file for instructions
+
+if weapon_cover_tilt_positions then
+
+	if not weapon_cover_tilt_positions.weapon_offsets then
+		weapon_cover_tilt_positions.weapon_offsets = {}
+	end
+	
+	local o = weapon_cover_tilt_positions.weapon_offsets
+
+	o["wpn_ak74"] = {
+		y = 0.2,
+	}
+	o["wpn_ak74_alt"] = {
+		y = 0.2,
+	}
+	o["wpn_ak74_custom"] = {
+		y = 0.2,
+	}
+	o["wpn_ak74_modern"] = {
+		y = 0.2,
+	}
+	o["wpn_ak74_old"] = {
+		y = 0.2,
+	}
+	o["wpn_ak74_rpk"] = {
+		y = 0.2,
+	}
+	o["wpn_ak74m"] = {
+		y = 0.2,
+	}
+	o["wpn_ak74m_camo"] = {
+		y = 0.2,
+	}
+	o["wpn_ak74m_alt"] = {
+		y = 0.2,
+	}
+	o["wpn_ak74m_custom"] = {
+		y = 0.2,
+	}
+	o["wpn_ak74m_duty"] = {
+		y = 0.2,
+	}
+	o["wpn_ak74m_pka"] = {
+		y = 0.2,
+	}
+	o["wpn_ak101"] = {
+		y = 0.2,
+	}
+	o["wpn_ak101_camo"] = {
+		y = 0.2,
+	}
+	o["wpn_ak102"] = {
+		y = 0.2,
+	}
+	o["wpn_ak103"] = {
+		y = 0.2,
+	}
+	o["wpn_ak103_camo"] = {
+		y = 0.2,
+	}
+	o["wpn_ak104"] = {
+		y = 0.2,
+	}
+	o["wpn_ak105"] = {
+		y = 0.2,
+	}
+	o["wpn_akm"] = {
+		y = 0.2,
+	}
+	o["wpn_akms"] = {
+		y = 0.2,
+	}
+	o["wpn_akms_alt"] = {
+		y = 0.2,
+	}
+	o["wpn_aks74"] = {
+		y = 0.2,
+	}
+	o["wpn_aks74_new"] = {
+		y = 0.2,
+	}
+	o["wpn_ak74u"] = {
+		y = 0.2,
+	}
+	o["wpn_ak74u_camo"] = {
+		y = 0.2,
+	}
+	o["wpn_ak74u_custom"] = {
+		y = 0.2,
+	}
+	o["wpn_ak74u_old"] = {
+		y = 0.2,
+	}
+	o["wpn_ak74u_snag"] = {
+		y = 0.2,
+	}
+	
+	o["wpn_l85"] = {
+		y = 0.1,
+	}
+	o["wpn_l85_alt"] = {
+		y = 0.1,
+	}
+	o["wpn_l85_custom"] = {
+		y = 0.1,
+	}
+	o["wpn_l85_modern"] = {
+		y = 0.1,
+	}
+	o["wpn_l85a2"] = {
+		y = 0.1,
+	}
+	o["wpn_l85a2_alt"] = {
+		y = 0.1,
+	}
+	o["wpn_l85a2_custom"] = {
+		y = 0.1,
+	}
+	o["wpn_l85a2_modern"] = {
+		y = 0.1,
+	}
+	o["wpn_mosin"] = {
+		y = 0.1,
+	}
+	o["wpn_ppsh41"] = {
+		y = 0.2,
+	}
+	o["wpn_ppsh41_rednew"] = {
+		y = 0.2,
+	}
+	o["wpn_ppsh41_woodnew"] = {
+		y = 0.2,
+	}
+	o["wpn_rpk"] = {
+		y = 0.2,
+	}
+	o["wpn_rpk74"] = {
+		y = 0.2,
+	}
+	o["wpn_sks"] = {
+		y = 0.1,
+	}
+	o["wpn_sks_modern"] = {
+		y = 0.1,
+	}
+	o["wpn_svt40"] = {
+		y = 0.1,
+	}
+	o["wpn_svt40_modern"] = {
+		y = 0.1,
+	}
+
+	-- Shotties
+	o["wpn_bm16"] = {
+		y = -0.1,
+	}
+	o["wpn_bm16_alt"] = {
+		y = -0.1,
+	}
+	-- o["wpn_bm16_full"] = {
+	-- 	y = 0.2,
+	-- }
+	-- o["wpn_bm16_full_alt"] = {
+	-- 	y = 0.2,
+	-- }
+	-- o["wpn_mossberg590"] = {
+	-- 	y = 0.2,
+	-- }
+	-- o["wpn_remington870"] = {
+	-- 	y = 0.2,
+	-- }
+	-- o["wpn_toz34"] = {
+	-- 	y = 0.2,
+	-- }
+	-- o["wpn_toz34_bull"] = {
+	-- 	y = 0.2,
+	-- }
+	-- o["wpn_toz34_custom"] = {
+	-- 	y = 0.2,
+	-- }
+	-- o["wpn_toz34_decor"] = {
+	-- 	y = 0.2,
+	-- }
+	-- o["wpn_toz34_mark4"] = {
+	-- 	y = 0.2,
+	-- }
+	-- o["wpn_toz34_obrez"] = {
+	-- 	y = 0.2,
+	-- }
+	-- o["wpn_toz34_obrez_custom"] = {
+	-- 	y = 0.2,
+	-- }
+	-- o["wpn_toz34_obrez_decor"] = {
+	-- 	y = 0.2,
+	-- }
+	-- o["wpn_wincheaster1300"] = {
+	-- 	y = 0.2,
+	-- }
+	-- o["wpn_wincheaster1300_trapper"] = {
+	-- 	y = 0.2,
+	-- }
+	o["wpn_saiga12s"] = {
+		y = 0.1,
+	}
+	o["wpn_vepr"] = {
+		y = 0.1,
+	}
+
+	-- SMG
+	o["wpn_kiparis"] = {
+		y = 0.05,
+	}
+	o["wpn_vz61"] = {
+		y = 0.07,
+		z = -0.03,
+	}
+	o["wpn_vz61_alt"] = {
+		y = 0.07,
+		z = -0.03,
+	}
+	o["wpn_vz61_camo"] = {
+		y = 0.07,
+		z = -0.03,
+	}
+	o["wpn_vz61_freedom"] = {
+		y = 0.07,
+		z = -0.03,
+	}
+
+	--Pistols
+	o["wpn_aps"] = {
+		y = 0.15,
+		z = -0.1,
+	}
+	o["wpn_cz52"] = {
+		y = 0.15,
+		z = -0.1,
+	}
+	o["wpn_fort"] = {
+		y = 0.15,
+		z = -0.1,
+	}
+	o["wpn_fort_snag"] = {
+		y = 0.15,
+		z = -0.1,
+	}
+	o["wpn_mp443"] = {
+		y = 0.15,
+		z = -0.1,
+	}
+	o["wpn_pb"] = {
+		y = 0.15,
+		z = -0.1,
+	}
+	o["wpn_pb_custom"] = {
+		y = 0.15,
+		z = -0.1,
+	}
+	o["wpn_pm"] = {
+		y = 0.15,
+		z = -0.1,
+	}
+	o["wpn_pm_actor"] = {
+		y = 0.15,
+		z = -0.1,
+	}
+	o["wpn_pm_custom"] = {
+		y = 0.15,
+		z = -0.1,
+	}
+	o["wpn_pmm"] = {
+		y = 0.15,
+		z = -0.1,
+	}
+	o["wpn_tt33"] = {
+		y = 0.15,
+		z = -0.1,
+	}
+	o["wpn_tt33_modern"] = {
+		y = 0.15,
+		z = -0.1,
+	}
+
+end

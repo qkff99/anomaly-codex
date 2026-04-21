@@ -1,0 +1,369 @@
+
+
+local function compute_fatal_hit_info(hits)
+    local fatal_hit = nil
+    local agg_hit = {}
+    local max_time = -1
+
+    soulslike.debug("Calculating fatal hit:")
+    soulslike.debug(hits)
+
+    -- Find the final blow
+    for _, value in ipairs(hits) do
+        if value.is_fatal then
+            fatal_hit = value
+            break
+        end
+    end
+
+    for _, value in ipairs(hits) do
+        max_time = math.max(max_time, value.time)
+    end
+
+    local min_time = soulslike.MAX_HIT_TIME
+
+    -- Convert to an aggregation of damage if there is a well defined draftsman_type
+    for _, hit_data in ipairs(hits) do
+        hit_data.draftsman = hit_data.draftsman_id and level.object_by_id(hit_data.draftsman_id) or nil
+        local power_weight = (hit_data.time - min_time) / soulslike.MAX_HIT_TIME
+        local draftsman_type = soulslike.entity_type.Other
+        if hit_data.draftsman then
+            if hit_data.draftsman:id() == AC_ID then
+                draftsman_type = soulslike.entity_type.Self
+            elseif IsStalker(hit_data.draftsman) then
+                draftsman_type = soulslike.entity_type.Stalker
+            elseif IsMonster(hit_data.draftsman) then
+                draftsman_type = soulslike.entity_type.Monster
+            elseif IsAnomaly(hit_data.draftsman) then
+                draftsman_type = soulslike.entity_type.Anomaly
+            end    
+        end
+        if not agg_hit[draftsman_type] then
+            agg_hit[draftsman_type] = {
+                draftsman_type = draftsman_type
+            }       
+        end
+        local data = agg_hit[draftsman_type]     
+        data.power = (data.power or 0) + hit_data.power * (power_weight * (hit_data.is_fatal and 2 or 1))
+    end
+
+    soulslike.debug("Agg Hit Info:")   
+    soulslike.debug(agg_hit)   
+    
+    local result = nil
+    
+    for _, value in pairs(agg_hit) do
+        if not result then
+            result = value
+        elseif result.power < value.power then
+            result = value
+        end
+    end
+
+    if result then
+        result.fatal_hit = fatal_hit
+    end
+
+    return result
+end
+
+local function find_backpack()    
+    soulslike.debug("Looking for player backpack")
+    local has_backpack = false
+    local function find_backpack(_, item)
+        local sec = item:section()
+        has_backpack = SYS_GetParam(0, sec, "kind") == "i_backpack"
+        if has_backpack then return true end
+        return false
+    end
+
+    db.actor:iterate_inventory(find_backpack)
+
+    if has_backpack then
+        soulslike.debug("Player has a backpack")
+    else
+        soulslike.debug("Player does not have a backpack")
+    end
+    return has_backpack
+end
+
+---------------------------------------------------------
+-- Factory
+---------------------------------------------------------
+
+function create_by_id(scenario_id, state) 
+    local scenario = nil
+
+    soulslike.debug_tip("Creating scenario "..tostring(scenario_id))
+
+    if scenario_id == soulslike.SCENARIOS.Default then
+        scenario = soulslike_scenarios.DefaultSoulslikeScenarioLogic(state) 
+    end
+    
+    if scenario_id == soulslike.SCENARIOS.RFDetectorStash then 
+        scenario = soulslike_scenarios.RFDetectorSoulslikeScenarioLogic(state) 
+    end
+    
+    if scenario_id == soulslike.SCENARIOS.HiddenStash then 
+        scenario = soulslike_scenarios.HiddenStashSoulslikeScenarioLogic(state) 
+    end
+    
+    if scenario_id == soulslike.SCENARIOS.NoLoss then 
+        scenario = soulslike_scenarios.NoLossSoulslikeScenarioLogic(state) 
+    end
+    
+    if scenario == nil then
+        soulslike.debug("Unrecognized Scenario Id: "..tostring(scenario_id)) 
+        scenario = soulslike_scenarios.DefaultSoulslikeScenarioLogic(state) 
+    end
+
+    return scenario
+end
+
+function create_new(hits)            
+    local hit = compute_fatal_hit_info(hits)
+    
+    if hit then
+        soulslike.debug("Fatal Hit Type: "..tostring(hit.draftsman_type))
+    end
+    -- We want to be able to debug each scenario using the 
+    -- scenario weight to max, and in this case we want to 
+    -- be able to remove the default scenario so its always
+    -- chosen.
+
+    local has_backpack = find_backpack() 
+    local player_is_indoor = not level_weathers.valid_levels[level.name()]
+    local rescuer = nil
+    local looter = nil
+    local looter_type = nil
+    local scenario_loot_scalar = 1.0
+    local available_scenarios = {}    
+    local game_state = soulslike.get_soulslike_state()
+    local spawn_position = vector():set(game_state.spawn_location.position.x, game_state.spawn_location.position.y, game_state.spawn_location.position.z)   
+    local distance_from_spawn = spawn_position:distance_to_sqr(db.actor:position())
+    
+    if soulslike_mcm.debug_the_noloss_scenario() then
+        soulslike.debug("Debugging noloss scenario.")
+        rescuer = soulslike.find_closest_friendly_stalker()
+        scenario_loot_scalar = 0
+      
+        table.insert(available_scenarios, {id = soulslike.SCENARIOS.NoLoss, min = 0, max = 0, weight = 1.0})      
+    elseif soulslike_mcm.debug_the_default_scenario() then
+        soulslike.debug("Debugging default scenario.")
+        rescuer = soulslike.find_closest_friendly_stalker()
+        looter = soulslike.find_closest_enemy()
+        scenario_loot_scalar = 1
+
+        table.insert(available_scenarios, {id = soulslike.SCENARIOS.Default, min = 0, max = 0, weight = 1.0})
+    elseif soulslike_mcm.debug_the_rf_scenario() then
+        soulslike.debug("Debugging rf detector scenario.")
+
+        rescuer = soulslike.find_closest_friendly_stalker()
+        looter = soulslike.find_closest_enemy()
+        scenario_loot_scalar = 1
+
+        table.insert(available_scenarios, {id = soulslike.SCENARIOS.RFDetectorStash, min = 0, max = 0, weight = 1.0})
+    elseif soulslike_mcm.debug_the_hidden_stash_scenario() then
+        soulslike.debug("Debugging hidden stash scenario.")
+
+        rescuer = soulslike.find_closest_friendly_stalker()
+        looter = soulslike.find_closest_enemy()
+        scenario_loot_scalar = 1
+
+        table.insert(available_scenarios, {id = soulslike.SCENARIOS.HiddenStash, min = 0, max = 0, weight = 1.0})
+    elseif distance_from_spawn <= 50 then
+        soulslike.debug("Player was killed "..tostring(distance_from_spawn).." meters their spawn point.")
+
+        rescuer = soulslike.find_closest_friendly_stalker()
+        scenario_loot_scalar = 0
+      
+        table.insert(available_scenarios, {id = soulslike.SCENARIOS.NoLoss, min = 0, max = 0, weight = 1.0})  
+    elseif distance_from_spawn <= 200 then
+        soulslike.debug("Player was killed "..tostring(distance_from_spawn).." meters their spawn point.")
+
+        rescuer = soulslike.find_closest_friendly_stalker()
+        looter = soulslike.find_closest_enemy()
+        scenario_loot_scalar = (distance_from_spawn - 50) / 150
+      
+        table.insert(available_scenarios, {id = soulslike.SCENARIOS.NoLoss, min = 0, max = 0, weight = 1.0})
+        table.insert(available_scenarios, {id = soulslike.SCENARIOS.Default, min = 0, max = 0, weight = scenario_loot_scalar})  
+    elseif player_is_indoor then
+        soulslike.debug("Player died indoor, oof.")
+        -- TODO: Need to figure out this scenario later, not sure what to do....
+        --       It will be very difficult to get your gear back, prob annoyingly frustrating...
+        --       For now, no loss scenario
+        table.insert(available_scenarios, {id = soulslike.SCENARIOS.NoLoss, min = 0, max = 0, weight = 1.0})
+    elseif hit and hit.draftsman_type == soulslike.entity_type.Self then 
+        soulslike.debug("Player killed themself. haha idiot.")
+
+        rescuer = soulslike.find_closest_friendly_stalker()
+        looter = soulslike.find_closest_enemy()
+        scenario_loot_scalar = 0.75
+
+        table.insert(available_scenarios, {id = soulslike.SCENARIOS.NoLoss, min = 0, max = 0, weight = 0.05})
+
+        if has_backpack then
+            table.insert(available_scenarios, {id = soulslike.SCENARIOS.Default, min = 0, max = 0, weight = 1.0})
+        end 
+
+        -- table.insert(available_scenarios, {id = soulslike.SCENARIOS.RFDetectorStash, min = 0, max = 0, weight = soulslike_mcm.rf_detector_scenario_weight()})
+        -- table.insert(available_scenarios, {id = soulslike.SCENARIOS.HiddenStash, min = 0, max = 0, weight = soulslike_mcm.hidden_stash_scenario_weight()})
+    elseif hit and 
+           hit.draftsman_type == soulslike.entity_type.Stalker and 
+           hit.fatal_hit and
+           hit.fatal_hit.draftsman:general_goodwill(db.actor) >= soulslike.RELATIONS.NEUTRALS then
+        soulslike.debug("Friendly/Neutral Stalker killed the player.")
+
+        rescuer = hit.draftsman
+        looter = nil
+        scenario_loot_scalar = 0.0
+
+        table.insert(available_scenarios, {id = soulslike.SCENARIOS.NoLoss, min = 0, max = 0, weight = 1.0})
+    elseif hit and 
+           hit.draftsman_type == soulslike.entity_type.Stalker then
+        soulslike.debug("Enemy Stalker killed the player.")
+
+        rescuer = soulslike.find_closest_friendly_stalker()
+        looter = soulslike.find_closest_enemy_stalker()
+        scenario_loot_scalar = 1.0
+
+        table.insert(available_scenarios, {id = soulslike.SCENARIOS.NoLoss, min = 0, max = 0, weight = 0.05})
+
+        if has_backpack then
+            table.insert(available_scenarios, {id = soulslike.SCENARIOS.Default, min = 0, max = 0, weight = 1.0})
+        end
+
+        -- table.insert(available_scenarios, {id = soulslike.SCENARIOS.RFDetectorStash, min = 0, max = 0, weight = soulslike_mcm.rf_detector_scenario_weight()})
+        -- table.insert(available_scenarios, {id = soulslike.SCENARIOS.HiddenStash, min = 0, max = 0, weight = soulslike_mcm.hidden_stash_scenario_weight()})
+    elseif hit and 
+           hit.draftsman_type == soulslike.entity_type.Monster then
+        soulslike.debug("Mutant killed the player.")
+
+        rescuer = soulslike.find_closest_friendly_stalker()
+        looter = soulslike.find_closest_enemy_mutant()
+        scenario_loot_scalar = 1.0
+
+        table.insert(available_scenarios, {id = soulslike.SCENARIOS.NoLoss, min = 0, max = 0, weight = 0.05})
+
+        if has_backpack then
+            table.insert(available_scenarios, {id = soulslike.SCENARIOS.Default, min = 0, max = 0, weight = 1.0})
+        end
+
+        -- table.insert(available_scenarios, {id = soulslike.SCENARIOS.RFDetectorStash, min = 0, max = 0, weight = soulslike_mcm.rf_detector_scenario_weight()})
+        -- table.insert(available_scenarios, {id = soulslike.SCENARIOS.HiddenStash, min = 0, max = 0, weight = soulslike_mcm.hidden_stash_scenario_weight()})
+    elseif hit and 
+           hit.draftsman_type == soulslike.entity_type.Anomaly then
+        soulslike.debug("Player died to an anomaly.")
+
+        rescuer = soulslike.find_closest_friendly_stalker()  
+        looter = soulslike.find_closest_enemy()   
+        scenario_loot_scalar = 0.25
+        
+        table.insert(available_scenarios, {id = soulslike.SCENARIOS.NoLoss, min = 0, max = 0, weight = 0.05})
+
+        if has_backpack then
+            table.insert(available_scenarios, {id = soulslike.SCENARIOS.Default, min = 0, max = 0, weight = 1.0})
+        else
+            -- table.insert(available_scenarios, {id = soulslike.SCENARIOS.RFDetectorStash, min = 0, max = 0, weight = soulslike_mcm.rf_detector_scenario_weight()})
+            -- table.insert(available_scenarios, {id = soulslike.SCENARIOS.HiddenStash, min = 0, max = 0, weight = soulslike_mcm.hidden_stash_scenario_weight()})
+        end
+    elseif hit and 
+           hit.draftsman_type == soulslike.entity_type.Other then
+        soulslike.debug("Player died to damage over time of some sort.")
+
+        rescuer = soulslike.find_closest_friendly_stalker()     
+        looter = soulslike.find_closest_enemy()   
+        scenario_loot_scalar = 0.25
+
+        table.insert(available_scenarios, {id = soulslike.SCENARIOS.NoLoss, min = 0, max = 0, weight = 0.05})
+
+        if has_backpack then
+            table.insert(available_scenarios, {id = soulslike.SCENARIOS.Default, min = 0, max = 0, weight = 1.0})
+        else
+            -- table.insert(available_scenarios, {id = soulslike.SCENARIOS.RFDetectorStash, min = 0, max = 0, weight = soulslike_mcm.rf_detector_scenario_weight()})
+            -- table.insert(available_scenarios, {id = soulslike.SCENARIOS.HiddenStash, min = 0, max = 0, weight = soulslike_mcm.hidden_stash_scenario_weight()})
+        end
+    else
+        soulslike.warn("I have no idea how the player died.")
+
+        rescuer = soulslike.find_closest_friendly_stalker()    
+        looter = soulslike.find_closest_enemy()   
+        scenario_loot_scalar = 0.25
+
+        table.insert(available_scenarios, {id = soulslike.SCENARIOS.NoLoss, min = 0, max = 0, weight = 0.05})
+
+        if has_backpack then
+            table.insert(available_scenarios, {id = soulslike.SCENARIOS.Default, min = 0, max = 0, weight = 1.0})
+        else
+            -- table.insert(available_scenarios, {id = soulslike.SCENARIOS.RFDetectorStash, min = 0, max = 0, weight = soulslike_mcm.rf_detector_scenario_weight()})
+            -- table.insert(available_scenarios, {id = soulslike.SCENARIOS.HiddenStash, min = 0, max = 0, weight = soulslike_mcm.hidden_stash_scenario_weight()})
+        end
+    end
+
+    if looter and IsStalker(looter) then
+        looter_type = soulslike.entity_type.Stalker
+    elseif looter and IsMonster(looter) then
+        looter_type = soulslike.entity_type.Monster
+    end
+    
+    local is_in_water = load_var(db.actor,"grw_in_water") == true
+    
+    if is_in_water then
+        soulslike.debug("Actor died in the water, reducing loot scalar.")
+        scenario_loot_scalar = scenario_loot_scalar * 0.5
+    end
+
+    if #available_scenarios == 0 then
+        soulslike.error("No scenario chosen because all scenario weights are at 0 and remove default was enabled.")
+        return nil
+    end
+
+    local weight_sum = 0
+    for _, value in pairs(available_scenarios) do
+        weight_sum = weight_sum + value.weight
+    end
+
+    local min = 0
+    for _, value in pairs(available_scenarios) do
+        value.min = min + 1
+        value.max = math.floor(min + (100 * (value.weight / weight_sum)))
+        min = value.max
+    end
+    
+    local roll = math.random(1, 100)    
+    local scenario_id = nil
+    for id, value in pairs(available_scenarios) do
+        if(roll >= value.min and roll <= value.max) then
+            scenario_id = value.id
+            break
+        end
+    end
+
+    if scenario_id == nil then
+        soulslike.debug("ERROR: Unable to determine scenario from roll: "..tostring(roll))
+        soulslike.debug(available_scenarios)  
+        scenario_id = soulslike.SCENARIOS.NoLoss
+    end
+
+    local scenario_logic = create_by_id(scenario_id)
+    local level_name = level.name()
+
+    scenario_logic:SetLevelName(game.translate_string(level_name))
+    scenario_logic:SetLootScalar(scenario_loot_scalar)
+    scenario_logic:SetIsInDoor(player_is_indoor)
+    scenario_logic:SetIsInWater(is_in_water)
+    scenario_logic:SetRescuer(rescuer)
+
+    if looter then
+        scenario_logic:SetLooter(looter)
+        scenario_logic:SetLooterType(looter_type)
+    end
+
+    if hit and hit.fatal_hit then 
+        scenario_logic:SetKillerType(hit.draftsman_type)
+        scenario_logic:SetKiller(hit.fatal_hit.draftsman)
+        scenario_logic:SetFatalHitType(hit.fatal_hit.type)
+    end
+
+    return scenario_logic
+end

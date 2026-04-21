@@ -1,0 +1,202 @@
+--[[
+	=====================================================================
+	Addon      : Shader 3D Scopes
+	Link       : https://www.moddb.com/mods/stalker-anomaly/addons/shader-3d-scopes
+	Author     : party_50
+	Date       : 01.03.2024
+	Last Edit  : 11.03.2025
+	=====================================================================
+--]]
+
+
+local ZOOM_FACTOR
+local NVG_BLUR
+local PARALLAX_SHADOW
+local SEE_THROUGH
+local THERMAL_PIXELATION
+local CHROMATISM
+
+local ALL_PARAMETERS = {
+	s3ds_reticle_size = "float",
+	s3ds_eye_relief = "float",
+	s3ds_exit_pupil = "float",
+	s3ds_ffp = "float",
+	
+	s3ds_reflection_hue = "float",
+	s3ds_min_zoom_1x = "float",
+	
+	s3ds_image_type = "float",
+	s3ds_reticle_type = "float",
+	s3ds_dirt_intensity = "float",
+	s3ds_chroma_power = "float",
+	
+	s3ds_lens_color = "s3ds_color"
+}
+
+local last_weapon_id
+local last_scope
+
+
+local inventory_upgrade_base = ui_inventory.UIInventory.RMode_UpgradeYes
+local workshop_upgrade_base = ui_workshop.UIWorkshopUpgrade.Upgrade
+
+function ui_inventory.UIInventory:RMode_UpgradeYes()
+	inventory_upgrade_base(self)
+	last_weapon_id = nil
+end
+
+function ui_workshop.UIWorkshopUpgrade:Upgrade()
+	workshop_upgrade_base(self)
+	last_weapon_id = nil
+end
+
+
+function on_option_change()
+	ZOOM_FACTOR = z_3d_scopes_mcm.get_config("zoom_factor")
+	NVG_BLUR = z_3d_scopes_mcm.get_config("nvg_blur")
+	PARALLAX_SHADOW = z_3d_scopes_mcm.get_config("parallax_shadow")
+	SEE_THROUGH = z_3d_scopes_mcm.get_config("see_through")
+	THERMAL_PIXELATION = z_3d_scopes_mcm.get_config("thermal_pixelation")
+	CHROMATISM = z_3d_scopes_mcm.get_config("chromatism")
+
+	last_weapon_id = nil
+end
+
+function get_sight_section(wpn)
+	local wpn_section = wpn:section()
+	
+	local modular_attachments = ini_sys:r_bool_ex(wpn_section, "modular_attachments", false)
+	if modular_attachments then
+		local c_wpn = wpn:cast_Weapon()
+		if c_wpn['IsScopeAttached'](c_wpn) then
+			return c_wpn['GetScopeName'](c_wpn)
+		end
+		return nil
+	end
+
+	local parent = ini_sys:r_string_ex(wpn_section, "parent_section") or wpn_section
+	if #parent == #wpn_section then
+		return wpn_section
+	end
+
+	return wpn_section:sub(#parent + 2)
+end
+
+function parse_key(section, key, type)
+	if type == "float" then
+		return ini_sys:r_float_ex(section, key)
+	elseif type == "s3ds_color" then
+		local value = ini_sys:r_string_ex(section, key)
+		if value then
+			local color = ini_sys:r_string_ex("s3ds_colors", tostring(value))
+			if not color then
+				error("Unable to find color " .. colors[i + 1] .. " in s3ds_colors")
+			end
+			return tostring(color)
+		end
+	end
+end
+
+function parse_parameters(wpn)
+	local values = {}
+	wpn:iterate_installed_upgrades(
+		function(upgr_sec)
+			for key, type in pairs(ALL_PARAMETERS) do
+				values[key] = parse_key(upgr_sec, key, type)
+			end
+		end
+	)
+	
+	local sight_section = get_sight_section(wpn)
+	for key, type in pairs(ALL_PARAMETERS) do
+		if not values[key] then
+			values[key] = parse_key(wpn:section(), key, type)
+		end
+		if not values[key] and sight_section then
+			values[key] = parse_key(sight_section, key, type)
+		end
+		if not values[key] then
+			values[key] = parse_key("s3ds_defaults", key, type)
+		end
+	end
+	
+	return values
+end
+
+function get(info, key, default)
+	if info[key] then
+		return info[key]
+	end
+	return default
+end
+
+function pack_binary_settings()
+	return (NVG_BLUR and 1 or 0)
+		+ (PARALLAX_SHADOW and 1 or 0) * 2
+		+ (SEE_THROUGH and 1 or 0) * 4
+		+ (THERMAL_PIXELATION and 1 or 0) * 8
+		+ (CHROMATISM and 1 or 0) * 16
+end
+
+function update_shader(wpn)
+	info = parse_parameters(wpn)
+	
+	get_console():execute(
+		"s3ds_param_1 " .. 
+		get(info, "s3ds_reticle_size", "0") .. ", " ..
+		get(info, "s3ds_eye_relief", "0") .. ", " ..
+		get(info, "s3ds_exit_pupil", "0") .. ", " ..
+		get(info, "s3ds_ffp", "0"))
+	
+	get_console():execute(
+		"s3ds_param_2 " .. 
+		get(info, "s3ds_reflection_hue", "0") .. ", " ..
+		"0, " ..
+		get(info, "s3ds_min_zoom_1x", "0") .. ", " ..
+		(ZOOM_FACTOR or 1.5))
+	
+	get_console():execute(
+		"s3ds_param_3 " .. 
+		get(info, "s3ds_image_type", "0") .. ", " ..
+		get(info, "s3ds_reticle_type", "0") .. ", " ..
+		get(info, "s3ds_dirt_intensity", "0") .. ", " ..
+		get(info, "s3ds_chroma_power", "0"))
+	
+	get_console():execute(
+		"s3ds_param_4 " .. 
+		get(info, "s3ds_lens_color", "0, 0, 0") .. ", " ..
+		pack_binary_settings())
+end
+
+function actor_on_update()
+	if not (db.actor and db.actor:alive()) then
+		return
+	end
+	
+	local wpn = db.actor:active_item()
+	if not wpn then
+		last_weapon_id = nil
+		return
+	end
+	
+	if not last_weapon_id or last_weapon_id ~= wpn:id() then
+		last_weapon_id = wpn:id()
+		update_shader(wpn)
+	end
+	
+	local c_wpn = wpn:cast_Weapon()
+	local scope
+	if c_wpn then
+		scope = c_wpn['GetScopeName'](c_wpn)
+	end
+	if last_scope ~= scope then
+		last_scope = scope
+		update_shader(wpn)
+	end
+end
+
+function on_game_start()
+	on_option_change()
+	RegisterScriptCallback("on_option_change", on_option_change)
+	RegisterScriptCallback("actor_on_update", actor_on_update)
+end

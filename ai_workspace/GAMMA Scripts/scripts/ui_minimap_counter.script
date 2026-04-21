@@ -1,0 +1,184 @@
+--[[
+
+	Tronex (Some code changes from Rezy)
+	2021/5/11
+	Minimap: Stalker Counter (a workaround for Blackgrowl)
+	(if you find out why default counter doesn't show, contact Tronex)
+
+	This script reads the original zone_map.xml, so you can customize how counter looks like from there
+	You just need to control the X and Y from here because it's a bit wonky
+--]]
+
+local radius = 50 --[meters] count stalkers within this distance from player
+local X      = 28 -- for counter X position on HUD
+local Y      = 223 -- for counter Y position on HUD
+local X_16   = 28 -- for counter X position on HUD
+local Y_16   = 180 -- for counter Y position on HUD
+local X_21   = 28 -- for counter X position on HUD
+local Y_21   = 160 -- for counter Y position on HUD
+local enable_contact_sound = true -- Enables/Disables the "Contact Sound" effect, which happens when any contact is in the minimap, just like in ShoC.
+local enable_contact_offline = false -- [MUST HAVE ABOVE ENABLED] Makes it so the "Contact Sound" is separated, high-pitch noise will work when there's contact and the low-pitch will work when the contact is lost.
+
+HUD = nil
+
+function activate_hud()
+	RegisterScriptCallback("on_console_execute",on_console_execute)
+	RegisterScriptCallback("actor_on_net_destroy",actor_on_net_destroy)
+	RegisterScriptCallback("GUI_on_show",update_hud)
+	RegisterScriptCallback("GUI_on_hide",update_hud)
+	
+	if HUD == nil then
+		HUD = UIStalkerCounter()
+		get_hud():AddDialogToRender(HUD)
+	end
+	HUD:Refresh()
+end
+
+function deactivate_hud()
+	if HUD ~= nil then
+		get_hud():RemoveDialogToRender(HUD)
+		HUD = nil
+	end
+	
+	UnregisterScriptCallback("on_console_execute",on_console_execute)
+	UnregisterScriptCallback("actor_on_net_destroy",actor_on_net_destroy)
+	UnregisterScriptCallback("GUI_on_show",update_hud)
+	UnregisterScriptCallback("GUI_on_hide",update_hud)
+end
+
+function update_hud()
+	if HUD ~= nil then
+		HUD:Refresh()
+	end
+end
+
+function actor_on_net_destroy()
+	if HUD ~= nil then
+		get_hud():RemoveDialogToRender(HUD)
+		HUD = nil
+	end
+end
+
+function on_option_change()
+	local state = ui_options.get("video/hud/show_minimap")
+	if state and (not HUD) then
+		activate_hud()
+	elseif (not state) and HUD then
+		deactivate_hud()
+	end
+end
+
+function on_console_execute(name)
+	if name == "hud_draw" and HUD then
+		HUD:Refresh()
+	end
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_option_change",on_option_change)
+	
+	if (ui_options.get("video/hud/show_minimap") == false) then
+		return
+	end
+	
+	local function actor_on_first_update()
+		activate_hud()
+		RegisterScriptCallback("on_console_execute",on_console_execute)
+	end
+	RegisterScriptCallback("actor_on_first_update",actor_on_first_update)
+end
+
+
+local prev_cnt = 0
+----------------------------------------------------
+class "UIStalkerCounter" (CUIScriptWnd)
+
+function UIStalkerCounter:__init() super()
+	self._tmr = time_global()
+	
+	self:InitControls()
+end
+
+function UIStalkerCounter:__finalize()
+end
+
+function UIStalkerCounter:InitControls()
+	local xml = CScriptXmlInit()
+	xml:ParseFile("zone_map.xml")
+	
+	self.dialog = xml:InitStatic("minimap:background", self)
+	self.dialog:SetTextureColor( GetARGB(0,0,0,0) ) -- invisible
+	self.dialog:Show(false)
+	
+	self.counter_dialog = xml:InitStatic("minimap:static_counter", self.dialog)
+	self.counter = xml:InitTextWnd("minimap:static_counter:text_static", self.counter_dialog)
+	
+	-- I'm not sure yet how axis are calculated for minimap, it uses different method in engine
+	-- until then, we can just do it the old way
+	local pos = self.counter_dialog:GetWndPos()
+	local dwWdwH = device().width / device().height
+	
+	if (dwWdwH > 1.8) then
+		pos.x = X_21
+		pos.y = Y_21
+	elseif (dwWdwH > 1.34) then
+		pos.x = X_16
+		pos.y = Y_16
+	else
+		pos.x = X
+		pos.y = Y
+	end
+	
+	self.counter_dialog:SetWndPos(pos)
+end
+
+function UIStalkerCounter:Clear()
+	self.counter:SetText("")
+	self.counter_dialog:Show(false)
+end
+
+function UIStalkerCounter:Refresh()
+	self:Clear()
+	
+	-- show only if HUD is drawn
+	if (not main_hud_shown()) then
+		return
+	end
+	
+	-- counter online stalkers within defined range
+	local cnt = 0
+	local pos = db.actor:position()
+	for i=1,#db.OnlineStalkers do
+		local id = db.OnlineStalkers[i]
+		local obj = db.storage[id] and db.storage[id].object or level.object_by_id(id)
+		if obj and obj:alive() and (pos:distance_to(obj:position()) <= radius) then
+			cnt = cnt + 1
+			if (prev_cnt < cnt) and enable_contact_sound then
+				sound = enable_contact_offline and "squaredov\\contact_2" or ("squaredov\\contact_" .. math.random(2))
+				xr_effects.play_snd(db.actor, nil, {[1] = sound})
+			end
+		end
+	end
+	if (prev_cnt > cnt) and enable_contact_sound and enable_contact_offline then
+		xr_effects.play_snd(db.actor, nil, {[1] = "squaredov\\contact_1"})
+	end
+	-- show number if count is bigger than 1
+	prev_cnt = cnt
+	self.counter_dialog:Show(true)
+	self.counter:SetText(cnt)
+	self.dialog:Show(cnt > 0)
+end
+
+function UIStalkerCounter:Update()
+	
+	local tg = time_global()
+	if self._tmr >= tg then
+		return
+	else
+		self._tmr = tg + 1000
+	end
+	
+	self:Refresh()
+	CUIScriptWnd.Update(self)
+end
+

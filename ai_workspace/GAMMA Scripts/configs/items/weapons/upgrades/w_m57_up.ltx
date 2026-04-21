@@ -1,0 +1,76 @@
+[up_sect_fiftha_m57]
+cost                                     = 470
+value                                    = "9x19"
+ammo_class                  = ammo_9x19_fmj, ammo_9x19_fmj_bad, ammo_9x19_fmj_verybad, ammo_9x19_pbp, ammo_9x19_pbp_bad, ammo_9x19_pbp_verybad, ammo_9x19_ap, ammo_9x19_ap_bad, ammo_9x19_ap_verybad
+
+rpm                                      = +20
+
+bullet_speed                = -58
+
+hit_power                                = 0.46, 0.46, 0.46, 0.46
+		
+shell_particles	 			= weapons\9x19
+
+snd_shoot               = wpn_beretta_snd_shoot
+
+cam_dispersion                           = +0.08
+zoom_cam_dispersion					= +0.04
+inv_weight                               = +0.1
+
+condition_shot_dec                       = +0.0003
+condition_queue_shot_dec                 = +0.0003
+
+[up_sect_fifthc_m57]
+cost                                     = 890
+value                                    = +15
+
+condition_shot_dec                       = -0.0002
+condition_queue_shot_dec                 = -0.0002
+misfire_start_prob                       = -0.001
+misfire_end_prob                         = -0.01
+
+
+;----------------------------------------------------------------------------------------------------------------------
+[up_fiftha_m57]
+scheme_index                             = 0, 4
+known                                    = 1
+effects                                  = up_gr_fifthcd_m57
+section                                  = up_sect_fiftha_m57
+property                                 = prop_calibre
+
+precondition_functor                     = inventory_upgrades.precondition_functor_a
+precondition_parameter                   = a & b
+effect_functor                           = inventory_upgrades.effect_functor_a
+effect_parameter                         = something_here
+
+prereq_functor                           = inventory_upgrades.prereq_functor_a
+prereq_tooltip_functor                   = inventory_upgrades.prereq_tooltip_functor_a
+prereq_params                            =
+name                                     = st_up_add_b4_name
+description                              = st_up_add_b4_descr
+icon                                     = ui_inGame2_upgrade_PMm_13
+
+[up_fifthc_m57]
+scheme_index                             = 1, 6
+known                                    = 1
+effects                                  =
+section                                  = up_sect_fifthc_m57
+property                                 = prop_reliability
+precondition_functor                     = inventory_upgrades.precondition_functor_a
+precondition_parameter                   = a & b
+effect_functor                           = inventory_upgrades.effect_functor_a
+effect_parameter                         = something_here
+prereq_functor                           = inventory_upgrades.prereq_functor_a
+prereq_tooltip_functor                   = inventory_upgrades.prereq_tooltip_functor_a
+prereq_params                            =
+name                                     = st_up_usmp_b5_name
+description                              = st_up_usmp_b5_descr
+icon                                     = ui_inGame2_upgrade_Kora_919_13
+
+
+;----------------------------------------------------------------------------------------------------------------------
+[up_gr_fifthab_m57]
+elements                                 = up_fiftha_m57
+
+[up_gr_fifthcd_m57]
+elements                                 = up_fifthc_m57

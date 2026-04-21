@@ -1,0 +1,142 @@
+local _Main_Controls = ui_mm_faction_select.UINewGame.Main_Controls
+local _Main_CallBacks = ui_mm_faction_select.UINewGame.Main_CallBacks
+local _OnStartGame = ui_mm_faction_select.UINewGame.OnStartGame
+local _OnCheckSetAzazel = ui_mm_faction_select.UINewGame.OnCheckSetAzazel
+
+function ui_mm_faction_select.UINewGame.Main_Controls(self, rand)
+    _Main_Controls(self, rand)
+
+    local function move(ctrl, deltaX, deltaY)
+        local pos = ctrl:GetWndPos()
+        ctrl:SetWndPos(vector2():set( pos.x + deltaX ,pos.y + deltaY ))
+    end
+
+	if efp_utils_mcm then
+		move(self.ck_azazel_mode_cap, 0, -10)
+		move(self.ck_azazel_mode, 0, -10)
+	else
+		move(self.ck_story_cap, 0, -10)
+		move(self.ck_story, 0, -10)
+		move(self.ck_azazel_mode_cap, 0, -15)
+		move(self.ck_azazel_mode, 0, -15)
+		move(self.ck_survival_cap, 0, -20)
+		move(self.ck_survival, 0, -20)
+	end
+    
+	local xml					= CScriptXmlInit()
+	xml:ParseFile				("soulslike_ui_mm_gamemode.xml")
+    		
+    self.ck_soulslike_mode_cap = xml:InitStatic("main_dialog:options:cap_check_soulslike_mode",self.templ_options)
+    self.ck_soulslike_mode = xml:InitCheck("main_dialog:options:check_soulslike_mode",	self.templ_options)
+    self:Register(self.ck_soulslike_mode,"check_soulslike_mode")
+	
+	if efp_utils_mcm then
+		move(self.ck_soulslike_mode_cap, 0, 65)
+		move(self.ck_soulslike_mode, 0, 65)
+	end
+
+	self.ck_states["ck_soulslike_mode"] = false
+end
+
+function ui_mm_faction_select.UINewGame.Main_CallBacks(self)
+    _Main_CallBacks(self)
+
+	self:AddCallback("check_soulslike_mode", ui_events.BUTTON_CLICKED, self.OnCheckSetSoulslike, self)
+	self:AddCallback("check_hardcore", ui_events.BUTTON_CLICKED, self.OnCheckHardcore, self)
+end
+
+
+function ui_mm_faction_select.UINewGame.OnStartGame(self)
+	if (not self.access) then
+		return
+	end
+
+	local character_name = self.character_name:GetText()
+
+	if axr_main and axr_main.config and character_name and character_name ~= "" then
+		local is_soulslike_mode = self.ck_soulslike_mode and self.ck_soulslike_mode:GetCheck() and true or nil
+		printf('[Soulslike] OnStartGame:is_soulslike_mode='..tostring(is_soulslike_mode))
+		axr_main.config:w_value("character_creation", "new_game_soulslike_mode", is_soulslike_mode)
+		axr_main.config:save()
+	end
+
+    _OnStartGame(self)
+end
+
+function ui_mm_faction_select.UINewGame.OnCheckSetAzazel(self)
+	_OnCheckSetAzazel(self)
+
+	if (not self.access) then
+		return
+	end
+	
+	self.ck_soulslike_mode:SetCheck(false)
+	self.ck_states["ck_soulslike_mode"] = false
+end
+
+function ui_mm_faction_select.UINewGame:OnCheckHardcore()
+	if (not self.access) then
+		return
+	end
+	
+	self.ck_soulslike_mode:SetCheck(false)
+	self.ck_states["ck_soulslike_mode"] = false
+end
+
+function ui_mm_faction_select.UINewGame:OnCheckSetSoulslike()
+	if (not self.access) then
+		return
+	end
+	
+	self.ck_azazel_mode:SetCheck(false)
+	self.ck_states["ck_azazel_mode"] = false
+
+	self.ck_hardcore:SetCheck(false)
+	self.ck_states["ck_hardcore"] = false
+	
+	self:LoadMap()
+end
+
+local function on_game_load(binder)
+	local config = axr_main.config
+
+	if not (config) then
+		printf('[Soulslike] on_game_load:no config')
+		return
+	end
+
+	local need_save
+	
+	-- Gameplay Options
+	if (USE_MARSHAL) then
+		if (config:r_value("character_creation","new_game_soulslike_mode", 1) == true) then
+			printf('[Soulslike] on_game_load:enable_soulslike_mode=true')
+			alife_storage_manager.get_state().enable_soulslike_mode = true
+			config:w_value("character_creation","new_game_soulslike_mode")
+			need_save = true
+		end
+    end
+
+	if (need_save) then
+		config:save()
+	end
+end
+
+local function actor_on_first_update() 
+    if not soulslike.IsSoulslikeMode() then
+        return
+    end
+
+	local state = alife_storage_manager.get_state()
+
+    if not state.soulslike_mode_initial_spawn_set and level.name() ~= 'fake_start' then
+        printf('Initial spawn point set to '..level.name())
+		soulslike.set_spawn(false)
+		state.soulslike_mode_initial_spawn_set = true
+    end
+end
+
+function on_game_start()
+	RegisterScriptCallback("on_game_load",on_game_load)
+    RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+end

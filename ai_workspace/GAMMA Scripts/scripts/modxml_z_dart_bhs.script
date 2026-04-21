@@ -1,0 +1,94 @@
+local Dart   = dart_core
+local Utils  = dart_utils
+local Module = dart_module
+
+
+local mod = "bhs"
+
+
+function isBHSElement(XML, element)
+  if not XML:safeIsElement(element) then
+    return false
+  end
+
+  local name = XML:getElementName(element)
+  return name:match("^bhs_") or name:match("^body_health_")
+end
+
+
+function parseUICustomMsgs(XML, config, state)
+  local container = XML:query("body_health_system")[1]
+  state.bounds    = XML:getBounds(container)
+
+  local scaleSettings = Utils.merge(config, state)
+
+  XML:safeIterate(function(child)
+    if isBHSElement(XML, child) then
+      XML:correctElement(child, scaleSettings)
+    end
+  end)
+end
+
+
+function parseUIBodyHealth(XML, config)
+  XML:safeIterate(function(child)
+    if isBHSElement(XML, child) then
+      XML:correctElement(child, {scale = config.scale})
+    end
+  end)
+end
+
+
+function parseMaingame(XML, config, state)
+  local hudStates = XML:query("hud_states")[1]
+  if not hudStates then
+    return
+  end
+
+  local psybar   = XML:query("progress_bar_psy", hudStates)[1]
+  local progress = XML:query("progress", psybar)[1]
+
+  if psybar then
+    -- slight nudge for better alignment
+    XML:safeSetAttrs(psybar, function(attrs)
+      return {height = attrs.height + 1, width = attrs.width - 1}
+    end)
+  end
+
+  if progress then
+    XML:safeSetAttrs(progress, function(attrs)
+      return {stretch = 1}
+    end)
+  end
+
+  local scaleSettings = Utils.merge(config, state)
+
+  XML:safeIterate(hudStates, function(child)
+    XML:correctElement(child, scaleSettings)
+  end)
+end
+
+
+function parseSidHudComponent(XML, config, state)
+  local sidhud    = XML:query("sidhud")[1]
+  local radHealth = XML:query("sidhud > rad_health")[1]
+  local value     = XML:query("sidhud > rad_health > value")[1]
+
+  if not (sidhud and radHealth and value) then
+    return
+  end
+
+  local scaleSettings = Utils.merge(config, state)
+
+  XML:correctElement(sidhud, scaleSettings)
+  XML:correctElement(radHealth, {scale = config.scale})
+  XML:correctElement(value, {scale = config.scale})
+end
+
+
+function on_xml_read()
+  Module.registerModule(mod, "ui_custom_msgs", parseUICustomMsgs)
+  Module.registerModule(mod, "ui_body_health", parseUIBodyHealth)
+  Module.registerModule(mod, "maingame", parseMaingame)
+  Module.registerModule(mod, "ui_sidhud_component", parseSidHudComponent)
+end

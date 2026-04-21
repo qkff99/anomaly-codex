@@ -1,0 +1,311 @@
+[beh@general]
+;sound_idle = state
+behavior_state = beh_move
+target = waypoint
+walk_dist = 100
+jog_dist = 220
+wait_anim = walk
+walk_anim = walk
+jog_anim = walk
+run_anim = walk
+delay_anim = guard
+gather_items_enabled = false
+help_wounded_enabled = false
+corpse_detection_enabled = false
+meet = no_meet
+wounded = wounded@ignore
+use_camp = false
+
+[meet@general]
+close_anim 		= nil
+close_victim 	= nil
+far_anim 		= nil
+far_victim 		= nil
+close_distance  = 0
+far_distance 	= 0
+use = {=actor_enemy} false, {=dist_to_actor_le(3)} true, false
+snd_on_use = {!dist_to_actor_le(3)} nil
+meet_on_talking = false
+
+[wounded@ignore]
+hp_state        = 0|wounded_heavy@help_heavy
+hp_state_see    = 0|wounded_heavy@help_heavy
+hp_victim       = 0|nil
+hp_fight        = 0|false
+hp_cover        = 0|false
+
+; =======================
+; ------------- DAY ---------------
+; =======================
+; patrol center
+[logic@mar_10_5_xcvb_day_1]
+active = walker@day_1
+suitable = {!surge_started !is_night} true
+prior = 59
+
+[walker@day_1]
+path_walk = walker_6_walk
+path_look = walker_6_look
+
+
+; minigun cover
+[logic@mar_10_5_xcvb_day_2]
+active = walker@day_2
+suitable = {!surge_started !is_night} true
+prior = 58
+
+[walker@day_2]
+path_walk = walker_4_walk
+path_look = surge_7_walk
+
+
+; guard 1
+[logic@mar_10_5_xcvb_day_3]
+active = walker@day_3
+suitable = {!surge_started !is_night} true
+prior = 57
+
+[walker@day_3]
+path_walk = guard_1_walk
+path_look = guard_1_look
+
+
+; guard 2
+[logic@mar_10_5_xcvb_day_4]
+active = walker@day_4
+suitable = {!surge_started !is_night} true
+prior = 57
+
+[walker@day_4]
+path_walk = guard_2_walk
+path_look = guard_2_look
+
+
+; guard 3
+[logic@mar_10_5_xcvb_day_5]
+active = walker@day_5
+suitable = {!surge_started !is_night} true
+prior = 57
+
+[walker@day_5]
+path_walk = guard_3_walk
+path_look = guard_3_look
+
+
+; patrol 1
+[logic@mar_10_5_xcvb_day_6]
+active = walker@day_6
+suitable = {!surge_started !is_night} true
+prior = 56
+
+[walker@day_6]
+path_walk = walker_1_walk
+path_look = walker_1_look
+
+
+; patrol 2
+[logic@mar_10_5_xcvb_day_7]
+active = walker@day_7
+suitable = {!surge_started !is_night} true
+prior = 56
+
+[walker@day_7]
+path_walk = walker_2_walk
+path_look = walker_2_look
+
+
+; guard center
+[logic@mar_10_5_xcvb_day_8]
+active = walker@day_8
+suitable = {!surge_started !is_night} true
+prior = 55
+
+[walker@day_8]
+path_walk = walker_5_walk
+path_look = walker_5_look
+
+
+; guard commander
+[logic@mar_10_5_xcvb_day_9]
+active = walker@day_9
+suitable = {!surge_started !is_night} true
+prior = 55
+
+[walker@day_9]
+path_walk = comander_walk
+path_look = comander_look
+def_state_standing = smoking_stand
+
+
+; patrol house
+[logic@mar_10_5_xcvb_day_10]
+active = walker@day_10
+suitable = {!surge_started !is_night} true
+prior = 55
+
+[walker@day_10]
+path_walk = walker_3_walk
+path_look = walker_3_look
+
+
+
+; =======================
+; ------------ NIGHT -------------
+; =======================
+; guard 1
+[logic@mar_10_5_xcvb_night_1]
+active = walker@night_1
+suitable = {!surge_started =is_night} true
+prior = 59
+
+[walker@night_1]
+path_walk = guard_1_walk
+path_look = guard_1_look
+
+
+; guard 2
+[logic@mar_10_5_xcvb_night_2]
+active = walker@night_2
+suitable = {!surge_started =is_night} true
+prior = 59
+
+[walker@night_2]
+path_walk = guard_2_walk
+path_look = guard_2_look
+
+
+; guard 3
+[logic@mar_10_5_xcvb_night_3]
+active = walker@night_3
+suitable = {!surge_started =is_night} true
+prior = 59
+
+[walker@night_3]
+path_walk = guard_3_walk
+path_look = guard_3_look
+
+
+; sleep 1 (sit)
+[logic@mar_10_5_xcvb_night_4]
+active = beh@night_4
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[beh@night_4]:beh@general
+pt1 = 30000, sit_ass_drink_vodka | 		pos: 435.4, 4.3565, 264.6 	 	 look: 435.127, 3.5236, 260.1497  
+path_end = loop
+help_wounded_enabled = true
+meet = meet@general
+turn_on_campfire = true
+
+
+; sleep 2
+[logic@mar_10_5_xcvb_night_5]
+active = beh@night_5
+suitable = {!surge_started =is_night} true
+prior = 58
+
+[beh@night_5]:beh@general
+pt1 = 30000, sleep | 		pos: 432.6, 4.5149, 263.2 	 	 look: 436.6784, 3.3698, 263.7162 
+path_end = loop
+
+
+; patrol house
+[logic@mar_10_5_xcvb_night_6]
+active = walker@night_6
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[walker@night_6]
+path_walk = walker_3_walk
+path_look = walker_3_look
+
+
+; minigun cover
+[logic@mar_10_5_xcvb_night_7]
+active = walker@night_7
+suitable = {!surge_started =is_night} true
+prior = 57
+
+[walker@night_7]
+path_walk = walker_4_walk
+path_look = surge_7_walk
+def_state_standing = sit
+
+
+; sleep 3
+[logic@mar_10_5_xcvb_night_8]
+active = beh@night_8
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[beh@night_8]:beh@general
+pt1 = 30000, sleep | 		pos: 409.5, 4.503, 240.1 	 	 look: 409.9837, 3.5236, 236.5013 
+path_end = loop
+
+
+; sleep 4
+[logic@mar_10_5_xcvb_night_9]
+active = beh@night_9
+suitable = {!surge_started =is_night} true
+prior = 56
+
+[beh@night_9]:beh@general
+pt1 = 30000, drunk_sit_ass | 		pos: 412.3, 4.5149, 238.7 	 	 look: 407.838, 3.3582, 238.7745 
+path_end = loop
+turn_on_campfire = true
+
+
+; patrol center
+[logic@mar_10_5_xcvb_night_10]
+active = walker@night_10
+suitable = {!surge_started =is_night} true
+prior = 55
+
+[walker@night_10]
+path_walk = walker_6_walk
+path_look = walker_6_look
+
+
+; sleep 5
+[logic@mar_10_5_xcvb_night_11]
+active = beh@night_11
+suitable = {!surge_started =is_night} true
+prior = 54
+
+[beh@night_11]:beh@general
+pt1 = 30000, sleep | 		pos: 435.4, 4.5239, 259.7 	 	 look: 432.8909, 3.454, 257.1245 
+path_end = loop
+
+
+; patrol 1
+[logic@mar_10_5_xcvb_night_12]
+active = walker@night_12
+suitable = {!surge_started =is_night} true
+prior = 53
+
+[walker@night_12]
+path_walk = walker_1_walk
+path_look = walker_1_look
+
+
+; sleep 6
+[logic@mar_10_5_xcvb_night_13]
+active = beh@night_13
+suitable = {!surge_started =is_night} true
+prior = 52
+
+[beh@night_13]:beh@general
+pt1 = 30000, lay_on_bed | 		pos: 410.2, 4.5149, 236.6 	 	 look: 409.9215, 3.5095, 240.2922 
+path_end = loop
+
+
+; patrol 2
+[logic@mar_10_5_xcvb_night_14]
+active = walker@night_14
+suitable = {!surge_started =is_night} true
+prior = 51
+
+[walker@night_14]
+path_walk = walker_2_walk
+path_look = walker_2_look

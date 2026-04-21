@@ -1,0 +1,237 @@
+local Dart  = dart_core
+local Utils = dart_utils
+
+
+-- MCM UTILS --
+
+function getTitle(overrides)
+  return Utils.merge({
+    id      = "title",
+    type    = "slide",
+    text    = "ui_mcm_dart_title",
+    link    = "ui_options_slider_player",
+    size    = {512, 50},
+    spacing = 20,
+  }, overrides or {})
+end
+
+
+function getSubtitle(overrides)
+  return Utils.merge({
+    id    = "subtitle",
+    type  = "desc",
+    text  = "ui_mcm_dart_subtitle",
+    clr   = {255, 255, 255, 255},
+  }, overrides or {})
+end
+
+
+function getNote(overrides)
+  return Utils.merge({
+    id   = "note",
+    type = "desc",
+    text = "ui_mcm_dart_note",
+    clr  = {255, 112, 112, 112},
+  }, overrides or {})
+end
+
+
+function getLine(overrides)
+  return Utils.merge({
+    id = "line",
+    type = "line",
+  }, overrides or {})
+end
+
+
+function getScaleField(overrides)
+  return Utils.merge({
+    id   = "scale",
+    type = "track",
+    hint = "dart_scale",
+    val  = 2,
+    def  = 1,
+    min  = 0.1,
+    max  = 8,
+    step = 0.05,
+    prec = 2,
+  }, overrides or {})
+end
+
+
+function getOffsetXField(overrides)
+  return Utils.merge({
+    id   = "offsetX",
+    type = "track",
+    hint = "dart_offsetX",
+    val  = 2,
+    def  = 0,
+    min  = -1024,
+    max  = 1024,
+    step = 1,
+    prec = 0,
+  }, overrides or {})
+end
+
+
+function getSafezoneField(overrides)
+  return Utils.merge({
+    id   = "safezone",
+    type = "track",
+    val  = 2,
+    def  = 0,
+    min  = 0,
+    max  = 1024,
+    step = 1,
+    prec = 0,
+  }, overrides or {})
+end
+
+
+function getOffsetYField(overrides)
+  return Utils.merge({
+    id   = "offsetY",
+    type = "track",
+    hint = "dart_offsetY",
+    val  = 2,
+    def  = 0,
+    min  = -1024,
+    max  = 1024,
+    step = 1,
+    prec = 0,
+  }, overrides or {})
+end
+
+
+function getAlignXField(overrides)
+  return Utils.merge({
+    id   = "alignX",
+    type = "list",
+    hint = "dart_alignX",
+    val  = 0,
+    def  = "DEFAULT",
+    content = {
+      {"DEFAULT", "dart_default"},
+      {"LEFT", "dart_left"},
+      {"CENTER", "dart_center"},
+      {"RIGHT", "dart_right"}
+    }
+  }, overrides or {})
+end
+
+
+function getAlignYField(overrides)
+  return Utils.merge({
+    id   = "alignY",
+    type = "list",
+    hint = "dart_alignY",
+    val  = 0,
+    def  = "DEFAULT",
+    content = {
+      {"DEFAULT", "dart_default"},
+      {"TOP", "dart_top"},
+      {"CENTER", "dart_center"},
+      {"BOTTOM", "dart_bottom"}
+    }
+  }, overrides or {})
+end
+
+
+function getSpacingField(overrides)
+  return Utils.merge({
+    id   = "spacing",
+    type = "track",
+    val  = 2,
+    def  = 0,
+    min  = 0,
+    max  = 256,
+    step = 1,
+    prec = 0,
+  }, overrides or {})
+end
+
+
+function getAlphaField(overrides)
+  return Utils.merge({
+    id   = "alpha",
+    type = "track",
+    val  = 2,
+    def  = 255,
+    min  = -1,
+    max  = 255,
+    step = 1,
+    prec = 0,
+  }, overrides or {})
+end
+
+
+function getCheckboxField(overrides)
+  return Utils.merge({
+    id   = "checkbox",
+    type = "check",
+    val  = 1,
+    def  = false,
+  }, overrides or {})
+end
+
+
+function getKeybindKey(overrides)
+  return Utils.merge({
+    id   = "keybind",
+    type = "key_bind",
+    val  = 2,
+    def  = -1,
+  }, overrides or {})
+end
+
+
+-- CALLBACKS --
+
+function mcmOnConfig(mcmConfig)
+  local safezone = ui_mcm.get("dart/dart_core/safezone")
+
+  if safezone then
+    mcmConfig.safezone = safezone
+  end
+end
+
+
+function mcmOnLoad(options)
+  options[0] = {
+    id = "dart_core",
+    sh = true,
+    gr = {
+      getTitle(),
+      getSubtitle({text = "ui_mcm_dart_core_title"}),
+      getSafezoneField({hint = "dart_core_safezone", def = Dart.config.safezone}),
+      getLine(),
+      getSubtitle({text = "ui_mcm_dart_core_debugOptions_title"}),
+      getKeybindKey({id = "refreshKey", hint = "dart_core_refreshKey"}),
+    }
+  }
+end
+
+
+function mcmGetOptions()
+  if not ui_mcm then
+    return
+  end
+
+  local options = {}
+  SendScriptCallback("on_dart_mcm_load", options)
+
+  return {
+    id = "dart",
+    gr = Utils.ksort(options)
+  }
+end
+
+
+function on_mcm_load()
+  return mcmGetOptions()
+end
+
+
+AddScriptCallback("on_dart_mcm_load")
+RegisterScriptCallback("on_dart_mcm_load", mcmOnLoad)
+RegisterScriptCallback("on_dart_mcm_config", mcmOnConfig)

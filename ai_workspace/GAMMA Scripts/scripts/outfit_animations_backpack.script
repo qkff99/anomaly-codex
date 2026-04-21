@@ -1,0 +1,245 @@
+-- enable_animations = false
+
+-- local fov_manager = lam_fov_manager
+local mcm_allow_movement = outfit_animations_mcm.get_config("allow_movement")
+local mcm_enable_animation = outfit_animations_mcm.get_config("enable_backpack_equip")
+
+local ruck_last_backpack = -1
+local is_animation_playing = false
+local item_to_equip = nil
+local item_to_unequip = nil
+
+
+----------------------------------------
+--#region callbacks
+----------------------------------------
+
+function on_game_start()
+    RegisterScriptCallback("on_option_change", on_option_change)
+    RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+    RegisterScriptCallback("actor_item_to_slot", on_item_to_slot)
+    RegisterScriptCallback("actor_item_to_ruck", on_item_to_ruck)
+    RegisterScriptCallback("actor_on_item_drop", on_item_to_ruck)
+end
+
+
+function on_option_change()
+    mcm_allow_movement = outfit_animations_mcm.get_config("allow_movement")
+    mcm_enable_animation = outfit_animations_mcm.get_config("enable_backpack_equip")
+end
+
+
+function actor_on_first_update()
+    CreateTimeEvent("outfit_animations_backpack", "enable_backpack_animation_delay_te", 3, function()
+        ruck_last_backpack = db.actor:item_in_slot(13) and db.actor:item_in_slot(13):id() or -1
+        -- enable_animations = true
+        return true
+    end)
+end
+
+
+function on_item_to_ruck(obj)
+    if IsItem("backpack", nil, obj) and obj:id() == ruck_last_backpack then
+        ruck_last_backpack = -1
+
+        -- if not db.actor:alive() then return end
+        -- if not enable_animations then return end
+        -- if has_alife_info("BAR_ARENA_FIGHT") then return end
+        if not mcm_enable_animation then return end
+
+        item_to_unequip = get_section_name("outfit_animation_backpack_unequip")
+        if not is_animation_playing then 
+            is_animation_playing = true
+            -- play_animation_enter()
+            play_animation()
+        end
+    end
+end
+
+
+function on_item_to_slot(obj)
+    if IsItem("backpack", nil, obj) and obj:id() ~= ruck_last_backpack then
+        ruck_last_backpack = obj:id()
+
+        -- if not db.actor:alive() then return end
+        -- if not enable_animations then return end
+        -- if has_alife_info("BAR_ARENA_FIGHT") then return end
+        if not mcm_enable_animation then return end
+
+        item_to_equip = get_section_name("outfit_animation_backpack_equip")
+        if not is_animation_playing then
+            is_animation_playing = true
+            -- play_animation_enter()
+            play_animation()
+        end
+    end
+end
+
+--#endregion
+------------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------------
+--#region main
+------------------------------------------------------------------------------
+
+function play_animation()
+
+    CreateTimeEvent("liz_outfit_animations_backpack", "select_animation", 0.1, function ()
+        local action_equip = {
+            sec = item_to_equip,
+            params = {
+                can_walk = mcm_allow_movement,
+                hud_fov = 0.6
+            }
+        }
+        local action_unequip = {
+            sec = item_to_unequip,
+            params = {
+                can_walk = mcm_allow_movement,
+                hud_fov = 0.6
+            }
+        }
+        
+        if item_to_unequip and item_to_equip then
+            local result = lam.is_playing()
+            if result then
+                item_to_equip = nil
+                item_to_unequip = nil
+                is_animation_playing = false
+                return true
+            end
+            lam.try_play_action(action_unequip)
+            lam.add_action_to_queue(action_equip)
+        elseif item_to_unequip and not item_to_equip then
+            lam.try_play_action(action_unequip)
+        elseif not item_to_unequip and item_to_equip then
+            lam.try_play_action(action_equip)
+        end
+        
+        item_to_equip = nil
+        item_to_unequip = nil
+        is_animation_playing = false
+
+        return true
+    end)
+end
+
+-- -- prepare before animation
+-- function play_animation_enter()
+--     hide_hud_inventory()
+--     if headgear_animations then headgear_animations.enable_animations = false end
+--     -- cur_slot = db.actor:active_slot()
+--     det_active = db.actor:active_detector() or nil
+--     if det_active then det_active:switch_state(2) end
+--     db.actor:activate_slot(0)
+
+--     wait_for_free_hands(play_animation_execute)
+-- end
+
+
+-- function play_animation_execute()
+--     if mcm_allow_movement then game.only_allow_movekeys(true) else level.disable_input() end
+--     fov_manager.restore_fov()
+    
+--     if item_to_unequip and item_to_equip then
+--         swap()
+--     elseif item_to_unequip and not item_to_equip then
+--         unequip()
+--     elseif not item_to_unequip and item_to_equip then
+--         equip()
+--     end
+-- end
+
+
+-- -- restore after animation
+-- function play_animation_exit()
+--     if mcm_allow_movement then game.only_allow_movekeys(false) else level.enable_input() end
+--     if headgear_animations then headgear_animations.enable_animations = true end
+--     item_to_equip = nil
+--     item_to_unequip = nil
+--     is_animation_playing = false
+-- end
+
+-- ------------------------------------------------------------------------------
+
+-- function equip()
+--     local anm = "anm_use"
+--     local cam = ini_sys:r_string_ex(item_to_equip, "cam")
+--     local snd = ini_sys:r_string_ex(item_to_equip, "snd")
+--     local length = game.get_motion_length(item_to_equip, anm, 1) / 1000
+--     xr_effects.play_snd(db.actor, nil, { [1] = snd })
+--     level.add_cam_effector(cam, 1301, false, "")
+--     game.play_hud_motion(2, item_to_equip, anm, false, 1)
+--     Invoke("restore_after_animation_te", length + 0.25, play_animation_exit)
+-- end
+
+
+-- function unequip()
+--     local anm = "anm_use"
+--     local cam = ini_sys:r_string_ex(item_to_unequip, "cam")
+--     local snd = ini_sys:r_string_ex(item_to_unequip, "snd")
+--     local length = game.get_motion_length(item_to_unequip, anm, 1) / 1000
+--     xr_effects.play_snd(db.actor, nil, { [1] = snd })
+--     level.add_cam_effector(cam, 1302, false, "")
+--     game.play_hud_motion(2, item_to_unequip, anm, false, 1)
+--     Invoke("restore_after_animation_te", length + 0.25, play_animation_exit)
+-- end
+
+
+-- function swap()
+--     local anm = "anm_use"
+--     local cam_unequip = ini_sys:r_string_ex(item_to_unequip, "cam")
+--     local snd_unequip = ini_sys:r_string_ex(item_to_unequip, "snd")
+--     local cam_equip = ini_sys:r_string_ex(item_to_equip, "cam")
+--     local snd_equip = ini_sys:r_string_ex(item_to_equip, "snd")
+--     local length_unequip = game.get_motion_length(item_to_unequip, anm, 1) / 1000
+--     local length_equip = game.get_motion_length(item_to_equip, anm, 1) / 1000
+
+--     xr_effects.play_snd(db.actor, nil, { [1] = snd_unequip })
+--     level.add_cam_effector(cam_unequip, 1303, false, "")
+--     game.play_hud_motion(2, item_to_unequip, anm, false, 1)
+--     Invoke("play_equip_animation_after_unequip_te", length_unequip, function ()
+--         xr_effects.play_snd(db.actor, nil, { [1] = snd_equip })
+--         level.add_cam_effector(cam_equip, 1300, false, "")
+--         game.play_hud_motion(2, item_to_equip, anm, false, 1)
+--         Invoke("restore_after_animation_te", length_equip + 0.25, play_animation_exit)
+--     end)
+-- end
+
+--#endregion
+------------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------------
+--#region utils
+------------------------------------------------------------------------------
+
+function get_section_name(section)
+    local faction = character_community(db.actor):sub(7)
+    return section .. "_" .. faction .. "_hud"
+end
+
+
+-- function wait_for_free_hands(action_to_perform)
+--     local force_timer = 0
+--     CreateTimeEvent("outfit_animations_backpack", "wait_for_free_hands_te0", 0.1, function()
+--         if (db.actor:active_slot() == 0 and not db.actor:active_detector() and not enhanced_animations.used_item) or (force_timer > 5) then
+--             Invoke("wait_for_free_hands_te1", 0.1, action_to_perform) --i don understan y this works (ノへ￣、)
+--             return true
+--         end
+--         force_timer = force_timer + (device().time_delta / 1000)
+--         return false
+--     end)
+-- end
+
+
+-- function Invoke(name, time, action)
+--     CreateTimeEvent("outfit_animations_backpack", name, time, function()
+--         action()
+--         return true
+--     end)
+-- end
+
+--#endregion
+------------------------------------------------------------------------------

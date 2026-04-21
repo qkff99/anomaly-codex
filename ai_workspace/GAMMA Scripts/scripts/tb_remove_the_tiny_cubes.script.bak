@@ -1,0 +1,21 @@
+
+function main()
+	for i=1, 65534 do
+		local sim = alife()
+		local se_obj = sim:object(i)
+		if se_obj then
+			local name = se_obj:section_name()
+			if name == "tb_tiny_cube" then
+				printf("$Removing 'tb_tiny_cube' - object number [%s]",i)
+				safe_release_manager.release(se_obj)
+			end
+		end
+	end
+	local m_data = alife_storage_manager.get_state()
+	m_data.tb_place_the_safety_items_for_icons = nil
+	printf(" ")
+	printf("--- Removed every 'tb_tiny_cube' ---")
+	printf(" ")
+	printf("--- Save your game, then quit the game completely and then remove this addon. ---")
+	printf(" ")
+end

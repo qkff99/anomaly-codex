@@ -1,0 +1,17 @@
+function on_mcm_load()
+	op = { id= "companion_anti_awol",sh=true ,gr={
+			{ id= "title",type= "slide",link= "ui_options_slider_player",text="ui_mcm_companion_anti_awol_title",size= {512,50},spacing= 20 },
+			{id = "enable_companion_anti_awol", type = "check", val = 1, def = true},
+			{id = "companion_ignore_combat_player_distance", type = "track", val = 2, min=10, max=100, step=5, def = 40},
+			{id = "companion_allow_combat_player_distance", type = "track", val = 2, min=10, max=100, step=5, def = 35},
+			{id = "companion_ignore_combat_goto_distance", type = "track", val = 2, min=10, max=100, step=5, def = 40},
+			{id = "companion_allow_combat_goto_distance", type = "track", val = 2, min=10, max=100, step=5, def = 35},
+			{id = "divider", type="line" },
+			{id = "enable_companion_anti_awol_enemy", type = "check", val = 1, def = false},
+			{id = "companion_ignore_combat_enemy_distance", type = "track", val = 2, min=50, max=150, step=10, def = 100},
+			{id = "companion_ignore_combat_goto_enemy_distance", type = "track", val = 2, min=50, max=150, step=10, def = 100},
+		}
+	}
+
+	return op
+end

@@ -1,0 +1,109 @@
+local _InitControls = ui_sleep_dialog.UISleep.InitControls
+local _InitCallbacks = ui_sleep_dialog.UISleep.InitCallbacks
+local _TestAndShow = ui_sleep_dialog.UISleep.TestAndShow
+local _OnButtonSleep = ui_sleep_dialog.UISleep.OnButtonSleep
+
+function ui_sleep_dialog.UISleep.OnButtonSleep(self)    
+    if not soulslike.IsSoulslikeMode() then        
+        _OnButtonSleep(self)
+        return
+    end
+    local bleeding = db.actor.bleeding > 0
+    local radiation = db.actor.radiation > 0
+    
+    -- Prevent sleep if bleeding and/or iradiated.
+    if (bleeding or radiation) then
+        if (bleeding and radiation) then
+            actor_menu.set_msg(1, game.translate_string("st_sleep_bleeding_irradiated"),5)
+        elseif (bleeding) then
+            actor_menu.set_msg(1, game.translate_string("st_sleep_bleeding"),4)
+        elseif (radiation) then
+            actor_menu.set_msg(1, game.translate_string("st_sleep_irradiated"),4)
+        end
+        disable_info("sleep_active")
+        if self:IsShown() then
+            self:HideDialog()
+            Unregister_UI("UISleep")
+        end
+        return
+    end
+    
+    -- Check if actor is inside a safe zone
+    local actor_hide = GetEvent("current_safe_cover") and true or false
+
+    -- Check if actor is inside a tent
+    if (not actor_hide) then
+        actor_hide = item_tent.get_nearby_tent(1.5)
+    end	
+    
+    -- If all is no, dont sleep
+    if (not actor_hide) then
+        actor_menu.set_msg(1, game.translate_string("st_cant_sleep_find_shelter_mlr"),4)
+        disable_info("sleep_active")
+        if self:IsShown() then
+            self:HideDialog()
+            Unregister_UI("UISleep")
+        end
+        return
+    end
+    
+    _OnButtonSleep(self)
+end
+
+function ui_sleep_dialog.UISleep.TestAndShow(self, force)
+    if not soulslike.IsSoulslikeMode() then        
+        _TestAndShow(self, force)
+        return
+    end
+
+    if force then
+        _TestAndShow(self, force)
+    else
+        -- Detour and show the UI so we can let the user 
+        -- set their spawn point.  Move the sleep check code
+        -- to the Sleep button click instead
+        self:Initialize()
+        self:ShowDialog(true)
+        Register_UI("UISleep","ui_sleep_dialog")
+    end
+end
+
+function ui_sleep_dialog.UISleep.InitControls(self)
+    _InitControls(self)
+
+    if not soulslike.IsSoulslikeMode() then     
+        return
+    end
+
+	local xml = CScriptXmlInit()
+	xml:ParseFile("soulslike_ui_sleep_dialog.xml")
+
+    local function move(ctrl, deltaX, deltaY)
+        local pos = ctrl:GetWndPos()
+        ctrl:SetWndPos(vector2():set( pos.x + deltaX ,pos.y + deltaY ))
+    end
+
+    move(self.btn_sleep, 52, 0)
+    move(self.btn_cancel, 52, 0)
+
+	self.btn_set_spawn = xml:Init3tButton("btn_set_spawn", self.back)
+	self:Register(self.btn_set_spawn, "btn_set_spawn")
+
+    if not utils_xml.is_widescreen() then
+        move(self.btn_set_spawn, 40, 0)
+    end
+end
+
+function ui_sleep_dialog.UISleep.InitCallbacks(self)
+    _InitCallbacks(self)
+
+    if not soulslike.IsSoulslikeMode() then     
+        return
+    end
+    
+	self:AddCallback("btn_set_spawn", ui_events.BUTTON_CLICKED, self.OnButtonSetSpawn, self)
+end
+
+function ui_sleep_dialog.UISleep:OnButtonSetSpawn()
+    soulslike.set_spawn(true);
+end
