@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from html import escape
@@ -90,12 +91,80 @@ def _normalize_rel(path: Path) -> str:
     return raw if raw not in ("", ".") else "."
 
 
+def _make_stable_id(*parts: str) -> str:
+    combined = "_".join(part.strip("_.") for part in parts if part)
+    cleaned = re.sub(r"[^a-zA-Z0-9]+", "_", combined)
+    return cleaned.strip("_").lower()
+
+
 def _path_relative_to_root(path: Path, root: Path) -> str:
     try:
         rel = path.resolve().relative_to(root.resolve())
     except ValueError:
         rel = path
     return _normalize_rel(rel)
+
+
+def _display_root(root: Path) -> str:
+    try:
+        return _normalize_rel(root.resolve().relative_to(REPO_ROOT.resolve()))
+    except ValueError:
+        return root.name
+
+
+def _relativize_source_file(value: str, root: Path) -> str:
+    if not value:
+        return ""
+    path = Path(value)
+    if not path.is_absolute():
+        return _normalize_rel(path)
+    return _path_relative_to_root(path, root)
+
+
+def _sanitize_extraction_payload(result: dict[str, Any], root: Path) -> dict[str, Any]:
+    nodes = result.get("nodes", [])
+    edges = result.get("edges", [])
+    hyperedges = result.get("hyperedges", [])
+
+    id_remap: dict[str, str] = {}
+    for node in nodes:
+        source_file = _relativize_source_file(str(node.get("source_file", "") or ""), root)
+        node["source_file"] = source_file
+        old_id = str(node.get("id", "") or "")
+        label = str(node.get("label", "") or "")
+        if source_file and label == Path(source_file).name and old_id:
+            new_id = _make_stable_id(source_file)
+            if new_id and new_id != old_id:
+                id_remap[old_id] = new_id
+
+    for node in nodes:
+        old_id = str(node.get("id", "") or "")
+        if old_id in id_remap:
+            node["id"] = id_remap[old_id]
+
+    for edge in edges:
+        source_file = _relativize_source_file(str(edge.get("source_file", "") or ""), root)
+        edge["source_file"] = source_file
+        source_id = str(edge.get("source", "") or "")
+        target_id = str(edge.get("target", "") or "")
+        if source_id in id_remap:
+            edge["source"] = id_remap[source_id]
+        if target_id in id_remap:
+            edge["target"] = id_remap[target_id]
+
+    for hyperedge in hyperedges:
+        source_file = _relativize_source_file(str(hyperedge.get("source_file", "") or ""), root)
+        hyperedge["source_file"] = source_file
+        hyperedge["nodes"] = [id_remap.get(str(node_id), str(node_id)) for node_id in hyperedge.get("nodes", [])]
+
+    for raw_call in result.get("raw_calls", []):
+        source_file = _relativize_source_file(str(raw_call.get("source_file", "") or ""), root)
+        raw_call["source_file"] = source_file
+        caller_id = str(raw_call.get("caller_nid", "") or "")
+        if caller_id in id_remap:
+            raw_call["caller_nid"] = id_remap[caller_id]
+
+    return result
 
 
 def _iter_lua_paths(root: Path) -> list[Path]:
@@ -351,6 +420,7 @@ def build_lua_map(root: Path, output_name: str) -> dict[str, Any]:
 
     print(f"[graphify-workspace] extracting {len(paths)} Lua-family files from {root}")
     result = modules["extract"](paths, cache_root=root)
+    result = _sanitize_extraction_payload(result, root)
     graph = modules["build_from_json"](result)
     communities = modules["cluster"](graph)
     cohesion = modules["score_all"](graph, communities)
@@ -377,7 +447,7 @@ def build_lua_map(root: Path, output_name: str) -> dict[str, Any]:
         surprises,
         detection,
         {"input": 0, "output": 0},
-        str(root),
+        _display_root(root),
         suggested_questions=questions,
     )
     (output_dir / "GRAPH_REPORT.md").write_text(report, encoding="utf-8")
