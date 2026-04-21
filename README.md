@@ -7,7 +7,7 @@ Repo-local Codex skill/plugin workbench for S.T.A.L.K.E.R. Anomaly 1.5.3 modding
 This repository is meant to be opened directly in Codex or VS Code. It provides:
 - a local STALKER modding skill
 - repo-local MCP config for DeepWiki and GitMCP references
-- helper scripts for project creation, import, validation, packaging, FOMOD staging, XML encodings, and crash-log triage
+- helper scripts for project creation, import, validation, packaging, FOMOD staging, XML encodings, crash-log triage, and graph-assisted workspace orientation
 
 `AGENTS.md` and `.skills/stalker-modding/SKILL.md` remain the source of truth for the agent. This README is the human quickstart.
 
@@ -39,15 +39,16 @@ This repository is meant to be opened directly in Codex or VS Code. It provides:
 3. Open the unpacked repository folder in Codex or in VS Code with Codex available.
 
 4. In Codex settings, install the repo-local plugin if Codex offers it.
-   In this repository it is exposed as the workspace plugin `Anomaly Codex Workspace` / `stalker-modding-workbench`.
+   In this repository it is exposed as the workspace plugin `STALKER Modding Workbench` / `stalker-modding-workbench`.
 
 5. After the plugin is installed, ask Codex to initialize against this workspace or ask it what it can do now.
+   On the first real task, the plugin/skill can bootstrap the workspace automatically if the local bootstrap state is missing or stale.
    Good starter prompts:
    - `Get oriented in this workspace and tell me what you can do now`
    - `Initialize yourself for working with this repo`
    - `What modding workflows and helper tools are available in this workspace?`
 
-6. After that, run the first local checks:
+6. If you want to prewarm the workspace manually or verify everything explicitly, run the local checks:
    - WSL / Linux:
 
 ```bash
@@ -61,6 +62,16 @@ This repository is meant to be opened directly in Codex or VS Code. It provides:
 ```
 
 ## First Run
+
+The plugin/skill can now bootstrap itself on first real use. Manual bootstrap is still useful when you want to prewarm the local graph artifacts, verify the environment, or run regressions explicitly.
+
+`bootstrap_workspace.*` currently:
+- installs `graphifyy` if needed
+- patches the installed `graphify` package so `*.script` is treated as Lua
+- builds the global `ai_workspace/lua-graphify-out`
+- builds focused `ai_workspace/**/graphify-out` maps for Lua-bearing reference packs such as `vanilla scripts`, `GAMMA Scripts`, and `Anomaly-Mod-Configuration-Menu-main`
+- refreshes `ai_workspace/map_index.html`
+- writes local first-run state to `.codex-stalker/state/bootstrap_state.json`
 
 WSL / Linux:
 
@@ -147,10 +158,13 @@ python3 ./.skills/stalker-modding/scripts/fomod_tool.py --project my_mod
 - `tests/fixtures/` contains repo-tracked regression inputs, not live mod projects
 - `ai_workspace/` contains local reference material
 - `.codex-stalker/workspace.json` stores workspace overlay data and remembered external paths
+- `.codex-stalker/state/` is generated local bootstrap state and is not meant to be committed
+- `ai_workspace/lua-graphify-out/`, `ai_workspace/*/graphify-out/`, and `ai_workspace/map_index.html` are generated local graph artifacts and are not meant to be committed
 - `.vscode/mcp.json` mirrors the repo-local plugin MCP configuration
 
 ## Notes
 
 - Use `ai_workspace/user references` for extra local references or linked external material.
+- For graph-based orientation, start with `ai_workspace/map_index.html`, then prefer the focused `ai_workspace/**/graphify-out` map when the task is already localized to one reference pack or subfolder.
 - Russian localization XML is often `windows-1251`; use `xml_localization_tool.py` before editing legacy XML directly.
 - MO2 is treated as a deployment surface, not the authoring root. Author in `projects/` first, then package for MO2 when needed.
