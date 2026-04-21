@@ -107,6 +107,14 @@ Import an existing mod copy into `projects/`:
 python3 ./.skills/stalker-modding/scripts/import_mod.py --source /path/to/mod-or-gamedata --name imported_mod
 ```
 
+Extract `configs/` and `scripts/` from every MO2 `mods/` subfolder into one shared reference folder:
+
+```bash
+python3 ./.skills/stalker-modding/scripts/extract_mo2_resources.py --source /path/to/ModOrganizer/mods --dest "ai_workspace/user references/mo2-extract"
+```
+
+The output is a common `dest/configs` and `dest/scripts` tree. Same-path conflicts are reported instead of silently overwritten by default; use `--overwrite` for last-wins behavior.
+
 If you want to edit an existing mod in place instead of copying it into `projects/`, provide the explicit target path and say that in-place edits are intended.
 
 ## Log Triage

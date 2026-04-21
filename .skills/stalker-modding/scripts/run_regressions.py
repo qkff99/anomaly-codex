@@ -23,6 +23,7 @@ SUITE_ORDER = (
     "localization",
     "project-toolchain",
     "distribution",
+    "mo2-extract",
     "lua-quality",
     "mcm-contract",
     "save-safety",
@@ -499,6 +500,81 @@ def run_distribution_suite() -> list[dict[str, Any]]:
             cleanup_project(project_name)
 
 
+def run_mo2_extract_suite() -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+
+    def case(name: str, fn: Callable[[], Any]) -> None:
+        try:
+            details = fn()
+            results.append({"suite": "mo2-extract", "name": name, "ok": True, "details": details})
+        except Exception as exc:
+            results.append({"suite": "mo2-extract", "name": name, "ok": False, "details": str(exc)})
+
+    def write_fixture_file(path: Path, text: str) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+    def flat_extract_keeps_common_overlay() -> dict[str, Any]:
+        with tempfile.TemporaryDirectory(prefix="stalker-codex-mo2-") as temp_dir:
+            root = Path(temp_dir)
+            mo2_root = root / "MO2"
+            mods_root = mo2_root / "mods"
+            dest = root / "out"
+
+            write_fixture_file(mods_root / "00 Base" / "gamedata" / "configs" / "base.ltx", "[base]\n")
+            write_fixture_file(mods_root / "00 Base" / "gamedata" / "configs" / "shared.ltx", "base\n")
+            write_fixture_file(mods_root / "00 Base" / "gamedata" / "scripts" / "base.script", "function on_game_start() end\n")
+            write_fixture_file(mods_root / "01 Patch" / "configs" / "direct.ltx", "[direct]\n")
+            write_fixture_file(mods_root / "01 Patch" / "gamedata" / "configs" / "shared.ltx", "patch\n")
+            write_fixture_file(mods_root / "01 Patch" / "gamedata" / "scripts" / "patch.script", "function on_game_start() end\n")
+
+            output = require_success(
+                run_command(python_cmd("extract_mo2_resources.py", "--source", str(mo2_root), "--dest", str(dest), "--json")),
+                label="extract_mo2_resources flat",
+            )
+            report = json.loads(output)
+            summary = report.get("summary", {})
+            require(summary.get("source_kind") == "mo2_root", "MO2 root source was not detected")
+            require(summary.get("mods_scanned") == 2, f"expected 2 scanned mods, got {summary.get('mods_scanned')}")
+            require(summary.get("conflicts") == 1, f"expected one conflict, got {summary.get('conflicts')}")
+            require((dest / "configs" / "base.ltx").exists(), "base config was not copied into flat configs/")
+            require((dest / "configs" / "direct.ltx").exists(), "direct root config was not copied into flat configs/")
+            require((dest / "scripts" / "base.script").exists(), "base script was not copied into flat scripts/")
+            require((dest / "scripts" / "patch.script").exists(), "patch script was not copied into flat scripts/")
+            require(not (dest / "00 Base").exists(), "extractor should not create per-mod output folders")
+            require((dest / "configs" / "shared.ltx").read_text(encoding="utf-8") == "base\n", "default conflict policy should keep first file")
+
+            overwrite_dest = root / "overwrite"
+            overwrite_output = require_success(
+                run_command(
+                    python_cmd(
+                        "extract_mo2_resources.py",
+                        "--source",
+                        str(mods_root),
+                        "--dest",
+                        str(overwrite_dest),
+                        "--overwrite",
+                        "--json",
+                    )
+                ),
+                label="extract_mo2_resources overwrite",
+            )
+            overwrite_report = json.loads(overwrite_output)
+            overwrite_summary = overwrite_report.get("summary", {})
+            require(overwrite_summary.get("source_kind") == "mods_dir", "mods dir source was not detected")
+            require(overwrite_summary.get("overwritten") == 1, "overwrite mode should overwrite one conflict")
+            require((overwrite_dest / "configs" / "shared.ltx").read_text(encoding="utf-8") == "patch\n", "overwrite conflict policy should keep later file")
+
+            return {
+                "copied": summary.get("copied"),
+                "conflicts": summary.get("conflicts"),
+                "overwrite_conflicts": overwrite_summary.get("conflicts"),
+            }
+
+    case("flat_extract_keeps_common_overlay", flat_extract_keeps_common_overlay)
+    return results
+
+
 def run_lua_quality_suite() -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
     temp_projects: list[str] = []
@@ -825,6 +901,8 @@ def run_suite(name: str) -> list[dict[str, Any]]:
         return run_project_toolchain_suite()
     if name == "distribution":
         return run_distribution_suite()
+    if name == "mo2-extract":
+        return run_mo2_extract_suite()
     if name == "lua-quality":
         return run_lua_quality_suite()
     if name == "mcm-contract":

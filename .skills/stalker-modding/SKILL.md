@@ -59,6 +59,7 @@ When initializing a new local project in this workspace, create a dedicated fold
 - Treat `projects/` as user-owned working state; keep repo-tracked smoke inputs under `tests/fixtures` instead of checked-in sample projects.
 - If the user wants to edit an existing mod, ask whether to import a copy into `projects/` or edit the target in place.
 - Prefer import-to-`projects` as the safer default, and use `scripts/import_mod.py` for copy mode.
+- Use `scripts/extract_mo2_resources.py` when the user wants bulk local references from MO2 `mods/*`; it flattens discovered `configs/` and `scripts/` payloads into one `dest/configs` + `dest/scripts` tree and reports path conflicts.
 - If the user asks for a distributable installer, use `scripts/fomod_tool.py` to stage a `00 Core + fomod/` package from the project payload instead of hand-authoring the XML.
 - Keep shared references in `ai_workspace`, but keep new project-owned files under `projects/`.
 
@@ -207,7 +208,7 @@ Recommended references:
 11. Use `scripts/find_references.py` to search only the relevant roots instead of grepping the whole tree blindly. This search should also include `ai_workspace/user references` automatically and, for the right task types, remembered external mod roots.
 12. For log-driven tasks where script or asset resolution matters, prefer asking for MO2 `mods/`, unpacked `gamedata`, or another external mod root before asking for a remembered `logs_dir`.
 13. If external refs are needed, ask for MO2 `mods/`, unpacked `gamedata`, or another external mod root and remember the confirmed path only with the user's permission.
-14. If extra local references are needed, create links into `ai_workspace/user references` with `scripts/link_user_reference.py` or the platform wrapper.
+14. If extra local references are needed, create links into `ai_workspace/user references` with `scripts/link_user_reference.py`, or extract MO2 `configs/` + `scripts/` references with `scripts/extract_mo2_resources.py`.
 15. Read local code and configs before repo or web references.
 16. For entrypoints and touchpoints, run `scripts/find_entrypoints.py` and `scripts/map_subsystems.py`.
 17. If the task is scaffold-heavy, prefer `scripts/scaffold_template.py` over hand-creating starter files.
@@ -279,7 +280,7 @@ Tracked overlay extensions in v2:
 
 Prefer Python entrypoints so the same helpers work in WSL, Linux, and Windows PowerShell.
 
-- Use `scripts/log_triage.py`, `scripts/import_mod.py`, `scripts/external_path_tool.py`, and `scripts/discover_github_refs.py` as the cross-platform helpers for Wave 2 maintenance workflows.
+- Use `scripts/log_triage.py`, `scripts/import_mod.py`, `scripts/extract_mo2_resources.py`, `scripts/external_path_tool.py`, and `scripts/discover_github_refs.py` as the cross-platform helpers for Wave 2 maintenance workflows.
 
 - WSL/macOS/Linux:
   - `python3 ./.skills/stalker-modding/scripts/scan_workspace.py .`
@@ -296,6 +297,7 @@ The same pattern applies to:
 - `validate_project`
 - `package_project`
 - `fomod_tool`
+- `extract_mo2_resources`
 - `check_project`
 - `find_entrypoints`
 - `find_references`
@@ -345,6 +347,7 @@ Load only what the task needs:
 - `scripts/find_entrypoints.py` is the cross-platform entrypoint
 - `scripts/find_references.py` searches only the relevant `ai_workspace` roots for a task
 - `scripts/link_user_reference.py` links user-local refs into `ai_workspace/user references`
+- `scripts/extract_mo2_resources.py` extracts MO2 `mods/*` `configs/` and `scripts/` payloads into one flat reference overlay.
 - `scripts/bootstrap_env.sh` and `scripts/bootstrap_env.ps1` install missing local dependencies when practical
 - `scripts/luac_tool.py` detects and uses `luac` for syntax checks
 - `scripts/quality_scan.py` reports Anomaly-specific static quality issues, risk score, vanilla delta, patch opportunities, conflict surface, dependency graph, and task gates

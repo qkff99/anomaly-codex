@@ -108,6 +108,7 @@ Default practice notes:
 - Use `run_regressions.py` / `.sh` / `.ps1` for deterministic repo-local regression coverage across logs, XML encodings, project scaffolding/imports, and packaging.
 - Use `log_triage.py` / `.sh` / `.ps1` to summarize huge Anomaly/XRay logs before bringing them into context.
 - Use `import_mod.py` / `.sh` / `.ps1` to copy an existing mod root or `gamedata/` into `projects/<name>`.
+- Use `extract_mo2_resources.py` / `.sh` / `.ps1` to extract MO2 `mods/*` `configs/` and `scripts/` payloads into one shared `dest/configs` + `dest/scripts` reference overlay.
 - Use `external_path_tool.py` / `.sh` / `.ps1` to remember logs folders, MO2 `mods/`, unpacked `gamedata/`, or external mod roots, but only with the user's permission.
 - Use `discover_github_refs.py` / `.sh` / `.ps1` to search GitHub references and persist only curated high-signal repos into MCP config and workspace overlay.
 - Use `link_user_reference.py` / `.sh` / `.ps1` to link external local references into `ai_workspace/user references`.

@@ -108,6 +108,14 @@ python3 ./.skills/stalker-modding/scripts/package_project.py --project my_mod
 python3 ./.skills/stalker-modding/scripts/import_mod.py --source /path/to/mod-or-gamedata --name imported_mod
 ```
 
+Вытянуть `configs/` и `scripts/` из всех подпапок MO2 `mods/` в одну общую reference-папку:
+
+```bash
+python3 ./.skills/stalker-modding/scripts/extract_mo2_resources.py --source /path/to/ModOrganizer/mods --dest "ai_workspace/user references/mo2-extract"
+```
+
+На выходе будут общие `dest/configs` и `dest/scripts`. Конфликты одинаковых путей не затираются молча; по умолчанию первый файл остается, а конфликт попадает в отчет. Для last-wins режима используй `--overwrite`.
+
 Если нужно править существующий мод прямо по месту, а не копировать его в `projects/`, просто дай явный target path и явно скажи, что нужны in-place edits.
 
 ## Разбор Логов
