@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import os
 import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass
@@ -15,6 +17,13 @@ from _skill_common import REPO_ROOT
 
 DEFAULT_ROOT = REPO_ROOT / "ai_workspace"
 GRAPH_OUTPUT_NAMES = ("graphify-out", "lua-graphify-out")
+FOCUSED_SUBMAP_MIN_FILES = 5
+
+
+@dataclass(frozen=True)
+class BuildTarget:
+    root: Path
+    output_name: str
 
 
 @dataclass
@@ -48,7 +57,16 @@ def build_parser() -> argparse.ArgumentParser:
     index = subparsers.add_parser("index", help="Generate an HTML index over existing graphify outputs.")
     index.add_argument("--root", default=str(DEFAULT_ROOT), help="Root that contains graphify output folders.")
 
-    both = subparsers.add_parser("all", help="Build the Lua-only map and then regenerate the HTML index.")
+    submaps = subparsers.add_parser(
+        "submaps",
+        help="Build Lua-only maps for the relevant ai_workspace subfolders and focused child roots.",
+    )
+    submaps.add_argument("--root", default=str(DEFAULT_ROOT), help="Workspace root whose subfolders should be mapped.")
+
+    both = subparsers.add_parser(
+        "all",
+        help="Build the global Lua map, focused submaps, and then regenerate the HTML index.",
+    )
     both.add_argument("--root", default=str(DEFAULT_ROOT), help="Root to scan for *.script and *.lua files.")
     both.add_argument(
         "--output-name",
@@ -95,6 +113,22 @@ def _make_stable_id(*parts: str) -> str:
     combined = "_".join(part.strip("_.") for part in parts if part)
     cleaned = re.sub(r"[^a-zA-Z0-9]+", "_", combined)
     return cleaned.strip("_").lower()
+
+
+def _default_cache_base() -> Path:
+    if os.name == "nt":
+        local_app_data = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
+        return local_app_data / "Codex" / "stalker-modding-workbench" / "graphify-cache"
+    xdg_cache = os.environ.get("XDG_CACHE_HOME")
+    if xdg_cache:
+        return Path(xdg_cache) / "codex" / "stalker-modding-workbench" / "graphify-cache"
+    return Path.home() / ".cache" / "codex" / "stalker-modding-workbench" / "graphify-cache"
+
+
+def _cache_root_for_workspace(root: Path) -> Path:
+    digest = hashlib.sha256(str(root.resolve()).encode("utf-8")).hexdigest()[:12]
+    label = _make_stable_id(root.name) or "workspace"
+    return _default_cache_base() / f"{label}_{digest}"
 
 
 def _path_relative_to_root(path: Path, root: Path) -> str:
@@ -179,6 +213,40 @@ def _iter_lua_paths(root: Path) -> list[Path]:
         if suffix in {".script", ".lua"}:
             paths.append(candidate.resolve())
     return sorted(set(paths))
+
+
+def _iter_visible_dirs(root: Path) -> list[Path]:
+    entries: list[Path] = []
+    for candidate in sorted(root.iterdir(), key=lambda path: path.name.lower()):
+        if not candidate.is_dir():
+            continue
+        if candidate.name.startswith(".") or candidate.name in GRAPH_OUTPUT_NAMES or candidate.name == "__pycache__":
+            continue
+        entries.append(candidate.resolve())
+    return entries
+
+
+def discover_workspace_submap_targets(root: Path) -> list[BuildTarget]:
+    targets: list[BuildTarget] = []
+    seen: set[tuple[Path, str]] = set()
+
+    def add_target(path: Path, output_name: str) -> None:
+        key = (path.resolve(), output_name)
+        if key in seen:
+            return
+        seen.add(key)
+        targets.append(BuildTarget(root=path.resolve(), output_name=output_name))
+
+    for child in _iter_visible_dirs(root):
+        child_paths = _iter_lua_paths(child)
+        if not child_paths:
+            continue
+        add_target(child, "graphify-out")
+        for focused in _iter_visible_dirs(child):
+            if len(_iter_lua_paths(focused)) >= FOCUSED_SUBMAP_MIN_FILES:
+                add_target(focused, "graphify-out")
+
+    return targets
 
 
 def _invert_communities(communities: dict[int, list[str]]) -> dict[str, int]:
@@ -293,7 +361,7 @@ def _write_folder_map(
     script_count = sum(1 for path in paths if path.suffix.lower() == ".script")
     lua_count = sum(1 for path in paths if path.suffix.lower() == ".lua")
     summary = {
-        "root": str(root),
+        "root": _display_root(root),
         "lua_files": len(paths),
         "script_files": script_count,
         "lua_ext_files": lua_count,
@@ -413,13 +481,15 @@ def build_lua_map(root: Path, output_name: str) -> dict[str, Any]:
     modules = _require_graphify()
     output_dir = root / output_name
     output_dir.mkdir(parents=True, exist_ok=True)
+    cache_root = _cache_root_for_workspace(root)
+    cache_root.mkdir(parents=True, exist_ok=True)
 
     paths = _iter_lua_paths(root)
     if not paths:
         raise RuntimeError(f"No *.script or *.lua files found under {root}")
 
     print(f"[graphify-workspace] extracting {len(paths)} Lua-family files from {root}")
-    result = modules["extract"](paths, cache_root=root)
+    result = modules["extract"](paths, cache_root=cache_root)
     result = _sanitize_extraction_payload(result, root)
     graph = modules["build_from_json"](result)
     communities = modules["cluster"](graph)
@@ -476,6 +546,33 @@ def build_lua_map(root: Path, output_name: str) -> dict[str, Any]:
         )
     )
     return summary
+
+
+def build_workspace_submaps(root: Path) -> list[dict[str, Any]]:
+    targets = discover_workspace_submap_targets(root)
+    if not targets:
+        print(f"[graphify-workspace] no Lua submaps discovered under {root}")
+        return []
+
+    print(f"[graphify-workspace] building {len(targets)} focused submaps under {root}")
+    results: list[dict[str, Any]] = []
+    for target in targets:
+        summary = build_lua_map(target.root, target.output_name)
+        results.append(
+            {
+                "root": _display_root(target.root),
+                "output_name": target.output_name,
+                "graph_json": _normalize_rel((target.root / target.output_name / "graph.json").relative_to(REPO_ROOT)),
+                "folder_map": _normalize_rel((target.root / target.output_name / "folder_map.html").relative_to(REPO_ROOT)),
+                "lua_files": summary["lua_files"],
+                "graph_nodes": summary["graph_nodes"],
+                "graph_edges": summary["graph_edges"],
+                "communities": summary["communities"],
+                "wiki_articles": summary["wiki_articles"],
+            }
+        )
+    print(json.dumps({"submaps": results}, ensure_ascii=False, indent=2))
+    return results
 
 
 def _entry_title(root: Path, rel_dir: str, output_name: str) -> str:
@@ -605,8 +702,13 @@ def main() -> int:
     if args.command == "index":
         build_index(root)
         return 0
+    if args.command == "submaps":
+        build_workspace_submaps(root)
+        build_index(root)
+        return 0
     if args.command == "all":
         build_lua_map(root, args.output_name)
+        build_workspace_submaps(root)
         build_index(root)
         return 0
     raise ValueError(f"unknown command: {args.command}")

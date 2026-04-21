@@ -7,11 +7,12 @@ Canonical local assets:
 - `plugins/stalker-modding-workbench` is the repo-local Codex plugin wrapper that exposes the same skill plus MCP endpoints.
 - `.agents/plugins/marketplace.json` marks the plugin as `INSTALLED_BY_DEFAULT` for repo-local discovery.
 - `.codex-stalker/workspace.json` is the machine-readable overlay for this workbench.
+- `.codex-stalker/state/bootstrap_state.json` is the generated first-use bootstrap marker for this workspace and should not be tracked.
 - `.vscode/mcp.json` is the tracked VS Code MCP config for the same repo-local endpoints, including `modorganizer2`.
 - `.codex-stalker/workspace.json` also stores remembered external paths and curated known reference repos such as `stalker-gamma`.
 - `ai_workspace/map_index.html` is the generated human index over graphify artifacts in this workspace.
 - `ai_workspace/lua-graphify-out` is the generated Lua-only graph over `*.script` and `*.lua`.
-- per-folder `ai_workspace/*/graphify-out` outputs are routing maps for large local corpora, especially `vanilla scripts`, `GAMMA Scripts`, and `src/*`.
+- per-folder `ai_workspace/*/graphify-out` outputs are focused routing maps for large local corpora, especially `vanilla scripts`, `vanilla scripts/gamedata`, `GAMMA Scripts`, `GAMMA Scripts/scripts`, and `Anomaly-Mod-Configuration-Menu-main`.
 - `xray-monolith` MCP works best through code search and documentation fetch; for concrete file reads, prefer raw GitHub URLs over `github.com/.../blob/...` links.
 - `xray-monolith` doc search is useful but not fully reliable on narrow queries; if it falls back to README text, switch to code search plus raw file fetch.
 
@@ -44,7 +45,10 @@ Lifecycle notes:
 - If the workspace or subsystem is large and unfamiliar, prefer existing graphify artifacts before broad raw-file search.
 - For STALKER script behavior work, prefer the Lua-only graph under `ai_workspace/lua-graphify-out`.
 - Use `./.skills/stalker-modding/scripts/graphify_workspace.py all --root ai_workspace` to refresh the Lua-only map and `ai_workspace/map_index.html`.
+- On first real use of the plugin/skill, if `.codex-stalker/state/bootstrap_state.json` is missing or stale, run `./.skills/stalker-modding/scripts/bootstrap_workspace.py` automatically before relying on graphify artifacts.
+- `bootstrap_workspace.py` now installs `graphifyy`, patches installed `graphify` for `.script` Lua support, builds `ai_workspace/lua-graphify-out`, builds focused subfolder maps for the Lua-bearing `ai_workspace` roots, refreshes `ai_workspace/map_index.html`, and records the result in `.codex-stalker/state/bootstrap_state.json`.
 - This workspace patches local `graphify` so `*.script` is treated as Lua.
+- Prefer the focused `ai_workspace/**/graphify-out` map over the global workspace graph when a question is already narrowed to one reference pack or one subfolder.
 - Reusable MO2 `mods/`, unpacked `gamedata/`, log folders, and external mod roots may be remembered in `external_paths`, but only after explicit user approval.
 - For log-driven triage, MO2 `mods/` or unpacked `gamedata/` is usually the better remembered path, because it helps resolve the failing addon files.
 - Use `stalker-gamma` as a curated repo for addon discovery and modpack composition, not for authoritative engine semantics.

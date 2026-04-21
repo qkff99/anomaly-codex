@@ -1,7 +1,7 @@
 interface:
   display_name: "Graphify"
   short_description: "STALKER workspace graph skill for Lua maps and subsystem routing"
-  default_prompt: "Use $graphify to orient within this STALKER workspace: prefer existing graph artifacts first, then rebuild or refresh Lua-only maps for *.script and *.lua corpora when a graph would materially narrow the search surface."
+  default_prompt: "Use $graphify to orient within this STALKER workspace. On first use in a fresh clone, check .codex-stalker/state/bootstrap_state.json and run the workspace bootstrap automatically if it is missing or stale. Prefer existing graph artifacts first, use the focused ai_workspace/**/graphify-out map when the question is already narrowed to one reference pack or subfolder, and rebuild or refresh Lua-only maps for *.script and *.lua corpora only when a graph would materially narrow the search surface."
 dependencies:
   python_packages:
     - name: "graphifyy"

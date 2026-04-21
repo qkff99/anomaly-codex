@@ -1,7 +1,7 @@
 interface:
   display_name: "STALKER Modding"
   short_description: "Anomaly-first XRay modding, crash triage, maintenance, and graph-assisted workspace mapping"
-  default_prompt: "Use $stalker-modding to analyze this STALKER/XRay modding, crash-log, or existing-addon maintenance task, choose the right reference tier, and use $graphify when a graph or subsystem map would materially narrow the search surface before editing."
+  default_prompt: "Use $stalker-modding to analyze this STALKER/XRay modding, crash-log, or existing-addon maintenance task. On first use in a fresh clone, check .codex-stalker/state/bootstrap_state.json and run the workspace bootstrap automatically if it is missing or stale. Choose the right reference tier, prefer focused ai_workspace/**/graphify-out maps when the task is already localized to one reference pack or subfolder, and use $graphify when a graph or subsystem map would materially narrow the search surface before editing."
 dependencies:
   tools:
     - type: "mcp"

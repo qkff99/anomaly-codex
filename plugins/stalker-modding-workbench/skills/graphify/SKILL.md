@@ -20,6 +20,15 @@ Use `$graphify` when one of these is true:
 - you need cross-file routing across `vanilla scripts`, `GAMMA Scripts`, or `Anomaly-Mod-Configuration-Menu-main`
 - you need a shortest path or node explanation before patching a subsystem
 - you want to narrow a large search surface before raw reference searches or edits
+- the question is already narrowed to one reference pack or one `ai_workspace` subfolder and a focused map would be cheaper than the global workspace graph
+
+## First-Use Bootstrap
+
+Before relying on generated graph artifacts, check `../../../../.codex-stalker/state/bootstrap_state.json`.
+
+- If the bootstrap state file is missing, stale, or `../../../../ai_workspace/lua-graphify-out/graph.json` is absent, run `../../../../.skills/stalker-modding/scripts/bootstrap_workspace.py` automatically.
+- That bootstrap installs `graphifyy`, patches the installed `graphify` package so `*.script` is treated as Lua, builds the global `../../../../ai_workspace/lua-graphify-out`, builds focused subfolder maps such as `../../../../ai_workspace/vanilla scripts/graphify-out`, `../../../../ai_workspace/GAMMA Scripts/graphify-out`, and `../../../../ai_workspace/Anomaly-Mod-Configuration-Menu-main/graphify-out`, refreshes `../../../../ai_workspace/map_index.html`, and records state under `../../../../.codex-stalker/state/bootstrap_state.json`.
+- Use `../../../../.skills/stalker-modding/scripts/bootstrap_workspace.py --force-lua-graph` when the state exists but the Lua map should be rebuilt anyway.
 
 ## Prefer Existing Artifacts First
 
@@ -29,14 +38,19 @@ Before rebuilding anything, inspect the generated maps already present in this w
 - `../../../../ai_workspace/lua-graphify-out/GRAPH_REPORT.md`
 - `../../../../ai_workspace/lua-graphify-out/wiki/index.md`
 - `../../../../ai_workspace/vanilla scripts/graphify-out/folder_map.html`
-- `../../../../ai_workspace/GAMMA Scripts/graphify-out/graph.html`
-- per-folder `../../../../ai_workspace/src/*/graphify-out/graph.html`
+- `../../../../ai_workspace/vanilla scripts/gamedata/graphify-out/folder_map.html`
+- `../../../../ai_workspace/GAMMA Scripts/graphify-out/folder_map.html`
+- `../../../../ai_workspace/GAMMA Scripts/scripts/graphify-out/folder_map.html`
+- `../../../../ai_workspace/Anomaly-Mod-Configuration-Menu-main/graphify-out/folder_map.html`
+- `../../../../ai_workspace/Anomaly-Mod-Configuration-Menu-main/gamedata/graphify-out/folder_map.html`
+- any other focused `../../../../ai_workspace/**/graphify-out/folder_map.html` that the workspace bootstrap generated for Lua-bearing subfolders
 
 Routing rules:
 - For Anomaly script behavior, prefer the combined Lua-only graph under `ai_workspace/lua-graphify-out`.
-- For vanilla-only grounding, prefer `ai_workspace/vanilla scripts/graphify-out`.
-- For GAMMA pack glue, prefer `ai_workspace/GAMMA Scripts/graphify-out`.
-- For engine source, prefer the smallest existing `ai_workspace/src/<subsystem>/graphify-out` graph instead of a whole-tree rebuild.
+- For vanilla-only grounding, prefer `ai_workspace/vanilla scripts/graphify-out`, and if the question is already about script placement or callback flow inside baseline data, prefer `ai_workspace/vanilla scripts/gamedata/graphify-out`.
+- For GAMMA pack glue, prefer `ai_workspace/GAMMA Scripts/graphify-out`, and if the question is script-only, prefer `ai_workspace/GAMMA Scripts/scripts/graphify-out`.
+- For MCM-specific work, prefer `ai_workspace/Anomaly-Mod-Configuration-Menu-main/graphify-out`, and if the question is already inside shipped addon files, prefer `ai_workspace/Anomaly-Mod-Configuration-Menu-main/gamedata/graphify-out`.
+- When you already know the relevant `ai_workspace` subfolder, use its focused map before falling back to the global workspace graph.
 
 ## Rebuild Workflow
 
@@ -47,6 +61,7 @@ Windows PowerShell:
 ```powershell
 py -3 .\.skills\stalker-modding\scripts\graphify_workspace.py all --root ai_workspace
 py -3 .\.skills\stalker-modding\scripts\graphify_workspace.py lua-map --root ai_workspace
+py -3 .\.skills\stalker-modding\scripts\graphify_workspace.py submaps --root ai_workspace
 py -3 .\.skills\stalker-modding\scripts\graphify_workspace.py index --root ai_workspace
 ```
 
@@ -55,6 +70,7 @@ WSL/Linux/macOS:
 ```bash
 python3 ./.skills/stalker-modding/scripts/graphify_workspace.py all --root ai_workspace
 python3 ./.skills/stalker-modding/scripts/graphify_workspace.py lua-map --root ai_workspace
+python3 ./.skills/stalker-modding/scripts/graphify_workspace.py submaps --root ai_workspace
 python3 ./.skills/stalker-modding/scripts/graphify_workspace.py index --root ai_workspace
 ```
 
@@ -77,5 +93,6 @@ Use `explain` and `path` before broad `query` when you already know the node or 
 - Treat graphify as a routing and summarization layer, not final authority on runtime semantics.
 - Verify any graph-derived claim in local code before editing.
 - Prefer the smallest graph that can answer the question.
+- Prefer a focused subfolder map over the global workspace graph when the task is already localized to one pack or reference root.
 - Do not try to force a single huge `graph.html` for all of `ai_workspace`; use folder maps and per-subsystem graphs instead.
 - For STALKER behavior work, stay Lua-first unless the user explicitly wants C++ or docs mapping.

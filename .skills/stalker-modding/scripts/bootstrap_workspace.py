@@ -6,13 +6,23 @@ import importlib.util
 import json
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from _skill_common import REPO_ROOT
+from graphify_workspace import build_index, build_lua_map, build_workspace_submaps, discover_workspace_submap_targets
 from luac_tool import detect_compiler
+from patch_graphify_for_stalker import patch_graphify_for_stalker, patch_status
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
+BOOTSTRAP_STATE_VERSION = 2
+BOOTSTRAP_STATE_PATH = REPO_ROOT / ".codex-stalker" / "state" / "bootstrap_state.json"
+LUA_GRAPH_ROOT = REPO_ROOT / "ai_workspace"
+LUA_GRAPH_OUTPUT_NAME = "lua-graphify-out"
+LUA_GRAPH_JSON = LUA_GRAPH_ROOT / LUA_GRAPH_OUTPUT_NAME / "graph.json"
+MAP_INDEX_PATH = LUA_GRAPH_ROOT / "map_index.html"
 
 
 def ensure_python_package(module_name: str, package_name: str) -> tuple[bool, str]:
@@ -50,6 +60,16 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="After the quick readiness checks, run run_regressions.py --suite all.",
     )
+    parser.add_argument(
+        "--skip-lua-graph",
+        action="store_true",
+        help="Skip building or refreshing ai_workspace graph artifacts during bootstrap.",
+    )
+    parser.add_argument(
+        "--force-lua-graph",
+        action="store_true",
+        help="Rebuild ai_workspace graph artifacts even if bootstrap state already says they are ready.",
+    )
     return parser.parse_args()
 
 
@@ -86,18 +106,136 @@ def verify_mcp_alignment() -> tuple[bool, str]:
     return True, "MCP configs aligned"
 
 
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def _repo_rel(path: Path) -> str:
+    try:
+        return path.resolve().relative_to(REPO_ROOT.resolve()).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
+def load_bootstrap_state() -> dict[str, Any]:
+    try:
+        return json.loads(BOOTSTRAP_STATE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def write_bootstrap_state(state: dict[str, Any]) -> None:
+    BOOTSTRAP_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    BOOTSTRAP_STATE_PATH.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def _collect_submap_state() -> list[dict[str, Any]]:
+    entries: list[dict[str, Any]] = []
+    for target in discover_workspace_submap_targets(LUA_GRAPH_ROOT):
+        output_dir = target.root / target.output_name
+        graph_json = output_dir / "graph.json"
+        folder_map = output_dir / "folder_map.html"
+        if not graph_json.exists():
+            continue
+        entry: dict[str, Any] = {
+            "root": _repo_rel(target.root),
+            "output_name": target.output_name,
+            "graph_json": _repo_rel(graph_json),
+            "folder_map": _repo_rel(folder_map) if folder_map.exists() else None,
+        }
+        folder_map_json = output_dir / "folder_map.json"
+        if folder_map_json.exists():
+            try:
+                summary = json.loads(folder_map_json.read_text(encoding="utf-8"))
+            except Exception:
+                summary = {}
+            for key in ("lua_files", "graph_nodes", "graph_edges", "communities", "wiki_articles"):
+                if key in summary:
+                    entry[key] = summary[key]
+        entries.append(entry)
+    return entries
+
+
+def _graph_artifacts_ready(state: dict[str, Any]) -> bool:
+    lua_graph = state.get("lua_graph", {})
+    if state.get("version") != BOOTSTRAP_STATE_VERSION:
+        return False
+    if not (lua_graph.get("ready") and LUA_GRAPH_JSON.exists() and MAP_INDEX_PATH.exists()):
+        return False
+    expected_roots = {_repo_rel(target.root) for target in discover_workspace_submap_targets(LUA_GRAPH_ROOT)}
+    state_roots = {entry.get("root", "") for entry in state.get("submaps", [])}
+    if expected_roots != state_roots:
+        return False
+    return all((REPO_ROOT / entry["graph_json"]).exists() for entry in state.get("submaps", []))
+
+
+def ensure_graph_artifacts(force: bool) -> tuple[bool, str, dict[str, Any] | None, list[dict[str, Any]]]:
+    if not force and LUA_GRAPH_JSON.exists() and MAP_INDEX_PATH.exists():
+        submaps = _collect_submap_state()
+        expected_roots = {_repo_rel(target.root) for target in discover_workspace_submap_targets(LUA_GRAPH_ROOT)}
+        if {entry["root"] for entry in submaps} == expected_roots:
+            print("[ok] workspace graph artifacts available")
+            return True, "workspace graph artifacts available", {
+                "ready": True,
+                "root": "ai_workspace",
+                "output_name": LUA_GRAPH_OUTPUT_NAME,
+                "graph_json": "ai_workspace/lua-graphify-out/graph.json",
+                "map_index": "ai_workspace/map_index.html",
+            }, submaps
+
+    print("[run] building workspace graph artifacts")
+    try:
+        summary = build_lua_map(LUA_GRAPH_ROOT, LUA_GRAPH_OUTPUT_NAME)
+        submaps = build_workspace_submaps(LUA_GRAPH_ROOT)
+        build_index(LUA_GRAPH_ROOT)
+    except Exception as exc:
+        return False, str(exc), None, []
+
+    return True, "workspace graph artifacts ready", {
+        "ready": True,
+        "root": "ai_workspace",
+        "output_name": LUA_GRAPH_OUTPUT_NAME,
+        "graph_json": "ai_workspace/lua-graphify-out/graph.json",
+        "map_index": "ai_workspace/map_index.html",
+        "lua_files": summary["lua_files"],
+        "graph_nodes": summary["graph_nodes"],
+        "graph_edges": summary["graph_edges"],
+        "communities": summary["communities"],
+        "wiki_articles": summary["wiki_articles"],
+    }, submaps
+
+
 def main() -> int:
     args = parse_args()
     errors: list[str] = []
+    previous_state = load_bootstrap_state()
 
     package_ok, package_message = ensure_python_package("graphify", "graphifyy")
     if package_ok:
         print(f"[ok] {package_message}")
     else:
-        print(f"[fail] graphifyy bootstrap")
+        print("[fail] graphifyy bootstrap")
         if package_message.strip():
             print(package_message.strip())
         errors.append("graphifyy bootstrap")
+
+    patch_applied = False
+    patch_message = ""
+    if package_ok:
+        try:
+            patch_applied, patch_message = patch_graphify_for_stalker()
+            patch_state = patch_status()
+            if all(patch_state.values()):
+                print(f"[ok] {patch_message}")
+            else:
+                print("[fail] graphify .script patch incomplete")
+                errors.append("graphify .script patch incomplete")
+        except Exception as exc:
+            print("[fail] graphify .script patch")
+            print(str(exc))
+            errors.append("graphify .script patch")
+    else:
+        patch_state = {}
 
     compiler = detect_compiler()
     if compiler is None:
@@ -126,6 +264,37 @@ def main() -> int:
         if not ok:
             errors.append(label)
 
+    lua_graph_state: dict[str, Any] = {}
+    submap_state: list[dict[str, Any]] = []
+    if not args.skip_lua_graph and not errors:
+        graph_force = args.force_lua_graph or not _graph_artifacts_ready(previous_state)
+        graph_ok, graph_message, graph_state, current_submaps = ensure_graph_artifacts(force=graph_force)
+        if graph_ok:
+            print(f"[ok] {graph_message}")
+            if graph_state is not None:
+                graph_state["generated_at"] = _utc_now()
+                lua_graph_state = graph_state
+            for entry in current_submaps:
+                entry["generated_at"] = _utc_now()
+            submap_state = current_submaps
+        else:
+            print("[fail] workspace graph bootstrap")
+            if graph_message.strip():
+                print(graph_message.strip())
+            errors.append("workspace graph bootstrap")
+    elif args.skip_lua_graph:
+        print("[ok] workspace graph bootstrap skipped")
+        if LUA_GRAPH_JSON.exists() and MAP_INDEX_PATH.exists():
+            lua_graph_state = {
+                "ready": True,
+                "root": "ai_workspace",
+                "output_name": LUA_GRAPH_OUTPUT_NAME,
+                "graph_json": "ai_workspace/lua-graphify-out/graph.json",
+                "map_index": "ai_workspace/map_index.html",
+                "generated_at": previous_state.get("lua_graph", {}).get("generated_at"),
+            }
+            submap_state = previous_state.get("submaps", [])
+
     if not errors and args.run_regressions:
         ok, _ = run_check(
             "run_regressions",
@@ -140,6 +309,26 @@ def main() -> int:
             print(f"- {error}")
         return 1
 
+    state = {
+        "version": BOOTSTRAP_STATE_VERSION,
+        "completed_at": _utc_now(),
+        "graphify": {
+            "package": package_message,
+            "script_patch": patch_message,
+            "patch_applied": patch_applied,
+            "patch_state": patch_state,
+        },
+        "luac": {
+            "label": compiler.label if compiler else None,
+            "version": compiler.version if compiler else None,
+        },
+        "mcp_alignment": aligned,
+        "lua_graph": lua_graph_state,
+        "submaps": submap_state,
+    }
+    write_bootstrap_state(state)
+
+    print(f"[ok] bootstrap state written: {BOOTSTRAP_STATE_PATH}")
     print("bootstrap_workspace: ready")
     return 0
 

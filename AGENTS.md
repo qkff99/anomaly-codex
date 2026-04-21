@@ -26,6 +26,7 @@ Indexed repos:
 ## Repo Assets
 - `.skills/stalker-modding` — canonical local Codex skill
 - `.codex-stalker/workspace.json` — machine-readable overlay for this workbench
+- `.codex-stalker/state/bootstrap_state.json` — generated first-use bootstrap marker for this workspace; user-local, not repo-tracked
 - `help/stalker/*.md` — local project memory for the skill
 - `.agents/plugins/marketplace.json` — repo-local Codex marketplace entry
 - `.vscode/mcp.json` — tracked VS Code MCP config mirroring the repo-local plugin MCP endpoints
@@ -33,6 +34,8 @@ Indexed repos:
 - `.codex-stalker/workspace.json` also stores remembered external paths and curated known reference repos
 - `tests/fixtures` — deterministic regression inputs for logs, XML encodings, imports, and project-toolchain scenarios
 - `.skills/stalker-modding/scripts/graphify_workspace.py` — repo-local helper to rebuild Lua-only graphify artifacts and refresh `ai_workspace/map_index.html`
+- `.skills/stalker-modding/scripts/bootstrap_workspace.py` — repo-local first-use bootstrap; installs `graphifyy`, patches installed `graphify` for `.script` Lua support, builds `ai_workspace/lua-graphify-out`, refreshes `ai_workspace/map_index.html`, and writes `.codex-stalker/state/bootstrap_state.json`
+- `.skills/stalker-modding/scripts/bootstrap_workspace.py` — repo-local first-use bootstrap; installs `graphifyy`, patches installed `graphify` for `.script` Lua support, builds `ai_workspace/lua-graphify-out`, builds focused subfolder maps under the Lua-bearing `ai_workspace` roots, refreshes `ai_workspace/map_index.html`, and writes `.codex-stalker/state/bootstrap_state.json`
 
 ## Workspace Project Layout
 - If a new local project is initialized in this workspace, create it as a dedicated folder inside `projects/`.
@@ -59,6 +62,8 @@ Indexed repos:
 - Use `_g.script`, `lua_help.script`, and `axr_main.script` as the first orientation files when tracing vanilla script flow.
 - Prefer existing graphify artifacts for large unfamiliar local corpora, Lua dependency routing, and vanilla/GAMMA/MCM cross-file orientation before broad raw-file search.
 - This workspace patches local `graphify` so `*.script` is treated as Lua.
+- On first real use of the plugin/skill in a fresh clone, if `.codex-stalker/state/bootstrap_state.json` is missing or stale, run `bootstrap_workspace.py` automatically before relying on graphify artifacts.
+- When a task is already narrowed to one `ai_workspace` reference pack or subfolder, prefer the corresponding focused `ai_workspace/**/graphify-out` map before the global workspace graph.
 - String-table localization lives in `gamedata/configs/text/<language>/*.xml`, with active language selected through `gamedata/configs/localization.ltx`.
 - Vanilla Russian localization XML is commonly `windows-1251`; inspect and round-trip through the XML localization helper before editing legacy-encoded files.
 - If the user uses Mod Organizer 2, remember that the live game view is virtualized from MO2's mod directories, not authored directly in the game folder.
