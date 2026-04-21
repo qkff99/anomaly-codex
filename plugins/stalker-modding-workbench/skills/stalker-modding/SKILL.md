@@ -17,6 +17,9 @@ User-added references should be stored in `../../../../ai_workspace/user referen
 If the user asks, or if the agent decides extra local references are needed, create links there instead of copying big external folders into the repo.
 Use `../../../../ai_workspace/Anomaly-Mod-Configuration-Menu-main` as the primary local authority for Anomaly MCM API, `*mcm.script` discovery, keybind widgets, and MCM-specific UI behavior.
 Use `../../../../ai_workspace/GAMMA Scripts` as the local flattened GAMMA configs/scripts reference overlay for pack-specific addon behavior and conflict examples.
+Use the plugin-local `graphify` skill and `../../../../.skills/stalker-modding/scripts/graphify_workspace.py` when large local corpora need subsystem mapping, Lua dependency routing, or vanilla/GAMMA/MCM cross-file orientation before raw file search.
+Prefer existing graph artifacts at `../../../../ai_workspace/map_index.html`, `../../../../ai_workspace/lua-graphify-out`, and `../../../../ai_workspace/*/graphify-out` before rebuilding anything.
+This workspace patches local `graphify` so `*.script` is treated as Lua for STALKER script mapping.
 Default extension order is callbacks/config hooks first, then DXML, then DLTX, then narrow monkey patches, and full-file overrides only last.
 Use `../../../../ai_workspace/vanilla scripts/gamedata/scripts/_g.script`, `lua_help.script`, and `axr_main.script` as the first orientation files when tracing vanilla script flow.
 Project-local machine-readable metadata lives in `../../../../projects/<project-name>/.codex-stalker/project.json`.
@@ -28,6 +31,7 @@ Use `../../../../.skills/stalker-modding/scripts/log_triage.py` before bringing 
 Use `../../../../.skills/stalker-modding/scripts/external_path_tool.py` to remember logs folders, MO2 `mods/`, unpacked `gamedata/`, or external mod roots in the tracked workspace overlay.
 Use `../../../../.skills/stalker-modding/scripts/discover_github_refs.py` to search GitHub references and persist only curated high-signal repos.
 Use `../../../../.skills/stalker-modding/scripts/luac_tool.py` to detect and syntax-check Lua files with `luac`.
+Use `../../../../.skills/stalker-modding/scripts/graphify_workspace.py` to rebuild Lua-only graphify artifacts and refresh the workspace HTML index when graph-based routing is useful.
 Use `../../../../.skills/stalker-modding/scripts/quality_scan.py` to scan projects/mod roots for static quality risks, task gates, vanilla delta, patch opportunities, conflict surface, dependency graphs, save migration templates, optional dependency patterns, and output-contract hints.
 Use `../../../../.skills/stalker-modding/scripts/xml_localization_tool.py` to inspect XML localization encodings, convert legacy XML to UTF-8 for editing, and restore the original encoding afterward.
 Use MO2 knowledge for packaging and deployment only: author from `projects/<project-name>` first, treat MO2 `overwrite/` as transient output, and build FOMOD installers only when the user asks.

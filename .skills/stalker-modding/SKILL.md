@@ -48,6 +48,39 @@ This skill should attempt to bootstrap missing local tooling when practical.
 - Wrapper scripts should attempt `bootstrap_env` automatically when Python is missing.
 - Prefer package-manager installs over ad-hoc downloads.
 
+## Graphify Integration
+
+Use graphify when the task needs orientation inside a large local corpus before raw file inspection.
+
+Good triggers:
+- unfamiliar subsystem mapping
+- cross-file Lua routing across vanilla, GAMMA, and MCM references
+- ownership/dependency/path questions
+- "show me the architecture" or "map this folder" requests
+- narrowing a large search surface before editing or review
+
+Prefer existing graph artifacts before rebuilding:
+- `ai_workspace/map_index.html`
+- `ai_workspace/lua-graphify-out/folder_map.html`
+- `ai_workspace/lua-graphify-out/GRAPH_REPORT.md`
+- `ai_workspace/lua-graphify-out/wiki/index.md`
+- `ai_workspace/vanilla scripts/graphify-out/...`
+- `ai_workspace/GAMMA Scripts/graphify-out/...`
+- per-folder `ai_workspace/src/*/graphify-out/...`
+
+Workspace-specific graphify rules:
+- This workspace patches local `graphify` so `*.script` is treated as Lua.
+- For Anomaly behavior work, prefer the combined Lua-only map under `ai_workspace/lua-graphify-out`.
+- For engine source, prefer the smallest existing `ai_workspace/src/<subsystem>/graphify-out` graph.
+- For giant corpora, prefer `folder_map.html`, `GRAPH_REPORT.md`, and `wiki/` over trying to force one huge `graph.html`.
+- Treat graphify as a routing layer, not final semantic truth. Verify graph-derived claims in local code before acting.
+
+Preferred helper:
+- Use `scripts/graphify_workspace.py all --root ai_workspace` to rebuild the Lua-only workspace map and refresh `ai_workspace/map_index.html`.
+- Use `scripts/graphify_workspace.py lua-map --root <path>` for another Lua-first STALKER corpus.
+- Use `scripts/graphify_workspace.py index --root ai_workspace` when only the HTML index needs refresh.
+- For smaller non-Lua code trees, native `graphify update <subfolder>` remains fine.
+
 ## Workspace Project Layout
 
 When initializing a new local project in this workspace, create a dedicated folder under `projects/`.
@@ -143,6 +176,7 @@ Expanded rules:
   - `ai_workspace/Anomaly-Mod-Configuration-Menu-main` -> local authority for Anomaly MCM menu behavior, API, and conflict surface
   - `ai_workspace/GAMMA Scripts` -> flattened local GAMMA MO2 configs/scripts reference overlay for pack-specific addon behavior and conflict examples
   - `ai_workspace/user references` -> user-managed extra references; search these automatically when present
+  - generated graphify outputs under `ai_workspace/*/graphify-out`, `ai_workspace/lua-graphify-out`, and `ai_workspace/map_index.html` -> routing maps for large corpora; useful for orientation but not final truth
 - Treat `.codex-stalker/workspace.json` `external_paths` as remembered user-approved search roots for logs, MO2 installs, unpacked `gamedata`, or external mod folders.
 - Treat `.codex-stalker/workspace.json` `known_reference_repos` as curated persistent GitMCP references that should be preferred over ad-hoc web searching.
 - If the user asks, or if the agent decides extra local material is worth indexing, link it into `ai_workspace/user references` instead of copying it into the repo.
@@ -206,22 +240,23 @@ Recommended references:
 8. Remember external paths only after the user explicitly allows it.
 9. For crash or log-driven bugfix work, run `scripts/log_triage.py` before pasting a huge raw log into context. For engine fatal logs, use its resolved `inspect_points` as the first source locations to inspect in `ai_workspace/src`.
 10. Use `scripts/query_hints.py` to pick the smallest effective search surface.
-11. Use `scripts/find_references.py` to search only the relevant roots instead of grepping the whole tree blindly. This search should also include `ai_workspace/user references` automatically and, for the right task types, remembered external mod roots.
-12. For log-driven tasks where script or asset resolution matters, prefer asking for MO2 `mods/`, unpacked `gamedata`, or another external mod root before asking for a remembered `logs_dir`.
-13. If external refs are needed, ask for MO2 `mods/`, unpacked `gamedata`, or another external mod root and remember the confirmed path only with the user's permission.
-14. If extra local references are needed, create links into `ai_workspace/user references` with `scripts/link_user_reference.py`, or extract MO2 `configs/` + `scripts/` references with `scripts/extract_mo2_resources.py`.
-15. Read local code and configs before repo or web references.
-16. For entrypoints and touchpoints, run `scripts/find_entrypoints.py` and `scripts/map_subsystems.py`.
-17. If the task is scaffold-heavy, prefer `scripts/scaffold_template.py` over hand-creating starter files.
-18. If the task is about distribution or MO2 delivery, package the project first and then use `scripts/fomod_tool.py` for a FOMOD staging folder when requested.
-19. If XML localization files or other legacy-encoded XML files were touched, inspect them with `scripts/xml_localization_tool.py`, use `prepare-edit` before editing, and `finish-edit` before finalizing.
-20. If Lua files were touched, run `scripts/luac_tool.py check ...` before finalizing unless the environment clearly cannot provide a compiler.
-21. For mod edits, reviews, imports, and feature work, run `scripts/quality_scan.py scan <project-or-mod-root> --task <task-type>` when practical. Treat high findings as blockers unless the task explicitly accepts that risk.
-22. For project-local smoke checks, prefer `scripts/validate_project.py`, `scripts/package_project.py`, and `scripts/fomod_tool.py` as needed.
-23. For repo-local reliability checks and first-run verification, use `scripts/run_regressions.py` instead of relying on hand-kept example projects under `projects/`.
-24. If local refs are insufficient, use `scripts/discover_github_refs.py` to search GitHub and persist only curated high-signal repos.
-25. Verify any remote or wiki-derived claim against local code or primary references before acting.
-26. Report verified facts separately from inference.
+11. If the workspace or subsystem is large and unfamiliar, or if the user asked for a graph/map/architecture view, check graphify artifacts first. Prefer `ai_workspace/map_index.html` and `ai_workspace/lua-graphify-out` for Anomaly Lua routing before broad raw-file search.
+12. Use `scripts/find_references.py` to search only the relevant roots instead of grepping the whole tree blindly. This search should also include `ai_workspace/user references` automatically and, for the right task types, remembered external mod roots.
+13. For log-driven tasks where script or asset resolution matters, prefer asking for MO2 `mods/`, unpacked `gamedata`, or another external mod root before asking for a remembered `logs_dir`.
+14. If external refs are needed, ask for MO2 `mods/`, unpacked `gamedata`, or another external mod root and remember the confirmed path only with the user's permission.
+15. If extra local references are needed, create links into `ai_workspace/user references` with `scripts/link_user_reference.py`, or extract MO2 `configs/` + `scripts/` references with `scripts/extract_mo2_resources.py`.
+16. Read local code and configs before repo or web references.
+17. For entrypoints and touchpoints, run `scripts/find_entrypoints.py` and `scripts/map_subsystems.py`.
+18. If the task is scaffold-heavy, prefer `scripts/scaffold_template.py` over hand-creating starter files.
+19. If the task is about distribution or MO2 delivery, package the project first and then use `scripts/fomod_tool.py` for a FOMOD staging folder when requested.
+20. If XML localization files or other legacy-encoded XML files were touched, inspect them with `scripts/xml_localization_tool.py`, use `prepare-edit` before editing, and `finish-edit` before finalizing.
+21. If Lua files were touched, run `scripts/luac_tool.py check ...` before finalizing unless the environment clearly cannot provide a compiler.
+22. For mod edits, reviews, imports, and feature work, run `scripts/quality_scan.py scan <project-or-mod-root> --task <task-type>` when practical. Treat high findings as blockers unless the task explicitly accepts that risk.
+23. For project-local smoke checks, prefer `scripts/validate_project.py`, `scripts/package_project.py`, and `scripts/fomod_tool.py` as needed.
+24. For repo-local reliability checks and first-run verification, use `scripts/run_regressions.py` instead of relying on hand-kept example projects under `projects/`.
+25. If local refs are insufficient, use `scripts/discover_github_refs.py` to search GitHub and persist only curated high-signal repos.
+26. Verify any remote or wiki-derived claim against local code or primary references before acting.
+27. Report verified facts separately from inference.
 
 ## Safety Rules
 

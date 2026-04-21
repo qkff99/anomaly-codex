@@ -19,6 +19,8 @@ Indexed repos:
 - `ai_workspace/src` — engine source
 - `ai_workspace/lua_help.script.txt` — exported Lua API surface
 - `ai_workspace/user references` — user-managed local reference corpus; add any extra docs, code dumps, notes, or decompiled material here and the skill should search it automatically
+- `ai_workspace/lua-graphify-out` — generated Lua-only graphify outputs across `*.script` and `*.lua`
+- `ai_workspace/map_index.html` — generated HTML index over graphify artifacts in this workspace
 - If the user asks, or if the agent decides extra local references are materially useful, create links into `ai_workspace/user references` instead of copying large external folders into the repo.
 
 ## Repo Assets
@@ -30,6 +32,7 @@ Indexed repos:
 - `plugins/stalker-modding-workbench` — repo-local plugin wrapper with MCP config
 - `.codex-stalker/workspace.json` also stores remembered external paths and curated known reference repos
 - `tests/fixtures` — deterministic regression inputs for logs, XML encodings, imports, and project-toolchain scenarios
+- `.skills/stalker-modding/scripts/graphify_workspace.py` — repo-local helper to rebuild Lua-only graphify artifacts and refresh `ai_workspace/map_index.html`
 
 ## Workspace Project Layout
 - If a new local project is initialized in this workspace, create it as a dedicated folder inside `projects/`.
@@ -54,6 +57,8 @@ Indexed repos:
 - Treat `main_menu_on_init` and other `main_menu_*` hooks as menu-only surfaces.
 - Do not call `ui_mcm.get(...)` inside `on_mcm_load()`. Read MCM values later at runtime or on apply callbacks.
 - Use `_g.script`, `lua_help.script`, and `axr_main.script` as the first orientation files when tracing vanilla script flow.
+- Prefer existing graphify artifacts for large unfamiliar local corpora, Lua dependency routing, and vanilla/GAMMA/MCM cross-file orientation before broad raw-file search.
+- This workspace patches local `graphify` so `*.script` is treated as Lua.
 - String-table localization lives in `gamedata/configs/text/<language>/*.xml`, with active language selected through `gamedata/configs/localization.ltx`.
 - Vanilla Russian localization XML is commonly `windows-1251`; inspect and round-trip through the XML localization helper before editing legacy-encoded files.
 - If the user uses Mod Organizer 2, remember that the live game view is virtualized from MO2's mod directories, not authored directly in the game folder.
@@ -113,6 +118,7 @@ Default practice notes:
 - Use `external_path_tool.py` / `.sh` / `.ps1` to remember logs folders, MO2 `mods/`, unpacked `gamedata/`, or external mod roots, but only with the user's permission.
 - Use `discover_github_refs.py` / `.sh` / `.ps1` to search GitHub references and persist only curated high-signal repos into MCP config and workspace overlay.
 - Use `link_user_reference.py` / `.sh` / `.ps1` to link external local references into `ai_workspace/user references`.
+- Use `graphify_workspace.py` / `.sh` / `.ps1` to rebuild the combined Lua-only workspace map and refresh `ai_workspace/map_index.html` when graph-based orientation is useful.
 - Use `bootstrap_env.sh` / `.ps1` when Python, `luac`, or `rg` is missing; wrappers should try bootstrap before failing.
 - Use `xml_localization_tool.py` / `.sh` / `.ps1` to inspect legacy XML encodings, convert localization XML to UTF-8 for editing, and restore the original encoding afterward.
 

@@ -1,7 +1,7 @@
 interface:
   display_name: "Graphify"
-  short_description: "Build a navigable knowledge graph from local files"
-  default_prompt: "Use $graphify to turn this folder or corpus into a knowledge graph with clustered communities, HTML/JSON outputs, and a concise audit trail."
+  short_description: "STALKER workspace graph skill for Lua maps and subsystem routing"
+  default_prompt: "Use $graphify to orient within this STALKER workspace: prefer existing graph artifacts first, then rebuild or refresh Lua-only maps for *.script and *.lua corpora when a graph would materially narrow the search surface."
 dependencies:
   python_packages:
     - name: "graphifyy"
