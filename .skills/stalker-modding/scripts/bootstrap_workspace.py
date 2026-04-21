@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import subprocess
 import sys
@@ -12,6 +13,34 @@ from luac_tool import detect_compiler
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
+
+
+def ensure_python_package(module_name: str, package_name: str) -> tuple[bool, str]:
+    if importlib.util.find_spec(module_name) is not None:
+        return True, f"{package_name} available"
+
+    commands: list[list[str]] = [
+        [sys.executable, "-m", "pip", "install", package_name],
+    ]
+    if sys.platform != "win32":
+        commands.append([sys.executable, "-m", "pip", "install", package_name, "--break-system-packages"])
+
+    outputs: list[str] = []
+    for command in commands:
+        completed = subprocess.run(
+            command,
+            cwd=REPO_ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        output = ((completed.stdout or "") + (completed.stderr or "")).strip()
+        if output:
+            outputs.append(output)
+        if completed.returncode == 0 and importlib.util.find_spec(module_name) is not None:
+            return True, f"{package_name} installed"
+
+    return False, "\n".join(outputs) if outputs else f"failed to install {package_name}"
 
 
 def parse_args() -> argparse.Namespace:
@@ -60,6 +89,15 @@ def verify_mcp_alignment() -> tuple[bool, str]:
 def main() -> int:
     args = parse_args()
     errors: list[str] = []
+
+    package_ok, package_message = ensure_python_package("graphify", "graphifyy")
+    if package_ok:
+        print(f"[ok] {package_message}")
+    else:
+        print(f"[fail] graphifyy bootstrap")
+        if package_message.strip():
+            print(package_message.strip())
+        errors.append("graphifyy bootstrap")
 
     compiler = detect_compiler()
     if compiler is None:

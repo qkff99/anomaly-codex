@@ -21,8 +21,8 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "STALKER Modding Workbench",
-    "shortDescription": "Local-only Anomaly/XRay workspace plugin",
-    "longDescription": "Local-only workspace plugin. Installs the STALKER modding skill from this repository and wires DeepWiki plus GitMCP endpoints for in-repo Anomaly/XRay research. Not intended as a standalone marketplace plugin.",
+    "shortDescription": "Local-only Anomaly/XRay workspace plugin with graph analysis",
+    "longDescription": "Local-only workspace plugin. Installs the STALKER modding skill and the local graphify skill from this repository, and wires DeepWiki plus GitMCP endpoints for in-repo Anomaly/XRay research. Not intended as a standalone marketplace plugin.",
     "developerName": "Local Workspace",
     "category": "Developer Tools",
     "capabilities": [
@@ -36,7 +36,8 @@
     "defaultPrompt": [
       "Analyze this Anomaly Lua bug and trace the right callbacks.",
       "Find the right ai_workspace references before editing this mod.",
-      "Set up a safe Anomaly patch with save and load checks."
+      "Set up a safe Anomaly patch with save and load checks.",
+      "Graph this folder and show me the key subsystems and relationships."
     ],
     "brandColor": "#5E6B3A"
   }

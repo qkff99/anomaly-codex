@@ -1,0 +1,10 @@
+interface:
+  display_name: "Graphify"
+  short_description: "Build a navigable knowledge graph from local files"
+  default_prompt: "Use $graphify to turn this folder or corpus into a knowledge graph with clustered communities, HTML/JSON outputs, and a concise audit trail."
+dependencies:
+  python_packages:
+    - name: "graphifyy"
+      description: "Python package required by the graphify skill pipeline"
+policy:
+  allow_implicit_invocation: true
