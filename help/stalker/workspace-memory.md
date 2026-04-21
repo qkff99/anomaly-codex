@@ -54,8 +54,10 @@ When the task is inside a project, prefer the project overlay after `AGENTS.md` 
 For new work, prefer `init_project.py`, `scaffold_template.py`, `validate_project.py`, `package_project.py`, and `fomod_tool.py` over hand-rolled setup.
 For repo-local reliability checks, prefer `run_regressions.py` over ad-hoc sample projects.
 For existing mods, prefer `import_mod.py` unless the user explicitly wants in-place edits.
+For quality review of mod roots or projects, prefer `./.skills/stalker-modding/scripts/quality_scan.py scan <path> --task <task-type>` after syntax checks. It reports Lua quality risks, MCM/save/hot-path issues, vanilla deltas, patch opportunities, conflict surface, dependency graph, and task gates. Use its `graph`, `suggest-patch`, `save-template`, and `optional-pattern` subcommands for advanced review and implementation scaffolds.
 For recurring log work, prefer remembered MO2 `mods/` or unpacked `gamedata/` first; use `logs_dir` memory only when the user explicitly wants repeated latest-log automation.
 When local refs are not enough, prefer `discover_github_refs.py` and curated known repos before generic web searching.
 When Lua files are edited, prefer `./.skills/stalker-modding/scripts/luac_tool.py check ...` as the first syntax gate.
+When mod behavior is edited or reviewed, prefer `./.skills/stalker-modding/scripts/quality_scan.py scan ... --task ...` as the static quality gate.
 When localization XML is edited, prefer `./.skills/stalker-modding/scripts/xml_localization_tool.py prepare-edit ...` before editing and `finish-edit ...` before finalizing.
 If Python, `luac`, or `rg` is missing, prefer `./.skills/stalker-modding/scripts/bootstrap_env.sh ensure ...` before treating the environment as blocked.

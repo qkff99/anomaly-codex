@@ -1,0 +1,25 @@
+-- Bad MCM fixture. Each issue is intentional.
+
+function on_mcm_load()
+    local current = ui_mcm.get("settings/hotkey")
+    return {
+        id = "settings",
+        sh = true,
+        gr = {
+            {
+                id = "hotkey",
+                type = "key_bind",
+                val = 1,
+                text = "ui_mcm_bad_missing",
+                def = current,
+            },
+            {
+                id = "my_mod",
+                type = "check",
+                val = 1,
+                text = "ui_mcm_bad_header",
+                def = true,
+            },
+        },
+    }
+end

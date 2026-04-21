@@ -447,46 +447,55 @@ def cached_engine_source_paths() -> tuple[Path, ...]:
 
 @lru_cache(maxsize=1)
 def cached_workspace_gamedata_roots() -> tuple[Path, ...]:
-    roots: list[Path] = []
+    return tuple(entry["root"] for entry in cached_workspace_gamedata_root_entries())
+
+
+@lru_cache(maxsize=1)
+def cached_workspace_gamedata_root_entries() -> tuple[dict[str, Any], ...]:
+    entries: list[dict[str, Any]] = []
+
+    def add_root(path: Path, kind: str, label: str) -> None:
+        resolved = path.resolve()
+        if not resolved.exists() or not resolved.is_dir():
+            return
+        entries.append({"root": resolved, "kind": kind, "label": label})
+
     repo_gamedata = REPO_ROOT / "gamedata"
-    if repo_gamedata.exists():
-        roots.append(repo_gamedata.resolve())
+    add_root(repo_gamedata, "local_workspace", "repo gamedata")
 
     projects_dir = REPO_ROOT / "projects"
     if projects_dir.exists():
         for path in projects_dir.glob("*/gamedata"):
-            if path.is_dir():
-                roots.append(path.resolve())
+            add_root(path, "local_project", path.parent.name)
 
-    if VANILLA_GAMEDATA_ROOT.exists():
-        roots.append(VANILLA_GAMEDATA_ROOT.resolve())
+    add_root(VANILLA_GAMEDATA_ROOT, "local_vanilla", "vanilla scripts")
 
     for entry in workspace_external_paths():
         raw_path = entry.get("path")
         kind = entry.get("kind")
+        label = str(entry.get("label") or entry.get("id") or kind or "external")
         if not isinstance(raw_path, str):
             continue
         path = Path(raw_path).expanduser().resolve()
         if kind == "gamedata_root" and path.is_dir():
-            roots.append(path)
+            add_root(path, "external_gamedata", label)
         elif kind == "external_mod_root":
             if path.is_dir() and path.name.lower() == "gamedata":
-                roots.append(path)
+                add_root(path, "external_mod", label)
             elif (path / "gamedata").is_dir():
-                roots.append((path / "gamedata").resolve())
+                add_root(path / "gamedata", "external_mod", label)
         elif kind == "mo2_mods_dir" and path.is_dir():
             for candidate in path.glob("*/gamedata"):
-                if candidate.is_dir():
-                    roots.append(candidate.resolve())
+                add_root(candidate, "mo2_mod", f"{label}:{candidate.parent.name}")
 
-    deduped: list[Path] = []
+    deduped: list[dict[str, Any]] = []
     seen: set[Path] = set()
-    for root in roots:
-        resolved = root.resolve()
+    for entry in entries:
+        resolved = entry["root"].resolve()
         if resolved in seen:
             continue
         seen.add(resolved)
-        deduped.append(resolved)
+        deduped.append(entry)
     return tuple(deduped)
 
 
@@ -588,27 +597,77 @@ def resolve_engine_source_path(raw_source: str | None) -> Path | None:
 
 
 def resolve_lua_source_path(raw_source: str | None) -> Path | None:
+    candidates = resolve_lua_source_candidates(raw_source)
+    if candidates:
+        return Path(str(candidates[0]["local_path"]))
+    return None
+
+
+def source_tier_rank(kind: str, match_kind: str) -> tuple[int, int]:
+    kind_rank = {
+        "local_project": 5,
+        "local_workspace": 4,
+        "external_mod": 3,
+        "external_gamedata": 3,
+        "mo2_mod": 3,
+        "local_vanilla": 2,
+    }.get(kind, 1)
+    match_rank = 2 if match_kind == "exact" else 1
+    return kind_rank, match_rank
+
+
+def resolve_lua_source_candidates(raw_source: str | None, *, limit: int = 8) -> list[dict[str, Any]]:
     relative_candidates = lua_relative_candidates(raw_source)
-    gamedata_roots = cached_workspace_gamedata_roots()
+    gamedata_entries = cached_workspace_gamedata_root_entries()
+    matches: list[dict[str, Any]] = []
+
+    def add_match(path: Path, entry: dict[str, Any], match_kind: str, gamedata_path: str) -> None:
+        matches.append(
+            {
+                "local_path": str(path.resolve()),
+                "gamedata_path": gamedata_path.replace("\\", "/"),
+                "root": str(entry["root"]),
+                "root_kind": entry["kind"],
+                "label": entry["label"],
+                "match_kind": match_kind,
+            }
+        )
 
     for candidate in relative_candidates:
         normalized_candidate = candidate.replace("\\", "/")
-        for root in gamedata_roots:
+        for entry in gamedata_entries:
+            root = entry["root"]
             exact = (root / normalized_candidate).resolve()
             if exact.exists():
-                return exact
+                add_match(exact, entry, "exact", normalized_candidate)
+
+    if matches:
+        relative_candidates = []
 
     if relative_candidates:
         basename = Path(relative_candidates[-1]).name.lower()
-        if "." not in basename:
-            return None
-        basename_matches: list[Path] = []
-        for root in gamedata_roots:
-            basename_matches.extend(path for path in root.rglob("*") if path.is_file() and path.name.lower() == basename)
-        unique = sorted({path.resolve() for path in basename_matches})
-        if len(unique) == 1:
-            return unique[0]
-    return None
+        if "." in basename:
+            for entry in gamedata_entries:
+                root = entry["root"]
+                for path in root.rglob("*"):
+                    if not path.is_file() or path.name.lower() != basename:
+                        continue
+                    try:
+                        gamedata_path = str(path.resolve().relative_to(root.resolve()))
+                    except ValueError:
+                        gamedata_path = path.name
+                    add_match(path, entry, "basename", gamedata_path)
+
+    deduped: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for match in matches:
+        key = str(match["local_path"])
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(match)
+    deduped.sort(key=lambda item: source_tier_rank(str(item["root_kind"]), str(item["match_kind"])), reverse=True)
+    return deduped[:limit]
 
 
 def is_debug_wrapper_point(local_path: Path | None, function_name: str | None) -> bool:
@@ -629,19 +688,25 @@ def build_inspect_points(
 ) -> list[dict[str, Any]]:
     points: list[dict[str, Any]] = []
 
+    def lua_point(origin: str, raw_source: Any, line: Any, function: Any) -> dict[str, Any]:
+        candidates = resolve_lua_source_candidates(raw_source if isinstance(raw_source, str) else None)
+        local_path = Path(str(candidates[0]["local_path"])) if candidates else None
+        return {
+            "origin": origin,
+            "raw_source": raw_source,
+            "local_path": str(local_path) if local_path else None,
+            "line": line,
+            "function": function,
+            "exists": local_path is not None,
+            "is_debug_wrapper": False,
+            "resolution_tier": candidates[0]["root_kind"] if candidates else None,
+            "resolution_label": candidates[0]["label"] if candidates else None,
+            "resolution_candidates": candidates,
+            "resolution_note": "multiple candidates; selected highest-priority root" if len(candidates) > 1 else None,
+        }
+
     if kind in {"lua_runtime", "lua_syntax"} and source_file:
-        local_path = resolve_lua_source_path(source_file)
-        points.append(
-            {
-                "origin": "lua_error",
-                "raw_source": source_file,
-                "local_path": str(local_path) if local_path else None,
-                "line": line_no,
-                "function": function_name,
-                "exists": local_path is not None,
-                "is_debug_wrapper": False,
-            }
-        )
+        points.append(lua_point("lua_error", source_file, line_no, function_name))
 
     if kind == "engine_fatal" and source_file:
         local_path = resolve_engine_source_path(source_file)
@@ -660,18 +725,7 @@ def build_inspect_points(
     for frame in stack_frames:
         if frame.get("type") in {"Lua", "main", "traceback", "C  ", "C"}:
             raw_source = frame.get("source")
-            local_path = resolve_lua_source_path(raw_source if isinstance(raw_source, str) else None)
-            points.append(
-                {
-                    "origin": "lua_stack",
-                    "raw_source": raw_source,
-                    "local_path": str(local_path) if local_path else None,
-                    "line": frame.get("line"),
-                    "function": frame.get("function"),
-                    "exists": local_path is not None,
-                    "is_debug_wrapper": False,
-                }
-            )
+            points.append(lua_point("lua_stack", raw_source, frame.get("line"), frame.get("function")))
             continue
         if frame.get("type") != "engine":
             continue
@@ -897,11 +951,14 @@ def print_summary(summary: dict[str, Any], *, as_json: bool) -> int:
             line_no = point.get("line")
             function_name = point.get("function") or ""
             origin = point.get("origin") or "unknown"
+            resolution = ""
+            if point.get("resolution_tier"):
+                resolution = f" [{point.get('resolution_tier')}:{point.get('resolution_label')}]"
             wrapper_flag = " wrapper" if point.get("is_debug_wrapper") else ""
             if line_no is not None:
-                print(f"{origin}:{local_path}:{line_no} {function_name}{wrapper_flag}".rstrip())
+                print(f"{origin}:{local_path}:{line_no} {function_name}{resolution}{wrapper_flag}".rstrip())
             else:
-                print(f"{origin}:{local_path} {function_name}{wrapper_flag}".rstrip())
+                print(f"{origin}:{local_path} {function_name}{resolution}{wrapper_flag}".rstrip())
     else:
         print("none")
     print()

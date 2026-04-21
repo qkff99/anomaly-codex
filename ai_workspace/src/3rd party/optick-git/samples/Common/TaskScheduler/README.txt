@@ -1,1 +1,0 @@
-Original source here: https://github.com/SergeyMakeev/TaskScheduler

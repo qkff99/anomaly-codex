@@ -26,6 +26,7 @@ Use `../../../../.skills/stalker-modding/scripts/log_triage.py` before bringing 
 Use `../../../../.skills/stalker-modding/scripts/external_path_tool.py` to remember logs folders, MO2 `mods/`, unpacked `gamedata/`, or external mod roots in the tracked workspace overlay.
 Use `../../../../.skills/stalker-modding/scripts/discover_github_refs.py` to search GitHub references and persist only curated high-signal repos.
 Use `../../../../.skills/stalker-modding/scripts/luac_tool.py` to detect and syntax-check Lua files with `luac`.
+Use `../../../../.skills/stalker-modding/scripts/quality_scan.py` to scan projects/mod roots for static quality risks, task gates, vanilla delta, patch opportunities, conflict surface, dependency graphs, save migration templates, optional dependency patterns, and output-contract hints.
 Use `../../../../.skills/stalker-modding/scripts/xml_localization_tool.py` to inspect XML localization encodings, convert legacy XML to UTF-8 for editing, and restore the original encoding afterward.
 Use MO2 knowledge for packaging and deployment only: author from `projects/<project-name>` first, treat MO2 `overwrite/` as transient output, and build FOMOD installers only when the user asks.
 Use `stalker-gamma` as a curated GitMCP repo for addon discovery and modpack composition, not as the primary authority on engine semantics.

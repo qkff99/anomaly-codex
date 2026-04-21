@@ -17,7 +17,24 @@ from _skill_common import REPO_ROOT, load_json_file, read_text_auto
 SCRIPT_DIR = Path(__file__).resolve().parent
 FIXTURES_DIR = REPO_ROOT / "tests" / "fixtures"
 SCENARIOS_PATH = FIXTURES_DIR / "project_scenarios.json"
-SUITE_ORDER = ("core", "logs", "localization", "project-toolchain", "distribution")
+SUITE_ORDER = (
+    "core",
+    "logs",
+    "localization",
+    "project-toolchain",
+    "distribution",
+    "lua-quality",
+    "mcm-contract",
+    "save-safety",
+    "hotpath",
+    "patch-strategy",
+    "import-risk",
+    "output-contracts",
+    "crash-resolution",
+    "patch-generation",
+    "templates-patterns",
+    "dependency-graph",
+)
 
 
 class RegressionFailure(RuntimeError):
@@ -103,6 +120,34 @@ def summarize_log(target: Path) -> dict[str, Any]:
 def extract_log(target: Path, *, kind: str) -> str:
     completed = run_command(python_cmd("log_triage.py", "extract", str(target), "--kind", kind))
     return require_success(completed, label=f"log_triage extract {kind} {target.name}")
+
+
+def quality_report(target: Path, *, task: str = "code-review") -> dict[str, Any]:
+    completed = run_command(python_cmd("quality_scan.py", "scan", str(target), "--task", task, "--json"))
+    output = require_success(completed, label=f"quality_scan {target.name}")
+    try:
+        return json.loads(output)
+    except json.JSONDecodeError as exc:
+        raise RegressionFailure(f"quality_scan did not emit valid JSON for {target}: {output}") from exc
+
+
+def issue_rule_ids(report: dict[str, Any]) -> set[str]:
+    issues = report.get("issues", [])
+    require(isinstance(issues, list), "quality_scan report issues must be a list")
+    return {str(issue.get("rule_id")) for issue in issues if isinstance(issue, dict)}
+
+
+def require_rules(report: dict[str, Any], expected: set[str]) -> dict[str, Any]:
+    found = issue_rule_ids(report)
+    missing = sorted(expected - found)
+    require(not missing, f"quality_scan missing expected rules: {missing}; found={sorted(found)}")
+    return {"rules": sorted(expected), "issue_count": len(report.get("issues", []))}
+
+
+def require_no_high_issues(report: dict[str, Any]) -> dict[str, Any]:
+    high = [issue for issue in report.get("issues", []) if isinstance(issue, dict) and issue.get("severity") == "high"]
+    require(not high, f"unexpected high severity issues in clean fixture: {high}")
+    return {"risk_level": report.get("risk_level"), "issues": len(report.get("issues", []))}
 
 
 def read_project_metadata(name: str) -> dict[str, Any]:
@@ -454,6 +499,321 @@ def run_distribution_suite() -> list[dict[str, Any]]:
             cleanup_project(project_name)
 
 
+def run_lua_quality_suite() -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    temp_projects: list[str] = []
+    fixture = FIXTURES_DIR / "quality" / "bad_mod"
+
+    def case(name: str, fn: Callable[[], Any]) -> None:
+        try:
+            details = fn()
+            results.append({"suite": "lua-quality", "name": name, "ok": True, "details": details})
+        except Exception as exc:
+            results.append({"suite": "lua-quality", "name": name, "ok": False, "details": str(exc)})
+
+    def bad_lua_rules() -> dict[str, Any]:
+        report = quality_report(fixture, task="feature")
+        return require_rules(
+            report,
+            {
+                "LUA_HIDDEN_GLOBAL",
+                "LUA_UNSAFE_DB_ACTOR",
+                "LUA_UNSAFE_LEVEL",
+                "LUA_UNSAFE_ALIFE",
+                "LUA_OPTIONAL_UI_MCM_UNGUARDED",
+                "CALLBACK_WORLD_IN_ON_GAME_START",
+                "MONKEY_PATCH",
+            },
+        )
+
+    def clean_scaffold_smoke() -> dict[str, Any]:
+        project_name = unique_project_name("quality")
+        temp_projects.append(project_name)
+        require_success(run_command(python_cmd("init_project.py", "--name", project_name)), label="init_project quality clean")
+        require_success(
+            run_command(python_cmd("scaffold_template.py", "--project", project_name, "--template", "lua_feature", "--script-name", "quality_clean")),
+            label="scaffold quality clean lua_feature",
+        )
+        require_success(
+            run_command(
+                python_cmd(
+                    "scaffold_template.py",
+                    "--project",
+                    project_name,
+                    "--template",
+                    "lua_mcm",
+                    "--script-name",
+                    "quality_menu",
+                    "--option-root",
+                    "quality_menu",
+                )
+            ),
+            label="scaffold quality clean lua_mcm",
+        )
+        report = quality_report(project_root(project_name), task="feature")
+        return require_no_high_issues(report)
+
+    try:
+        case("bad_lua_rules", bad_lua_rules)
+        case("clean_scaffold_smoke", clean_scaffold_smoke)
+        return results
+    finally:
+        for project_name in temp_projects:
+            cleanup_project(project_name)
+
+
+def run_mcm_contract_suite() -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    fixture = FIXTURES_DIR / "quality" / "bad_mod"
+
+    def case(name: str, fn: Callable[[], Any]) -> None:
+        try:
+            details = fn()
+            results.append({"suite": "mcm-contract", "name": name, "ok": True, "details": details})
+        except Exception as exc:
+            results.append({"suite": "mcm-contract", "name": name, "ok": False, "details": str(exc)})
+
+    def bad_mcm_rules() -> dict[str, Any]:
+        report = quality_report(fixture, task="ui-mcm")
+        return require_rules(report, {"MCM_GET_IN_ON_LOAD", "MCM_KEYBIND_VAL", "MCM_GENERIC_ID", "LOCALIZATION_MISSING_ID"})
+
+    case("bad_mcm_rules", bad_mcm_rules)
+    return results
+
+
+def run_save_safety_suite() -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    fixture = FIXTURES_DIR / "quality" / "bad_mod"
+
+    def case(name: str, fn: Callable[[], Any]) -> None:
+        try:
+            details = fn()
+            results.append({"suite": "save-safety", "name": name, "ok": True, "details": details})
+        except Exception as exc:
+            results.append({"suite": "save-safety", "name": name, "ok": False, "details": str(exc)})
+
+    def bad_save_rules() -> dict[str, Any]:
+        report = quality_report(fixture, task="save-load")
+        return require_rules(report, {"SAVE_MISSING_VERSION", "SAVE_NON_SERIALIZABLE"})
+
+    case("bad_save_rules", bad_save_rules)
+    return results
+
+
+def run_hotpath_suite() -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    fixture = FIXTURES_DIR / "quality" / "bad_mod"
+
+    def case(name: str, fn: Callable[[], Any]) -> None:
+        try:
+            details = fn()
+            results.append({"suite": "hotpath", "name": name, "ok": True, "details": details})
+        except Exception as exc:
+            results.append({"suite": "hotpath", "name": name, "ok": False, "details": str(exc)})
+
+    def bad_hotpath_rules() -> dict[str, Any]:
+        report = quality_report(fixture, task="feature")
+        return require_rules(report, {"HOTPATH_UI_MCM_GET", "HOTPATH_FULL_SCAN", "HOTPATH_CONFIG_READ", "HOTPATH_STRING_WORK"})
+
+    case("bad_hotpath_rules", bad_hotpath_rules)
+    return results
+
+
+def run_patch_strategy_suite() -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    fixture = FIXTURES_DIR / "quality" / "bad_mod"
+
+    def case(name: str, fn: Callable[[], Any]) -> None:
+        try:
+            details = fn()
+            results.append({"suite": "patch-strategy", "name": name, "ok": True, "details": details})
+        except Exception as exc:
+            results.append({"suite": "patch-strategy", "name": name, "ok": False, "details": str(exc)})
+
+    def full_override_rules() -> dict[str, Any]:
+        report = quality_report(fixture, task="code-review")
+        details = require_rules(report, {"PATCH_FULL_LTX_OVERRIDE", "PATCH_FULL_XML_OVERRIDE"})
+        opportunities = report.get("patch_opportunities", [])
+        require(isinstance(opportunities, list) and len(opportunities) >= 2, "expected DLTX/DXML patch opportunities")
+        details["patch_opportunities"] = len(opportunities)
+        return details
+
+    case("full_override_rules", full_override_rules)
+    return results
+
+
+def run_import_risk_suite() -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    fixture = FIXTURES_DIR / "quality" / "bad_mod"
+
+    def case(name: str, fn: Callable[[], Any]) -> None:
+        try:
+            details = fn()
+            results.append({"suite": "import-risk", "name": name, "ok": True, "details": details})
+        except Exception as exc:
+            results.append({"suite": "import-risk", "name": name, "ok": False, "details": str(exc)})
+
+    def import_surface() -> dict[str, Any]:
+        report = quality_report(fixture, task="distribution-packaging")
+        details = require_rules(report, {"IMPORT_TOP_LEVEL_IGNORED", "MONKEY_PATCH"})
+        surface = report.get("conflict_surface", {})
+        require(isinstance(surface, dict) and "script_names" in surface, "expected script names in conflict surface")
+        graph = report.get("dependency_graph", {})
+        require(isinstance(graph, dict) and graph, "expected dependency graph in quality report")
+        details["script_names"] = len(surface.get("script_names", []))
+        details["graph_files"] = len(graph)
+        return details
+
+    case("import_surface", import_surface)
+    return results
+
+
+def run_output_contracts_suite() -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+
+    def case(name: str, fn: Callable[[], Any]) -> None:
+        try:
+            details = fn()
+            results.append({"suite": "output-contracts", "name": name, "ok": True, "details": details})
+        except Exception as exc:
+            results.append({"suite": "output-contracts", "name": name, "ok": False, "details": str(exc)})
+
+    def query_hints_contract() -> dict[str, Any]:
+        output = require_success(run_command(python_cmd("query_hints.py", "ui-mcm")), label="query_hints ui-mcm output contracts")
+        for token in ("[quality_gates]", "mcm-contract", "[output_contract]", "[source_tier_markers]", "verified local"):
+            require(token in output, f"query_hints output missing {token!r}")
+        return {"lines": len(output.splitlines())}
+
+    def explain_rule_contract() -> dict[str, Any]:
+        output = require_success(run_command(python_cmd("quality_scan.py", "explain-rule", "LUA_UNSAFE_DB_ACTOR")), label="quality_scan explain-rule")
+        require("Guard engine-facing access" in output, "explain-rule did not print rule suggestion")
+        return {"rule": "LUA_UNSAFE_DB_ACTOR"}
+
+    case("query_hints_contract", query_hints_contract)
+    case("explain_rule_contract", explain_rule_contract)
+    return results
+
+
+def run_crash_resolution_suite() -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    fixtures = FIXTURES_DIR / "logs"
+
+    def case(name: str, fn: Callable[[], Any]) -> None:
+        try:
+            details = fn()
+            results.append({"suite": "crash-resolution", "name": name, "ok": True, "details": details})
+        except Exception as exc:
+            results.append({"suite": "crash-resolution", "name": name, "ok": False, "details": str(exc)})
+
+    def lua_resolution_candidates() -> dict[str, Any]:
+        summary = summarize_log(fixtures / "lua_runtime.log")
+        points = summary.get("inspect_points", [])
+        require(isinstance(points, list) and points, "expected inspect points")
+        resolved = next((point for point in points if point.get("local_path")), None)
+        require(resolved is not None, "expected resolved Lua inspect point")
+        require(resolved.get("resolution_tier") == "local_vanilla", f"unexpected resolution tier: {resolved.get('resolution_tier')}")
+        candidates = resolved.get("resolution_candidates", [])
+        require(isinstance(candidates, list) and candidates, "expected resolution candidates")
+        return {"tier": resolved.get("resolution_tier"), "candidates": len(candidates)}
+
+    case("lua_resolution_candidates", lua_resolution_candidates)
+    return results
+
+
+def run_patch_generation_suite() -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    fixture = FIXTURES_DIR / "quality" / "bad_mod"
+
+    def case(name: str, fn: Callable[[], Any]) -> None:
+        try:
+            details = fn()
+            results.append({"suite": "patch-generation", "name": name, "ok": True, "details": details})
+        except Exception as exc:
+            results.append({"suite": "patch-generation", "name": name, "ok": False, "details": str(exc)})
+
+    def dltx_patch_text() -> dict[str, Any]:
+        target = fixture / "gamedata" / "configs" / "game.ltx"
+        output = require_success(run_command(python_cmd("quality_scan.py", "suggest-patch", str(target), "--json")), label="quality_scan suggest-patch ltx")
+        data = json.loads(output)
+        require(data.get("patch_kind") == "DLTX", "expected DLTX suggestion")
+        patch_text = data.get("patch_text", "")
+        require("@[settings]" in patch_text and "value = true" in patch_text, "DLTX patch text missing expected section/value")
+        return {"patch_kind": data.get("patch_kind")}
+
+    def dxml_patch_scaffold() -> dict[str, Any]:
+        target = fixture / "gamedata" / "configs" / "ui" / "maingame.xml"
+        output = require_success(run_command(python_cmd("quality_scan.py", "suggest-patch", str(target), "--json")), label="quality_scan suggest-patch xml")
+        data = json.loads(output)
+        require(data.get("patch_kind") == "DXML", "expected DXML suggestion")
+        require(data.get("manual_required") is True, "DXML suggestion should require manual XML operations")
+        require("on_xml_read" in data.get("patch_text", ""), "DXML scaffold missing on_xml_read")
+        return {"patch_kind": data.get("patch_kind"), "ranges": len(data.get("changed_ranges", []))}
+
+    case("dltx_patch_text", dltx_patch_text)
+    case("dxml_patch_scaffold", dxml_patch_scaffold)
+    return results
+
+
+def run_templates_patterns_suite() -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+
+    def case(name: str, fn: Callable[[], Any]) -> None:
+        try:
+            details = fn()
+            results.append({"suite": "templates-patterns", "name": name, "ok": True, "details": details})
+        except Exception as exc:
+            results.append({"suite": "templates-patterns", "name": name, "ok": False, "details": str(exc)})
+
+    def save_template() -> dict[str, Any]:
+        output = require_success(run_command(python_cmd("quality_scan.py", "save-template", "fixture-save", "--json")), label="quality_scan save-template")
+        data = json.loads(output)
+        snippet = data.get("snippet", "")
+        for token in ("STATE_VERSION", "migrate_state", "save_state", "load_state", "Rebuild transient engine object caches"):
+            require(token in snippet, f"save template missing {token}")
+        return {"module": data.get("module")}
+
+    def optional_patterns() -> dict[str, Any]:
+        output = require_success(run_command(python_cmd("quality_scan.py", "optional-pattern", "ui_mcm", "--json")), label="quality_scan optional-pattern")
+        data = json.loads(output)
+        snippet = data.get("snippet", "")
+        require("if not ui_mcm then" in snippet and "fallback" in snippet, "ui_mcm optional pattern missing guard/fallback")
+        listed = require_success(run_command(python_cmd("quality_scan.py", "optional-pattern", "list", "--json")), label="quality_scan optional-pattern list")
+        list_data = json.loads(listed)
+        require("dynamic_news" in list_data.get("patterns", []), "optional pattern list missing dynamic_news")
+        return {"pattern": data.get("pattern"), "patterns": len(list_data.get("patterns", []))}
+
+    case("save_template", save_template)
+    case("optional_patterns", optional_patterns)
+    return results
+
+
+def run_dependency_graph_suite() -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    fixture = FIXTURES_DIR / "quality" / "bad_mod"
+
+    def case(name: str, fn: Callable[[], Any]) -> None:
+        try:
+            details = fn()
+            results.append({"suite": "dependency-graph", "name": name, "ok": True, "details": details})
+        except Exception as exc:
+            results.append({"suite": "dependency-graph", "name": name, "ok": False, "details": str(exc)})
+
+    def graph_contains_exports_calls_and_surfaces() -> dict[str, Any]:
+        output = require_success(run_command(python_cmd("quality_scan.py", "graph", str(fixture), "--json")), label="quality_scan graph")
+        data = json.loads(output)
+        graph = data.get("dependency_graph", {})
+        quality = graph.get("gamedata/scripts/bad_quality.script", {})
+        require("actor_on_update" in quality.get("exports", []), "graph missing exported actor_on_update")
+        require("ui_mcm.get" in quality.get("calls", []), "graph missing ui_mcm.get call")
+        require("save_state" in quality.get("save_functions", []), "graph missing save_state")
+        surface = data.get("conflict_surface", {})
+        require("bad_quality" in surface.get("script_names", []), "conflict surface missing script name")
+        return {"graph_files": len(graph), "surface_keys": len(surface)}
+
+    case("graph_contains_exports_calls_and_surfaces", graph_contains_exports_calls_and_surfaces)
+    return results
+
+
 def run_suite(name: str) -> list[dict[str, Any]]:
     if name == "core":
         return run_core_suite()
@@ -465,6 +825,28 @@ def run_suite(name: str) -> list[dict[str, Any]]:
         return run_project_toolchain_suite()
     if name == "distribution":
         return run_distribution_suite()
+    if name == "lua-quality":
+        return run_lua_quality_suite()
+    if name == "mcm-contract":
+        return run_mcm_contract_suite()
+    if name == "save-safety":
+        return run_save_safety_suite()
+    if name == "hotpath":
+        return run_hotpath_suite()
+    if name == "patch-strategy":
+        return run_patch_strategy_suite()
+    if name == "import-risk":
+        return run_import_risk_suite()
+    if name == "output-contracts":
+        return run_output_contracts_suite()
+    if name == "crash-resolution":
+        return run_crash_resolution_suite()
+    if name == "patch-generation":
+        return run_patch_generation_suite()
+    if name == "templates-patterns":
+        return run_templates_patterns_suite()
+    if name == "dependency-graph":
+        return run_dependency_graph_suite()
     raise AssertionError(name)
 
 

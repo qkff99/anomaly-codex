@@ -33,6 +33,11 @@ This skill should know how to detect, install-guide, and use `luac` for Lua 5.1 
 - Prefer `scripts/luac_tool.py check ...` to syntax-check touched `.lua` and `.script` files.
 - If no compiler is available, use `scripts/luac_tool.py --install-if-missing` or `scripts/bootstrap_env.* ensure luac` before falling back to install hints.
 - Prefer Lua 5.1 tooling for Anomaly work. Warn when the detected compiler is not clearly 5.1.
+- Prefer `scripts/quality_scan.py scan <path> --task <task-type>` after or alongside `luac` for Anomaly-specific static quality checks: hidden globals, unsafe engine boundaries, hot-path polling, MCM contract errors, save serialization risks, full overrides, patch opportunities, and conflict surface.
+- Use `scripts/quality_scan.py explain-rule <rule-id>` when a reported rule needs a concise fix pattern.
+- Use `scripts/quality_scan.py graph <path>` for script dependency graphs, exports, calls, callbacks, save functions, monkey patches, and conflict surface.
+- Use `scripts/quality_scan.py suggest-patch <gamedata-file>` to compare a full `.ltx`/`.xml` override against local vanilla and generate a DLTX suggestion or DXML scaffold.
+- Use `scripts/quality_scan.py save-template <module>` for versioned save/load migration boilerplate, and `scripts/quality_scan.py optional-pattern <id>` for optional dependency guard snippets.
 
 ## Dependency Bootstrap
 
@@ -209,11 +214,12 @@ Recommended references:
 18. If the task is about distribution or MO2 delivery, package the project first and then use `scripts/fomod_tool.py` for a FOMOD staging folder when requested.
 19. If XML localization files or other legacy-encoded XML files were touched, inspect them with `scripts/xml_localization_tool.py`, use `prepare-edit` before editing, and `finish-edit` before finalizing.
 20. If Lua files were touched, run `scripts/luac_tool.py check ...` before finalizing unless the environment clearly cannot provide a compiler.
-21. For project-local smoke checks, prefer `scripts/validate_project.py`, `scripts/package_project.py`, and `scripts/fomod_tool.py` as needed.
-22. For repo-local reliability checks and first-run verification, use `scripts/run_regressions.py` instead of relying on hand-kept example projects under `projects/`.
-23. If local refs are insufficient, use `scripts/discover_github_refs.py` to search GitHub and persist only curated high-signal repos.
-24. Verify any remote or wiki-derived claim against local code or primary references before acting.
-25. Report verified facts separately from inference.
+21. For mod edits, reviews, imports, and feature work, run `scripts/quality_scan.py scan <project-or-mod-root> --task <task-type>` when practical. Treat high findings as blockers unless the task explicitly accepts that risk.
+22. For project-local smoke checks, prefer `scripts/validate_project.py`, `scripts/package_project.py`, and `scripts/fomod_tool.py` as needed.
+23. For repo-local reliability checks and first-run verification, use `scripts/run_regressions.py` instead of relying on hand-kept example projects under `projects/`.
+24. If local refs are insufficient, use `scripts/discover_github_refs.py` to search GitHub and persist only curated high-signal repos.
+25. Verify any remote or wiki-derived claim against local code or primary references before acting.
+26. Report verified facts separately from inference.
 
 ## Safety Rules
 
@@ -295,6 +301,7 @@ The same pattern applies to:
 - `find_references`
 - `link_user_reference`
 - `luac_tool`
+- `quality_scan`
 - `xml_localization_tool`
 - `query_hints`
 - `map_subsystems`
@@ -340,11 +347,13 @@ Load only what the task needs:
 - `scripts/link_user_reference.py` links user-local refs into `ai_workspace/user references`
 - `scripts/bootstrap_env.sh` and `scripts/bootstrap_env.ps1` install missing local dependencies when practical
 - `scripts/luac_tool.py` detects and uses `luac` for syntax checks
+- `scripts/quality_scan.py` reports Anomaly-specific static quality issues, risk score, vanilla delta, patch opportunities, conflict surface, dependency graph, and task gates
+- `scripts/quality_scan.py graph`, `suggest-patch`, `save-template`, and `optional-pattern` cover advanced review, patch reduction, save migration, and optional dependency templates
 - `scripts/xml_localization_tool.py` inspects XML localization files, converts them to UTF-8 for editing, and restores their original encoding
 - `scripts/fomod_tool.py` stages a simple `00 Core + fomod/` installer package for MO2-compatible distribution
 - `scripts/map_subsystems.py` classifies files by subsystem and path patterns
 - `scripts/check_overlay.py` validates `.codex-stalker/workspace.json` or `.codex-stalker/workspace.yml`
-- `scripts/query_hints.py` prints search and reference hints by task type
+- `scripts/query_hints.py` prints search/reference hints plus quality gates, checklist items, quality scan commands, and task-specific final-answer contracts
 
 Search and inspection helpers are read-only. Project scaffolding and packaging helpers intentionally write project artifacts.
 
@@ -354,3 +363,4 @@ Search and inspection helpers are read-only. Project scaffolding and packaging h
 - Prefer local file citations when the workspace contains the relevant code.
 - Mark when confidence is lower due to missing local refs or remote-only evidence.
 - State which source tier produced the answer when that materially affects reliability.
+- For mod edits and reviews, include the task-specific output contract from `manifests/output_contracts.json`: touched files when applicable, source tier marker (`verified local`, `verified MCP`, or `inference`), validation run, runtime risks, and manual QA.

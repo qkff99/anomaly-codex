@@ -1,0 +1,168 @@
+{
+  "severity_order": ["info", "low", "medium", "high"],
+  "severity_scores": {
+    "info": 0,
+    "low": 1,
+    "medium": 3,
+    "high": 7
+  },
+  "generic_names": ["config", "menu", "mcm", "mod", "my_mod", "on_update", "options", "root", "settings", "test", "update"],
+  "task_gates": {
+    "bugfix": ["lua-quality", "source-tier", "done-report"],
+    "code-review": ["lua-quality", "vanilla-delta", "patch-strategy", "done-report"],
+    "config-tweak": ["patch-strategy", "localization-coverage", "done-report"],
+    "distribution-packaging": ["import-risk", "patch-strategy", "done-report"],
+    "feature": ["lua-quality", "save-safety", "hotpath", "patch-strategy", "done-report"],
+    "localization": ["localization-coverage", "encoding-guard", "done-report"],
+    "log-triage": ["source-tier", "crash-source-resolution", "done-report"],
+    "save-load": ["save-safety", "lua-quality", "done-report"],
+    "ui-mcm": ["mcm-contract", "localization-coverage", "optional-dependency", "done-report"],
+    "weapons-hud": ["lua-quality", "hotpath", "vanilla-delta", "done-report"]
+  },
+  "rules": {
+    "CALLBACK_WORLD_IN_ON_GAME_START": {
+      "severity": "high",
+      "category": "callback-lifecycle",
+      "message": "World-dependent object access appears inside on_game_start.",
+      "suggestion": "Move actor/world logic to actor_on_first_update and keep on_game_start for callback registration."
+    },
+    "HOTPATH_CONFIG_READ": {
+      "severity": "medium",
+      "category": "hotpath",
+      "message": "Hot path appears to read config or construct ini state.",
+      "suggestion": "Cache config outside update paths and refresh on apply/load callbacks."
+    },
+    "HOTPATH_FULL_SCAN": {
+      "severity": "high",
+      "category": "hotpath",
+      "message": "Hot path appears to run an unbounded table/storage scan.",
+      "suggestion": "Bound work per tick or maintain an indexed cache."
+    },
+    "HOTPATH_STRING_WORK": {
+      "severity": "low",
+      "category": "hotpath",
+      "message": "Hot path performs repeated string work.",
+      "suggestion": "Precompute strings or move parsing outside per-frame callbacks."
+    },
+    "HOTPATH_UI_MCM_GET": {
+      "severity": "medium",
+      "category": "hotpath",
+      "message": "Hot path polls ui_mcm.get.",
+      "suggestion": "Read MCM settings on apply/change callbacks and cache runtime values."
+    },
+    "IMPORT_TOP_LEVEL_IGNORED": {
+      "severity": "low",
+      "category": "import-risk",
+      "message": "Imported mod root contains top-level files outside gamedata.",
+      "suggestion": "Review whether these files are docs only; package_project copies gamedata payload only."
+    },
+    "LOCALIZATION_LEGACY_ENCODING": {
+      "severity": "info",
+      "category": "encoding-guard",
+      "message": "Localization XML uses a legacy encoding.",
+      "suggestion": "Use xml_localization_tool.py prepare-edit before editing and finish-edit before finalizing."
+    },
+    "LOCALIZATION_MISSING_ID": {
+      "severity": "medium",
+      "category": "localization",
+      "message": "Referenced localization id is not defined under configs/text.",
+      "suggestion": "Add the missing string id to the project localization XML for every supported language."
+    },
+    "LUA_51_UNSUPPORTED": {
+      "severity": "medium",
+      "category": "lua-quality",
+      "message": "Lua source uses syntax or helpers outside Lua 5.1 expectations.",
+      "suggestion": "Keep runtime code Lua 5.1 compatible for Anomaly."
+    },
+    "LUA_HIDDEN_GLOBAL": {
+      "severity": "medium",
+      "category": "lua-quality",
+      "message": "Bare assignment may create a hidden module global.",
+      "suggestion": "Use local for private state or an explicit exported function/table for public API."
+    },
+    "LUA_OPTIONAL_UI_MCM_UNGUARDED": {
+      "severity": "medium",
+      "category": "optional-dependency",
+      "message": "ui_mcm is used without a nearby optional dependency guard.",
+      "suggestion": "Guard with if ui_mcm then ... and provide defaults when MCM is absent."
+    },
+    "LUA_UNSAFE_ALIFE": {
+      "severity": "medium",
+      "category": "nil-safety",
+      "message": "alife() is used without a nearby nil guard.",
+      "suggestion": "Store alife() in a local and return safely when it is nil."
+    },
+    "LUA_UNSAFE_DB_ACTOR": {
+      "severity": "high",
+      "category": "nil-safety",
+      "message": "db.actor is used without a nearby db/db.actor guard.",
+      "suggestion": "Guard engine-facing access with if not db or not db.actor then return end."
+    },
+    "LUA_UNSAFE_LEVEL": {
+      "severity": "medium",
+      "category": "nil-safety",
+      "message": "level is used without a nearby availability guard.",
+      "suggestion": "Guard level-dependent calls and keep them out of root/on_game_start setup."
+    },
+    "MCM_GENERIC_ID": {
+      "severity": "low",
+      "category": "mcm-contract",
+      "message": "MCM option id is too generic and may collide.",
+      "suggestion": "Prefix option ids with the project/module id."
+    },
+    "MCM_GET_IN_ON_LOAD": {
+      "severity": "high",
+      "category": "mcm-contract",
+      "message": "ui_mcm.get is called while on_mcm_load builds the option tree.",
+      "suggestion": "Return only the option tree from on_mcm_load; read settings later at runtime or on apply callbacks."
+    },
+    "MCM_KEYBIND_VAL": {
+      "severity": "medium",
+      "category": "mcm-contract",
+      "message": "MCM key_bind option does not declare val = 2.",
+      "suggestion": "Set key_bind val = 2 and use descriptive localization ids."
+    },
+    "MCM_MISSING_ON_LOAD": {
+      "severity": "high",
+      "category": "mcm-contract",
+      "message": "MCM script file does not expose on_mcm_load.",
+      "suggestion": "Define function on_mcm_load() and return a valid options tree."
+    },
+    "MONKEY_PATCH": {
+      "severity": "medium",
+      "category": "compatibility",
+      "message": "Lua code appears to monkey patch an existing table/function.",
+      "suggestion": "Prefer callbacks/config hooks. If patching is required, preserve the original function and document load-order risk."
+    },
+    "NAMING_GENERIC_ID": {
+      "severity": "low",
+      "category": "conflict-surface",
+      "message": "Generic custom id/name increases addon conflict risk.",
+      "suggestion": "Use a stable project/module prefix for callbacks, sections, options, and script-level ids."
+    },
+    "PATCH_FULL_LTX_OVERRIDE": {
+      "severity": "medium",
+      "category": "patch-strategy",
+      "message": "LTX file overrides a known vanilla file.",
+      "suggestion": "Prefer a DLTX patch when Modded Exes is available."
+    },
+    "PATCH_FULL_XML_OVERRIDE": {
+      "severity": "medium",
+      "category": "patch-strategy",
+      "message": "XML file overrides a known vanilla file.",
+      "suggestion": "Prefer DXML or a narrow XML diff when Modded Exes is available."
+    },
+    "SAVE_MISSING_VERSION": {
+      "severity": "medium",
+      "category": "save-safety",
+      "message": "Persistent save/load code has no visible state version.",
+      "suggestion": "Add STATE_VERSION, store it with serialized data, and migrate defaults on load."
+    },
+    "SAVE_NON_SERIALIZABLE": {
+      "severity": "high",
+      "category": "save-safety",
+      "message": "Save-state code appears to store an engine object or function.",
+      "suggestion": "Store only serializable ids/primitive values and rebuild transient engine references after load."
+    }
+  }
+}

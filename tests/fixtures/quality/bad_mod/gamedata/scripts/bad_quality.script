@@ -1,0 +1,34 @@
+-- Bad quality fixture. Each issue is intentional.
+
+leaked_value = 1
+
+function on_game_start()
+    local actor = db.actor
+    level.add_call(function()
+        return actor
+    end)
+    RegisterScriptCallback("actor_on_update", actor_on_update)
+end
+
+function actor_on_update()
+    local enabled = ui_mcm.get("settings/enable")
+    local ini = ini_file("bad_quality.ltx")
+    for id, storage in pairs(db.storage) do
+        local label = tostring(id):gsub("_", " ")
+        if storage and label then
+            leaked_value = leaked_value + 1
+        end
+    end
+    return enabled
+end
+
+function save_state(m_data)
+    m_data.bad_quality = {}
+    m_data.bad_quality.actor = db.actor
+end
+
+xr_effects.bad_quality_override = function(actor, npc)
+    return actor ~= nil and npc ~= nil
+end
+
+local sim = alife()

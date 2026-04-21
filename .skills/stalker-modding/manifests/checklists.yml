@@ -1,3 +1,8 @@
+canonical_manifest: checklists.json
+notes:
+  - Scripts load checklists.json first to avoid a PyYAML dependency.
+  - Keep this YAML mirror human-readable and update the JSON copy for runtime behavior.
+
 checklists:
   save_load:
     - version serialized state

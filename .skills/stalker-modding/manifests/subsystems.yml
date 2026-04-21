@@ -1,3 +1,8 @@
+canonical_manifest: subsystems.json
+notes:
+  - Scripts load subsystems.json first to avoid a PyYAML dependency.
+  - Keep this YAML mirror human-readable and update the JSON copy for runtime behavior.
+
 subsystems:
   - id: scripting-runtime
     typical_paths:

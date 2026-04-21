@@ -1,0 +1,85 @@
+{
+  "subsystems": [
+    {
+      "id": "scripting-runtime",
+      "typical_paths": ["gamedata/scripts"],
+      "entrypoint_patterns": ["RegisterScriptCallback", "bind_object", "object_binder"],
+      "risk_level": "high",
+      "required_checks": ["nil-safety", "callback-tracing", "save-impact"],
+      "reference_files": ["references/runtime-model.md", "references/callbacks-and-binders.md"]
+    },
+    {
+      "id": "weapons-hud",
+      "typical_paths": ["gamedata/scripts", "gamedata/configs/items", "gamedata/configs/ui"],
+      "entrypoint_patterns": ["actor_on_weapon", "hud_animation", "ui_debug_wpn_hud"],
+      "risk_level": "high",
+      "required_checks": ["animation-state-flow", "slot-and-zoom-flow", "body-conflicts"],
+      "reference_files": ["references/weapons-and-hud.md", "references/ui-xml-mcm.md"]
+    },
+    {
+      "id": "visible-body-legs",
+      "typical_paths": ["gamedata/scripts", "gamedata/configs/models"],
+      "entrypoint_patterns": ["legs", "freelook", "ladder"],
+      "risk_level": "high",
+      "required_checks": ["active-item-conflict", "outfit-visual-flow", "save-load"],
+      "reference_files": ["references/visible-body-and-legs.md", "references/performance-hotpaths.md"]
+    },
+    {
+      "id": "ui-mcm",
+      "typical_paths": [
+        "gamedata/scripts",
+        "gamedata/configs/ui",
+        "gamedata/configs/text",
+        "gamedata/scripts/*mcm.script",
+        "gamedata/configs/mcm_key_localization.ltx"
+      ],
+      "entrypoint_patterns": ["delayed_attach", "mcm", "on_mcm_load", "ui_mcm.get", "ui_hook_functor", "ui_"],
+      "risk_level": "medium",
+      "required_checks": [
+        "xml-script-alignment",
+        "localization",
+        "mcm-path-and-id-stability",
+        "on-mcm-load-get-safety",
+        "optional-dependency-safety"
+      ],
+      "reference_files": ["references/mcm-menu.md", "references/ui-xml-mcm.md"]
+    },
+    {
+      "id": "tasks-story-alife",
+      "typical_paths": [
+        "gamedata/scripts",
+        "gamedata/configs/gameplay",
+        "gamedata/configs/creatures",
+        "gamedata/configs/misc"
+      ],
+      "entrypoint_patterns": ["task_manager", "story", "smart_terrain"],
+      "risk_level": "high",
+      "required_checks": ["id-stability", "online-offline-boundary", "save-impact"],
+      "reference_files": ["references/tasks-story-alife.md", "references/save-safety.md"]
+    },
+    {
+      "id": "engine-capability",
+      "typical_paths": ["ai_workspace/src", "xrEngine"],
+      "entrypoint_patterns": ["lua_help", "callback", "console_command"],
+      "risk_level": "medium",
+      "required_checks": ["source-tier-citation", "local-vs-remote-verify"],
+      "reference_files": ["references/repos/xray-monolith.md", "references/engine-quirks.md"]
+    },
+    {
+      "id": "assets-animations",
+      "typical_paths": ["meshes", "textures", "animations", "blender"],
+      "entrypoint_patterns": ["motion", "skeleton", "hud_animation"],
+      "risk_level": "medium",
+      "required_checks": ["config-asset-alignment", "naming-consistency"],
+      "reference_files": ["references/assets-and-animations.md"]
+    },
+    {
+      "id": "mapping-sdk",
+      "typical_paths": ["levels", "rawdata", "sdk"],
+      "entrypoint_patterns": ["level", "ai_map", "cform"],
+      "risk_level": "medium",
+      "required_checks": ["generated-vs-source-files", "toolchain-assumptions"],
+      "reference_files": ["references/mapping-and-sdk.md"]
+    }
+  ]
+}

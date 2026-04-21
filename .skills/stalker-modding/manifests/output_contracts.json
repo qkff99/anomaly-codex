@@ -1,0 +1,57 @@
+{
+  "contracts": {
+    "default": [
+      "state source tier used",
+      "state validation run or why it was not run",
+      "state runtime risks",
+      "state manual QA needed"
+    ],
+    "bugfix": [
+      "cause",
+      "fix summary",
+      "touched files",
+      "source tier used",
+      "validation run",
+      "remaining risks"
+    ],
+    "code-review": [
+      "findings first with file/line",
+      "risk severity",
+      "missing tests or validation gaps",
+      "vanilla delta or patch strategy concerns"
+    ],
+    "distribution-packaging": [
+      "package shape",
+      "included payload",
+      "MO2/FOMOD assumptions",
+      "validation run"
+    ],
+    "feature": [
+      "behavior added",
+      "touched files",
+      "config/MCM/localization surface",
+      "source tier used",
+      "validation run",
+      "manual QA"
+    ],
+    "log-triage": [
+      "headline error",
+      "resolved source file",
+      "source tier used",
+      "likely owner subsystem",
+      "next inspection points"
+    ],
+    "ui-mcm": [
+      "MCM ids and option root",
+      "runtime settings read path",
+      "localization files",
+      "validation run",
+      "manual QA"
+    ]
+  },
+  "source_tier_markers": [
+    "verified local",
+    "verified MCP",
+    "inference"
+  ]
+}
