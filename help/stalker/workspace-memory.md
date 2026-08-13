@@ -5,14 +5,11 @@ This repository is a Codex skill and plugin workbench for STALKER Anomaly moddin
 Canonical local assets:
 - `.skills/stalker-modding` is the primary skill source of truth.
 - `plugins/stalker-modding-workbench` is the repo-local Codex plugin wrapper that exposes the same skill plus MCP endpoints.
-- `.agents/plugins/marketplace.json` marks the plugin as `INSTALLED_BY_DEFAULT` for repo-local discovery.
+- `plugins/expertise-compiler` provides the bundled compiler and `.agents/plugins/marketplace.json` marks both plugins as `INSTALLED_BY_DEFAULT`.
+- `.expertise/stalker-anomaly` is the checked-in starter vault; `.agents/skills/stalker-anomaly-expert` is its mandatory runtime skill.
 - `.codex-stalker/workspace.json` is the machine-readable overlay for this workbench.
-- `.codex-stalker/state/bootstrap_state.json` is the generated first-use bootstrap marker for this workspace and should not be tracked.
 - `.vscode/mcp.json` is the tracked VS Code MCP config for the same repo-local endpoints, including `modorganizer2`.
 - `.codex-stalker/workspace.json` also stores remembered external paths and curated known reference repos such as `stalker-gamma`.
-- `ai_workspace/map_index.html` is the generated human index over graphify artifacts in this workspace.
-- `ai_workspace/lua-graphify-out` is the generated Lua-only graph over `*.script` and `*.lua`.
-- per-folder `ai_workspace/*/graphify-out` outputs are focused routing maps for large local corpora, especially `vanilla scripts`, `vanilla scripts/gamedata`, `GAMMA Scripts`, `GAMMA Scripts/scripts`, and `Anomaly-Mod-Configuration-Menu-main`.
 - `xray-monolith` MCP works best through code search and documentation fetch; for concrete file reads, prefer raw GitHub URLs over `github.com/.../blob/...` links.
 - `xray-monolith` doc search is useful but not fully reliable on narrow queries; if it falls back to README text, switch to code search plus raw file fetch.
 
@@ -25,7 +22,7 @@ Reference roots:
 - `ai_workspace/GAMMA Scripts` for flattened local GAMMA configs/scripts extracted from MO2 mods
 - `ai_workspace/user references` for user-added local references that should be searched automatically
 - `tests/fixtures` for deterministic repo-local regression inputs; this is not a live mod workspace
-- `ai_workspace/lua-graphify-out`, `ai_workspace/vanilla scripts/graphify-out`, and `ai_workspace/GAMMA Scripts/graphify-out` for graph-based orientation before broad raw-file search
+- `.expertise/stalker-anomaly` for mandatory evidence-backed routing, bounded context, and source-span verification
 
 Lifecycle notes:
 - `ai_workspace/vanilla scripts/gamedata` is the baseline mod tree for file placement.
@@ -42,13 +39,8 @@ Lifecycle notes:
 - If the task starts from an existing mod, always choose explicitly between import-to-`projects` and in-place editing.
 - Prefer `import_mod.py` for copy mode.
 - If the task starts from a crash log, prefer `log_triage.py` before reading raw log text.
-- If the workspace or subsystem is large and unfamiliar, prefer existing graphify artifacts before broad raw-file search.
-- For STALKER script behavior work, prefer the Lua-only graph under `ai_workspace/lua-graphify-out`.
-- Use `./.skills/stalker-modding/scripts/graphify_workspace.py all --root ai_workspace` to refresh the Lua-only map and `ai_workspace/map_index.html`.
-- On first real use of the plugin/skill, if `.codex-stalker/state/bootstrap_state.json` is missing or stale, run `./.skills/stalker-modding/scripts/bootstrap_workspace.py` automatically before relying on graphify artifacts.
-- `bootstrap_workspace.py` now installs `graphifyy`, patches installed `graphify` for `.script` Lua support, builds `ai_workspace/lua-graphify-out`, builds focused subfolder maps for the Lua-bearing `ai_workspace` roots, refreshes `ai_workspace/map_index.html`, and records the result in `.codex-stalker/state/bootstrap_state.json`.
-- This workspace patches local `graphify` so `*.script` is treated as Lua.
-- Prefer the focused `ai_workspace/**/graphify-out` map over the global workspace graph when a question is already narrowed to one reference pack or one subfolder.
+- Before a repository decision, follow `$stalker-anomaly-expert`: check vault health, route through the Wiki, retrieve a bounded context pack, and verify the source spans behind decision-critical claims.
+- Use `./.skills/stalker-modding/scripts/expertctl.py` as the bundled no-install compiler entrypoint. User-added sources must flow through `add`, `scan`, `compile-plan`, `apply-build`, and `doctor`.
 - Reusable MO2 `mods/`, unpacked `gamedata/`, log folders, and external mod roots may be remembered in `external_paths`, but only after explicit user approval.
 - For log-driven triage, MO2 `mods/` or unpacked `gamedata/` is usually the better remembered path, because it helps resolve the failing addon files.
 - Use `stalker-gamma` as a curated repo for addon discovery and modpack composition, not for authoritative engine semantics.
@@ -63,7 +55,7 @@ Lifecycle notes:
 If more local material is needed, prefer linking external folders or files into `ai_workspace/user references` instead of copying large reference dumps into the repo.
 
 When a task is about actual mod behavior, search the relevant `ai_workspace` roots before using remote MCP or web sources.
-When a task is about orientation, dependency routing, or subsystem mapping across a large local Lua corpus, check graphify artifacts before broader raw-file search.
+When a task needs orientation, dependency routing, or subsystem mapping, use the evidence vault before broader raw-file search.
 When the task is inside a project, prefer the project overlay after `AGENTS.md` and before generic workspace assumptions.
 For new work, prefer `init_project.py`, `scaffold_template.py`, `validate_project.py`, `package_project.py`, and `fomod_tool.py` over hand-rolled setup.
 For repo-local reliability checks, prefer `run_regressions.py` over ad-hoc sample projects.
@@ -72,7 +64,7 @@ For quality review of mod roots or projects, prefer `./.skills/stalker-modding/s
 For recurring log work, prefer remembered MO2 `mods/` or unpacked `gamedata/` first; use `logs_dir` memory only when the user explicitly wants repeated latest-log automation.
 When local refs are not enough, prefer `discover_github_refs.py` and curated known repos before generic web searching.
 When Lua files are edited, prefer `./.skills/stalker-modding/scripts/luac_tool.py check ...` as the first syntax gate.
-When a graph view would materially reduce search cost, prefer `./.skills/stalker-modding/scripts/graphify_workspace.py` and existing graphify outputs over ad-hoc file-by-file orientation.
+When vault sources change or a knowledge gap is found, use `expertctl` compilation or repair bundles rather than editing derived vault data manually.
 When mod behavior is edited or reviewed, prefer `./.skills/stalker-modding/scripts/quality_scan.py scan ... --task ...` as the static quality gate.
 When localization XML is edited, prefer `./.skills/stalker-modding/scripts/xml_localization_tool.py prepare-edit ...` before editing and `finish-edit ...` before finalizing.
 If Python, `luac`, or `rg` is missing, prefer `./.skills/stalker-modding/scripts/bootstrap_env.sh ensure ...` before treating the environment as blocked.

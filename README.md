@@ -7,7 +7,7 @@ Repo-local Codex skill/plugin workbench for S.T.A.L.K.E.R. Anomaly 1.5.3 modding
 This repository is meant to be opened directly in Codex or VS Code. It provides:
 - a local STALKER modding skill
 - repo-local MCP config for DeepWiki and GitMCP references
-- helper scripts for project creation, import, validation, packaging, FOMOD staging, XML encodings, crash-log triage, and graph-assisted workspace orientation
+- helper scripts for project creation, import, validation, packaging, FOMOD staging, XML encodings, crash-log triage, and an evidence-backed expertise vault
 
 `AGENTS.md` and `.skills/stalker-modding/SKILL.md` remain the source of truth for the agent. This README is the human quickstart.
 
@@ -38,68 +38,40 @@ This repository is meant to be opened directly in Codex or VS Code. It provides:
 
 3. Open the unpacked repository folder in Codex or in VS Code with Codex available.
 
-4. In Codex settings, install the repo-local plugin if Codex offers it.
-   In this repository it is exposed as the workspace plugin `STALKER Modding Workbench` / `stalker-modding-workbench`.
+4. In Codex settings, install the repo-local plugins if Codex offers them.
+   This workbench provides `STALKER Modding Workbench` and `Expertise Compiler`.
 
-5. After the plugin is installed, ask Codex to initialize against this workspace or ask it what it can do now.
-   On the first real task, the plugin/skill can bootstrap the workspace automatically if the local bootstrap state is missing or stale.
+5. After installation, start a new Codex task. The checked-in `stalker-anomaly` vault is mandatory: the harness retrieves and verifies evidence before repository decisions.
    Good starter prompts:
    - `Get oriented in this workspace and tell me what you can do now`
    - `Initialize yourself for working with this repo`
    - `What modding workflows and helper tools are available in this workspace?`
 
-6. If you want to prewarm the workspace manually or verify everything explicitly, run the local checks:
+6. To verify the bundled knowledge runtime manually, run:
    - WSL / Linux:
 
 ```bash
-./.skills/stalker-modding/scripts/bootstrap_workspace.sh --run-regressions
+python3 ./.skills/stalker-modding/scripts/expertctl.py --workspace . doctor stalker-anomaly
 ```
 
    - PowerShell:
 
 ```powershell
-.\.skills\stalker-modding\scripts\bootstrap_workspace.ps1 --run-regressions
+py -3 .\.skills\stalker-modding\scripts\expertctl.py --workspace . doctor stalker-anomaly
 ```
 
-## First Run
+## Starter Knowledge Vault
 
-The plugin/skill can now bootstrap itself on first real use. Manual bootstrap is still useful when you want to prewarm the local graph artifacts, verify the environment, or run regressions explicitly.
+`.expertise/stalker-anomaly` ships compiled from the bundled Anomaly skill, local vanilla and engine references, Modding Book, MCM, GAMMA, and the Lua API export. It is a compact workspace-reference vault: it stores the compiled Wiki, source hashes, deterministic indexes, diagnostics, and the generated runtime skill without duplicating the tracked reference packs.
 
-`bootstrap_workspace.*` currently:
-- installs `graphifyy` if needed
-- patches the installed `graphify` package so `*.script` is treated as Lua
-- builds the global `ai_workspace/lua-graphify-out`
-- builds focused `ai_workspace/**/graphify-out` maps for Lua-bearing reference packs such as `vanilla scripts`, `GAMMA Scripts`, and `Anomaly-Mod-Configuration-Menu-main`
-- refreshes `ai_workspace/map_index.html`
-- writes local first-run state to `.codex-stalker/state/bootstrap_state.json`
-
-WSL / Linux:
+The local launcher requires only Python 3.11+ and Git:
 
 ```bash
-./.skills/stalker-modding/scripts/bootstrap_workspace.sh
-./.skills/stalker-modding/scripts/run_regressions.sh
+python3 ./.skills/stalker-modding/scripts/expertctl.py --workspace . status stalker-anomaly
+python3 ./.skills/stalker-modding/scripts/expertctl.py --workspace . context stalker-anomaly "MCM callback lifecycle" --budget 1200
 ```
 
-PowerShell:
-
-```powershell
-.\.skills\stalker-modding\scripts\bootstrap_workspace.ps1
-.\.skills\stalker-modding\scripts\run_regressions.ps1
-```
-
-If you want the quick readiness checks plus the full regression pass in one command:
-
-WSL / Linux:
-
-```bash
-./.skills/stalker-modding/scripts/bootstrap_workspace.sh --run-regressions
-```
-
-PowerShell:
-
-```powershell
-.\.skills\stalker-modding\scripts\bootstrap_workspace.ps1 --run-regressions
-```
+To extend the vault, first run `hydrate stalker-anomaly` to materialize self-contained snapshots, then follow `add`, `scan`, `compile-plan`, `apply-build`, and `doctor`. Do not edit `.expertise` state or snapshots manually.
 
 ## Project Workflow
 
@@ -158,13 +130,12 @@ python3 ./.skills/stalker-modding/scripts/fomod_tool.py --project my_mod
 - `tests/fixtures/` contains repo-tracked regression inputs, not live mod projects
 - `ai_workspace/` contains local reference material
 - `.codex-stalker/workspace.json` stores workspace overlay data and remembered external paths
-- `.codex-stalker/state/` is generated local bootstrap state and is not meant to be committed
-- `ai_workspace/lua-graphify-out/`, `ai_workspace/*/graphify-out/`, and `ai_workspace/map_index.html` are generated local graph artifacts and are not meant to be committed
+- `.expertise/stalker-anomaly/` is the checked-in compact starter vault; its evidence resolves to the tracked reference packs
 - `.vscode/mcp.json` mirrors the repo-local plugin MCP configuration
 
 ## Notes
 
 - Use `ai_workspace/user references` for extra local references or linked external material.
-- For graph-based orientation, start with `ai_workspace/map_index.html`, then prefer the focused `ai_workspace/**/graphify-out` map when the task is already localized to one reference pack or subfolder.
+- The mandatory harness routes repository work through the `stalker-anomaly` vault, then verifies decision-critical source ranges.
 - Russian localization XML is often `windows-1251`; use `xml_localization_tool.py` before editing legacy XML directly.
 - MO2 is treated as a deployment surface, not the authoring root. Author in `projects/` first, then package for MO2 when needed.

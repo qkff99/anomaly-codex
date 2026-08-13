@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "expertise-compiler"
+version = "0.1.0"
+description = "Compile local sources into inspectable, vectorless agent expertise"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+code = ["tree-sitter-language-pack"]
+web = ["trafilatura"]
+docs = ["markitdown[all]"]
+all = ["tree-sitter-language-pack", "trafilatura", "markitdown[all]"]
+
+[project.scripts]
+expertctl = "expertctl.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.data-files]
+"share/expertise-compiler/skills/expertise-compiler" = ["skills/expertise-compiler/SKILL.md"]
+"share/expertise-compiler/skills/expertise-compiler/agents" = ["skills/expertise-compiler/agents/openai.yaml"]
+"share/expertise-compiler/skills/expertise-compiler/references" = ["skills/expertise-compiler/references/*.md"]
+"share/expertise-compiler/skills/expertise-compiler/assets/domain-skill-template" = ["skills/expertise-compiler/assets/domain-skill-template/SKILL.md"]
+"share/expertise-compiler/skills/expertise-compiler/assets/domain-skill-template/references" = ["skills/expertise-compiler/assets/domain-skill-template/references/*.md"]
+"share/expertise-compiler/.hermes-plugin" = [".hermes-plugin/plugin.yaml", ".hermes-plugin/__init__.py"]

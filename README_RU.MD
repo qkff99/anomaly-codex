@@ -7,7 +7,7 @@ English version: [README.md](README.md)
 Этот репозиторий предполагается открывать прямо в Codex или в VS Code. Он содержит:
 - локальный STALKER modding skill
 - repo-local MCP конфиг для DeepWiki и GitMCP референсов
-- helper scripts для создания проектов, импорта, валидации, упаковки, FOMOD, XML encoding, crash-log triage и graph-assisted orientation по workspace
+- helper scripts для создания проектов, импорта, валидации, упаковки, FOMOD, XML encoding, crash-log triage и evidence-backed knowledge vault
 
 `AGENTS.md` и `.skills/stalker-modding/SKILL.md` остаются source of truth для агента. Этот README_RU.MD нужен как human quickstart на русском.
 
@@ -39,68 +39,40 @@ English version: [README.md](README.md)
 
 3. Открой распакованную папку репозитория в Codex или в VS Code с доступным Codex.
 
-4. Зайди в настройки Codex и установи repo-local plugin, если Codex его предложит.
-   В этом репо он называется `STALKER Modding Workbench` / `stalker-modding-workbench`.
+4. Зайди в настройки Codex и установи repo-local plugins, если Codex их предложит.
+   В этом репо это `STALKER Modding Workbench` и `Expertise Compiler`.
 
-5. После установки плагина попроси Codex инициализироваться под этот workspace или спроси, что он теперь умеет.
-   На первой реальной задаче plugin/skill теперь может сам выполнить bootstrap workspace, если локальный bootstrap-state отсутствует или устарел.
+5. После установки начни новую задачу Codex. Harness обязательно использует готовый vault `stalker-anomaly` и проверяет источники до решений по репозиторию.
    Стартовые запросы:
    - `Освойся в этом workspace и скажи, что ты теперь умеешь делать`
    - `Инициализируйся для работы с этим репо`
    - `Какие modding workflows и helper tools доступны в этом workspace?`
 
-6. Если хочешь вручную прогреть workspace или явно проверить окружение, прогони локальные проверки:
+6. Если хочешь явно проверить bundled knowledge runtime, выполни:
    - WSL / Linux:
 
 ```bash
-./.skills/stalker-modding/scripts/bootstrap_workspace.sh --run-regressions
+python3 ./.skills/stalker-modding/scripts/expertctl.py --workspace . doctor stalker-anomaly
 ```
 
    - PowerShell:
 
 ```powershell
-.\.skills\stalker-modding\scripts\bootstrap_workspace.ps1 --run-regressions
+py -3 .\.skills\stalker-modding\scripts\expertctl.py --workspace . doctor stalker-anomaly
 ```
 
-## Первый Запуск
+## Стартовый Knowledge Vault
 
-Теперь plugin/skill может bootstrap-иться сам на первой реальной задаче. Ручной bootstrap все еще полезен, если ты хочешь заранее прогреть локальные graph artifacts, явно проверить окружение или прогнать regressions.
+`.expertise/stalker-anomaly` поставляется уже скомпилированным из bundled Anomaly skill, локальных vanilla и engine references, Modding Book, MCM, GAMMA и Lua API export. Это компактный workspace-reference vault: он хранит скомпилированную Wiki, хеши источников, deterministic indexes, diagnostics и generated runtime skill, не дублируя tracked reference packs.
 
-Сейчас `bootstrap_workspace.*`:
-- ставит `graphifyy`, если его еще нет
-- патчит установленный `graphify`, чтобы `*.script` трактовались как Lua
-- строит глобальный `ai_workspace/lua-graphify-out`
-- строит focused `ai_workspace/**/graphify-out` карты для Lua-bearing reference packs вроде `vanilla scripts`, `GAMMA Scripts` и `Anomaly-Mod-Configuration-Menu-main`
-- обновляет `ai_workspace/map_index.html`
-- пишет локальный first-run state в `.codex-stalker/state/bootstrap_state.json`
-
-WSL / Linux:
-
-```bash
-./.skills/stalker-modding/scripts/bootstrap_workspace.sh
-./.skills/stalker-modding/scripts/run_regressions.sh
-```
-
-PowerShell:
+Локальный launcher требует только Python 3.11+ и Git:
 
 ```powershell
-.\.skills\stalker-modding\scripts\bootstrap_workspace.ps1
-.\.skills\stalker-modding\scripts\run_regressions.ps1
+py -3 .\.skills\stalker-modding\scripts\expertctl.py --workspace . status stalker-anomaly
+py -3 .\.skills\stalker-modding\scripts\expertctl.py --workspace . context stalker-anomaly "MCM callback lifecycle" --budget 1200
 ```
 
-Если нужен быстрый readiness-check плюс полный regression-pass одной командой:
-
-WSL / Linux:
-
-```bash
-./.skills/stalker-modding/scripts/bootstrap_workspace.sh --run-regressions
-```
-
-PowerShell:
-
-```powershell
-.\.skills\stalker-modding\scripts\bootstrap_workspace.ps1 --run-regressions
-```
+Для расширения vault сначала запусти `hydrate stalker-anomaly`, чтобы материализовать self-contained snapshots, затем используй `add`, `scan`, `compile-plan`, `apply-build` и `doctor`. Не редактируй вручную `.expertise` state или snapshots.
 
 ## Workflow Проекта
 
@@ -159,13 +131,12 @@ python3 ./.skills/stalker-modding/scripts/fomod_tool.py --project my_mod
 - `tests/fixtures/` содержит repo-tracked regression inputs, а не живые моды
 - `ai_workspace/` содержит локальные reference materials
 - `.codex-stalker/workspace.json` хранит workspace overlay data и remembered external paths
-- `.codex-stalker/state/` это generated local bootstrap state, его не надо коммитить
-- `ai_workspace/lua-graphify-out/`, `ai_workspace/*/graphify-out/` и `ai_workspace/map_index.html` это generated local graph artifacts, их не надо коммитить
+- `.expertise/stalker-anomaly/` это checked-in компактный starter vault; evidence берётся из tracked reference packs
 - `.vscode/mcp.json` зеркалит repo-local plugin MCP configuration
 
 ## Заметки
 
 - Используй `ai_workspace/user references` для дополнительных локальных референсов или ссылок на внешние материалы.
-- Для graph-based orientation начинай с `ai_workspace/map_index.html`, а если задача уже локализована в одном reference pack или подпапке, предпочитай соответствующий focused `ai_workspace/**/graphify-out` map.
+- Mandatory harness маршрутизирует работу по репозиторию через vault `stalker-anomaly`, затем проверяет decision-critical source ranges.
 - Русские localization XML часто в `windows-1251`; перед правкой legacy XML лучше использовать `xml_localization_tool.py`.
 - MO2 тут рассматривается как deployment surface, а не как authoring root. Сначала работай из `projects/`, потом уже упаковывай под MO2, если это нужно.

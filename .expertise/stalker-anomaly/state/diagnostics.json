@@ -1,0 +1,636 @@
+{
+  "checks": [
+    {
+      "detail": ".expertise/stalker-anomaly",
+      "name": "vault directory",
+      "ok": true
+    },
+    {
+      "detail": {
+        "created_at": "2026-08-13T05:34:08Z",
+        "name": "stalker-anomaly",
+        "runtime_index": "wiki",
+        "schema_version": 1,
+        "source_storage": "workspace-reference",
+        "structural_inventory": "files"
+      },
+      "name": "vault config",
+      "ok": true
+    },
+    {
+      "name": "sources",
+      "ok": true
+    },
+    {
+      "name": "wiki",
+      "ok": true
+    },
+    {
+      "name": "code",
+      "ok": true
+    },
+    {
+      "name": "state",
+      "ok": true
+    },
+    {
+      "detail": "12 records",
+      "name": "sources/registry.jsonl",
+      "ok": true
+    },
+    {
+      "detail": "17668 records",
+      "name": "code/files.jsonl",
+      "ok": true
+    },
+    {
+      "detail": "0 records",
+      "name": "code/symbols.jsonl",
+      "ok": true
+    },
+    {
+      "detail": "0 records",
+      "name": "code/edges.jsonl",
+      "ok": true
+    },
+    {
+      "detail": "0 records",
+      "name": "code/aliases.jsonl",
+      "ok": true
+    },
+    {
+      "detail": "17716 typed records satisfy required fields and references",
+      "name": "record schemas",
+      "ok": true
+    },
+    {
+      "detail": "no escaping symlinks",
+      "name": "symlink safety",
+      "ok": true
+    },
+    {
+      "detail": "10 workspace references match registry hashes",
+      "name": "raw snapshot hashes",
+      "ok": true
+    },
+    {
+      "detail": "inventory matches 10 latest source snapshots",
+      "name": "inventory freshness",
+      "ok": true
+    },
+    {
+      "detail": "all internal links resolve",
+      "name": "Wiki links",
+      "ok": true
+    },
+    {
+      "detail": "10 factual pages have resolvable provenance",
+      "name": "Wiki provenance",
+      "ok": true
+    },
+    {
+      "detail": "published Wiki and provenance match the accepted generation",
+      "name": "publication integrity",
+      "ok": true
+    },
+    {
+      "detail": "10 published factual pages; no unresolved candidates or stale pages",
+      "name": "publication state",
+      "ok": true
+    }
+  ],
+  "diagnostic_pass_rate": 1.0,
+  "diagnostic_threshold": 0.9,
+  "diagnostics": [
+    {
+      "actual_evidence": [
+        "api reference",
+        "available expertise",
+        "compatibility-first extension order",
+        "distribution workflow",
+        "engineering policy",
+        "engineering/extension-order.md",
+        "expertise index",
+        "extension-order",
+        "file.agents.91edf6dc96",
+        "harness contract",
+        "index",
+        "index.md",
+        "localization contract",
+        "router",
+        "router.md",
+        "runtime callback",
+        "runtime lifecycle",
+        "sources/raw/file.agents.91edf6dc96/172738392f92/agents.md",
+        "ui contract",
+        "ui safety",
+        "wiki/engineering/extension-order.md",
+        "wiki/index.md",
+        "wiki/router.md",
+        "workspace policy for anomaly 1.5.3 + modded exes"
+      ],
+      "expected_evidence": [
+        "engineering/extension-order.md",
+        "wiki/engineering/extension-order.md"
+      ],
+      "id": "locked.exact-fact.8f5e13c6077bbb37",
+      "kind": "exact-fact",
+      "passed": true,
+      "query": "extension"
+    },
+    {
+      "actual_evidence": [
+        "api reference",
+        "available expertise",
+        "distribution workflow",
+        "engineering policy",
+        "expertise index",
+        "file.agents.91edf6dc96",
+        "harness contract",
+        "index",
+        "index.md",
+        "localization contract",
+        "localization layout and legacy encoding",
+        "localization-encoding",
+        "localization/layout-and-encoding.md",
+        "router",
+        "router.md",
+        "runtime callback",
+        "runtime lifecycle",
+        "sources/raw/file.agents.91edf6dc96/172738392f92/agents.md",
+        "ui contract",
+        "ui safety",
+        "wiki/index.md",
+        "wiki/localization/layout-and-encoding.md",
+        "wiki/router.md",
+        "workspace policy for anomaly 1.5.3 + modded exes"
+      ],
+      "expected_evidence": [
+        "localization/layout-and-encoding.md",
+        "wiki/localization/layout-and-encoding.md"
+      ],
+      "id": "locked.exact-fact.2b8fcc4e52b8a744",
+      "kind": "exact-fact",
+      "passed": true,
+      "query": "localization"
+    },
+    {
+      "actual_evidence": [
+        "api/lua-orientation.md",
+        "exported local lua api snapshot 4fd6a10f4be3",
+        "file.lua_help.script.0534e9d58f",
+        "lua api orientation map",
+        "lua-api-orientation",
+        "sources/raw/file.lua_help.script.0534e9d58f/4fd6a10f4be3/lua_help.script.txt",
+        "wiki/api/lua-orientation.md"
+      ],
+      "expected_evidence": [
+        "api/lua-orientation.md",
+        "wiki/api/lua-orientation.md"
+      ],
+      "id": "locked.exact-fact.61d256075af33122",
+      "kind": "exact-fact",
+      "passed": true,
+      "query": "restrictions"
+    },
+    {
+      "actual_evidence": [
+        "anomaly mcm reference snapshot 81893aab42d0",
+        "api reference",
+        "available expertise",
+        "directory.anomaly-mod-configuration-menu-m.d3776d49d4",
+        "distribution workflow",
+        "engineering policy",
+        "expertise index",
+        "harness contract",
+        "index",
+        "index.md",
+        "localization contract",
+        "mcm module on_mcm_load contract",
+        "mcm-module-contract",
+        "mcm-value-read-safety",
+        "mcm/module-contract.md",
+        "mcm/value-read-safety.md",
+        "router",
+        "router.md",
+        "runtime callback",
+        "runtime lifecycle",
+        "sources/raw/directory.anomaly-mod-configuration-menu-m.d3776d49d4/81893aab42d0/gamedata/scripts/ui_mcm.script",
+        "sources/raw/directory.anomaly-mod-configuration-menu-m.d3776d49d4/81893aab42d0/readme.md",
+        "ui contract",
+        "ui safety",
+        "ui_mcm.get lifecycle safety",
+        "wiki/index.md",
+        "wiki/mcm/module-contract.md",
+        "wiki/mcm/value-read-safety.md",
+        "wiki/router.md"
+      ],
+      "expected_evidence": [
+        "mcm/module-contract.md",
+        "wiki/mcm/module-contract.md"
+      ],
+      "id": "locked.exact-fact.67734cad52c1010b",
+      "kind": "exact-fact",
+      "passed": true,
+      "query": "load"
+    },
+    {
+      "actual_evidence": [
+        "anomaly mcm reference snapshot 81893aab42d0",
+        "directory.anomaly-mod-configuration-menu-m.d3776d49d4",
+        "mcm-value-read-safety",
+        "mcm/value-read-safety.md",
+        "sources/raw/directory.anomaly-mod-configuration-menu-m.d3776d49d4/81893aab42d0/gamedata/scripts/ui_mcm.script",
+        "sources/raw/directory.anomaly-mod-configuration-menu-m.d3776d49d4/81893aab42d0/readme.md",
+        "ui_mcm.get lifecycle safety",
+        "wiki/mcm/value-read-safety.md"
+      ],
+      "expected_evidence": [
+        "mcm/value-read-safety.md",
+        "wiki/mcm/value-read-safety.md"
+      ],
+      "id": "locked.exact-fact.cbc37761b1cd141f",
+      "kind": "exact-fact",
+      "passed": true,
+      "query": "unpredictable"
+    },
+    {
+      "actual_evidence": [
+        "api reference",
+        "available expertise",
+        "distribution workflow",
+        "distribution/mo2-authoring.md",
+        "engineering policy",
+        "expertise index",
+        "file.agents.91edf6dc96",
+        "harness contract",
+        "index",
+        "index.md",
+        "localization contract",
+        "localization layout and legacy encoding",
+        "localization-encoding",
+        "localization/layout-and-encoding.md",
+        "mo2 authoring and packaging layout",
+        "mo2-authoring-layout",
+        "router",
+        "router.md",
+        "runtime callback",
+        "runtime lifecycle",
+        "sources/raw/file.agents.91edf6dc96/172738392f92/agents.md",
+        "ui contract",
+        "ui safety",
+        "wiki/distribution/mo2-authoring.md",
+        "wiki/index.md",
+        "wiki/localization/layout-and-encoding.md",
+        "wiki/router.md",
+        "workspace policy for anomaly 1.5.3 + modded exes"
+      ],
+      "expected_evidence": [
+        "distribution/mo2-authoring.md",
+        "wiki/distribution/mo2-authoring.md"
+      ],
+      "id": "locked.exact-fact.a127cfcb28e82aa5",
+      "kind": "exact-fact",
+      "passed": true,
+      "query": "layout"
+    },
+    {
+      "actual_evidence": [
+        "actor_on_first_update callback",
+        "anomaly 1.5.3 + modded exes",
+        "api reference",
+        "available expertise",
+        "directory.vanilla-scripts.d0b61e5bdc",
+        "distribution workflow",
+        "engineering policy",
+        "engineering/save-safety-performance.md",
+        "expertise index",
+        "file.agents.91edf6dc96",
+        "harness contract",
+        "index",
+        "index.md",
+        "localization contract",
+        "router",
+        "router.md",
+        "runtime callback",
+        "runtime lifecycle",
+        "runtime-actor-first-update",
+        "runtime-safety-performance",
+        "runtime/actor-first-update.md",
+        "save safety and hot-path limits",
+        "sources/raw/directory.vanilla-scripts.d0b61e5bdc/0708199b512d/gamedata/scripts/axr_main.script",
+        "sources/raw/file.agents.91edf6dc96/172738392f92/agents.md",
+        "ui contract",
+        "ui safety",
+        "wiki/engineering/save-safety-performance.md",
+        "wiki/index.md",
+        "wiki/router.md",
+        "wiki/runtime/actor-first-update.md",
+        "workspace policy for anomaly 1.5.3 + modded exes"
+      ],
+      "expected_evidence": [
+        "runtime/actor-first-update.md",
+        "wiki/runtime/actor-first-update.md"
+      ],
+      "id": "locked.exact-fact.1fc6e17d2b5498a2",
+      "kind": "exact-fact",
+      "passed": true,
+      "query": "update"
+    },
+    {
+      "actual_evidence": [
+        "anomaly mcm reference snapshot 81893aab42d0",
+        "api reference",
+        "available expertise",
+        "directory.anomaly-mod-configuration-menu-m.d3776d49d4",
+        "distribution workflow",
+        "engineering policy",
+        "engineering/save-safety-performance.md",
+        "expertise index",
+        "file.agents.91edf6dc96",
+        "harness contract",
+        "index",
+        "index.md",
+        "localization contract",
+        "mcm-value-read-safety",
+        "mcm/value-read-safety.md",
+        "router",
+        "router.md",
+        "runtime callback",
+        "runtime lifecycle",
+        "runtime-safety-performance",
+        "save safety and hot-path limits",
+        "sources/raw/directory.anomaly-mod-configuration-menu-m.d3776d49d4/81893aab42d0/gamedata/scripts/ui_mcm.script",
+        "sources/raw/directory.anomaly-mod-configuration-menu-m.d3776d49d4/81893aab42d0/readme.md",
+        "sources/raw/file.agents.91edf6dc96/172738392f92/agents.md",
+        "ui contract",
+        "ui safety",
+        "ui_mcm.get lifecycle safety",
+        "wiki/engineering/save-safety-performance.md",
+        "wiki/index.md",
+        "wiki/mcm/value-read-safety.md",
+        "wiki/router.md",
+        "workspace policy for anomaly 1.5.3 + modded exes"
+      ],
+      "expected_evidence": [
+        "engineering/save-safety-performance.md",
+        "wiki/engineering/save-safety-performance.md"
+      ],
+      "id": "locked.exact-fact.de72659d9b82d0a1",
+      "kind": "exact-fact",
+      "passed": true,
+      "query": "safety"
+    },
+    {
+      "actual_evidence": [
+        "anomaly 1.5.3 + modded exes",
+        "anomaly mcm reference snapshot 81893aab42d0",
+        "api reference",
+        "available expertise",
+        "directory.anomaly-mod-configuration-menu-m.d3776d49d4",
+        "directory.vanilla-scripts.d0b61e5bdc",
+        "distribution workflow",
+        "engineering policy",
+        "expertise index",
+        "harness contract",
+        "index",
+        "index.md",
+        "localization contract",
+        "mcm module on_mcm_load contract",
+        "mcm-module-contract",
+        "mcm/module-contract.md",
+        "on_game_start script discovery",
+        "router",
+        "router.md",
+        "runtime callback",
+        "runtime lifecycle",
+        "runtime-startup-discovery",
+        "runtime/startup-discovery.md",
+        "sources/raw/directory.anomaly-mod-configuration-menu-m.d3776d49d4/81893aab42d0/gamedata/scripts/ui_mcm.script",
+        "sources/raw/directory.anomaly-mod-configuration-menu-m.d3776d49d4/81893aab42d0/readme.md",
+        "sources/raw/directory.vanilla-scripts.d0b61e5bdc/0708199b512d/gamedata/scripts/axr_main.script",
+        "ui contract",
+        "ui safety",
+        "wiki/index.md",
+        "wiki/mcm/module-contract.md",
+        "wiki/router.md",
+        "wiki/runtime/startup-discovery.md"
+      ],
+      "expected_evidence": [
+        "runtime/startup-discovery.md",
+        "wiki/runtime/startup-discovery.md"
+      ],
+      "id": "locked.exact-fact.cf60d3308cb554b7",
+      "kind": "exact-fact",
+      "passed": true,
+      "query": "script"
+    },
+    {
+      "actual_evidence": [
+        "api reference",
+        "available expertise",
+        "distribution workflow",
+        "engineering policy",
+        "expertise index",
+        "file.agents.91edf6dc96",
+        "harness contract",
+        "harness/evidence-protocol.md",
+        "index",
+        "index.md",
+        "localization contract",
+        "mandatory vault evidence protocol",
+        "router",
+        "router.md",
+        "runtime callback",
+        "runtime lifecycle",
+        "sources/raw/file.agents.91edf6dc96/172738392f92/agents.md",
+        "ui contract",
+        "ui safety",
+        "vault-evidence-protocol",
+        "wiki/harness/evidence-protocol.md",
+        "wiki/index.md",
+        "wiki/router.md",
+        "workspace harness"
+      ],
+      "expected_evidence": [
+        "harness/evidence-protocol.md",
+        "wiki/harness/evidence-protocol.md"
+      ],
+      "id": "locked.exact-fact.f2763fc2f4028686",
+      "kind": "exact-fact",
+      "passed": true,
+      "query": "mandatory"
+    },
+    {
+      "actual_evidence": [
+        "api reference",
+        "available expertise",
+        "compatibility-first extension order",
+        "distribution workflow",
+        "engineering policy",
+        "engineering/extension-order.md",
+        "expertise index",
+        "extension-order",
+        "file.agents.91edf6dc96",
+        "harness contract",
+        "index",
+        "index.md",
+        "localization contract",
+        "router",
+        "router.md",
+        "runtime callback",
+        "runtime lifecycle",
+        "sources/raw/file.agents.91edf6dc96/172738392f92/agents.md",
+        "ui contract",
+        "ui safety",
+        "wiki/engineering/extension-order.md",
+        "wiki/index.md",
+        "wiki/router.md",
+        "workspace policy for anomaly 1.5.3 + modded exes"
+      ],
+      "expected_evidence": [
+        "engineering/extension-order.md",
+        "wiki/engineering/extension-order.md"
+      ],
+      "id": "locked.implementation-planning.871fc0b837443cd2",
+      "kind": "implementation-planning",
+      "passed": true,
+      "query": "extension"
+    },
+    {
+      "actual_evidence": [],
+      "expected_evidence": [],
+      "id": "locked.version-conflict.55fde20609ac6844",
+      "kind": "version-conflict",
+      "passed": true,
+      "query": "version conflict"
+    },
+    {
+      "actual_evidence": [
+        "credential-assignment",
+        "directory.anomaly-modding-book-main.99b54e9a4b",
+        "directory.gamma-scripts.5a2e39e243",
+        "directory.stalker-modding.c16d1f52d2",
+        "directory.vanilla-scripts.d0b61e5bdc",
+        "gamedata/configs/models/weapons/762x51.dds",
+        "gamedata/configs/models/weapons/762x51_ap.dds",
+        "gamedata/configs/models/weapons/762x51_fmj.dds",
+        "gamedata/configs/models/weapons/mounted_wpn_pkm.ltx",
+        "gamedata/configs/mp/lzo_updates.dic",
+        "gamedata/configs/mp/ppmd_updates.mdl",
+        "gamedata/graphify-out",
+        "graphify-out",
+        "jailbreak",
+        "role-override",
+        "scripts/__pycache__",
+        "scripts/graphify-out"
+      ],
+      "expected_evidence": [
+        "directory.anomaly-modding-book-main.99b54e9a4b",
+        "directory.gamma-scripts.5a2e39e243",
+        "directory.stalker-modding.c16d1f52d2",
+        "directory.vanilla-scripts.d0b61e5bdc"
+      ],
+      "id": "locked.prompt-injection.11ea98321733747f",
+      "kind": "prompt-injection",
+      "passed": true,
+      "query": "detected source instructions"
+    },
+    {
+      "actual_evidence": [],
+      "expected_evidence": [],
+      "id": "locked.stale-source.2f4eec3e19a4776e",
+      "kind": "stale-source",
+      "passed": true,
+      "query": "stale pages"
+    },
+    {
+      "actual_evidence": [],
+      "expected_evidence": [],
+      "id": "locked.missing-evidence.23578c01279b3081",
+      "kind": "missing-evidence",
+      "passed": true,
+      "query": "zziohpemaknneofcigobmelfjkckijiclkmofkaiaeoobojclenbbeepdeecbggdbe"
+    },
+    {
+      "actual_evidence": [
+        "actor_on_first_update callback",
+        "anomaly 1.5.3 + modded exes",
+        "anomaly mcm reference snapshot 81893aab42d0",
+        "api reference",
+        "api/lua-orientation.md",
+        "available expertise",
+        "compatibility-first extension order",
+        "directory.anomaly-mod-configuration-menu-m.d3776d49d4",
+        "directory.vanilla-scripts.d0b61e5bdc",
+        "distribution workflow",
+        "distribution/mo2-authoring.md",
+        "engineering policy",
+        "engineering/extension-order.md",
+        "engineering/save-safety-performance.md",
+        "expertise index",
+        "exported local lua api snapshot 4fd6a10f4be3",
+        "extension-order",
+        "file.agents.91edf6dc96",
+        "file.lua_help.script.0534e9d58f",
+        "harness contract",
+        "index",
+        "index.md",
+        "localization contract",
+        "lua api orientation map",
+        "lua-api-orientation",
+        "mcm module on_mcm_load contract",
+        "mcm-module-contract",
+        "mcm-value-read-safety",
+        "mcm/module-contract.md",
+        "mcm/value-read-safety.md",
+        "mo2 authoring and packaging layout",
+        "mo2-authoring-layout",
+        "on_game_start script discovery",
+        "router",
+        "router.md",
+        "runtime callback",
+        "runtime lifecycle",
+        "runtime-actor-first-update",
+        "runtime-safety-performance",
+        "runtime-startup-discovery",
+        "runtime/actor-first-update.md",
+        "runtime/startup-discovery.md",
+        "save safety and hot-path limits",
+        "sources/raw/directory.anomaly-mod-configuration-menu-m.d3776d49d4/81893aab42d0/gamedata/scripts/ui_mcm.script",
+        "sources/raw/directory.anomaly-mod-configuration-menu-m.d3776d49d4/81893aab42d0/readme.md",
+        "sources/raw/directory.vanilla-scripts.d0b61e5bdc/0708199b512d/gamedata/scripts/axr_main.script",
+        "sources/raw/file.agents.91edf6dc96/172738392f92/agents.md",
+        "sources/raw/file.lua_help.script.0534e9d58f/4fd6a10f4be3/lua_help.script.txt",
+        "ui contract",
+        "ui safety",
+        "ui_mcm.get lifecycle safety",
+        "wiki/api/lua-orientation.md",
+        "wiki/distribution/mo2-authoring.md",
+        "wiki/engineering/extension-order.md",
+        "wiki/engineering/save-safety-performance.md",
+        "wiki/index.md",
+        "wiki/mcm/module-contract.md",
+        "wiki/mcm/value-read-safety.md",
+        "wiki/router.md",
+        "wiki/runtime/actor-first-update.md",
+        "wiki/runtime/startup-discovery.md",
+        "workspace policy for anomaly 1.5.3 + modded exes"
+      ],
+      "expected_evidence": [
+        "runtime/startup-discovery.md",
+        "wiki/runtime/startup-discovery.md"
+      ],
+      "id": "starter.on-game-start",
+      "kind": "exact-fact",
+      "passed": true,
+      "query": "on_game_start"
+    }
+  ],
+  "diagnostics_passed": 16,
+  "diagnostics_total": 16,
+  "errors": [],
+  "healthy": true,
+  "ok": true,
+  "vault": ".expertise/stalker-anomaly"
+}

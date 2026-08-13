@@ -1,14 +1,10 @@
 {
   "name": "stalker-modding-workbench",
-  "version": "0.1.0",
+  "version": "0.1.0+codex.20260813064350",
   "description": "Repo-local Codex plugin for this workspace only. Not intended for marketplace publication.",
   "author": {
-    "name": "Local Workspace",
-    "email": "",
-    "url": ""
+    "name": "Local Workspace"
   },
-  "homepage": "",
-  "repository": "",
   "license": "UNLICENSED",
   "keywords": [
     "stalker",
@@ -21,8 +17,8 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "STALKER Modding Workbench",
-    "shortDescription": "Local-only Anomaly/XRay workspace plugin with graph analysis",
-    "longDescription": "Local-only workspace plugin. Installs the STALKER modding skill and the local graphify skill from this repository, and wires DeepWiki plus GitMCP endpoints for in-repo Anomaly/XRay research. Not intended as a standalone marketplace plugin.",
+    "shortDescription": "Local-only Anomaly/XRay workbench with verified knowledge",
+    "longDescription": "Local-only workspace plugin. Installs the STALKER modding skill alongside the bundled Expertise Compiler and checked-in evidence vault for Anomaly/XRay research. It also wires DeepWiki plus GitMCP endpoints. Not intended as a standalone marketplace plugin.",
     "developerName": "Local Workspace",
     "category": "Developer Tools",
     "capabilities": [
@@ -30,15 +26,12 @@
       "Write",
       "Research"
     ],
-    "websiteURL": "",
-    "privacyPolicyURL": "",
-    "termsOfServiceURL": "",
     "defaultPrompt": [
-      "First use in a fresh clone should bootstrap the workspace automatically before modding work.",
+      "Use the checked-in evidence vault before making an Anomaly/XRay repository decision.",
       "Analyze this Anomaly Lua bug and trace the right callbacks.",
-      "Find the right ai_workspace references and focused subfolder maps before editing this mod.",
+      "Find and verify the right ai_workspace source ranges before editing this mod.",
       "Set up a safe Anomaly patch with save and load checks.",
-      "Graph this folder and show me the key subsystems and relationships."
+      "Query the Anomaly evidence vault and show me the verified subsystem relationships."
     ],
     "brandColor": "#5E6B3A"
   }
