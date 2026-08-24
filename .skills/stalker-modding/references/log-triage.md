@@ -47,3 +47,11 @@ Use this file when the task starts from a crash log, runtime error, syntax error
 - For Lua/runtime triage, a remembered MO2 `mods/` path is usually more valuable than a remembered `logs_dir`, because it lets the skill resolve the reported script or asset back to the installed addon.
 - For engine fatal blocks, do not assume the first engine frame is the gameplay root cause; often the actionable clue is the `Expression`, `File`, or nearby Lua traceback.
 - Prefer the resolved non-wrapper inspect points over `xrDebugNew.cpp` wrapper frames such as `xrDebug::backend`, `xrDebug::gather_info`, `invalid_parameter_handler`, or `UnhandledFilter`.
+
+## After Triage
+
+1. Inspect the owning project frame and its local context; the top frame is a stopping point, not automatically the root cause.
+2. State the violated assumption and collect a minimal reproduction when feasible: Anomaly/Modded Exes version, MO2 profile and load order, save, level, and the smallest in-game action.
+3. Form one to three falsifiable hypotheses. For each, name the observation or source check that would distinguish it.
+4. Test one hypothesis at a time using the narrowest relevant vanilla script, engine source, config, or addon overlay path.
+5. After a fix, repeat the original scenario and retain either a small regression fixture or exact reproduction steps. If three hypotheses fail, switch the investigated layer instead of continuing to guess.

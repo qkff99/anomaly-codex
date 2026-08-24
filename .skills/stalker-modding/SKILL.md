@@ -27,11 +27,11 @@ Fallback support:
 
 ## Lua Tooling
 
-This skill should know how to detect, install-guide, and use `luac` for Lua 5.1 syntax checks.
+This skill should know how to detect and use `luac` for Lua 5.1 syntax checks without provisioning tools on the user's machine.
 
 - Prefer `scripts/luac_tool.py detect` to discover the compiler.
 - Prefer `scripts/luac_tool.py check ...` to syntax-check touched `.lua` and `.script` files.
-- If no compiler is available, use `scripts/luac_tool.py --install-if-missing` or `scripts/bootstrap_env.* ensure luac` before falling back to install hints.
+- If no compiler is available, state that the syntax check could not run and what validation remains. Do not invoke an installer, bootstrapper, package manager, or download unless the user explicitly asks to provision that tool.
 - Prefer Lua 5.1 tooling for Anomaly work. Warn when the detected compiler is not clearly 5.1.
 - Prefer `scripts/quality_scan.py scan <path> --task <task-type>` after or alongside `luac` for Anomaly-specific static quality checks: hidden globals, unsafe engine boundaries, hot-path polling, MCM contract errors, save serialization risks, full overrides, patch opportunities, and conflict surface.
 - Use `scripts/quality_scan.py explain-rule <rule-id>` when a reported rule needs a concise fix pattern.
@@ -39,14 +39,14 @@ This skill should know how to detect, install-guide, and use `luac` for Lua 5.1 
 - Use `scripts/quality_scan.py suggest-patch <gamedata-file>` to compare a full `.ltx`/`.xml` override against local vanilla and generate a DLTX suggestion or DXML scaffold.
 - Use `scripts/quality_scan.py save-template <module>` for versioned save/load migration boilerplate, and `scripts/quality_scan.py optional-pattern <id>` for optional dependency guard snippets.
 
-## Dependency Bootstrap
+## Tool Availability
 
-This skill should attempt to bootstrap missing local tooling when practical.
+Inspect prerequisites before relying on a helper, compiler, LSP, or static analyser.
 
-- Use `scripts/bootstrap_env.sh ensure python rg luac` on shell-based systems.
-- Use `scripts/bootstrap_env.ps1 ensure python rg luac` on Windows PowerShell.
-- Wrapper scripts should attempt `bootstrap_env` automatically when Python is missing.
-- Prefer package-manager installs over ad-hoc downloads.
+- Do not bootstrap or install Python, `rg`, `luac`, LSP servers, compilers, build systems, or marketplace skills automatically.
+- Use an already-available tool only when its prerequisites make its result trustworthy; otherwise report the missing prerequisite and use the next available source or manual inspection.
+- Offer an explicit provisioning command only when the user asks to install or configure that tool.
+- A missing compiler, compilation database, or language server reduces validation confidence; it is not a reason to fabricate diagnostics.
 
 ## Compiled Knowledge Vault
 
@@ -201,6 +201,20 @@ Recommended references:
 - assets and animations: `references/assets-and-animations.md`
 - mapping or SDK: `references/mapping-and-sdk.md`
 
+## Source-First Investigation Discipline
+
+For C++, Lua, config, and mixed-runtime work, trace the smallest relevant chain before recommending a change.
+
+1. Start from the task's source of truth, then map the affected runtime subsystem rather than listing files by language.
+2. Trace the target symbol or config hook through its entry point, reachability conditions, and the origin of controlling data. For cross-layer behavior, follow the narrow C++ -> Lua binding/API -> Lua callback/module -> config or UI path that actually applies.
+3. Record structural links separately from semantic behavior: an include/call/import is not the same claim as creating an object, registering a callback, or writing save state.
+4. Label each conclusion as `verified fact`, `inference`, or `unknown`. Treat string lookup, factories, `REGISTER_*`, virtual dispatch, macros, script auto-discovery, `_G` registration, callback tables, MCM hooks, and XML/config hooks as `unknown` until their runtime path is verified.
+5. Never call a callback, export, virtual method, factory product, or registered Lua module unused merely because a direct text call was not found. Its supported outcomes are `UNUSED` only with positive proof, otherwise `UNKNOWN`.
+6. For C++ static analysis or LSP results, first confirm the relevant toolchain and `compile_commands.json`/equivalent build configuration. Analyse only the agreed files; discard diagnostics from translation units that did not parse, and do not treat legacy modernization/style advice as a defect.
+7. For a runtime failure, triage the log first, then inspect the owning project frame and form one to three falsifiable hypotheses. The top stack frame is a stopping point, not automatically the cause.
+
+Load `references/source-priority.md` and `references/log-triage.md` when this trace or confidence assessment is needed.
+
 ## Workflow
 
 1. Classify the task and identify whether the workspace, a project copy, or an explicit in-place path is the source of truth.
@@ -224,7 +238,7 @@ Recommended references:
 19. If the task is scaffold-heavy, prefer `scripts/scaffold_template.py` over hand-creating starter files.
 20. If the task is about distribution or MO2 delivery, package the project first and then use `scripts/fomod_tool.py` for a FOMOD staging folder when requested.
 21. If XML localization files or other legacy-encoded XML files were touched, inspect them with `scripts/xml_localization_tool.py`, use `prepare-edit` before editing, and `finish-edit` before finalizing.
-22. If Lua files were touched, run `scripts/luac_tool.py check ...` before finalizing unless the environment clearly cannot provide a compiler.
+22. If Lua files were touched, run `scripts/luac_tool.py check ...` before finalizing when a Lua 5.1 compiler is already available. If it is unavailable, report the reduced validation; do not bootstrap or install it unless the user explicitly asks.
 23. For mod edits, reviews, imports, and feature work, run `scripts/quality_scan.py scan <project-or-mod-root> --task <task-type>` when practical. Treat high findings as blockers unless the task explicitly accepts that risk.
 24. For project-local smoke checks, prefer `scripts/validate_project.py`, `scripts/package_project.py`, and `scripts/fomod_tool.py` as needed.
 25. For repo-local reliability checks and first-run verification, use `scripts/run_regressions.py` instead of relying on hand-kept example projects under `projects/`.
@@ -357,7 +371,7 @@ Load only what the task needs:
 - `scripts/find_references.py` searches only the relevant `ai_workspace` roots for a task
 - `scripts/link_user_reference.py` links user-local refs into `ai_workspace/user references`
 - `scripts/extract_mo2_resources.py` extracts MO2 `mods/*` `configs/` and `scripts/` payloads into one flat reference overlay.
-- `scripts/bootstrap_env.sh` and `scripts/bootstrap_env.ps1` install missing local dependencies when practical
+- `scripts/bootstrap_env.sh` and `scripts/bootstrap_env.ps1` can provision local dependencies only after explicit user approval
 - `scripts/luac_tool.py` detects and uses `luac` for syntax checks
 - `scripts/quality_scan.py` reports Anomaly-specific static quality issues, risk score, vanilla delta, patch opportunities, conflict surface, dependency graph, and task gates
 - `scripts/quality_scan.py graph`, `suggest-patch`, `save-template`, and `optional-pattern` cover advanced review, patch reduction, save migration, and optional dependency templates
@@ -376,4 +390,5 @@ Search and inspection helpers are read-only. Project scaffolding and packaging h
 - Prefer local file citations when the workspace contains the relevant code.
 - Mark when confidence is lower due to missing local refs or remote-only evidence.
 - State which source tier produced the answer when that materially affects reliability.
+- For investigation, debugging, or review work, include the traced path, reachability/data conditions, and `verified fact`/`inference`/`unknown` distinction where it affects the conclusion.
 - For mod edits and reviews, include the task-specific output contract from `manifests/output_contracts.json`: touched files when applicable, source tier marker (`verified local`, `verified MCP`, or `inference`), validation run, runtime risks, and manual QA.

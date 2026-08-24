@@ -1,26 +1,22 @@
-# Bootstrap And Dependencies
+# Tool Availability And Explicit Provisioning
 
-Use this reference when the machine is missing required local tooling.
+Use this reference when a task needs a local helper, compiler, language server, or analyser that may be absent.
 
-## Purpose
+## Default Policy
 
-The skill should be able to bootstrap its own local prerequisites instead of only failing with "command not found".
+Discover prerequisites before depending on them. Do not install, bootstrap, download, or reconfigure local tooling merely to orient in a repository or to make a check runnable.
 
-Core tools:
-- `python` for nearly all helper scripts
-- `luac` for Lua syntax checks
-- `rg` for fast search when available
+Common optional tools:
+- `python` for helper scripts
+- `luac` 5.1 for Lua syntax and prototype-local-limit checks
+- `rg` for fast search
+- a matching C++ toolchain and compilation database for trustworthy cross-file diagnostics
 
-## Bootstrap Helpers
+## When A Tool Is Missing
 
-- WSL/Linux/macOS shell: `./.skills/stalker-modding/scripts/bootstrap_env.sh ensure python rg luac`
-- Windows PowerShell: `.\.skills\stalker-modding\scripts\bootstrap_env.ps1 ensure python rg luac`
+1. State the missing prerequisite and which check could not run.
+2. Use existing source inspection or another already available, lower-risk check where possible.
+3. Mark the resulting confidence or validation gap in the outcome.
+4. Offer the relevant bootstrap helper only if the user explicitly requests provisioning.
 
-If a wrapper script needs Python and cannot find it, it should try `bootstrap_env` before giving up.
-
-## Notes
-
-- Prefer package-manager installs over downloading random binaries.
-- For Anomaly scripting, prefer Lua 5.1 when installing `luac`.
-- If a package manager can only install a newer generic Lua, warn about version mismatch risk.
-- On Windows, `winget` package ids can drift; use best-effort install plus fallback to `choco` or `scoop` when available.
+`bootstrap_env.sh` and `bootstrap_env.ps1` remain available as explicit opt-in helpers. If the user approves use of them, prefer Lua 5.1 for Anomaly and report any version mismatch before relying on the result.

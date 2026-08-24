@@ -118,7 +118,7 @@ Default practice notes:
 - Use `discover_github_refs.py` / `.sh` / `.ps1` to search GitHub references and persist only curated high-signal repos into MCP config and workspace overlay.
 - Use `link_user_reference.py` / `.sh` / `.ps1` to link external local references into `ai_workspace/user references`.
 - Use `expertctl.py` to query, update, compile, repair, or audit the bundled `stalker-anomaly` evidence vault.
-- Use `bootstrap_env.sh` / `.ps1` when Python, `luac`, or `rg` is missing; wrappers should try bootstrap before failing.
+- Do not bootstrap or install Python, `luac`, `rg`, LSP servers, compilers, or other tooling automatically. Report the missing prerequisite and the reduced validation instead; provision it only when the user explicitly asks.
 - Use `xml_localization_tool.py` / `.sh` / `.ps1` to inspect legacy XML encodings, convert localization XML to UTF-8 for editing, and restore the original encoding afterward.
 
 ## Performance Rules
@@ -159,13 +159,19 @@ Default practice notes:
 ## Validation Expectations
 There is no automated test suite. For risky runtime changes, do as many as practical:
 1. syntax check touched scripts
-2. smoke boot
-3. actor first update
-4. save/load cycles
+2. check every changed Lua function/prototype stays below Lua 5.1's 200-local limit
+3. smoke boot
+4. actor first update
+5. save/load cycles
 
 Preferred syntax check helper:
 - `python3 ./.skills/stalker-modding/scripts/luac_tool.py check <file-or-dir>`
 - `py -3 .\.skills\stalker-modding\scripts\luac_tool.py check <file-or-dir>`
+
+Lua local-limit check (mandatory whenever a `.script` or `.lua` file changes):
+- Run the Lua 5.1 compiler found by `luac_tool.py detect` with `-l -l <file>`.
+- Inspect every emitted prototype header (`... locals ...`); each must stay strictly below `200` locals. Syntax success alone does not prove this.
+- Treat `200` or more locals as a blocker: split the function/module and rerun the check.
 
 ## Manual QA Checklist
 Before finalizing risky behavior changes:
@@ -185,7 +191,8 @@ A change is done when:
 1. behavior is correct and nil-safe
 2. hot-path cost is bounded
 3. save/load safety is preserved
-4. the diff stays focused on the intended subsystem
+4. changed Lua files pass syntax and the 200-local prototype check
+5. the diff stays focused on the intended subsystem
 
 <!-- expertise-compiler:stalker-anomaly:start -->
 ## Mandatory stalker-anomaly Wiki workflow

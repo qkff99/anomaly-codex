@@ -5,38 +5,21 @@ description: "Use when working on S.T.A.L.K.E.R./XRay modding tasks, especially 
 
 # STALKER Modding
 
-This repo-local plugin is a wrapper around the canonical workspace skill at `../../../../.skills/stalker-modding`.
+This is a repo-local plugin. It provides operational guardrails; the active workbench provides the large reference trees and helper scripts.
 
-Use this plugin wrapper only as the discovery and installation bridge for Codex. For actual workflow, load and follow:
-- `../../../../.skills/stalker-modding/SKILL.md`
-- `../../../../.codex-stalker/workspace.json`
-- `../../../../help/stalker/*.md`
+## Bind To The Active Workbench
 
-Canonical helper scripts and references also live in `../../../../.skills/stalker-modding/`.
-User-added references should be stored in `../../../../ai_workspace/user references` and searched alongside the built-in local refs.
-If the user asks, or if the agent decides extra local references are needed, create links there instead of copying big external folders into the repo.
-Use `../../../../ai_workspace/Anomaly-Mod-Configuration-Menu-main` as the primary local authority for Anomaly MCM API, `*mcm.script` discovery, keybind widgets, and MCM-specific UI behavior.
-Use `../../../../ai_workspace/GAMMA Scripts` as the local flattened GAMMA configs/scripts reference overlay for pack-specific addon behavior and conflict examples.
-Before substantial task work, follow `$stalker-anomaly-expert` and query the checked-in `../../../../.expertise/stalker-anomaly` vault. Use `../../../../.skills/stalker-modding/scripts/expertctl.py` as the no-install compiler entrypoint when the vault needs a health check, query, update, compilation, or repair.
-Default extension order is callbacks/config hooks first, then DXML, then DLTX, then narrow monkey patches, and full-file overrides only last.
-Use `../../../../ai_workspace/vanilla scripts/gamedata/scripts/_g.script`, `lua_help.script`, and `axr_main.script` as the first orientation files when tracing vanilla script flow.
-Project-local machine-readable metadata lives in `../../../../projects/<project-name>/.codex-stalker/project.json`.
-If the user wants to edit an existing mod, ask whether to import a copy into `../../../../projects/<project-name>` or edit the provided path in place.
-Use `../../../../.skills/stalker-modding/scripts/init_project.py`, `scaffold_template.py`, `check_project.py`, `validate_project.py`, `package_project.py`, `import_mod.py`, `extract_mo2_resources.py`, and `fomod_tool.py` for the repo-local project toolchain.
-Use `../../../../.skills/stalker-modding/scripts/extract_mo2_resources.py` to flatten MO2 `mods/*` `configs/` and `scripts/` payloads into one reference overlay when the user wants bulk local references.
-Use `../../../../.skills/stalker-modding/scripts/run_regressions.py` for deterministic repo-local reliability checks.
-Use `../../../../.skills/stalker-modding/scripts/log_triage.py` before bringing huge Anomaly/XRay logs into context.
-Use `../../../../.skills/stalker-modding/scripts/external_path_tool.py` to remember logs folders, MO2 `mods/`, unpacked `gamedata/`, or external mod roots in the tracked workspace overlay.
-Use `../../../../.skills/stalker-modding/scripts/discover_github_refs.py` to search GitHub references and persist only curated high-signal repos.
-Use `../../../../.skills/stalker-modding/scripts/luac_tool.py` to detect and syntax-check Lua files with `luac`.
-Use `../../../../.skills/stalker-modding/scripts/quality_scan.py` to scan projects/mod roots for static quality risks, task gates, vanilla delta, patch opportunities, conflict surface, dependency graphs, save migration templates, optional dependency patterns, and output-contract hints.
-Use `../../../../.skills/stalker-modding/scripts/xml_localization_tool.py` to inspect XML localization encodings, convert legacy XML to UTF-8 for editing, and restore the original encoding afterward.
-Use MO2 knowledge for packaging and deployment only: author from `projects/<project-name>` first, treat MO2 `overwrite/` as transient output, and build FOMOD installers only when the user asks.
-Use `stalker-gamma` as a curated GitMCP repo for addon discovery and modpack composition, not as the primary authority on engine semantics.
-If Python or other local tooling is missing, use `../../../../.skills/stalker-modding/scripts/bootstrap_env.sh` or `.ps1` to install dependencies before giving up.
+Find the task's workbench root first: it is the directory containing `AGENTS.md`, `.skills/stalker-modding/`, `.codex-stalker/workspace.json`, and `ai_workspace/`. Do not resolve workspace references relative to this installed plugin cache.
 
-When initializing a new local project in this workspace, create it in `../../../../projects/<project-name>`.
-Treat `../../../../projects/` as user-owned workspace state; repo-tracked smoke inputs belong in `../../../../tests/fixtures`.
+From that root, load the canonical `.skills/stalker-modding/SKILL.md`, the workspace overlay, and only the relevant `help/stalker/*.md` and `.skills/stalker-modding/references/*.md` files. Use the workbench's `.skills/stalker-modding/scripts/` helpers, local `ai_workspace` references, and `ai_workspace/user references` rather than copying external trees. Use the local MCM repository for `ui_mcm` behavior and the GAMMA overlay for pack-specific compatibility.
+
+Before substantial task work, follow `$stalker-anomaly-expert` against the workbench's checked-in `.expertise/stalker-anomaly` vault. Default extension order is callbacks/config hooks, DXML, DLTX, narrow original-preserving monkey patches, then full-file overrides. Start vanilla script tracing at `_g.script`, `lua_help.script`, and `axr_main.script`.
+
+For C++/Lua/config investigations, trace the smallest source-of-truth path through the relevant entry point, reachability conditions, and data origin. Group findings by runtime subsystem; distinguish structural links from semantic behavior; label conclusions `verified fact`, `inference`, or `unknown`. Do not call a callback, export, virtual method, factory product, registered Lua module, string lookup, or config hook unused just because direct text search finds no caller; leave it `UNKNOWN` until its runtime path is verified.
+
+For logs, use the workbench's `log_triage.py` first, inspect the owning project frame rather than assuming the top stack frame is the cause, and test one to three falsifiable hypotheses against the narrowest relevant source path. Use LSP or targeted C++ static analysis only when the existing toolchain and compilation database make its result trustworthy. Never install, bootstrap, download, or reconfigure Python, `rg`, `luac`, LSP servers, compilers, or build systems automatically; report the missing prerequisite and reduced validation unless the user explicitly asks to provision it.
+
+For project work, author under the workbench's `projects/<project-name>`, ask whether an existing mod should be imported or edited in place, and use its project, packaging, localization, Lua, quality-scan, and regression helpers only when they fit the task. Treat MO2 `overwrite/` as transient output and use `stalker-gamma` only for addon discovery and modpack composition, not engine semantics.
 
 The plugin-local `.mcp.json` wires:
 - `deepwiki`

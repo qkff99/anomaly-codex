@@ -89,6 +89,17 @@ Mark confidence as lower and distinguish fact from inference.
 - "How should this be packaged for MO2?" -> `modorganizer2`, then local packaging refs
 - "What files implement this subsystem?" -> DeepWiki, then local verification
 
+## Investigation Record
+
+For a code-path or architecture answer, keep the record narrow and auditable:
+
+- Start with the requested symbol, file, callback, or config hook; trace it to the applicable entry point and record reachability conditions plus the source of controlling data.
+- Group findings by runtime subsystem (`engine runtime`, `Lua bindings`, `ALife`, `UI/MCM`, `configs`, `save/load`) rather than by C++ versus Lua alone.
+- Separate structural edges (include, import, call) from semantic edges (registration, object construction, state mutation, save/load, callback dispatch).
+- Mark claims as `verified fact`, `inference`, or `unknown`. Dynamic registrations, string lookups, factories, virtual dispatch, macros, Lua auto-discovery, callback tables, and configuration hooks remain `unknown` until their execution path is verified.
+- An absent direct text call is not proof that an export, callback, virtual method, factory product, or script module is unused.
+- For C++ navigation, LSP, or static analysis, lower confidence when the actual compile database/toolchain is unavailable; never present unparseable translation-unit diagnostics as findings.
+
 ## Failure Modes
 
 - Tutorial repo contradicts engine source: trust local engine source
